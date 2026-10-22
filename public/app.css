@@ -35,6 +35,7 @@ a{color:var(--accent)}
 button{font:inherit;cursor:pointer}
 button:disabled,button[aria-disabled="true"]{cursor:not-allowed;opacity:.6}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1[tabindex="-1"]:focus{outline:none}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .skip{position:absolute;inset-inline-start:8px;top:-40px;background:var(--accent);color:var(--sheet);padding:6px 10px;border-radius:6px;z-index:50}
 .skip:focus{top:8px}
@@ -90,7 +91,7 @@ form.stack label,.field{display:grid;gap:4px;font-size:13.5px;font-weight:500}
 .field .hint{font-weight:400;color:var(--muted);font-size:12.5px}
 .field .err{color:var(--danger);font-weight:400;font-size:12.5px}
 .field input[aria-invalid="true"]{border-color:var(--danger)}
-.check{display:flex;gap:8px;align-items:center;font-weight:400}
+.check,form.stack label.check{display:flex;gap:8px;align-items:center;font-weight:400}
 .alert{border-radius:8px;padding:10px 14px;font-size:13.5px;background:var(--accent-soft)}
 .alert.error{background:var(--danger-bg);color:var(--ink)}
 .alert.ok{background:var(--scored-bg)}

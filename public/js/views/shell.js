@@ -1,5 +1,5 @@
 import { get, patch, post } from '../api.js';
-import { clear, dialog, errorMessage, fmtDate, h, link, toast } from '../dom.js';
+import { append, clear, dialog, errorMessage, fmtDate, h, link, toast } from '../dom.js';
 import { locale, setLocale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, loadSession, orgInfo, session } from '../state.js';
@@ -111,7 +111,7 @@ export async function renderShell(root, ctx, handler, isCurrent) {
     )));
 
   const main = h('main', { id: 'main', class: handler.view.wide ? '' : 'wrap' });
-  clear(root).append(top, info ? banner(info, orgId) : null, main);
+  append(clear(root), [top, info ? banner(info, orgId) : null, main]);
   document.documentElement.style.setProperty('--topbar-h', `${top.offsetHeight}px`);
 
   if (orgError) {

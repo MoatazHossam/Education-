@@ -190,6 +190,7 @@ test('platform admin signs in with two-factor authentication and suspends then r
   await expect(page.getByRole('heading', { name: 'Two-factor verification' })).toBeVisible();
   await page.getByLabel('Authentication code').fill(authenticator.generate(secret));
   await page.getByRole('button', { name: 'Verify' }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith('/mfa'));
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);

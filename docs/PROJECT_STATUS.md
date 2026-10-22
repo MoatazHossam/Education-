@@ -3,7 +3,7 @@
 **Overall classification: NOT PRODUCTION READY.**
 The application is functionally complete and tested locally, but several Definition-of-Done
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
-and alerts, CI on GitHub, legal/privacy review, catalogue data verification).
+and alerts, legal/privacy review, catalogue data verification).
 
 Last updated: 2026-10-22. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
@@ -12,7 +12,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 | ID | Blocker | Impact | Needed from |
 | --- | --- | --- | --- |
-| B-1 | `git push` to `MoatazHossam/Education-` was refused with HTTP 403 ("Claude doesn't have GitHub access … for your organization"). All work is committed locally on the branch but **not on GitHub**. | CI has never run on GitHub; nobody else can see the code yet | Repository owner: reconnect GitHub at https://claude.ai/connect-github and install the Claude GitHub App on the repository, then push the branch |
+| B-1 | ~~`git push` refused with HTTP 403~~ — **resolved 2026-10-22**: access granted, branch `claude/friendly-rubin-hmemjl` pushed and `main` created from it. | — | — |
 | B-2 | No payment-provider credentials | Paymob adapter unverified; real billing impossible | Business: Paymob merchant account (or another provider decision) |
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
@@ -70,14 +70,14 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Security review + fixes (open redirect, MFA brute force, session hygiene) | COMPLETE | `authz-coverage.test.ts` |
 | Dockerfile, compose (dev + prod overlay with Caddy) | COMPLETE (local) | Image built; stack healthy on latest code |
 | Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
-| CI workflow | **NOT VERIFIED** | Written; not run (B-1) |
+| CI workflow | **NOT VERIFIED** | First run triggered by creating `main`; result pending |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
 | Monitoring & alerting | **NOT STARTED** | Needs B-4 (health endpoints and admin health page exist) |
 | Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 |
 | External penetration test | NOT STARTED | Recommended before launch |
 
 ### Phase 6 — Commercial release · NOT STARTED
-Blocked by B-1…B-6. Plan: docs/IMPLEMENTATION_ROADMAP.md.
+Blocked by B-2…B-6. Plan: docs/IMPLEMENTATION_ROADMAP.md.
 
 ### Documentation · COMPLETE
 All 16 documents in `docs/` plus `README.md`, written against the code as committed.
@@ -95,7 +95,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 | Subscriptions and billing tested in an appropriate environment | ✗ only with the sandbox provider (B-2) |
 | Plan limits enforced | ✓ |
 | Admin interfaces operate correctly | ✓ |
-| Automated tests pass | ✓ locally; ✗ CI not run (B-1) |
+| Automated tests pass | ✓ locally; CI first run pending |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
 | Monitoring and alerts configured | ✗ (B-4) |
 | Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
@@ -105,7 +105,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-1. Unblock B-1 (push + CI), then B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
+1. Get CI green on `main`, then unblock B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
 2. Catalogue verification (B-6) with per-item verification marks.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.

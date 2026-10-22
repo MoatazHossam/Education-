@@ -29,6 +29,7 @@ const EnvSchema = z
 
     BILLING_PROVIDER: z.enum(['sandbox', 'paymob', 'disabled']).default('sandbox'),
     BILLING_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('EGP'),
+    SALES_EMAIL: z.email().optional(),
     SANDBOX_WEBHOOK_SECRET: z.string().min(16).optional(),
     PAYMOB_API_BASE: z.url().default('https://accept.paymob.com'),
     PAYMOB_SECRET_KEY: z.string().optional(),

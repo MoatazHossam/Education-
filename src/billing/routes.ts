@@ -37,7 +37,7 @@ export async function registerBillingRoutes(app: FastifyInstance, ctx: AppContex
 
   app.get('/api/billing/plans', async () => {
     const plans = await db.selectFrom('plans').selectAll().where('active', '=', true).where('is_public', '=', true).orderBy('sort_order').execute();
-    return { plans: plans.map(publicPlan), provider: ctx.payments?.name ?? null };
+    return { plans: plans.map(publicPlan), provider: ctx.payments?.name ?? null, salesEmail: config.SALES_EMAIL ?? null };
   });
 
   app.get('/api/orgs/:orgId/billing', async (req) => {
@@ -76,6 +76,7 @@ export async function registerBillingRoutes(app: FastifyInstance, ctx: AppContex
         invoices: invoices.map((i) => ({ id: i.id, number: i.number, kind: i.kind, planId: i.plan_id, interval: i.billing_interval, amountCents: i.amount_cents, currency: i.currency, status: i.status, periodStart: i.period_start, periodEnd: i.period_end, dueAt: i.due_at, paidAt: i.paid_at, createdAt: i.created_at })),
         payments: payments.map((p) => ({ id: p.id, invoiceId: p.invoice_id, amountCents: p.amount_cents, currency: p.currency, status: p.status, failureReason: p.failure_reason, createdAt: p.created_at })),
         provider: ctx.payments?.name ?? null,
+        salesEmail: config.SALES_EMAIL ?? null,
       };
     });
   });

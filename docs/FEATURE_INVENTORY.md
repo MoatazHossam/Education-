@@ -60,4 +60,4 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-27 | Containerised deployment | Reproducibility | MISSING | IMPLEMENTED | Dockerfile, compose (dev/prod), Caddy TLS | Real host | P0 | Local stack verified |
 | S-28 | CI | Quality gate | MISSING | PARTIALLY IMPLEMENTED | GitHub Actions workflow | Not yet run on GitHub | P0 | — |
 | S-29 | Monitoring & alerting | Detect outages | MISSING | MISSING | Logs are JSON; health endpoints exist | Choose provider; wire alerts | P0 | — |
-| S-30 | Data export / account deletion for customers | Privacy rights | MISSING | MISSING | — | Org deletion & user erasure flows | P1 | — |
+| S-30 | Organization deletion, personal-data export, account deletion | Privacy rights (PDPL), customer trust | MISSING | IMPLEMENTED | `DELETE /api/orgs/:orgId` (password + name), `GET /api/auth/account/export`, `DELETE /api/auth/account` | Org-level bulk data export (all scopes in one archive) | P1 | `tenancy.test.ts` (data deletion and export) |

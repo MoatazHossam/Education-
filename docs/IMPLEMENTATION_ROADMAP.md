@@ -1,0 +1,48 @@
+# Implementation roadmap
+
+Effort is in engineer-days for one experienced full-stack engineer **[estimates]**.
+Phases 0–5 below were executed in this repository; their status is in PROJECT_STATUS.md.
+
+## Completed phases (this delivery)
+
+| Phase | Scope | Outcome |
+| --- | --- | --- |
+| 0 Discovery | Obtain the artifact source, execute and inventory it, find defects | `legacy/`, discovery docs, 7 defects documented and fixed |
+| 1 Foundation | TypeScript/Fastify service, config validation, PostgreSQL schema with RLS, migrations, seed, health, tests | Done |
+| 2 Core application | Catalogue API, content scopes, exports, read API | Done |
+| 3 SaaS capabilities | Auth (verification, MFA, lockout, sessions, CSRF), orgs, roles, invitations, tenancy, limits | Done |
+| 4 Commercial operations | Plans, subscription lifecycle, provider abstraction, webhooks, invoices, emails, platform admin, support access, audit | Done (Paymob unverified) |
+| 5 Hardening | Security review fixes, route-enumeration authz test, Docker, compose, CI workflow, backups, performance probe | Done locally (CI not run on GitHub) |
+
+## Phase 6 — Commercial release (next)
+
+| # | Work item | Effort | Depends on | Owner |
+| --- | --- | --- | --- | --- |
+| 6.1 | Restore GitHub access, push branch, run CI, fix anything CI-specific | 0.5 | Repository access (PROJECT_STATUS blocker B-1) | Engineering |
+| 6.2 | Decide legal entity/country, VAT registration and payment provider | — | Business | Founder + accountant |
+| 6.3 | Paymob merchant account; test-mode run of subscribe/fail/replay/refund; fix adapter if the live payload differs | 2–3 | 6.2 | Engineering |
+| 6.4 | VAT on invoices (rate, totals, tax id) and ETA e-invoicing if Egyptian entity | 3–8 | 6.2 | Engineering + accountant |
+| 6.5 | **Editorial verification of the 2026/27 catalogue** against Ministry decrees and publishers' current editions; record verification status per subject | 10–20 (curriculum specialist) | — | Content |
+| 6.6 | Legal: privacy policy, terms, DPA template, PDPL licensing/registration, hosting location decision | external | 6.2 | Legal counsel |
+| 6.7 | Production host, managed PostgreSQL, DNS, SMTP (SPF/DKIM/DMARC), Caddy TLS | 1–2 | 6.2, 6.6 | Ops |
+| 6.8 | Monitoring: uptime checks on `/readyz`, log shipping + error alerts, worker health alert, backup job + weekly verify | 1–2 | 6.7 | Ops |
+| 6.9 | External penetration test; fix findings | 3–5 + vendor | 6.7 | Security |
+| 6.10 | Pilot: 3–5 design partners (ed-tech/publishers), onboarding sessions, feedback loop | 2–4 weeks elapsed | 6.5, 6.7 | Product |
+| 6.11 | Release checklist (DEPLOYMENT_GUIDE §7), operational readiness review | 0.5 | all above | Team |
+
+## Phase 7 — First 6 months after launch (prioritised)
+
+| Priority | Item | Effort | Why |
+| --- | --- | --- | --- |
+| P1 | "Carry scope to next academic year": map selections from version N to N+1 by natural key, show what changed | 4–6 | Yearly renewal moment for every customer |
+| P1 | Catalogue change notifications (subjects/editions changed since your scope was made) | 3–5 | Core value: freshness |
+| P1 | Verification badges and source per subject/material | 2–3 | Trust |
+| P1 | Shared rate-limit store (Redis) and second app instance | 1–2 | Availability |
+| P1 | Accessibility audit (axe + manual), Firefox/WebKit E2E | 2–3 | NFR-7/8 |
+| P2 | Bulk catalogue import/export (CSV) for editors | 2–3 | Editorial efficiency |
+| P2 | Scope comparison/diff and per-item notes/assignees | 4–6 | Team workflow |
+| P2 | Webhooks to customer systems on scope change | 2–3 | Integrations |
+| P2 | Card-on-file automatic renewals (Paymob subscriptions module) | 3–5 | Reduce involuntary churn |
+| P2 | SSO (Google Workspace / Microsoft) for school groups | 3–5 | Enterprise |
+| P3 | Other curricula (KSA, UAE, Jordan) as catalogue packs | per country: content-heavy | Market size (COMMERCIAL_FEASIBILITY.md) |
+| P3 | `DATA_ENCRYPTION_KEY` rotation tooling | 1 | Key management |

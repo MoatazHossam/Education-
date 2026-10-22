@@ -102,7 +102,8 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'http://insecure' })).toThrow(/https/);
     expect(() => loadConfig({ ...TEST_ENV, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/);
     expect(() => loadConfig({ ...TEST_ENV, DATA_ENCRYPTION_KEY: 'abc' })).toThrow(/DATA_ENCRYPTION_KEY/);
-    const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example' });
+    const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', SALES_EMAIL: '', PAYMOB_SECRET_KEY: '' });
+    expect(ok.SALES_EMAIL).toBeUndefined();
     expect(ok.secureCookies).toBe(true);
   });
 });

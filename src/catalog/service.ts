@@ -30,8 +30,10 @@ export interface CatalogTree {
   counts: { subjects: number; materials: number };
 }
 
-// Published versions are immutable, so their trees are cached in memory.
-const cache = new Map<string, { updatedAt: number; tree: CatalogTree }>();
+// Published versions are immutable, so their trees (and serialized JSON) are
+// cached in memory; concurrent first loads share one database round trip.
+const cache = new Map<string, { updatedAt: number; tree: CatalogTree; json?: string }>();
+const inflight = new Map<string, Promise<CatalogTree>>();
 
 export function gradeList() {
   return Object.entries(GRADE_NAMES).map(([g, [en, ar]]) => ({ grade: Number(g), nameEn: en, nameAr: ar }));
@@ -42,6 +44,30 @@ export async function loadCatalogTree(exec: Executor, versionId: string, opts: {
   if (!version || (!opts.allowUnpublished && version.status === 'draft')) throw notFound('Catalog version');
   const cached = cache.get(versionId);
   if (version.status !== 'draft' && cached && cached.updatedAt === version.updated_at.getTime()) return cached.tree;
+  if (version.status === 'draft') return buildTree(exec, version);
+  const key = `${versionId}:${version.updated_at.getTime()}`;
+  let pending = inflight.get(key);
+  if (!pending) {
+    pending = buildTree(exec, version).finally(() => inflight.delete(key));
+    inflight.set(key, pending);
+  }
+  return pending;
+}
+
+/** The tree serialized once per published version (served with an ETag). */
+export async function catalogJson(exec: Executor, versionId: string): Promise<{ json: string; etag: string }> {
+  const tree = await loadCatalogTree(exec, versionId);
+  const entry = cache.get(versionId);
+  const etag = `"cv-${tree.version.id}-${new Date(tree.version.updatedAt).getTime()}"`;
+  if (entry && entry.tree === tree) {
+    entry.json ??= JSON.stringify(tree);
+    return { json: entry.json, etag };
+  }
+  return { json: JSON.stringify(tree), etag };
+}
+
+async function buildTree(exec: Executor, version: { id: string; academic_year: string; label: string; status: string; notice: string | null; grade_notes: Record<string, string>; published_at: Date | null; updated_at: Date }): Promise<CatalogTree> {
+  const versionId = version.id;
 
   const [sources, subjects, materials] = await Promise.all([
     exec.selectFrom('catalog_sources').select(['id', 'title', 'url']).where('version_id', '=', versionId).orderBy('sort_order').execute(),

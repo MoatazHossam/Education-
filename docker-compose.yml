@@ -1,0 +1,96 @@
+# Local development / single-host stack:
+#   cp .env.docker.example .env.docker && docker compose --env-file .env.docker up --build
+# Production adds docker-compose.prod.yml (Caddy TLS proxy, no Mailpit).
+name: curriculum-scope
+
+x-app-env: &app-env
+  NODE_ENV: ${NODE_ENV:-development}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  TRUST_PROXY: ${TRUST_PROXY:-false}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://${DB_APP_USER}:${DB_APP_PASSWORD}@postgres:5432/${DB_NAME}
+  MIGRATION_DATABASE_URL: postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}
+  APP_DB_ROLE: ${DB_APP_USER}
+  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
+  EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-smtp}
+  SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
+  EMAIL_FROM: ${EMAIL_FROM:-Curriculum Scope <no-reply@localhost>}
+  SALES_EMAIL: ${SALES_EMAIL:-}
+  BILLING_PROVIDER: ${BILLING_PROVIDER:-sandbox}
+  BILLING_CURRENCY: ${BILLING_CURRENCY:-EGP}
+  SANDBOX_WEBHOOK_SECRET: ${SANDBOX_WEBHOOK_SECRET:-}
+  PAYMOB_SECRET_KEY: ${PAYMOB_SECRET_KEY:-}
+  PAYMOB_PUBLIC_KEY: ${PAYMOB_PUBLIC_KEY:-}
+  PAYMOB_HMAC_SECRET: ${PAYMOB_HMAC_SECRET:-}
+  PAYMOB_INTEGRATION_IDS: ${PAYMOB_INTEGRATION_IDS:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_OWNER_USER: ${DB_OWNER_USER}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
+      DB_APP_USER: ${DB_APP_USER}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      DB_BACKUP_USER: ${DB_BACKUP_USER:-curriculum_backup}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:?set DB_BACKUP_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published to the host by default; uncomment for local tooling.
+    # ports: ["127.0.0.1:5432:5432"]
+
+  migrate:
+    build: .
+    image: curriculum-scope:local
+    command: ["sh", "-c", "node dist/db/migrate-cli.js up && node dist/db/seed-cli.js --catalog-only"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    image: curriculum-scope:local
+    restart: unless-stopped
+    environment: *app-env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    image: curriculum-scope:local
+    command: ["node", "dist/worker.js"]
+    restart: unless-stopped
+    healthcheck:
+      # The worker has no HTTP server; healthy means a recent heartbeat in the database.
+      test: ["CMD", "node", "dist/cli/worker-health.js"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  pgdata:

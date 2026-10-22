@@ -80,7 +80,10 @@ export interface AppConfig extends Env {
 }
 
 export function loadConfig(source: Record<string, string | undefined> = process.env): AppConfig {
-  const parsed = EnvSchema.safeParse(source);
+  // Empty values (e.g. `SALES_EMAIL=` in an env file, or unset variables that
+  // Docker Compose interpolates to "") mean "not set".
+  const cleaned = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined && v.trim() !== ''));
+  const parsed = EnvSchema.safeParse(cleaned);
   if (!parsed.success) {
     const details = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid configuration:\n${details}`);

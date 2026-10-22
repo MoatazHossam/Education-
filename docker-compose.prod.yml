@@ -1,0 +1,40 @@
+# Production overrides: TLS-terminating Caddy in front of the app, no Mailpit,
+# app port not published directly.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
+services:
+  app:
+    ports: !reset []
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY: "true"
+
+  worker:
+    environment:
+      NODE_ENV: production
+
+  migrate:
+    environment:
+      NODE_ENV: production
+
+  mailpit:
+    profiles: ["dev-only"]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

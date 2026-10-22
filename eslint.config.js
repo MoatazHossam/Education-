@@ -28,4 +28,8 @@ export default tseslint.config(
     files: ['src/cli/**', 'src/db/*-cli.ts', 'scripts/**'],
     rules: { 'no-console': 'off' },
   },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', fetch: 'readonly', performance: 'readonly', console: 'readonly' } },
+  },
 );

@@ -1,0 +1,16 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	# The app sets CSP/HSTS itself; Caddy adds TLS (automatic Let's Encrypt) and compression.
+	reverse_proxy app:3000 {
+		health_uri /healthz
+		health_interval 15s
+	}
+	log {
+		output stdout
+		format json
+	}
+}

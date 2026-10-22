@@ -4,6 +4,7 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.docker.example
 test-results/
 playwright-report/
 backups/

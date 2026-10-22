@@ -111,8 +111,12 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
 
   app.post('/api/orgs/:orgId/scopes/:scopeId/items', async (req) => {
     const { orgId, scopeId } = parse(ScopeParams, req.params);
-    const body = parse(z.object({ add: z.array(zUuid).max(MAX_BATCH).default([]), remove: z.array(zUuid).max(MAX_BATCH).default([]) }), req.body);
-    if (!body.add.length && !body.remove.length) throw badRequest('Nothing to change');
+    const body = parse(
+      z
+        .object({ add: z.array(zUuid).max(MAX_BATCH).default([]), remove: z.array(zUuid).max(MAX_BATCH).default([]) })
+        .refine((b) => b.add.length + b.remove.length > 0, { message: 'Nothing to change', path: ['add'] }),
+      req.body,
+    );
     return inOrg(ctx, req, orgId, 'editor', async (trx, { user }) => {
       const scope = await getScope(trx, orgId, scopeId);
       await assertScopeEditable(trx, orgId, scope.id, await getEntitlements(trx, orgId, grace));

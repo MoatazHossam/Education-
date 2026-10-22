@@ -57,7 +57,10 @@ async function render() {
     return;
   }
   const { handler, params } = m;
-  if (handler.access === 'guest' && session.me) return navigate(query.get('next') || '/', { replace: true });
+  if (handler.access === 'guest' && session.me) {
+    const next = query.get('next');
+    return navigate(next && /^\/(?![/\\])/.test(next) ? next : '/', { replace: true });
+  }
   if ((handler.access === 'user' || handler.access === 'admin') && !session.me) {
     return navigate(session.mfaPending ? '/mfa' : `/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
   }

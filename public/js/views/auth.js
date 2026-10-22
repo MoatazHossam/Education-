@@ -21,7 +21,8 @@ async function afterLogin(ctx, next) {
   await loadSession();
   if (session.mfaPending) return navigate(`/mfa${next ? `?next=${encodeURIComponent(next)}` : ''}`);
   if (session.me?.user?.locale) setLocale(session.me.user.locale);
-  navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+  // Only same-origin paths: '//host' and '/\\host' are protocol-relative URLs in browsers.
+  navigate(next && /^\/(?![/\\])/.test(next) ? next : '/');
 }
 
 export function loginView(ctx) {

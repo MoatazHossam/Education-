@@ -85,6 +85,13 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
 
   app.decorateRequest('auth', null);
 
+  // Registered routes, used by tests to prove every admin/org route is protected.
+  const routeList: { method: string; url: string }[] = [];
+  app.decorate('routeList', routeList);
+  app.addHook('onRoute', (r) => {
+    for (const m of ([] as string[]).concat(r.method)) if (m !== 'HEAD') routeList.push({ method: m, url: r.url });
+  });
+
   // Resolve the caller: session cookie for the web app, API key for /api/v1.
   app.addHook('onRequest', async (req) => {
     if (!req.url.startsWith('/api/')) return;

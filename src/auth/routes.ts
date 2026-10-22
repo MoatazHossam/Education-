@@ -209,7 +209,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     if (user.status !== 'active') throw forbidden('This account is suspended. Contact support.', 'ACCOUNT_SUSPENDED');
     if (!user.email_verified_at) throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'Confirm your email address before signing in');
 
-    await db.updateTable('users').set({ failed_login_count: 0, locked_until: null, last_login_at: new Date() }).where('id', '=', user.id).execute();
+    await db
+      .updateTable('users')
+      .set({ ...(user.mfa_enabled ? {} : { failed_login_count: 0 }), locked_until: null, last_login_at: new Date() })
+      .where('id', '=', user.id)
+      .execute();
+    // Never keep a previous session alive across a new sign-in on this browser.
+    if (req.auth?.kind === 'session') await revokeSession(db, req.auth.session.id);
     await startSession(ctx, req, reply, user, { mfaPending: user.mfa_enabled, mfaVerified: false });
     await recordPlatformAudit(db, { type: user.is_platform_admin ? 'platform_admin' : 'user', userId: user.id, email: user.email }, { action: user.mfa_enabled ? 'auth.password_ok_mfa_pending' : 'auth.login', targetType: 'user', targetId: user.id }, meta);
     return { mfaRequired: user.mfa_enabled, user: user.mfa_enabled ? null : publicUser(user) };
@@ -240,9 +246,23 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       if (ok) await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: 'auth.recovery_code_used', targetType: 'user', targetId: user.id }, meta);
     }
     if (!ok) {
-      await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: 'auth.mfa_failed', targetType: 'user', targetId: user.id }, meta);
+      // Failed second factors count toward the same lockout as failed passwords,
+      // and a locked account loses its half-authenticated session.
+      const failures = user.failed_login_count + 1;
+      const lock = failures >= MAX_FAILED_LOGINS;
+      await db
+        .updateTable('users')
+        .set({ failed_login_count: lock ? 0 : failures, locked_until: lock ? new Date(Date.now() + LOCKOUT_MS) : user.locked_until })
+        .where('id', '=', user.id)
+        .execute();
+      if (lock) {
+        await revokeSession(db, auth.session.id);
+        clearSessionCookie(reply, config);
+      }
+      await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: lock ? 'auth.account_locked' : 'auth.mfa_failed', targetType: 'user', targetId: user.id }, meta);
       throw new AppError(401, 'MFA_INVALID', 'The code is incorrect or has already been used');
     }
+    await db.updateTable('users').set({ failed_login_count: 0 }).where('id', '=', user.id).execute();
     // Rotate: the pre-MFA session token is discarded.
     await revokeSession(db, auth.session.id);
     await startSession(ctx, req, reply, user, { mfaPending: false, mfaVerified: true });

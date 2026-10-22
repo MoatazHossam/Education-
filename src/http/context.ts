@@ -20,4 +20,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     auth: AuthState;
   }
+  interface FastifyInstance {
+    routeList: { method: string; url: string }[];
+  }
 }

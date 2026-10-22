@@ -164,7 +164,8 @@ export async function pickerView(ctx) {
       const blocks = new Map();
       for (const it of rows) {
         const mats = it.materials.filter((m) => st.kinds.has(m.kind));
-        const hay = `${it.nameEn} ${it.nameAr} ${it.block} ${it.materials.map((m) => m.title).join(' ')}`.toLowerCase();
+        // Match against visible materials only (the original also matched hidden kinds, showing rows for no visible reason).
+        const hay = `${it.nameEn} ${it.nameAr} ${it.block} ${mats.map((m) => m.title).join(' ')}`.toLowerCase();
         if (q && !hay.includes(q)) continue;
         if (!mats.length) continue;
         if (!blocks.has(it.block)) blocks.set(it.block, []);

@@ -1,7 +1,7 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { withOrgContext, withSystemContext } from '../../src/db/index.js';
-import { addMember, createHarness, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
+import { addMember, Client, createHarness, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
 
 let h: Harness;
 beforeAll(async () => {
@@ -194,5 +194,55 @@ describe('invitations', () => {
     const reg = await c.post('/api/auth/register', { name: 'Late', email: 'later@example.test', password: PASSWORD, inviteToken: token });
     expect(reg.statusCode).toBe(400);
     expect(reg.json().error.code).toBe('INVITATION_INVALID');
+  });
+});
+
+describe('data deletion and export', () => {
+  it('owner deletes an organization: its data is gone, other tenants untouched, audit retained', async () => {
+    const a = await signUp(h, { org: 'Doomed Org' });
+    const b = await signUp(h, { org: 'Survivor Org' });
+    const versionId = await publishedVersionId(h);
+    for (const t of [a, b]) {
+      const s = (await t.client.post(`/api/orgs/${t.orgId}/scopes`, { name: 'S', catalogVersionId: versionId })).json().scope;
+      await t.client.post(`/api/orgs/${t.orgId}/scopes/${s.id}/items`, { add: await someMaterialIds(h, versionId, 3) });
+    }
+    const editor = await addMember(h, a.client, a.orgId, 'editor');
+    expect((await editor.client.delete(`/api/orgs/${a.orgId}`)).statusCode).toBe(400);
+    expect((await a.client.request('DELETE', `/api/orgs/${a.orgId}`, { password: 'correct-horse-battery-staple', confirmName: 'wrong' })).json().error.code).toBe('CONFIRMATION_MISMATCH');
+    expect((await editor.client.request('DELETE', `/api/orgs/${a.orgId}`, { password: 'correct-horse-battery-staple', confirmName: 'Doomed Org' })).statusCode).toBe(403);
+    const res = await a.client.request('DELETE', `/api/orgs/${a.orgId}`, { password: 'correct-horse-battery-staple', confirmName: 'Doomed Org' });
+    expect(res.statusCode).toBe(200);
+
+    const left = await withSystemContext(h.ownerDb, async (trx) => ({
+      scopes: await trx.selectFrom('scopes').select('org_id').execute(),
+      items: await trx.selectFrom('scope_items').select('org_id').execute(),
+      subs: await trx.selectFrom('subscriptions').select('org_id').execute(),
+      audit: await trx.selectFrom('audit_logs').select('action').where('org_id', '=', a.orgId).where('action', '=', 'org.deleted').execute(),
+    }));
+    expect(new Set(left.scopes.map((r) => r.org_id))).toEqual(new Set([b.orgId]));
+    expect(left.items.every((r) => r.org_id === b.orgId)).toBe(true);
+    expect(left.subs.map((r) => r.org_id)).toEqual([b.orgId]);
+    expect(left.audit).toHaveLength(1);
+    expect((await editor.client.get(`/api/orgs/${a.orgId}`)).statusCode).toBe(404);
+    expect((await b.client.get(`/api/orgs/${b.orgId}/scopes`)).json().scopes[0].itemCount).toBe(3);
+  });
+
+  it('a user can export their data and delete their account unless they own an organization', async () => {
+    const owner = await signUp(h, { org: 'Keeps Going' });
+    const member = await addMember(h, owner.client, owner.orgId, 'viewer');
+    const exp = await member.client.get('/api/auth/account/export');
+    expect(exp.statusCode).toBe(200);
+    expect(exp.json()).toMatchObject({ profile: { email: member.email }, memberships: [{ organizationId: owner.orgId, role: 'viewer' }] });
+    expect(JSON.stringify(exp.json())).not.toMatch(/password_hash|argon2/);
+
+    const blocked = await owner.client.request('DELETE', '/api/auth/account', { password: 'correct-horse-battery-staple' });
+    expect(blocked.json().error.code).toBe('OWNS_ORGANIZATIONS');
+    expect((await member.client.request('DELETE', '/api/auth/account', { password: 'wrong' })).statusCode).toBe(400);
+    expect((await member.client.request('DELETE', '/api/auth/account', { password: 'correct-horse-battery-staple' })).statusCode).toBe(200);
+    expect((await member.client.get('/api/auth/me')).statusCode).toBe(401);
+    const members = (await owner.client.get(`/api/orgs/${owner.orgId}/members`)).json().members;
+    expect(members.map((m: { email: string }) => m.email)).not.toContain(member.email);
+    const relogin = await new Client(h.app).post('/api/auth/login', { email: member.email, password: 'correct-horse-battery-staple' });
+    expect(relogin.statusCode).toBe(401);
   });
 });

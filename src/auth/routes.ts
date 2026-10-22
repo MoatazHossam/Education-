@@ -378,6 +378,47 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     return { user: publicUser(updated) };
   });
 
+  // ------------------------------------------------------------ personal data (data-subject rights)
+  app.get('/api/auth/account/export', rateLimited(10, '1 hour'), async (req, reply) => {
+    const { user } = requireUser(req);
+    const memberships = await withUserContext(db, user.id, (trx) =>
+      trx.selectFrom('memberships as m').innerJoin('organizations as o', 'o.id', 'm.org_id').select(['o.id', 'o.name', 'm.role', 'm.created_at']).where('m.user_id', '=', user.id).execute(),
+    );
+    const sessions = await db.selectFrom('sessions').select(['ip', 'user_agent', 'created_at', 'last_seen_at']).where('user_id', '=', user.id).execute();
+    const notifications = await db.selectFrom('notifications').select(['kind', 'title', 'body', 'created_at', 'read_at']).where('user_id', '=', user.id).execute();
+    const audit = await withSystemContext(db, (trx) =>
+      trx.selectFrom('audit_logs').select(['action', 'org_id', 'ip', 'user_agent', 'created_at']).where('actor_user_id', '=', user.id).orderBy('id', 'desc').limit(1000).execute(),
+    );
+    await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: 'user.data_exported', targetType: 'user', targetId: user.id }, requestMeta(req));
+    reply.header('Content-Disposition', 'attachment; filename="my-data.json"');
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: { ...publicUser(user), lastLoginAt: user.last_login_at, passwordChangedAt: user.password_changed_at },
+      memberships: memberships.map((m) => ({ organizationId: m.id, organization: m.name, role: m.role, since: m.created_at })),
+      sessions,
+      notifications,
+      activity: audit,
+    };
+  });
+
+  app.delete('/api/auth/account', rateLimited(5, '1 hour'), async (req, reply) => {
+    const { user } = requireUser(req);
+    const { password } = parse(z.object({ password: z.string().min(1).max(256) }), req.body);
+    if (!(await verifyPassword(user.password_hash, password))) throw new AppError(400, 'INVALID_PASSWORD', 'Password is incorrect');
+    if (user.is_platform_admin) throw forbidden('Platform administrator accounts are removed by another administrator');
+    const owned = await withUserContext(db, user.id, (trx) =>
+      trx.selectFrom('memberships as m').innerJoin('organizations as o', 'o.id', 'm.org_id').select(['o.name']).where('m.user_id', '=', user.id).where('m.role', '=', 'owner').execute(),
+    );
+    if (owned.length) {
+      throw new AppError(409, 'OWNS_ORGANIZATIONS', `Transfer or delete the organizations you own first: ${owned.map((o) => o.name).join(', ')}`);
+    }
+    // Memberships, sessions, tokens and notifications cascade; authored records keep a NULL author.
+    await db.deleteFrom('users').where('id', '=', user.id).execute();
+    await recordPlatformAudit(db, { type: 'user', userId: user.id, email: null }, { action: 'user.deleted', targetType: 'user', targetId: user.id }, requestMeta(req));
+    clearSessionCookie(reply, config);
+    return { status: 'deleted' };
+  });
+
   // ------------------------------------------------------------ sessions
   app.get('/api/auth/sessions', async (req) => {
     const { user, session } = requireUser(req);

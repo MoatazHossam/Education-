@@ -1,6 +1,7 @@
 import { del, get, patch, post } from '../api.js';
 import { confirmDialog, dialog, errorMessage, fmtDate, form, h, toast } from '../dom.js';
 import { t } from '../i18n.js';
+import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession } from '../state.js';
 import { pageHead, planLimitHint } from './shell.js';
 
@@ -77,10 +78,30 @@ export async function settingsView(ctx) {
       f.el);
   }
 
+  const dangerCard = isOwner ? h('div', { class: 'card' }, h('h2', {}, t('settings.dangerZone')), h('p', { class: 'muted' }, t('settings.deleteOrgText')),
+    h('button', {
+      type: 'button', class: 'btn danger ghost', onclick: async () => {
+        const name = h('input', { type: 'text', autocomplete: 'off' });
+        const password = h('input', { type: 'password', autocomplete: 'current-password' });
+        const err = h('div', { class: 'alert error', hidden: true });
+        const ok = await dialog({
+          title: t('settings.deleteOrg'),
+          body: h('div', { class: 'stack' }, err, h('p', {}, t('settings.deleteOrgConfirm', { name: org.name })),
+            h('label', { class: 'field' }, t('settings.typeName'), name), h('label', { class: 'field' }, t('auth.password'), password)),
+          actions: [{ label: t('common.cancel'), value: false, kind: 'ghost' }, {
+            label: t('settings.deleteOrg'), value: true, kind: 'danger', validate: async () => {
+              try { await del(`/api/orgs/${orgId}`, { password: password.value, confirmName: name.value }); return true; } catch (e) { err.textContent = errorMessage(e); err.hidden = false; return false; }
+            },
+          }],
+        });
+        if (ok) { await loadSession(); navigate('/'); }
+      },
+    }, t('settings.deleteOrg'))) : null;
+
   return h('div', {},
     pageHead(t('settings.title'), null),
     h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h2', {}, t('settings.profile')), profile.el), keysCard),
-    supportCard);
+    supportCard, dangerCard);
 }
 
 export async function auditView(ctx) {

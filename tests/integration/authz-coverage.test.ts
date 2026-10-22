@@ -19,7 +19,7 @@ const PUBLIC_OR_SELF: string[] = [
   'POST /api/auth/register', 'POST /api/auth/verify-email', 'POST /api/auth/resend-verification', 'POST /api/auth/login',
   'POST /api/auth/mfa/verify', 'POST /api/auth/logout', 'POST /api/auth/logout-others', 'GET /api/auth/me',
   'POST /api/auth/password/forgot', 'POST /api/auth/password/reset', 'POST /api/auth/password/change', 'PATCH /api/auth/profile',
-  'GET /api/auth/sessions', 'DELETE /api/auth/sessions/:id', 'POST /api/auth/mfa/setup', 'POST /api/auth/mfa/enable',
+  'GET /api/auth/sessions', 'DELETE /api/auth/sessions/:id', 'GET /api/auth/account/export', 'DELETE /api/auth/account', 'POST /api/auth/mfa/setup', 'POST /api/auth/mfa/enable',
   'POST /api/auth/mfa/disable', 'POST /api/auth/mfa/recovery-codes', 'GET /api/invitations/:token', 'POST /api/invitations/accept',
   'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/orgs', 'GET /api/catalog/versions', 'GET /api/catalog/versions/:id',
   'GET /api/billing/plans', 'POST /api/billing/webhooks/:provider', 'GET /api/billing/sandbox/checkout', 'POST /api/billing/sandbox/complete',

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
+import { withSystemContext } from '../db/index.js';
 import { hasRole, inOrg, requireUser } from '../auth/guards.js';
 import { verifyPassword } from '../auth/password.js';
 import { assertSeatAvailable, countScopes, countSeats, getEntitlements, lockOrg, requireFeature, usageFor } from '../billing/entitlements.js';
@@ -78,6 +79,26 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
       await recordAudit(trx, actorFromRequest(req), { orgId: org.id, action: 'org.updated', targetType: 'organization', targetId: org.id, metadata: body }, requestMeta(req));
       return { organization: { id: updated.id, name: updated.name, slug: updated.slug, locale: updated.locale, requireMfaForAdmins: updated.require_mfa_for_admins } };
     });
+  });
+
+  // Permanent deletion of the organization and all its tenant data (cascade).
+  // Requires the owner's password and the exact organization name.
+  app.delete('/api/orgs/:orgId', rateLimited(5, '1 hour'), async (req) => {
+    const { orgId } = parse(OrgParams, req.params);
+    const body = parse(z.object({ password: z.string().min(1).max(256), confirmName: z.string().max(120) }), req.body);
+    const meta = requestMeta(req);
+    const deleted = await inOrg(ctx, req, orgId, 'owner', async (_trx, { user, org }) => {
+      if (!(await verifyPassword(user.password_hash, body.password))) throw new AppError(400, 'INVALID_PASSWORD', 'Password is incorrect');
+      if (body.confirmName.trim() !== org.name) throw new AppError(400, 'CONFIRMATION_MISMATCH', 'Type the organization name exactly to confirm');
+      return { org, user };
+    });
+    await withSystemContext(db, async (trx) => {
+      const members = await trx.selectFrom('memberships').select((eb) => eb.fn.countAll<string>().as('n')).where('org_id', '=', orgId).executeTakeFirstOrThrow();
+      await trx.deleteFrom('organizations').where('id', '=', orgId).execute();
+      // Audit rows keep org_id (no foreign key) so the deletion itself stays on record.
+      await recordAudit(trx, { type: 'user', userId: deleted.user.id, email: deleted.user.email }, { orgId, action: 'org.deleted', targetType: 'organization', targetId: orgId, metadata: { name: deleted.org.name, members: Number(members.n) } }, meta);
+    });
+    return { status: 'deleted' };
   });
 
   // ------------------------------------------------------------ members

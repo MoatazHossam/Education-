@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, form, h, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, form, h, promptDialog, toast } from '../dom.js';
 import { setLocale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
@@ -104,6 +104,18 @@ export async function accountView(ctx) {
     h('h3', {}, t('shell.newOrg')), newOrg.el);
   if (ctx.query.get('new-org')) queueMicrotask(() => orgCard.scrollIntoView({ block: 'start' }));
 
+  const privacyCard = h('div', { class: 'card' }, h('h2', {}, t('account.privacy')),
+    h('p', { class: 'muted' }, t('account.exportText')),
+    h('a', { class: 'btn ghost', href: '/api/auth/account/export', download: 'my-data.json' }, t('account.export')),
+    h('h3', {}, t('account.delete')), h('p', { class: 'muted' }, t('account.deleteText')),
+    user.isPlatformAdmin ? null : h('button', {
+      type: 'button', class: 'btn danger ghost', onclick: async () => {
+        const pwd = await promptDialog(t('account.delete'), t('auth.password'), { type: 'password', danger: true, confirmLabel: t('account.delete') });
+        if (!pwd) return;
+        try { await del('/api/auth/account', { password: pwd }); await loadSession(); navigate('/login'); } catch (e) { toast(errorMessage(e), 'error'); }
+      },
+    }, t('account.delete')));
+
   return h('div', {},
     pageHead(t('account.title'), user.email),
     h('div', { class: 'grid2' },
@@ -111,5 +123,6 @@ export async function accountView(ctx) {
       h('div', { class: 'card' }, h('h2', {}, t('account.password')), pw.el)),
     h('div', { class: 'card', id: 'security' }, h('h2', {}, t('account.security')), mfaBox),
     sessionsCard,
-    orgCard);
+    orgCard,
+    privacyCard);
 }

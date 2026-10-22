@@ -1,0 +1,23 @@
+import type { FastifyBaseLogger } from 'fastify';
+import type { PaymentProvider } from '../billing/providers/types.js';
+import type { AppConfig } from '../config.js';
+import type { Database } from '../db/index.js';
+import type { Session, User } from '../db/types.js';
+
+export interface AppContext {
+  config: AppConfig;
+  db: Database;
+  log: FastifyBaseLogger;
+  payments: PaymentProvider | null;
+}
+
+export type AuthState =
+  | { kind: 'session'; user: User; session: Session }
+  | { kind: 'api_key'; orgId: string; keyId: string; keyName: string }
+  | null;
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    auth: AuthState;
+  }
+}

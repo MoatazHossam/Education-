@@ -1,0 +1,108 @@
+import { authenticator } from 'otplib';
+import { describe, expect, it } from 'vitest';
+import { generateRecoveryCodes, normalizeRecoveryCode, verifyTotp } from '../../src/auth/mfa.js';
+import { hashPassword, verifyPassword } from '../../src/auth/password.js';
+import { paymobTransactionHmac, PaymobProvider } from '../../src/billing/providers/paymob.js';
+import { SandboxProvider } from '../../src/billing/providers/sandbox.js';
+import { WebhookSignatureError } from '../../src/billing/providers/types.js';
+import { loadConfig } from '../../src/config.js';
+import { decryptSecret, encryptSecret, hmacHex } from '../../src/lib/crypto.js';
+import { toCsv, toText, type ExportRow } from '../../src/scopes/export.js';
+import { TEST_ENV } from '../helpers/env.js';
+
+describe('passwords', () => {
+  it('hashes with argon2id and verifies', async () => {
+    const h = await hashPassword('a-long-enough-passphrase');
+    expect(h.startsWith('$argon2id$')).toBe(true);
+    expect(await verifyPassword(h, 'a-long-enough-passphrase')).toBe(true);
+    expect(await verifyPassword(h, 'wrong')).toBe(false);
+    expect(await verifyPassword('not-a-hash', 'x')).toBe(false);
+  });
+});
+
+describe('secret encryption', () => {
+  const key = Buffer.alloc(32, 1).toString('base64');
+  it('round-trips and detects tampering', () => {
+    const env = encryptSecret(key, 'JBSWY3DPEHPK3PXP');
+    expect(env).not.toContain('JBSWY3DPEHPK3PXP');
+    expect(decryptSecret(key, env)).toBe('JBSWY3DPEHPK3PXP');
+    const parts = env.split('.');
+    parts[3] = Buffer.from('tampered').toString('base64url');
+    expect(() => decryptSecret(key, parts.join('.'))).toThrow();
+    expect(() => decryptSecret(Buffer.alloc(32, 2).toString('base64'), env)).toThrow();
+  });
+});
+
+describe('TOTP', () => {
+  it('accepts a current code once and rejects replay of the same step', () => {
+    const secret = authenticator.generateSecret();
+    const code = authenticator.generate(secret);
+    const step = verifyTotp(secret, code, null);
+    expect(step).not.toBeNull();
+    expect(verifyTotp(secret, code, step)).toBeNull();
+    expect(verifyTotp(secret, 'abcdef', null)).toBeNull();
+  });
+  it('generates unique recovery codes and normalizes input', () => {
+    const { codes, hashes } = generateRecoveryCodes();
+    expect(new Set(codes).size).toBe(10);
+    expect(hashes[0]).toMatch(/^[0-9a-f]{64}$/);
+    expect(normalizeRecoveryCode(codes[0]!.toUpperCase().replace('-', ' '))).toBe(codes[0]);
+  });
+});
+
+describe('webhook signatures', () => {
+  it('sandbox: verifies signed payloads, rejects tampering and stale timestamps', () => {
+    const p = new SandboxProvider('sandbox-secret-1234567', 'http://localhost');
+    const body = JSON.stringify({ id: 'evt_1', type: 'payment.succeeded', data: { invoice_id: 'i', txn_id: 't', amount_cents: 1, currency: 'EGP' } });
+    const ok = p.parseWebhook({ rawBody: Buffer.from(body), headers: { 'x-sandbox-signature': p.sign(body) }, query: {} });
+    expect(ok.type).toBe('payment.succeeded');
+    expect(() => p.parseWebhook({ rawBody: Buffer.from(body.replace('"amount_cents":1', '"amount_cents":2')), headers: { 'x-sandbox-signature': p.sign(body) }, query: {} })).toThrow(WebhookSignatureError);
+    const old = p.sign(body, Math.floor(Date.now() / 1000) - 3600);
+    expect(() => p.parseWebhook({ rawBody: Buffer.from(body), headers: { 'x-sandbox-signature': old }, query: {} })).toThrow(/tolerance/);
+    expect(() => p.parseWebhook({ rawBody: Buffer.from(body), headers: {}, query: {} })).toThrow(WebhookSignatureError);
+  });
+
+  it('paymob: HMAC-SHA512 over the documented field order', () => {
+    const txn = {
+      id: 192036465, pending: false, amount_cents: 99000, success: true, is_auth: false, is_capture: false, is_standalone_payment: true,
+      is_voided: false, is_refunded: false, is_3d_secure: true, integration_id: 4097558, has_parent_transaction: false,
+      created_at: '2026-10-22T12:00:00.000000', currency: 'EGP', error_occured: false, owner: 302852,
+      order: { id: 217503754, merchant_order_id: '7c1a3f7e-0000-4000-8000-000000000001.abc' }, source_data: { pan: '2346', type: 'card', sub_type: 'MasterCard' },
+    };
+    const concatenated = '990002026-10-22T12:00:00.000000EGPfalsefalse1920364654097558truefalsefalsefalsetruefalse217503754302852false2346MasterCardcardtrue';
+    expect(paymobTransactionHmac('hmac-secret', txn)).toBe(hmacHex('hmac-secret', concatenated, 'sha512'));
+    const provider = new PaymobProvider({ apiBase: 'https://accept.paymob.com', secretKey: 's', publicKey: 'p', hmacSecret: 'hmac-secret', integrationIds: [1] });
+    const raw = Buffer.from(JSON.stringify({ type: 'TRANSACTION', obj: txn }));
+    const evt = provider.parseWebhook({ rawBody: raw, headers: {}, query: { hmac: paymobTransactionHmac('hmac-secret', txn) } });
+    expect(evt).toMatchObject({ type: 'payment.succeeded', invoiceId: '7c1a3f7e-0000-4000-8000-000000000001', amountCents: 99000, currency: 'EGP' });
+    expect(() => provider.parseWebhook({ rawBody: raw, headers: {}, query: { hmac: 'deadbeef' } })).toThrow(WebhookSignatureError);
+  });
+});
+
+describe('exports', () => {
+  const row = (over: Partial<ExportRow>): ExportRow => ({
+    grade: 1, gradeEn: 'Primary 1', gradeAr: 'الصف الأول الابتدائي', track: 'moe', block: 'Block', subjectCode: 'ma', subjectEn: 'Mathematics',
+    subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book', ...over,
+  });
+  it('text export keeps the original "Copy list" layout', () => {
+    expect(toText([row({}), row({ materialTitle: 'Workbook' })])).toBe('Primary 1 / الصف الأول الابتدائي\n  • Block — Mathematics\n      - Book\n      - Workbook');
+    expect(toText([])).toBe('Nothing selected yet.');
+  });
+  it('CSV neutralises spreadsheet formulas and quotes properly', () => {
+    const csv = toCsv([row({ materialTitle: '=HYPERLINK("http://evil")' }), row({ materialTitle: 'A, "quoted" title' })]);
+    expect(csv.startsWith('﻿grade,')).toBe(true);
+    expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);
+    expect(csv).toContain('"A, ""quoted"" title"');
+  });
+});
+
+describe('configuration', () => {
+  it('refuses unsafe production settings', () => {
+    expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production' })).toThrow(/sandbox billing provider cannot be used in production/);
+    expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'http://insecure' })).toThrow(/https/);
+    expect(() => loadConfig({ ...TEST_ENV, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/);
+    expect(() => loadConfig({ ...TEST_ENV, DATA_ENCRYPTION_KEY: 'abc' })).toThrow(/DATA_ENCRYPTION_KEY/);
+    const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example' });
+    expect(ok.secureCookies).toBe(true);
+  });
+});

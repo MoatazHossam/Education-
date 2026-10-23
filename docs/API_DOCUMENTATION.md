@@ -70,7 +70,7 @@ Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+e
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/catalog/versions` | published + archived versions |
-| GET | `/api/catalog/versions/:id` | full tree; `ETag` / `If-None-Match` → 304 |
+| GET | `/api/catalog/versions/:id` | full tree; `ETag` / `If-None-Match` → 304. Each subject and material has `verification`: `null` or `{status: "verified"\|"needs_review", source, url, note, reviewedAt}`; `counts.verification` gives coverage. The reviewer is not included |
 
 Tree shape:
 ```json
@@ -137,6 +137,9 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 `GET /billing-events?status=`, `GET /plans`, `PATCH /plans/:id`,
 `GET|POST /catalog/versions`, `GET|PATCH|DELETE /catalog/versions/:id`, `POST /catalog/versions/:id/publish|archive|subjects`,
 `PATCH|DELETE /catalog/subjects/:id`, `POST /catalog/subjects/:id/materials`, `PATCH|DELETE /catalog/materials/:id`,
+`POST /catalog/versions/:id/verification {subjectIds?, materialIds?, status: "verified"|"needs_review"|"unverified", source?, url?, note?}`
+(draft or published versions; `409 VERSION_ARCHIVED` for archived ones; `verified` needs `source`, `needs_review` needs `note`;
+every id must belong to the version; changes the catalogue ETag; audited as `admin.catalog_verification_set`),
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited).
 
 ## 3. Public API v1 (for customer integrations)
@@ -144,7 +147,7 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 | Method | Path | Returns |
 | --- | --- | --- |
 | GET | `/api/v1/scopes` | scopes of the key's organization |
-| GET | `/api/v1/scopes/:scopeId` | JSON export: `{scope, catalogVersion, exportedAt, itemCount, items:[{grade, gradeEn, gradeAr, track, block, subjectCode, subjectEn, subjectAr, subjectStatus, materialId, materialKind, materialTitle}]}` |
+| GET | `/api/v1/scopes/:scopeId` | JSON export: `{scope, catalogVersion, exportedAt, itemCount, items:[{grade, gradeEn, gradeAr, track, block, subjectCode, subjectEn, subjectAr, subjectStatus, materialId, materialKind, materialTitle, subjectVerification, subjectVerificationSource, subjectReviewedAt, materialVerification, materialVerificationSource, materialReviewedAt}]}` (CSV exports carry the same six verification columns) |
 | GET | `/api/v1/catalog/versions` · `/api/v1/catalog/versions/:id` | catalogue |
 
 ```bash

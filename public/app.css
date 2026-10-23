@@ -183,6 +183,21 @@ section.grade{margin-top:28px}
 .st-scored{background:var(--scored-bg);color:var(--scored)}
 .st-pass{background:var(--pass-bg);color:var(--pass)}
 .st-act{background:var(--act-bg);color:var(--act)}
+/* Verification marks: an expandable badge per subject, a small glyph per material. */
+.verif{display:block;margin-top:4px;font-size:12px}
+.verif summary{display:inline-block;cursor:pointer;list-style:none;font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:4px;letter-spacing:.03em}
+.verif summary::-webkit-details-marker{display:none}
+.verif.ok summary{background:var(--scored-bg);color:var(--scored)}
+.verif.ok summary::before{content:"✓ "}
+.verif.warn summary{background:var(--pass-bg);color:var(--pass)}
+.verif.warn summary::before{content:"! "}
+.verif.part summary{background:var(--act-bg);color:var(--act)}
+.verif ul{margin:6px 0 2px;padding-inline-start:16px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.verif li b{display:inline;color:var(--ink);font-weight:600}
+.mv{font-weight:700;font-size:12px}
+.mv.ok{color:var(--scored)}
+.mv.warn{color:var(--pass)}
+.vcoverage{margin-top:10px;font-size:13px;color:var(--muted);max-width:80ch}
 .mats{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;min-width:0}
 .mat{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule-strong);border-radius:6px;padding-block:4px;padding-inline:6px 9px;font-size:13px;background:var(--sheet);color:var(--ink);text-align:start;line-height:1.3}
 .mat::before{content:"";width:13px;height:13px;border-radius:3px;border:1.5px solid currentColor;flex:none;opacity:.55}

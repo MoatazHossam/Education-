@@ -1,12 +1,22 @@
 import type { Executor } from '../db/index.js';
-import type { MaterialKind, SubjectStatus, Track } from '../db/types.js';
+import type { MaterialKind, SubjectStatus, Track, VerificationStatus } from '../db/types.js';
 import { notFound } from '../lib/errors.js';
 import { GRADE_NAMES } from './legacy-dataset.js';
+
+/** Editorial verification of an entry; null while unverified. The reviewer is not exposed. */
+export interface Verification {
+  status: Exclude<VerificationStatus, 'unverified'>;
+  source: string | null;
+  url: string | null;
+  note: string | null;
+  reviewedAt: Date;
+}
 
 export interface CatalogMaterial {
   id: string;
   kind: MaterialKind;
   title: string;
+  verification: Verification | null;
 }
 
 export interface CatalogSubject {
@@ -19,6 +29,7 @@ export interface CatalogSubject {
   nameAr: string;
   status: SubjectStatus;
   note: string | null;
+  verification: Verification | null;
   materials: CatalogMaterial[];
 }
 
@@ -27,8 +38,27 @@ export interface CatalogTree {
   grades: { grade: number; nameEn: string; nameAr: string }[];
   sources: { id: string; title: string; url: string }[];
   subjects: CatalogSubject[];
-  counts: { subjects: number; materials: number };
+  counts: {
+    subjects: number;
+    materials: number;
+    verification: { subjectsVerified: number; subjectsNeedReview: number; materialsVerified: number; materialsNeedReview: number };
+  };
 }
+
+interface VerificationRow {
+  verification_status: VerificationStatus;
+  verification_source: string | null;
+  verification_url: string | null;
+  verification_note: string | null;
+  reviewed_at: Date | null;
+}
+
+function verificationOf(row: VerificationRow): Verification | null {
+  if (row.verification_status === 'unverified' || !row.reviewed_at) return null;
+  return { status: row.verification_status, source: row.verification_source, url: row.verification_url, note: row.verification_note, reviewedAt: row.reviewed_at };
+}
+
+const VERIFICATION_COLUMNS = ['verification_status', 'verification_source', 'verification_url', 'verification_note', 'reviewed_at'] as const;
 
 // Published versions are immutable, so their trees (and serialized JSON) are
 // cached in memory; concurrent first loads share one database round trip.
@@ -72,14 +102,15 @@ async function buildTree(exec: Executor, version: { id: string; academic_year: s
   const [sources, subjects, materials] = await Promise.all([
     exec.selectFrom('catalog_sources').select(['id', 'title', 'url']).where('version_id', '=', versionId).orderBy('sort_order').execute(),
     exec.selectFrom('catalog_subjects').selectAll().where('version_id', '=', versionId).orderBy('grade').orderBy('sort_order').execute(),
-    exec.selectFrom('catalog_materials').select(['id', 'subject_id', 'kind', 'title']).where('version_id', '=', versionId).orderBy('subject_id').orderBy('sort_order').execute(),
+    exec.selectFrom('catalog_materials').select(['id', 'subject_id', 'kind', 'title', ...VERIFICATION_COLUMNS]).where('version_id', '=', versionId).orderBy('subject_id').orderBy('sort_order').execute(),
   ]);
   const bySubject = new Map<string, CatalogMaterial[]>();
   for (const m of materials) {
     let list = bySubject.get(m.subject_id);
     if (!list) bySubject.set(m.subject_id, (list = []));
-    list.push({ id: m.id, kind: m.kind, title: m.title });
+    list.push({ id: m.id, kind: m.kind, title: m.title, verification: verificationOf(m) });
   }
+  const tally = (rows: VerificationRow[], status: VerificationStatus) => rows.filter((r) => r.verification_status === status).length;
   const tree: CatalogTree = {
     version: {
       id: version.id,
@@ -103,9 +134,19 @@ async function buildTree(exec: Executor, version: { id: string; academic_year: s
       nameAr: s.name_ar,
       status: s.status,
       note: s.note,
+      verification: verificationOf(s),
       materials: bySubject.get(s.id) ?? [],
     })),
-    counts: { subjects: subjects.length, materials: materials.length },
+    counts: {
+      subjects: subjects.length,
+      materials: materials.length,
+      verification: {
+        subjectsVerified: tally(subjects, 'verified'),
+        subjectsNeedReview: tally(subjects, 'needs_review'),
+        materialsVerified: tally(materials, 'verified'),
+        materialsNeedReview: tally(materials, 'needs_review'),
+      },
+    },
   };
   if (version.status !== 'draft') cache.set(versionId, { updatedAt: version.updated_at.getTime(), tree });
   return tree;

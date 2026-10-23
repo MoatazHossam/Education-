@@ -12,6 +12,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | FR-C2 | Catalogues are versioned per academic year; published versions are immutable; only platform admins create drafts (by cloning), edit, publish and archive. | `integration/admin-api-ops` |
 | FR-C3 | Customers can browse only published/archived versions; drafts are invisible to them. | `integration/admin-api-ops` |
 | FR-C4 | Each version carries its notice, grade notes and source links. | `integration/scopes` |
+| FR-C5 | Platform admins can mark subjects and materials as verified (with the source checked) or as needing review (with a public note), on drafts and published versions but not archived ones; customers see the marks, review date and coverage, but not the reviewer; editing an entry's content clears its mark; a copy for the same academic year keeps marks, a new year starts unverified. | `integration/catalog-verification`, E2E journey 8 |
 
 ### Picker and scopes
 | ID | Requirement | Verification |

@@ -22,7 +22,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | 6.2 | Decide legal entity/country, VAT registration and payment provider | — | Business | Founder + accountant |
 | 6.3 | Paymob test-mode keys → `npm run paymob:check`; staging run of subscribe/fail/replay/refund; fix adapter if the live payload differs from the simulator | 1–2 | test keys: none; live: 6.2 | Engineering |
 | 6.4 | VAT on invoices (rate, totals, tax id) and ETA e-invoicing if Egyptian entity | 3–8 | 6.2 | Engineering + accountant |
-| 6.5 | **Editorial verification of the 2026/27 catalogue** against Ministry decrees and publishers' current editions; record verification status per subject | 10–20 (curriculum specialist) | — | Content |
+| 6.5 | **Editorial verification of the 2026/27 catalogue** against Ministry decrees and publishers' current editions, recorded as verification marks in Platform admin → Catalogue (tool built) | 10–20 (curriculum specialist) | — | Content |
 | 6.6 | Legal: privacy policy, terms, DPA template, PDPL licensing/registration, hosting location decision | external | 6.2 | Legal counsel |
 | 6.7 | Production host, managed PostgreSQL, DNS, SMTP (SPF/DKIM/DMARC), Caddy TLS | 1–2 | 6.2, 6.6 | Ops |
 | 6.8 | Monitoring: uptime checks on `/readyz`, log shipping + error alerts, worker health alert, backup job + weekly verify | 1–2 | 6.7 | Ops |
@@ -36,7 +36,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | --- | --- | --- | --- |
 | P1 | "Carry scope to next academic year": map selections from version N to N+1 by natural key, show what changed | 4–6 | Yearly renewal moment for every customer |
 | P1 | Catalogue change notifications (subjects/editions changed since your scope was made) | 3–5 | Core value: freshness |
-| P1 | Verification badges and source per subject/material | 2–3 | Trust |
+| P1 | ~~Verification badges and source per subject/material~~ — done (PROJECT_STATUS: catalogue verification marks) | — | Trust |
 | P1 | Shared rate-limit store (Redis) and second app instance | 1–2 | Availability |
 | P1 | Accessibility audit (axe + manual), Firefox/WebKit E2E | 2–3 | NFR-7/8 |
 | P2 | Bulk catalogue import/export (CSV) for editors | 2–3 | Editorial efficiency |

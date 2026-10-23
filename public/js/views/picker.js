@@ -7,6 +7,7 @@ import { confirmDialog, dialog, downloadText, errorMessage, h, toast } from '../
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg } from '../state.js';
+import { coverageLine, materialMark, verificationDetails } from '../verify.js';
 import { planLimitHint } from './shell.js';
 
 const TRACKS = ['all', 'moe', 'sec', 'bac', 'ta', 'intl'];
@@ -185,7 +186,7 @@ export async function pickerView(ctx) {
           const matWrap = h('div', { class: 'mats' });
           for (const m of mats) {
             shownIds.push(m.id);
-            const btn = mkBtn(`mat ${m.kind}`, m.title, sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
+            const btn = mkBtn(`mat ${m.kind}`, [m.title, materialMark(m)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
             buttonsById.set(m.id, btn);
             matWrap.append(btn);
           }
@@ -193,7 +194,8 @@ export async function pickerView(ctx) {
             h('div', { class: 'sname' },
               h('b', {}, ar ? it.nameAr : it.nameEn),
               h('span', { class: 'ar', lang: ar ? 'en' : 'ar', dir: ar ? 'ltr' : 'rtl' }, ar ? it.nameEn : it.nameAr),
-              h('span', { class: `status ${STATUS_CLASS[it.status]}` }, t(`status.${it.status}`))),
+              h('span', { class: `status ${STATUS_CLASS[it.status]}` }, t(`status.${it.status}`)),
+              verificationDetails(it)),
             matWrap,
             it.note ? h('p', { class: 'snote', dir: 'auto' }, it.note) : null));
         }
@@ -352,7 +354,8 @@ export async function pickerView(ctx) {
       h('div', { class: 'eyebrow' }, `${info.organization.name} · ${t('picker.contentScope')} · ${t('picker.academicYear')} ${tree.version.academicYear}`),
       h('h1', {}, 'Egypt Curriculum Picker ', h('span', { lang: 'ar' }, '· دليل المناهج')),
       h('p', { class: 'lede' }, t('picker.lede')),
-      noticeEl),
+      noticeEl,
+      coverageLine(tree)),
     h('div', { class: 'controls', role: 'region', 'aria-label': t('picker.filters') },
       scopeBar,
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.track')), tracksEl),
@@ -360,7 +363,8 @@ export async function pickerView(ctx) {
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.show')), kindsEl, search),
       h('div', { class: 'legend' },
         ['scored', 'pass', 'act'].map((k) => h('span', {}, h('i', { class: `sw-${k}` }), t(`legend.${k}`))),
-        KINDS.map((k) => h('span', {}, h('i', { class: `sw-${k}` }), t(`legend.${k}`))))),
+        KINDS.map((k) => h('span', {}, h('i', { class: `sw-${k}` }), t(`legend.${k}`))),
+        h('span', {}, h('b', { class: 'mv ok', 'aria-hidden': 'true' }, '✓'), ' ', t('verify.legend')))),
     out,
     tree.sources.length ? h('div', { class: 'sources' }, h('h3', {}, t('picker.sources')),
       h('ul', {}, tree.sources.map((s) => h('li', { dir: 'auto' }, h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer' }, s.title))))) : null,

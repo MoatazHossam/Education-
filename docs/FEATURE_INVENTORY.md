@@ -54,7 +54,8 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-21 | Platform admin console | Operate the business | MISSING | IMPLEMENTED | Overview/MRR, orgs, users, catalogue, plans, audit, webhooks, health | Impersonation intentionally absent | P0 | `admin-api-ops.test.ts`; E2E journey 7 |
 | S-22 | Support access grants | Privacy-respecting support | MISSING | IMPLEMENTED | Owner grants 1–72 h, every read audited | — | P1 | `admin-api-ops.test.ts` |
 | S-23 | Catalogue versioning & editing | Keep data current yearly | MISSING | IMPLEMENTED | Draft clone → edit → publish → archive | Bulk import (CSV), diff view | P0 | `admin-api-ops.test.ts` |
-| S-24 | Arabic UI + RTL | Market fit | MISSING | IMPLEMENTED | Dictionaries, `dir=rtl`, logical CSS | Professional translation review | P0 | E2E journey 8, i18n test |
+| S-23a | Catalogue verification marks | Trust in accuracy | MISSING | IMPLEMENTED | Verified / needs review per subject and material with source, link, note, date; admin editor with filter and per-grade marking; picker badges and coverage; in exports and API | The review work itself (B-6); bulk import of marks | P0 | `catalog-verification.test.ts`; E2E journey 8 |
+| S-24 | Arabic UI + RTL | Market fit | MISSING | IMPLEMENTED | Dictionaries, `dir=rtl`, logical CSS | Professional translation review | P0 | E2E journey 9, i18n test |
 | S-25 | Health/readiness, worker heartbeat | Operations | MISSING | IMPLEMENTED | `/healthz`, `/readyz`, heartbeat health | External uptime monitoring | P0 | `admin-api-ops.test.ts`; compose healthy |
 | S-26 | Backups & restore | Disaster recovery | MISSING | IMPLEMENTED | Scripts + backup role; verified locally | Scheduled off-site job in production | P0 | Manual run recorded in TEST_REPORT.md |
 | S-27 | Containerised deployment | Reproducibility | MISSING | IMPLEMENTED | Dockerfile, compose (dev/prod), Caddy TLS | Real host | P0 | Local stack verified |

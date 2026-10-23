@@ -14,6 +14,12 @@ export interface ExportRow {
   materialId: string;
   materialKind: string;
   materialTitle: string;
+  subjectVerification: string;
+  subjectVerificationSource: string | null;
+  subjectReviewedAt: string | null;
+  materialVerification: string;
+  materialVerificationSource: string | null;
+  materialReviewedAt: string | null;
 }
 
 /** Selected materials in catalogue order (grade → subject → material). */
@@ -36,6 +42,12 @@ export function selectedRows(tree: CatalogTree, selected: Set<string>): ExportRo
         materialId: m.id,
         materialKind: m.kind,
         materialTitle: m.title,
+        subjectVerification: s.verification?.status ?? 'unverified',
+        subjectVerificationSource: s.verification?.source ?? null,
+        subjectReviewedAt: s.verification ? new Date(s.verification.reviewedAt).toISOString() : null,
+        materialVerification: m.verification?.status ?? 'unverified',
+        materialVerificationSource: m.verification?.source ?? null,
+        materialReviewedAt: m.verification ? new Date(m.verification.reviewedAt).toISOString() : null,
       });
     }
   }
@@ -70,13 +82,19 @@ function csvCell(value: string | number): string {
   return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-const CSV_HEADER = ['grade', 'grade_en', 'grade_ar', 'track', 'block', 'subject_code', 'subject_en', 'subject_ar', 'subject_status', 'material_id', 'material_kind', 'material_title'];
+const CSV_HEADER = [
+  'grade', 'grade_en', 'grade_ar', 'track', 'block', 'subject_code', 'subject_en', 'subject_ar', 'subject_status', 'material_id', 'material_kind', 'material_title',
+  'subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at',
+];
 
 export function toCsv(rows: ExportRow[]): string {
   const lines = [CSV_HEADER.join(',')];
   for (const r of rows) {
     lines.push(
-      [r.grade, r.gradeEn, r.gradeAr, r.track, r.block, r.subjectCode, r.subjectEn, r.subjectAr, r.subjectStatus, r.materialId, r.materialKind, r.materialTitle]
+      [
+        r.grade, r.gradeEn, r.gradeAr, r.track, r.block, r.subjectCode, r.subjectEn, r.subjectAr, r.subjectStatus, r.materialId, r.materialKind, r.materialTitle,
+        r.subjectVerification, r.subjectVerificationSource ?? '', r.subjectReviewedAt ?? '', r.materialVerification, r.materialVerificationSource ?? '', r.materialReviewedAt ?? '',
+      ]
         .map(csvCell)
         .join(','),
     );

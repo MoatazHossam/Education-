@@ -49,6 +49,21 @@ const MaterialBody = z.object({
   title: z.string().trim().min(1).max(300),
   sortOrder: z.number().int().min(0).max(1000).optional(),
 });
+const VerificationBody = z
+  .object({
+    subjectIds: z.array(zUuid).max(500).default([]),
+    materialIds: z.array(zUuid).max(2000).default([]),
+    status: z.enum(['unverified', 'verified', 'needs_review']),
+    source: z.string().trim().min(1).max(300).optional(),
+    url: z.url().max(2000).regex(/^https?:\/\//).optional(),
+    note: z.string().trim().min(1).max(1000).optional(),
+  })
+  .refine((b) => b.subjectIds.length + b.materialIds.length > 0, { message: 'Choose at least one subject or material', path: ['subjectIds'] })
+  .refine((b) => b.status !== 'verified' || b.source, { message: 'A verified entry needs the source it was checked against', path: ['source'] })
+  .refine((b) => b.status !== 'needs_review' || b.note, { message: 'Explain what needs review', path: ['note'] });
+
+// Content edits invalidate an entry's verification: it attested the previous content.
+const UNVERIFIED = { verification_status: 'unverified', verification_source: null, verification_url: null, verification_note: null, reviewed_by: null, reviewed_at: null } as const;
 
 function adminActor(req: FastifyRequest): AuditActor {
   const { user } = requirePlatformAdmin(req);
@@ -410,10 +425,11 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
         'v.id', 'v.academic_year', 'v.label', 'v.status', 'v.published_at', 'v.created_at', 'v.updated_at',
         eb.selectFrom('catalog_subjects as s').select((e) => e.fn.countAll<string>().as('n')).whereRef('s.version_id', '=', 'v.id').as('subjects'),
         eb.selectFrom('catalog_materials as m').select((e) => e.fn.countAll<string>().as('n')).whereRef('m.version_id', '=', 'v.id').as('materials'),
+        eb.selectFrom('catalog_subjects as s').select((e) => e.fn.countAll<string>().as('n')).whereRef('s.version_id', '=', 'v.id').where('s.verification_status', '=', 'verified').as('subjectsVerified'),
       ])
       .orderBy('v.created_at', 'desc')
       .execute();
-    return { versions: rows.map((v) => ({ id: v.id, academicYear: v.academic_year, label: v.label, status: v.status, publishedAt: v.published_at, createdAt: v.created_at, updatedAt: v.updated_at, subjects: Number(v.subjects ?? 0), materials: Number(v.materials ?? 0) })) };
+    return { versions: rows.map((v) => ({ id: v.id, academicYear: v.academic_year, label: v.label, status: v.status, publishedAt: v.published_at, createdAt: v.created_at, updatedAt: v.updated_at, subjects: Number(v.subjects ?? 0), materials: Number(v.materials ?? 0), subjectsVerified: Number(v.subjectsVerified ?? 0) })) };
   });
 
   app.get('/api/admin/catalog/versions/:id', async (req) => {
@@ -442,6 +458,23 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
                 JOIN catalog_subjects os ON os.id = m.subject_id
                 JOIN catalog_subjects ns ON ns.version_id = ${v.id} AND ns.grade = os.grade AND ns.track = os.track AND ns.block = os.block AND ns.code = os.code
                 WHERE os.version_id = ${src.id}`.execute(trx);
+      if (src.academic_year === body.academicYear) {
+        // Same academic year (e.g. a correction): carry verification marks over by natural key.
+        // A new year starts unverified, because decrees and editions change between years.
+        await sql`UPDATE catalog_subjects ns
+                  SET verification_status = os.verification_status, verification_source = os.verification_source, verification_url = os.verification_url,
+                      verification_note = os.verification_note, reviewed_by = os.reviewed_by, reviewed_at = os.reviewed_at
+                  FROM catalog_subjects os
+                  WHERE ns.version_id = ${v.id} AND os.version_id = ${src.id}
+                    AND ns.grade = os.grade AND ns.track = os.track AND ns.block = os.block AND ns.code = os.code`.execute(trx);
+        await sql`UPDATE catalog_materials nm
+                  SET verification_status = om.verification_status, verification_source = om.verification_source, verification_url = om.verification_url,
+                      verification_note = om.verification_note, reviewed_by = om.reviewed_by, reviewed_at = om.reviewed_at
+                  FROM catalog_materials om
+                  JOIN catalog_subjects os ON os.id = om.subject_id
+                  JOIN catalog_subjects ns ON ns.version_id = ${v.id} AND ns.grade = os.grade AND ns.track = os.track AND ns.block = os.block AND ns.code = os.code
+                  WHERE nm.subject_id = ns.id AND nm.title = om.title AND om.version_id = ${src.id}`.execute(trx);
+      }
       await recordAudit(trx, actor, { action: 'admin.catalog_version_created', targetType: 'catalog_version', targetId: v.id, metadata: { from: src.id, academicYear: body.academicYear } }, requestMeta(req));
       return v.id;
     });
@@ -547,6 +580,16 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     const body = parse(SubjectBody.partial(), req.body);
     return sys(async (trx) => {
       await subjectInDraft(trx, id);
+      const cur = await trx.selectFrom('catalog_subjects').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+      const contentChanged =
+        (body.grade !== undefined && body.grade !== cur.grade) ||
+        (body.track !== undefined && body.track !== cur.track) ||
+        (body.block !== undefined && body.block !== cur.block) ||
+        (body.code !== undefined && body.code !== cur.code) ||
+        (body.nameEn !== undefined && body.nameEn !== cur.name_en) ||
+        (body.nameAr !== undefined && body.nameAr !== cur.name_ar) ||
+        (body.status !== undefined && body.status !== cur.status) ||
+        (body.note !== undefined && (body.note || null) !== cur.note);
       await trx
         .updateTable('catalog_subjects')
         .set({
@@ -559,6 +602,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
           ...(body.status ? { status: body.status } : {}),
           ...(body.note !== undefined ? { note: body.note } : {}),
           ...(body.sortOrder !== undefined ? { sort_order: body.sortOrder } : {}),
+          ...(contentChanged ? UNVERIFIED : {}),
         })
         .where('id', '=', id)
         .execute();
@@ -608,9 +652,16 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     const body = parse(MaterialBody.partial(), req.body);
     return sys(async (trx) => {
       await materialInDraft(trx, id);
+      const cur = await trx.selectFrom('catalog_materials').select(['kind', 'title']).where('id', '=', id).executeTakeFirstOrThrow();
+      const contentChanged = (body.kind !== undefined && body.kind !== cur.kind) || (body.title !== undefined && body.title !== cur.title);
       await trx
         .updateTable('catalog_materials')
-        .set({ ...(body.kind ? { kind: body.kind } : {}), ...(body.title ? { title: body.title } : {}), ...(body.sortOrder !== undefined ? { sort_order: body.sortOrder } : {}) })
+        .set({
+          ...(body.kind ? { kind: body.kind } : {}),
+          ...(body.title ? { title: body.title } : {}),
+          ...(body.sortOrder !== undefined ? { sort_order: body.sortOrder } : {}),
+          ...(contentChanged ? UNVERIFIED : {}),
+        })
         .where('id', '=', id)
         .execute();
       await recordAudit(trx, actor, { action: 'admin.catalog_material_updated', targetType: 'catalog_material', targetId: id, metadata: body }, requestMeta(req));
@@ -626,6 +677,44 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       await trx.deleteFrom('catalog_materials').where('id', '=', id).execute();
       await recordAudit(trx, actor, { action: 'admin.catalog_material_deleted', targetType: 'catalog_material', targetId: id }, requestMeta(req));
       return { status: 'deleted' };
+    });
+  });
+
+  // Marks subjects and/or materials of one version as verified, needing review, or unverified.
+  // Allowed on drafts and published versions (marks are annotations); archived versions are frozen.
+  app.post('/api/admin/catalog/versions/:id/verification', async (req) => {
+    const actor = adminActor(req);
+    const { id } = parse(z.object({ id: zUuid }), req.params);
+    const body = parse(VerificationBody, req.body);
+    const subjectIds = [...new Set(body.subjectIds)];
+    const materialIds = [...new Set(body.materialIds)];
+    return sys(async (trx) => {
+      const version = await trx.selectFrom('catalog_versions').select(['id', 'status']).where('id', '=', id).forUpdate().executeTakeFirst();
+      if (!version) throw notFound('Catalog version');
+      if (version.status === 'archived') throw conflict('Archived catalogue versions are read-only.', 'VERSION_ARCHIVED');
+      const inVersion = async (table: 'catalog_subjects' | 'catalog_materials', ids: string[]) => {
+        if (!ids.length) return;
+        const row = await trx.selectFrom(table).select((eb) => eb.fn.countAll<string>().as('n')).where('version_id', '=', id).where('id', 'in', ids).executeTakeFirstOrThrow();
+        if (Number(row.n) !== ids.length) throw badRequest(`Some ${table === 'catalog_subjects' ? 'subjects' : 'materials'} are not in this catalogue version`);
+      };
+      await inVersion('catalog_subjects', subjectIds);
+      await inVersion('catalog_materials', materialIds);
+      const values =
+        body.status === 'unverified'
+          ? UNVERIFIED
+          : { verification_status: body.status, verification_source: body.source ?? null, verification_url: body.url ?? null, verification_note: body.note ?? null, reviewed_by: actor.userId ?? null, reviewed_at: new Date() };
+      if (subjectIds.length) await trx.updateTable('catalog_subjects').set(values).where('version_id', '=', id).where('id', 'in', subjectIds).execute();
+      if (materialIds.length) await trx.updateTable('catalog_materials').set(values).where('version_id', '=', id).where('id', 'in', materialIds).execute();
+      // A new updated_at changes the catalogue ETag and refreshes the cached tree.
+      await trx.updateTable('catalog_versions').set({ updated_at: new Date() }).where('id', '=', id).execute();
+      invalidateCatalogCache(id);
+      await recordAudit(
+        trx,
+        actor,
+        { action: 'admin.catalog_verification_set', targetType: 'catalog_version', targetId: id, metadata: { status: body.status, source: body.source ?? null, subjects: subjectIds.length, materials: materialIds.length } },
+        requestMeta(req),
+      );
+      return { status: body.status, subjects: subjectIds.length, materials: materialIds.length };
     });
   });
 

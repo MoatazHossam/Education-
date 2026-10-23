@@ -103,7 +103,9 @@ describe('webhook signatures', () => {
 describe('exports', () => {
   const row = (over: Partial<ExportRow>): ExportRow => ({
     grade: 1, gradeEn: 'Primary 1', gradeAr: 'الصف الأول الابتدائي', track: 'moe', block: 'Block', subjectCode: 'ma', subjectEn: 'Mathematics',
-    subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book', ...over,
+    subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book',
+    subjectVerification: 'unverified', subjectVerificationSource: null, subjectReviewedAt: null,
+    materialVerification: 'unverified', materialVerificationSource: null, materialReviewedAt: null, ...over,
   });
   it('text export keeps the original "Copy list" layout', () => {
     expect(toText([row({}), row({ materialTitle: 'Workbook' })])).toBe('Primary 1 / الصف الأول الابتدائي\n  • Block — Mathematics\n      - Book\n      - Workbook');
@@ -114,6 +116,12 @@ describe('exports', () => {
     expect(csv.startsWith('﻿grade,')).toBe(true);
     expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);
     expect(csv).toContain('"A, ""quoted"" title"');
+  });
+  it('CSV carries verification columns, with the same formula guard on sources', () => {
+    const csv = toCsv([row({ subjectVerification: 'verified', subjectVerificationSource: '=cmd|calc', subjectReviewedAt: '2026-10-23T10:00:00.000Z' })]);
+    const [header, line] = csv.replace('﻿', '').split('\r\n');
+    expect(header!.split(',').slice(-6)).toEqual(['subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at']);
+    expect(line!.split(',').slice(-6)).toEqual(['verified', "'=cmd|calc", '2026-10-23T10:00:00.000Z', 'unverified', '', '']);
   });
 });
 

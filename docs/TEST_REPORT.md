@@ -22,26 +22,27 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**11 files, 104 tests, 104 passed, 0 failed** (17.7 s, 2026-10-23). Integration tests ran against a real
+**12 files, 111 tests, 111 passed, 0 failed** (2026-10-23). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
 | --- | --- | --- |
 | unit/catalog-fidelity | 3 | Pass — the seed equals the original artifact's 231 subjects / 1,038 materials item-for-item |
 | unit/billing-logic | 9 | Pass |
-| unit/security-primitives | 10 | Pass |
+| unit/security-primitives | 11 | Pass |
 | unit/i18n | 2 | Pass |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/billing | 13 | Pass |
+| integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 104</summary>
+<details><summary>Show all 111</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -132,6 +133,13 @@ Full test names (verbatim from the verbose reporter):
 - paymob-contract › does not apply pending, refunded or wrong-amount transactions
 - unit › exports: text export keeps the original "Copy list" layout
 - unit › exports: CSV neutralises spreadsheet formulas and quotes properly
+- unit › exports: CSV carries verification columns, with the same formula guard on sources
+- catalog-verification › marks entries of the published catalogue; customers see the mark and coverage, not the reviewer
+- catalog-verification › records entries that need review with a public note, and resets marks to unverified
+- catalog-verification › validates the request and the targets
+- catalog-verification › is admin-only and refuses archived versions
+- catalog-verification › copies marks into a draft of the same academic year only; content edits reset them, unchanged saves do not
+- catalog-verification › scope exports carry the marks
 - unit › configuration: refuses unsafe production settings
 - unit › catalogue fidelity: same 231 subject rows and 1,038 selectable materials
 - unit › catalogue fidelity: every subject and material in order, except the documented intl kind correction
@@ -146,7 +154,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**8 tests, 8 passed** (20.7 s), Chromium, real server process on port 3100.
+**9 tests, 9 passed** (24.5 s, 2026-10-23), Chromium, real server process on port 3100.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -157,7 +165,8 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 | 5 | Plan limits are enforced in the UI (second organization starts on Free) | Pass |
 | 6 | Service recovers after a server crash: sessions and saved selections survive a restart | Pass |
 | 7 | Platform admin signs in with two-factor authentication and suspends then restores an organization | Pass |
-| 8 | Arabic interface switches to right-to-left and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
+| 8 | Platform admin verifies a subject against a decree in the catalogue editor; the customer sees the badge, its source link and the coverage line | Pass |
+| 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle

@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -46,8 +46,8 @@ erDiagram
 | `invitations` | Pending invites | `token_hash` unique; **one open invite per (org, email)**; role ≠ owner | ✓ |
 | `catalog_versions` | Academic-year catalogue versions | status `draft/published/archived`; `grade_notes` JSONB | — (global) |
 | `catalog_sources` | Citations per version | URL must be http(s) | — |
-| `catalog_subjects` | Subject rows | unique `(version, grade, track, block, code)`; grade 1–12; track/status enums | — |
-| `catalog_materials` | Selectable materials | unique `(subject, title)`; unique `(id, version_id)`; trigger keeps `version_id` = subject's | — |
+| `catalog_subjects` | Subject rows | unique `(version, grade, track, block, code)`; grade 1–12; track/status enums; verification columns (below) | — |
+| `catalog_materials` | Selectable materials | unique `(subject, title)`; unique `(id, version_id)`; trigger keeps `version_id` = subject's; verification columns (below) | — |
 | `scopes` | Content scopes (tenant data) | unique `(org_id, name)`; unique `(id, org_id, catalog_version_id)` | ✓ |
 | `scope_items` | Selected materials | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version) | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
@@ -64,6 +64,12 @@ erDiagram
 | `notifications` | In-app notifications | per user | — |
 | `email_outbox` | Transactional email queue | partial index on pending | — |
 | `worker_heartbeats` | Liveness of background workers | PK name | — |
+
+Verification columns on `catalog_subjects` and `catalog_materials`: `verification_status`
+(`unverified` / `verified` / `needs_review`), `verification_source`, `verification_url` (http/https),
+`verification_note`, `reviewed_by` (user, `ON DELETE SET NULL`), `reviewed_at`. A CHECK keeps them
+consistent: unverified rows carry no review data; verified rows need a source and date; rows needing
+review need a note and date.
 
 All timestamps are `timestamptz` (UTC). `updated_at` is maintained by the `set_updated_at()` trigger.
 Primary keys are UUIDs (`gen_random_uuid()`), except `audit_logs` (bigint identity for ordering and cursor pagination).

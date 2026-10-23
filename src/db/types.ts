@@ -9,6 +9,17 @@ export type Locale = 'en' | 'ar';
 export type Track = 'moe' | 'sec' | 'bac' | 'ta' | 'intl';
 export type SubjectStatus = 'scored' | 'pass' | 'act';
 export type MaterialKind = 'moe' | 'lang' | 'ext' | 'prog' | 'exam';
+export type VerificationStatus = 'unverified' | 'verified' | 'needs_review';
+
+/** Editorial verification columns shared by catalogue subjects and materials. */
+interface VerificationColumns {
+  verification_status: Generated<VerificationStatus>;
+  verification_source: string | null;
+  verification_url: string | null;
+  verification_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
+}
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due';
 export type BillingInterval = 'month' | 'year';
 
@@ -129,7 +140,7 @@ export interface CatalogSourcesTable {
   sort_order: Generated<number>;
 }
 
-export interface CatalogSubjectsTable {
+export interface CatalogSubjectsTable extends VerificationColumns {
   id: Generated<string>;
   version_id: string;
   grade: number;
@@ -143,7 +154,7 @@ export interface CatalogSubjectsTable {
   sort_order: Generated<number>;
 }
 
-export interface CatalogMaterialsTable {
+export interface CatalogMaterialsTable extends VerificationColumns {
   id: Generated<string>;
   subject_id: string;
   version_id: string;

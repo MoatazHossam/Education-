@@ -17,6 +17,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
+| B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
 | B-6 | Catalogue content unverified (sourced from news articles in the original) | Product value and liability | Curriculum specialist |
 
 ## 2. Deliverables
@@ -70,7 +71,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Security review + fixes (open redirect, MFA brute force, session hygiene) | COMPLETE | `authz-coverage.test.ts` |
 | Dockerfile, compose (dev + prod overlay with Caddy) | COMPLETE (local) | Image built; stack healthy on latest code |
 | Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
-| CI workflow | **NOT VERIFIED** | First run triggered by creating `main`; result pending |
+| CI workflow | PARTIALLY COMPLETE | GitHub Actions runs on `main` are refused (B-7). All workflow steps pass when run with `scripts/ci-local.sh` on a clean clone of `main` (2026-10-23) |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
 | Monitoring & alerting | **NOT STARTED** | Needs B-4 (health endpoints and admin health page exist) |
 | Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 |
@@ -95,7 +96,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 | Subscriptions and billing tested in an appropriate environment | ✗ only with the sandbox provider (B-2) |
 | Plan limits enforced | ✓ |
 | Admin interfaces operate correctly | ✓ |
-| Automated tests pass | ✓ locally; CI first run pending |
+| Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
 | Monitoring and alerts configured | ✗ (B-4) |
 | Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
@@ -105,7 +106,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-1. Get CI green on `main`, then unblock B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
+1. Clear the GitHub billing lock (B-7) and confirm CI on GitHub-hosted runners, then unblock B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
 2. Catalogue verification (B-6) with per-item verification marks.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.

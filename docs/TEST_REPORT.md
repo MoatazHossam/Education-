@@ -183,9 +183,30 @@ caching change):
 These are sandbox figures, not capacity guarantees; the p99 tail on the catalogue endpoint under
 20-way concurrency remains. Re-run on production-sized hardware before launch.
 
-## 6. Not executed
+## 6. CI pipeline on a clean checkout (local equivalent of GitHub Actions)
 
-- CI workflow on GitHub Actions (the branch could not be pushed — see PROJECT_STATUS.md).
+2026-10-23: `scripts/ci-local.sh` on a fresh `git clone --branch main` (commit `59265a2`), Node.js 22,
+`postgres:16-alpine` service container with the workflow's credentials. Two sandbox-only adjustments:
+Chromium was preinstalled (Playwright's download CDN is blocked here), and `docker build` received the
+proxy settings and CA as build arguments/secret.
+
+| Step (job) | Result |
+| --- | --- |
+| npm ci | Pass |
+| lint (checks) | Pass |
+| typecheck (checks) | Pass |
+| unit + integration tests (checks) | Pass — 10 files, 91 tests |
+| dependency audit, production (checks) | Pass — 0 vulnerabilities |
+| Playwright journeys (e2e) | Pass — 8 tests |
+| docker build (docker) | Pass |
+| production configuration guard (docker) | Pass |
+
+Running the workflow file itself with `act` reached the job's services but could not fetch the
+`actions/setup-node` action through this sandbox's git proxy, so the steps were run by the script instead.
+
+## 7. Not executed
+
+- CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no credentials).
 - Cross-browser E2E (Firefox, WebKit), automated accessibility audit, external penetration test.
 - Production deployment, TLS issuance by Caddy, monitoring and alerting.

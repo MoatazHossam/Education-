@@ -255,6 +255,15 @@ export interface PaymentsTable {
   created_at: Generated<Date>;
 }
 
+export interface CheckoutSessionsTable {
+  id: Generated<string>;
+  org_id: string;
+  invoice_id: string;
+  provider: string;
+  provider_ref: string;
+  created_at: Generated<Date>;
+}
+
 export interface BillingEventsTable {
   id: Generated<string>;
   provider: string;
@@ -358,6 +367,7 @@ export interface DB {
   subscriptions: SubscriptionsTable;
   invoices: InvoicesTable;
   payments: PaymentsTable;
+  checkout_sessions: CheckoutSessionsTable;
   billing_events: BillingEventsTable;
   usage_counters: UsageCountersTable;
   billing_notices: BillingNoticesTable;

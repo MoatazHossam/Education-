@@ -1,5 +1,5 @@
 import { hmacHex, safeEqual } from '../../lib/crypto.js';
-import { WebhookSignatureError, type CheckoutRequest, type CheckoutResult, type NormalizedEvent, type PaymentProvider, type WebhookInput } from './types.js';
+import { ProviderRequestError, WebhookSignatureError, type CheckoutRequest, type CheckoutResult, type NormalizedEvent, type PaymentProvider, type WebhookInput } from './types.js';
 
 export interface PaymobConfig {
   apiBase: string;
@@ -9,7 +9,7 @@ export interface PaymobConfig {
   integrationIds: number[];
 }
 
-interface PaymobTransaction {
+export interface PaymobTransaction {
   id: number;
   pending: boolean;
   amount_cents: number;
@@ -31,40 +31,55 @@ interface PaymobTransaction {
   data?: { message?: string };
 }
 
-// Field order for the "transaction processed" callback HMAC (SHA-512), per
-// Paymob's HMAC documentation. Concatenated without separators.
-const HMAC_FIELDS: ((t: PaymobTransaction) => unknown)[] = [
-  (t) => t.amount_cents,
-  (t) => t.created_at,
-  (t) => t.currency,
-  (t) => t.error_occured,
-  (t) => t.has_parent_transaction,
-  (t) => t.id,
-  (t) => t.integration_id,
-  (t) => t.is_3d_secure,
-  (t) => t.is_auth,
-  (t) => t.is_capture,
-  (t) => t.is_refunded,
-  (t) => t.is_standalone_payment,
-  (t) => t.is_voided,
-  (t) => t.order.id,
-  (t) => t.owner,
-  (t) => t.pending,
-  (t) => t.source_data.pan,
-  (t) => t.source_data.sub_type,
-  (t) => t.source_data.type,
-  (t) => t.success,
-];
+// Fields of the "transaction processed" callback HMAC (SHA-512), in Paymob's
+// documented order, named as in the flattened redirect query string. Values are
+// concatenated without separators. Cross-checked against Odoo's payment_paymob
+// module (see tests/unit/security-primitives.test.ts).
+const HMAC_KEYS = [
+  'amount_cents',
+  'created_at',
+  'currency',
+  'error_occured',
+  'has_parent_transaction',
+  'id',
+  'integration_id',
+  'is_3d_secure',
+  'is_auth',
+  'is_capture',
+  'is_refunded',
+  'is_standalone_payment',
+  'is_voided',
+  'order',
+  'owner',
+  'pending',
+  'source_data.pan',
+  'source_data.sub_type',
+  'source_data.type',
+  'success',
+] as const;
 
+/** HMAC over flattened fields, e.g. the query string of Paymob's redirect back to `redirection_url`. */
+export function paymobHmac(secret: string, fields: Record<string, unknown>): string {
+  return hmacHex(secret, HMAC_KEYS.map((k) => String(fields[k])).join(''), 'sha512');
+}
+
+/** HMAC of the `obj` of a POSTed transaction callback. */
 export function paymobTransactionHmac(secret: string, txn: PaymobTransaction): string {
-  return hmacHex(secret, HMAC_FIELDS.map((f) => String(f(txn))).join(''), 'sha512');
+  return paymobHmac(secret, {
+    ...txn,
+    order: txn.order.id,
+    'source_data.pan': txn.source_data.pan,
+    'source_data.sub_type': txn.source_data.sub_type,
+    'source_data.type': txn.source_data.type,
+  });
 }
 
 /**
  * Paymob (Egypt) adapter: Intention API + Unified Checkout for one-off period
  * payments, and the transaction-processed webhook for results.
- * NOT VERIFIED against a live Paymob sandbox in this repository (no credentials);
- * the HMAC routine is unit-tested against the documented field order only.
+ * Contract-tested against a simulator built from Paymob's documentation
+ * (tests/integration/paymob-contract.test.ts); NOT yet run against Paymob's
+ * servers — use `npm run paymob:check` with test-mode keys for that.
  */
 export class PaymobProvider implements PaymentProvider {
   readonly name = 'paymob';
@@ -89,14 +104,23 @@ export class PaymobProvider implements PaymentProvider {
         redirection_url: req.returnUrl,
       }),
       signal: AbortSignal.timeout(15_000),
+    }).catch((err: unknown) => {
+      throw new ProviderRequestError(`Paymob request failed: ${err instanceof Error ? err.message : String(err)}`);
     });
-    if (!res.ok) throw new Error(`Paymob intention failed with HTTP ${res.status}`);
-    const body = (await res.json()) as { id?: string; client_secret?: string };
-    if (!body.client_secret) throw new Error('Paymob intention response did not include client_secret');
+    if (!res.ok) {
+      // Paymob explains rejected fields in the body (e.g. "This field may not be blank").
+      const detail = (await res.text().catch(() => '')).slice(0, 500);
+      throw new ProviderRequestError(`Paymob intention failed with HTTP ${res.status}: ${detail}`);
+    }
+    const body = (await res.json()) as { client_secret?: string; intention_order_id?: number | string };
+    if (!body.client_secret || body.intention_order_id === undefined || body.intention_order_id === null) {
+      throw new ProviderRequestError('Paymob intention response did not include client_secret and intention_order_id');
+    }
     const url = new URL('/unifiedcheckout/', this.cfg.apiBase);
     url.searchParams.set('publicKey', this.cfg.publicKey);
     url.searchParams.set('clientSecret', body.client_secret);
-    return { checkoutUrl: url.toString(), providerRef: body.id ?? specialReference };
+    // The Paymob order id is covered by the callback HMAC; merchant_order_id is not.
+    return { checkoutUrl: url.toString(), providerRef: String(body.intention_order_id) };
   }
 
   parseWebhook(input: WebhookInput): NormalizedEvent {
@@ -113,13 +137,14 @@ export class PaymobProvider implements PaymentProvider {
     if (!safeEqual(sent.toLowerCase(), paymobTransactionHmac(this.cfg.hmacSecret, txn))) throw new WebhookSignatureError('bad hmac');
 
     const invoiceId = (txn.order.merchant_order_id ?? '').split('.')[0] ?? '';
+    const checkoutRef = String(txn.order.id);
     // One transaction can produce several callbacks (processed, voided, refunded).
     const eventId = `txn_${txn.id}_${txn.success}_${txn.pending}_${txn.is_voided}_${txn.is_refunded}`;
     if (txn.pending) return { type: 'ignored', eventId, reason: 'pending', invoiceId };
     if (txn.is_refunded || txn.is_voided) return { type: 'ignored', eventId, reason: 'refund/void requires manual review', invoiceId };
     if (txn.success) {
-      return { type: 'payment.succeeded', eventId, invoiceId, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency };
+      return { type: 'payment.succeeded', eventId, invoiceId, checkoutRef, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency };
     }
-    return { type: 'payment.failed', eventId, invoiceId, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency, reason: txn.data?.message ?? 'declined' };
+    return { type: 'payment.failed', eventId, invoiceId, checkoutRef, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency, reason: txn.data?.message ?? 'declined' };
   }
 }

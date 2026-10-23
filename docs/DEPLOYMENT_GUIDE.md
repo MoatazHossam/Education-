@@ -82,6 +82,10 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 Prints a one-time password. Sign in, change the password, enrol TOTP (required before any admin page works).
 
 ### 3.5 Paymob setup (when credentials exist)
+0. Before any deployment, with **test-mode** keys on a developer machine:
+   `PAYMOB_SECRET_KEY=… PAYMOB_PUBLIC_KEY=… PAYMOB_HMAC_SECRET=… PAYMOB_INTEGRATION_IDS=… npm run paymob:check`.
+   It creates a real test intention with the application's adapter, prints the checkout link (pay with
+   Paymob's test card) and verifies the signed redirect on `localhost`. Live keys are refused.
 1. Create card (and wallet) integrations; note integration ids.
 2. Set the transaction-processed callback to `https://<domain>/api/billing/webhooks/paymob`.
 3. Copy secret key, public key, HMAC secret into the env file; restart `app` and `worker`.

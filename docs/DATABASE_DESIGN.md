@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in one migration: `src/db/migrations/0001_initial.ts`
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -18,6 +18,7 @@ erDiagram
   organizations ||--o{ invoices : "billed"
   plans ||--o{ invoices : "for"
   invoices ||--o{ payments : "paid by"
+  invoices ||--o{ checkout_sessions : "checkout attempts"
   organizations ||--o{ usage_counters : "meters"
   organizations ||--o{ billing_notices : "dedupe"
   organizations ||--o{ api_keys : "owns"
@@ -54,6 +55,7 @@ erDiagram
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
 | `invoices` | Invoices | `number` unique (sequence `invoice_number_seq`); kind; status `open/paid/void` | ✓ |
 | `payments` | Payment attempts | unique `(provider, provider_txn_id)` — idempotency | ✓ |
+| `checkout_sessions` | Hosted-checkout attempts | unique `(provider, provider_ref)`; a callback's invoice is resolved from the signed provider reference (Paymob order id), not from the echoed merchant reference | ✓ |
 | `billing_events` | Webhook receipts | unique `(provider, event_id)` — idempotency; normalized payload only | — (system only) |
 | `usage_counters` | Monthly metering | PK `(org_id, metric, period)` | ✓ |
 | `billing_notices` | Sent lifecycle notices (dedupe) | PK `(org_id, kind, ref)` | ✓ |

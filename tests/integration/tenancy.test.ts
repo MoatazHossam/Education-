@@ -59,6 +59,17 @@ describe('cross-tenant isolation over the API', () => {
 });
 
 describe('Row-Level Security (database layer)', () => {
+  it('every table with an org_id column has forced RLS, apart from the documented exceptions', async () => {
+    // billing_events: system-only webhook receipts; notifications: scoped by user_id (DATABASE_DESIGN.md).
+    const { rows } = await sql<{ relname: string; rls: boolean; forced: boolean }>`
+      SELECT c.relname, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
+      FROM pg_class c JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped
+      WHERE c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace`.execute(h.ownerDb);
+    const unprotected = rows.filter((r) => !(r.rls && r.forced)).map((r) => r.relname).sort();
+    expect(unprotected).toEqual(['billing_events', 'notifications']);
+    expect(rows.map((r) => r.relname)).toContain('checkout_sessions');
+  });
+
   it('returns no tenant rows without a tenant context, even for an unscoped query', async () => {
     await twoTenants();
     const rows = await h.db.selectFrom('scopes').selectAll().execute();

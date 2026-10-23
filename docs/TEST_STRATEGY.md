@@ -6,6 +6,7 @@
 | --- | --- | --- | --- | --- |
 | Unit | Vitest | `tests/unit` | pure functions | Billing maths (effective plan, proration), time helpers, crypto envelope, password hashing, TOTP replay, webhook signatures (sandbox, Paymob), export formats (text layout, CSV injection), configuration guards, translation completeness, **fidelity of the catalogue to the original artifact** |
 | Integration | Vitest + `app.inject` | `tests/integration` | real PostgreSQL with production-like roles | API behaviour end to end inside the server, including database constraints and RLS |
+| Provider contract | Vitest + local HTTP simulator | `tests/integration/paymob-contract.test.ts`, `tests/helpers/paymob-simulator.ts` | simulator of Paymob's documented API | The real Paymob adapter's requests, callbacks, signatures and invoice binding |
 | End-to-end | Playwright (Chromium) | `tests/e2e` | real server process + real browser | User journeys, UI, crash recovery |
 | Security (cross-cutting) | Vitest | `tenancy`, `authz-coverage`, `auth`, `billing` | | BOLA/IDOR, privilege escalation, CSRF, brute force, webhook forgery/replay, plan-limit bypass |
 | Performance smoke | `scripts/perf-smoke.mjs` | — | running server | Latency/throughput of key endpoints |
@@ -73,6 +74,6 @@ build with a production-guard smoke test.
 ## 6. Gaps
 
 - No automated accessibility audit (axe) yet; no cross-browser E2E (Firefox/WebKit).
-- Paymob adapter tested only at unit level (HMAC); needs a test-mode run with real credentials.
+- Paymob adapter tested against a simulator and an independent HMAC vector, not against Paymob; run `npm run paymob:check` with test-mode keys, then the staging checklist.
 - No load test on production-sized infrastructure; no chaos testing of PostgreSQL failover.
 - E2E runs Chromium only.

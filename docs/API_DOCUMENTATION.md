@@ -159,9 +159,12 @@ A plan without API access → `402 FEATURE_NOT_IN_PLAN`. Revoked/unknown key →
 HMAC-SHA512 (key `PAYMOB_HMAC_SECRET`) of the concatenation of `amount_cents, created_at, currency,
 error_occured, has_parent_transaction, id, integration_id, is_3d_secure, is_auth, is_capture,
 is_refunded, is_standalone_payment, is_voided, order.id, owner, pending, source_data.pan,
-source_data.sub_type, source_data.type, success`. The invoice id travels in `special_reference`
-(`<invoiceId>.<suffix>`). Configure the callback URL in the Paymob dashboard / intention
-`notification_url`. **Not verified against Paymob's live sandbox.**
+source_data.sub_type, source_data.type, success`. `merchant_order_id` (our `special_reference`,
+`<invoiceId>.<suffix>`) is not covered by the HMAC, so the invoice is resolved from `order.id`, which
+is recorded per checkout attempt in `checkout_sessions`; a mismatch is audited as
+`billing.reference_mismatch` and callbacks for unknown orders are ignored. The callback URL is sent
+as the intention's `notification_url`. Contract-tested against a simulator; **not yet run against
+Paymob** (`npm run paymob:check`).
 
 **Sandbox** (`/api/billing/webhooks/sandbox`): header `X-Sandbox-Signature: t=<unix>,v1=<hex
 HMAC-SHA256(SANDBOX_WEBHOOK_SECRET, "t.body")>`, 5-minute tolerance.

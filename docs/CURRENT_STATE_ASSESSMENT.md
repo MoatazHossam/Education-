@@ -63,7 +63,7 @@ business task (see PROJECT_STATUS.md).
 | Multi-tenancy with PostgreSQL Row-Level Security | COMPLETE | DB-level RLS tests, route-enumeration authorization test, E2E journey 3 |
 | Plans, limits, usage metering | COMPLETE | `scopes.test.ts`, `billing.test.ts`, E2E journey 5 |
 | Billing lifecycle (sandbox provider) | COMPLETE | `billing.test.ts`, E2E journey 4 |
-| Paymob payment adapter | NOT VERIFIED | Unit-tested HMAC only; no Paymob credentials available |
+| Paymob payment adapter | NOT VERIFIED (against Paymob) | Contract-tested against a simulator; HMAC matches Odoo's reference vector; no Paymob keys available |
 | Platform admin, support access, audit log | COMPLETE | `admin-api-ops.test.ts`, E2E journey 7 |
 | Front end (EN/AR, RTL, responsive) | COMPLETE | E2E journeys 1–8, visual QA screenshots |
 | Docker / compose / backups | COMPLETE (locally verified) | Built image, full stack healthy, backup→restore→verify run |

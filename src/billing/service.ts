@@ -226,7 +226,21 @@ export async function applyProviderEvent(
   provider: string,
   event: NormalizedEvent,
 ): Promise<{ status: 'processed' | 'ignored'; orgId: string | null; note?: string }> {
-  const invoiceId = event.type === 'ignored' ? event.invoiceId : event.invoiceId;
+  let invoiceId = event.invoiceId;
+  if (event.type !== 'ignored' && event.checkoutRef !== undefined) {
+    // The provider signed its checkout reference, not the invoice id it echoed back.
+    const session = await trx
+      .selectFrom('checkout_sessions')
+      .select(['invoice_id', 'org_id'])
+      .where('provider', '=', provider)
+      .where('provider_ref', '=', event.checkoutRef)
+      .executeTakeFirst();
+    if (!session) return { status: 'ignored', orgId: null, note: 'unknown checkout' };
+    if (session.invoice_id !== invoiceId) {
+      await recordAudit(trx, SYSTEM, { orgId: session.org_id, action: 'billing.reference_mismatch', targetType: 'invoice', targetId: session.invoice_id, metadata: { claimedInvoiceId: String(invoiceId).slice(0, 64), checkoutRef: event.checkoutRef } });
+    }
+    invoiceId = session.invoice_id;
+  }
   const invoice =
     invoiceId && /^[0-9a-f-]{36}$/i.test(invoiceId)
       ? await trx.selectFrom('invoices').selectAll().where('id', '=', invoiceId).forUpdate().executeTakeFirst()

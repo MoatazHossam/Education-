@@ -84,7 +84,7 @@ every attempt (succeeded and failed).
 | Paddle / Lemon Squeezy (merchant of record) | Depends on payout support | USD-priced | Cards, PayPal | Yes | Handles global VAT; better for non-Egyptian customers |
 
 **Recommendation:** an Egyptian-registered company selling mainly to Egyptian organizations in EGP
-should start with **Paymob** (implemented adapter, pending live verification). A company
+should start with **Paymob** (implemented and contract-tested adapter, pending a run against Paymob). A company
 registered abroad selling regionally in USD should consider Stripe or a merchant of record; only a
 new `PaymentProvider` implementation is needed. **Company registration country, target countries
 and tax position are open business decisions** (PROJECT_STATUS.md).
@@ -94,8 +94,8 @@ and tax position are open business decisions** (PROJECT_STATUS.md).
 | Item | Status |
 | --- | --- |
 | Plans, limits, metering, lifecycle, invoices, emails, admin tools | COMPLETE (tested with the sandbox provider) |
-| Webhook security (signature, replay, idempotency, amount check) | COMPLETE (sandbox tested; Paymob HMAC unit-tested) |
-| Paymob checkout + webhook against Paymob servers | **BLOCKED** — needs a Paymob merchant account (secret/public keys, HMAC secret, integration ids) |
+| Webhook security (signature, replay, idempotency, amount check) | COMPLETE (sandbox tested; Paymob contract-tested, HMAC matches an independent implementation) |
+| Paymob checkout + webhook against Paymob servers | **BLOCKED** — needs Paymob test-mode keys (secret/public keys, HMAC secret, card integration id); then `npm run paymob:check` |
 | Card-on-file automatic renewal | NOT STARTED (deliberate; invoice-per-period first) |
 | Refunds | Manual in the provider dashboard; refund/void callbacks are recorded as "ignored — manual review" |
 | Tax (VAT 14%) on invoices, ETA e-invoicing | NOT STARTED — needs the company's tax registration details |

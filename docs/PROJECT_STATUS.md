@@ -13,7 +13,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | ID | Blocker | Impact | Needed from |
 | --- | --- | --- | --- |
 | B-1 | ~~`git push` refused with HTTP 403~~ — **resolved 2026-10-22**: access granted, branch `claude/friendly-rubin-hmemjl` pushed and `main` created from it. | — | — |
-| B-2 | No payment-provider credentials | Paymob adapter unverified; real billing impossible | Business: Paymob merchant account (or another provider decision) |
+| B-2 | No Paymob keys | Adapter is contract-tested but has not been run against Paymob; real billing impossible | Business: Paymob account — test-mode keys now (for `npm run paymob:check`), live keys after Paymob's merchant verification |
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
@@ -52,13 +52,14 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Subscription lifecycle (trial, subscribe, prorated upgrade, scheduled downgrade, cancel/resume, renewal invoices, past-due grace, move to Free) | COMPLETE | Tested with sandbox provider and time-travelled worker runs |
 | Webhook security (signatures, replay, idempotency, amount check) | COMPLETE | |
 | Sandbox provider (dev/test) | COMPLETE | Refused in production |
-| Paymob adapter | **NOT VERIFIED** | Implemented from documentation + a published SDK's source; HMAC unit-tested; needs B-2 |
+| Paymob adapter | PARTIALLY COMPLETE | Contract-tested end to end against a simulator of Paymob's documented API (`paymob-contract.test.ts`, 11 tests); HMAC matches the reference vector of an independent implementation (Odoo `payment_paymob`). **Not yet run against Paymob's servers** — `npm run paymob:check` with test-mode keys (B-2) |
+| Callbacks bound to the signed Paymob order (`checkout_sessions`, migration 0002) | COMPLETE | Found while cross-checking: `merchant_order_id` is not covered by Paymob's HMAC, so it no longer decides which invoice is paid |
 | Invoices, payment history, billing emails, in-app notifications | COMPLETE | VAT not applied (B-3) |
 | Platform admin (overview, orgs, users, plans, catalogue editor, audit, webhook log, health) | COMPLETE | |
 | Customer-granted support access with audit | COMPLETE | |
 | Audit log (org + platform) | COMPLETE | |
 - **Files:** `src/billing/*`, `src/admin/*`, `src/audit/*`, `src/notifications/*`, `src/jobs/*`, `src/worker.ts`, `public/js/views/{billing,admin}.js`.
-- **Tests:** `billing.test.ts` (13), `admin-api-ops.test.ts` (12), unit billing/security tests, E2E 4, 7 — pass.
+- **Tests:** `billing.test.ts` (13), `paymob-contract.test.ts` (11), `admin-api-ops.test.ts` (12), unit billing/security tests, E2E 4, 7 — pass.
 
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
@@ -87,13 +88,13 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (91 unit/integration + 8 E2E passing) |
+| Core workflows function correctly | ✓ (104 unit/integration + 8 E2E passing) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
 | Authentication secure | ✓ in tests; ✗ no external pen test |
 | Backend authorization enforced | ✓ (route-enumeration test) |
-| Subscriptions and billing tested in an appropriate environment | ✗ only with the sandbox provider (B-2) |
+| Subscriptions and billing tested in an appropriate environment | ✗ sandbox provider and a Paymob simulator only; not yet in Paymob test mode (B-2) |
 | Plan limits enforced | ✓ |
 | Admin interfaces operate correctly | ✓ |
 | Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
@@ -106,7 +107,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-1. Clear the GitHub billing lock (B-7) and confirm CI on GitHub-hosted runners, then unblock B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
+1. Clear the GitHub billing lock (B-7) and confirm CI on GitHub-hosted runners, then get Paymob test-mode keys and run `npm run paymob:check` followed by the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position (B-3).
 2. Catalogue verification (B-6) with per-item verification marks.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.

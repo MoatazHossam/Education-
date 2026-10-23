@@ -1,10 +1,12 @@
 import { Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
 import type { Database } from './index.js';
 import * as m0001 from './migrations/0001_initial.js';
+import * as m0002 from './migrations/0002_checkout_sessions.js';
 
 // Static registry: works identically under tsx and the compiled dist build.
 const MIGRATIONS: Record<string, Migration> = {
   '0001_initial': m0001,
+  '0002_checkout_sessions': m0002,
 };
 
 class StaticProvider implements MigrationProvider {

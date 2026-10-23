@@ -18,7 +18,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 
 | # | Work item | Effort | Depends on | Owner |
 | --- | --- | --- | --- | --- |
-| 6.1 | Restore GitHub access, push branch, run CI, fix anything CI-specific | 0.5 | Repository access (PROJECT_STATUS blocker B-1) | Engineering |
+| 6.1 | Run CI on GitHub-hosted runners once the account billing lock is cleared, fix anything CI-specific (all steps already pass via `scripts/ci-local.sh`) | 0.5 | Account billing (PROJECT_STATUS blocker B-7) | Account owner, then Engineering |
 | 6.2 | Decide legal entity/country, VAT registration and payment provider | — | Business | Founder + accountant |
 | 6.3 | Paymob merchant account; test-mode run of subscribe/fail/replay/refund; fix adapter if the live payload differs | 2–3 | 6.2 | Engineering |
 | 6.4 | VAT on invoices (rate, totals, tax id) and ETA e-invoicing if Egyptian entity | 3–8 | 6.2 | Engineering + accountant |

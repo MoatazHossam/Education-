@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-22. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-23. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies

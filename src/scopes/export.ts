@@ -1,5 +1,6 @@
 import type { CatalogTree } from '../catalog/service.js';
 import { GRADE_NAMES } from '../catalog/legacy-dataset.js';
+import { csvCell, UTF8_BOM } from '../lib/csv.js';
 
 export interface ExportRow {
   grade: number;
@@ -75,13 +76,6 @@ export function toText(rows: ExportRow[]): string {
   return s.trim() || 'Nothing selected yet.';
 }
 
-// Spreadsheet formula injection guard (OWASP CSV Injection): prefix risky leading characters.
-function csvCell(value: string | number): string {
-  let v = String(value);
-  if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
-  return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-}
-
 const CSV_HEADER = [
   'grade', 'grade_en', 'grade_ar', 'track', 'block', 'subject_code', 'subject_en', 'subject_ar', 'subject_status', 'material_id', 'material_kind', 'material_title',
   'subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at',
@@ -95,12 +89,12 @@ export function toCsv(rows: ExportRow[]): string {
         r.grade, r.gradeEn, r.gradeAr, r.track, r.block, r.subjectCode, r.subjectEn, r.subjectAr, r.subjectStatus, r.materialId, r.materialKind, r.materialTitle,
         r.subjectVerification, r.subjectVerificationSource ?? '', r.subjectReviewedAt ?? '', r.materialVerification, r.materialVerificationSource ?? '', r.materialReviewedAt ?? '',
       ]
-        .map(csvCell)
+        .map((c) => csvCell(c))
         .join(','),
     );
   }
   // UTF-8 BOM so Excel renders the Arabic columns correctly.
-  return '﻿' + lines.join('\r\n') + '\r\n';
+  return UTF8_BOM + lines.join('\r\n') + '\r\n';
 }
 
 export function toJson(

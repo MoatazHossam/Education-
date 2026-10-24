@@ -199,6 +199,11 @@ section.grade{margin-top:28px}
 .mv.warn{color:var(--pass)}
 .vcoverage{margin-top:10px;font-size:13px;color:var(--muted);max-width:80ch}
 .carry-banner{background:var(--accent-soft)}
+dialog:has(.sheet-preview){max-width:min(760px,calc(100vw - 32px))}
+.sheet-preview{max-height:60vh;overflow:auto;gap:8px}
+.sheet-preview p,.sheet-preview h3{margin:0}
+.sheet-preview ul{margin:4px 0;padding-inline-start:18px}
+.sheet-preview li{overflow-wrap:anywhere}
 .carry-subj{border-top:1px solid var(--rule);padding-block:10px}
 .carry-subj h3{font-size:15px;margin:0 0 4px}
 .carry-subj ul{margin:4px 0 8px;padding-inline-start:18px}

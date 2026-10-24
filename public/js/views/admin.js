@@ -294,9 +294,11 @@ export async function catalogVersionView(ctx) {
   const filterSel = h('select', { 'aria-label': t('verify.filter'), onchange: (e) => { verifFilter = e.target.value; reload(); } },
     [['all', 'verify.filterAll'], ['unverified', 'verify.filterUnverified'], ['verified', 'verify.filterVerified'], ['needs_review', 'verify.filterReview']]
       .map(([v, k]) => h('option', { value: v, selected: verifFilter === v ? 'selected' : null }, t(k))));
-  const verificationBar = h('div', { class: 'card row' },
-    h('span', {}, t('verify.adminCoverage', { sv: vc.subjectsVerified, s: tree.counts.subjects, mv: vc.materialsVerified, m: tree.counts.materials, r: vc.subjectsNeedReview + vc.materialsNeedReview })),
-    h('label', { class: 'row' }, t('verify.filter'), filterSel));
+  const verificationBar = h('div', { class: 'card stack' },
+    h('div', { class: 'row' },
+      h('span', {}, t('verify.adminCoverage', { sv: vc.subjectsVerified, s: tree.counts.subjects, mv: vc.materialsVerified, m: tree.counts.materials, r: vc.subjectsNeedReview + vc.materialsNeedReview })),
+      h('label', { class: 'row' }, t('verify.filter'), filterSel)),
+    sheetActions(versionId, tree.version.status, reload));
 
   return h('div', {},
     pageHead(`${tree.version.academicYear} — ${tree.version.label}`, `${tree.version.status} · ${tree.counts.subjects} subjects · ${tree.counts.materials} materials`,
@@ -304,6 +306,56 @@ export async function catalogVersionView(ctx) {
     draft ? h('div', { class: 'card' }, h('h2', {}, t('admin.versionDetails')), meta.el) : null,
     verificationBar,
     grades.length ? grades : h('p', { class: 'empty' }, t('picker.noMatch')));
+}
+
+// ------------------------------------------------------------ spreadsheet round trip
+const MARK_LABEL = { unverified: 'verify.statusUnverified', verified: 'verify.statusVerified', needs_review: 'verify.statusNeedsReview' };
+const LIST_LIMIT = 100;
+
+function sheetActions(versionId, status, reload) {
+  const url = `/api/admin/catalog/versions/${versionId}/sheet`;
+  const file = h('input', { type: 'file', accept: '.csv,text/csv', hidden: true, onchange: async () => {
+    const f = file.files?.[0];
+    file.value = '';
+    if (!f) return;
+    try {
+      const csv = await f.text();
+      const { plan } = await post(url, { csv, apply: false });
+      if (await sheetPreview(plan) && (await safe(() => post(url, { csv, apply: true }), t('sheet.applied', { n: plan.changes.length })))) reload();
+    } catch (e) { toast(errorMessage(e), 'error'); }
+  } });
+  return h('div', { class: 'row' },
+    h('a', { href: url, download: '', class: 'btn small ghost' }, t('sheet.download')),
+    status === 'archived' ? null : [h('button', { type: 'button', class: 'btn small ghost', onclick: () => file.click() }, t('sheet.upload')), file],
+    h('span', { class: 'muted' }, t(status === 'draft' ? 'sheet.hintDraft' : 'sheet.hintPublished')));
+}
+
+/** Shows what an uploaded sheet would change; resolves true when the admin applies it. */
+function sheetPreview(plan) {
+  const s = plan.summary;
+  const more = (n) => (n > LIST_LIMIT ? h('p', { class: 'muted' }, t('sheet.more', { n: n - LIST_LIMIT })) : null);
+  const markText = (m) => [t(MARK_LABEL[m.status]), m.source ? ` (${m.source})` : '', m.note ? ` — ${m.note}` : ''].join('');
+  const changeItem = (c) => h('li', {},
+    h('b', {}, t('sheet.row', { n: c.row })), ' ', h('span', { dir: 'auto' }, c.label),
+    h('ul', {},
+      c.content.map((f) => h('li', {}, h('span', { class: 'mono' }, f.field), ': ', h('span', { dir: 'auto' }, f.from ?? '—'), ' → ', h('span', { dir: 'auto' }, f.to ?? '—'))),
+      c.mark ? h('li', {}, t('sheet.mark'), ': ', h('span', { dir: 'auto' }, markText(c.mark.from)), ' → ', h('span', { dir: 'auto' }, markText(c.mark.to))) : null,
+      c.markCleared ? h('li', { class: 'muted' }, t('sheet.markCleared')) : null));
+  const body = h('div', { class: 'stack sheet-preview' },
+    h('p', {}, t('sheet.summary', { rows: s.rows, changes: plan.changes.length, unchanged: s.unchanged })),
+    plan.changes.length ? h('p', { class: 'muted' }, t('sheet.counts', { marks: s.marksChanged, content: s.subjectsChanged + s.materialsChanged, added: s.materialsAdded, cleared: s.marksCleared })) : null,
+    plan.errors.length ? h('div', { class: 'alert error', role: 'alert' },
+      h('b', {}, plan.errors.length === 1 ? t('sheet.errorsTitleOne') : t('sheet.errorsTitle', { n: plan.errors.length })),
+      h('ul', {}, plan.errors.slice(0, LIST_LIMIT).map((e) => h('li', {}, e.row ? `${t('sheet.row', { n: e.row })}: ` : '', e.message))), more(plan.errors.length)) : null,
+    plan.warnings.length ? h('div', { class: 'alert' }, h('ul', {}, plan.warnings.map((w) => h('li', {}, w.message)))) : null,
+    plan.changes.length ? [h('h3', {}, t('sheet.changesTitle')), h('ul', {}, plan.changes.slice(0, LIST_LIMIT).map(changeItem)), more(plan.changes.length)] : null,
+    !plan.changes.length && !plan.errors.length ? h('p', {}, t('sheet.noChanges')) : null);
+  const canApply = !plan.errors.length && plan.changes.length > 0;
+  return dialog({
+    title: t('sheet.previewTitle'),
+    body,
+    actions: [{ label: t('common.cancel'), value: false, kind: 'ghost' }, ...(canApply ? [{ label: plan.changes.length === 1 ? t('sheet.applyOne') : t('sheet.apply', { n: plan.changes.length }), value: true }] : [])],
+  });
 }
 
 export async function plansView(ctx) {

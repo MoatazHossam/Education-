@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**15 files, 123 tests, 123 passed, 0 failed** (2026-10-24). Integration tests ran against a real
+**18 files, 137 tests, 137 passed, 0 failed** (2026-10-24). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -32,10 +32,13 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/security-primitives | 11 | Pass |
 | unit/i18n | 2 | Pass |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
+| unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
+| unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
+| integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
 | integration/billing | 13 | Pass |
 | integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
@@ -45,7 +48,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 123</summary>
+<details><summary>Show all 137</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -155,6 +158,20 @@ Full test names (verbatim from the verbose reporter):
 - catalog-notifications › organizations already on a year hear about its correction only when the version they use is archived
 - catalog-notifications › entries newly flagged for review notify organizations that selected them; repeats and other marks do not
 - catalog-notifications › users can turn catalogue emails off and on in their profile
+- unit › CSV: round-trips quotes, delimiters, line breaks, Arabic text and guarded formulas
+- unit › CSV: reads files saved by Excel: semicolons, CRLF, trailing blank lines, no BOM
+- unit › CSV: rejects an unterminated quote and leaves ordinary apostrophes alone
+- unit › catalogue spreadsheet: exports every subject followed by its materials, and an untouched sheet changes nothing
+- unit › catalogue spreadsheet: applies marks on a published version and rejects incomplete ones
+- unit › catalogue spreadsheet: allows content changes and new materials only in drafts; content changes clear marks left untouched
+- unit › catalogue spreadsheet: round-trips a formula-looking title without reporting a change
+- unit › catalogue spreadsheet: reports unknown ids, duplicates, moves, title clashes, bad values, encoding and missing columns
+- unit › catalogue spreadsheet: reads a semicolon-separated sheet saved by Excel in some locales
+- catalog-sheet › exports the whole catalogue with ids and marks
+- catalog-sheet › previews then applies verification marks on the published catalogue, notifying customers of new flags
+- catalog-sheet › refuses content changes on a published version as a whole: nothing is written
+- catalog-sheet › applies corrections and new materials to a draft; a correction clears a mark left untouched
+- catalog-sheet › is admin-only, refuses archived versions and explains encoding problems
 - unit › configuration: refuses unsafe production settings
 - unit › catalogue fidelity: same 231 subject rows and 1,038 selectable materials
 - unit › catalogue fidelity: every subject and material in order, except the documented intl kind correction
@@ -169,7 +186,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**10 tests, 10 passed** (26.0 s, 2026-10-24), Chromium, real server process on port 3100.
+**11 tests, 11 passed** (29.5 s, 2026-10-24), Chromium, real server process on port 3100.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -183,6 +200,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 | 8 | Platform admin verifies a subject against a decree in the catalogue editor; the customer sees the badge, its source link and the coverage line | Pass |
 | 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
 | 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope and the owner is notified; the notification opens the review page, which lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
+| 11 | Platform admin downloads the 2027/2028 sheet, marks three books verified, uploads it, sees the preview and applies it; coverage shows 3 verified materials | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle

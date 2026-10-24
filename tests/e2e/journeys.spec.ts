@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { authenticator } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { encryptSecret } from '../../src/lib/crypto.js';
+import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { E2E_ENV, latestEmailText, ownerQuery, startServer, stopServer } from './server.js';
 
 const PASSWORD = 'e2e-correct-horse-battery';
@@ -317,4 +318,30 @@ test('a newer catalogue is published and the owner carries a scope forward after
   await expect(owner.locator('.tray .count')).toHaveText(`Selected: ${items.length - 1} items`);
   await expect(owner.locator('.carry-banner')).toHaveCount(0);
   await ownerCtx.close();
+});
+
+test('platform admin records verification marks in bulk from an edited spreadsheet', async ({ page }) => {
+  await signInAsPlatformAdmin(page);
+  await page.goto('/admin/catalog');
+  await page.getByRole('link', { name: /^2027\/2028/ }).first().click();
+  await page.waitForURL(/\/admin\/catalog\/[0-9a-f-]{36}$/);
+  const versionId = /catalog\/([0-9a-f-]{36})/.exec(page.url())![1]!;
+  await expect(page.getByText(/^Verified: 0\/231 subjects, 0\/\d+ materials/)).toBeVisible();
+
+  // What the curriculum specialist does in Excel: mark three Primary 1 books as verified.
+  const res = await page.request.get(`/api/admin/catalog/versions/${versionId}/sheet`);
+  expect(res.ok()).toBe(true);
+  const records = parseCsv(await res.text()).map((r) => r.map(unguardCell));
+  const col = (c: string) => records[0]!.indexOf(c);
+  for (const r of records.filter((x) => x[col('row_type')] === 'material' && x[col('grade')] === '1').slice(0, 3)) {
+    r[col('verification_status')] = 'verified';
+    r[col('verification_source')] = 'Publisher catalogue 2027';
+  }
+  await page.locator('input[type="file"]').setInputFiles({ name: 'catalogue.csv', mimeType: 'text/csv', buffer: Buffer.from(toCsv(records)) });
+
+  const dlg = page.getByRole('dialog', { name: 'Spreadsheet preview' });
+  await expect(dlg).toContainText('rows read: 3 with changes');
+  await expect(dlg).toContainText('Mark: Not verified → Verified (Publisher catalogue 2027)');
+  await dlg.getByRole('button', { name: 'Apply 3 changes' }).click();
+  await expect(page.getByText(/^Verified: 0\/231 subjects, 3\/\d+ materials/)).toBeVisible();
 });

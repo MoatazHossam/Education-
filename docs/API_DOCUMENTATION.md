@@ -70,7 +70,7 @@ Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+e
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/catalog/versions` | published + archived versions |
-| GET | `/api/catalog/versions/:id` | full tree; `ETag` / `If-None-Match` → 304 |
+| GET | `/api/catalog/versions/:id` | full tree; `ETag` / `If-None-Match` → 304. Each subject and material has `verification`: `null` or `{status: "verified"\|"needs_review", source, url, note, reviewedAt}`; `counts.verification` gives coverage. The reviewer is not included |
 
 Tree shape:
 ```json
@@ -137,6 +137,9 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 `GET /billing-events?status=`, `GET /plans`, `PATCH /plans/:id`,
 `GET|POST /catalog/versions`, `GET|PATCH|DELETE /catalog/versions/:id`, `POST /catalog/versions/:id/publish|archive|subjects`,
 `PATCH|DELETE /catalog/subjects/:id`, `POST /catalog/subjects/:id/materials`, `PATCH|DELETE /catalog/materials/:id`,
+`POST /catalog/versions/:id/verification {subjectIds?, materialIds?, status: "verified"|"needs_review"|"unverified", source?, url?, note?}`
+(draft or published versions; `409 VERSION_ARCHIVED` for archived ones; `verified` needs `source`, `needs_review` needs `note`;
+every id must belong to the version; changes the catalogue ETag; audited as `admin.catalog_verification_set`),
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited).
 
 ## 3. Public API v1 (for customer integrations)
@@ -144,7 +147,7 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 | Method | Path | Returns |
 | --- | --- | --- |
 | GET | `/api/v1/scopes` | scopes of the key's organization |
-| GET | `/api/v1/scopes/:scopeId` | JSON export: `{scope, catalogVersion, exportedAt, itemCount, items:[{grade, gradeEn, gradeAr, track, block, subjectCode, subjectEn, subjectAr, subjectStatus, materialId, materialKind, materialTitle}]}` |
+| GET | `/api/v1/scopes/:scopeId` | JSON export: `{scope, catalogVersion, exportedAt, itemCount, items:[{grade, gradeEn, gradeAr, track, block, subjectCode, subjectEn, subjectAr, subjectStatus, materialId, materialKind, materialTitle, subjectVerification, subjectVerificationSource, subjectReviewedAt, materialVerification, materialVerificationSource, materialReviewedAt}]}` (CSV exports carry the same six verification columns) |
 | GET | `/api/v1/catalog/versions` · `/api/v1/catalog/versions/:id` | catalogue |
 
 ```bash
@@ -159,9 +162,12 @@ A plan without API access → `402 FEATURE_NOT_IN_PLAN`. Revoked/unknown key →
 HMAC-SHA512 (key `PAYMOB_HMAC_SECRET`) of the concatenation of `amount_cents, created_at, currency,
 error_occured, has_parent_transaction, id, integration_id, is_3d_secure, is_auth, is_capture,
 is_refunded, is_standalone_payment, is_voided, order.id, owner, pending, source_data.pan,
-source_data.sub_type, source_data.type, success`. The invoice id travels in `special_reference`
-(`<invoiceId>.<suffix>`). Configure the callback URL in the Paymob dashboard / intention
-`notification_url`. **Not verified against Paymob's live sandbox.**
+source_data.sub_type, source_data.type, success`. `merchant_order_id` (our `special_reference`,
+`<invoiceId>.<suffix>`) is not covered by the HMAC, so the invoice is resolved from `order.id`, which
+is recorded per checkout attempt in `checkout_sessions`; a mismatch is audited as
+`billing.reference_mismatch` and callbacks for unknown orders are ignored. The callback URL is sent
+as the intention's `notification_url`. Contract-tested against a simulator; **not yet run against
+Paymob** (`npm run paymob:check`).
 
 **Sandbox** (`/api/billing/webhooks/sandbox`): header `X-Sandbox-Signature: t=<unix>,v1=<hex
 HMAC-SHA256(SANDBOX_WEBHOOK_SECRET, "t.body")>`, 5-minute tolerance.

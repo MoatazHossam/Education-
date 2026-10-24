@@ -1,10 +1,7 @@
-import { authenticator } from 'otplib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { hashPassword } from '../../src/auth/password.js';
 import { withSystemContext } from '../../src/db/index.js';
 import { heartbeat, processOutbox, runCleanup } from '../../src/jobs/tasks.js';
-import { encryptSecret } from '../../src/lib/crypto.js';
-import { Client, createHarness, PASSWORD, publishedVersionId, resetData, signUp, someMaterialIds, uniqueEmail, type Harness } from '../helpers/harness.js';
+import { Client, createHarness, createPlatformAdmin, PASSWORD, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
 
 let h: Harness;
 beforeAll(async () => {
@@ -13,31 +10,7 @@ beforeAll(async () => {
 afterAll(async () => h.close());
 beforeEach(async () => resetData(h.ownerDb));
 
-async function platformAdmin(opts: { mfa: boolean } = { mfa: true }) {
-  const email = uniqueEmail('admin');
-  const secret = authenticator.generateSecret();
-  await h.ownerDb
-    .insertInto('users')
-    .values({
-      email,
-      name: 'Ops',
-      password_hash: await hashPassword(PASSWORD),
-      email_verified_at: new Date(),
-      is_platform_admin: true,
-      mfa_enabled: opts.mfa,
-      mfa_secret_enc: opts.mfa ? encryptSecret(h.config.DATA_ENCRYPTION_KEY, secret) : null,
-    })
-    .execute();
-  const client = new Client(h.app);
-  const login = await client.post('/api/auth/login', { email, password: PASSWORD });
-  expect(login.statusCode).toBe(200);
-  await client.refresh();
-  if (opts.mfa) {
-    expect((await client.post('/api/auth/mfa/verify', { code: authenticator.generate(secret) })).statusCode).toBe(200);
-    await client.refresh();
-  }
-  return client;
-}
+const platformAdmin = (opts?: { mfa: boolean }) => createPlatformAdmin(h, opts);
 
 describe('platform administration', () => {
   it('is invisible to ordinary users and requires MFA for admins', async () => {
@@ -119,7 +92,7 @@ describe('platform administration', () => {
     expect(clone.statusCode).toBe(201);
     const draftId = clone.json().id;
     const tree = (await admin.get(`/api/admin/catalog/versions/${draftId}`)).json();
-    expect(tree.counts).toEqual({ subjects: 231, materials: 1038 });
+    expect(tree.counts).toMatchObject({ subjects: 231, materials: 1038, verification: { subjectsVerified: 0, materialsVerified: 0 } });
 
     const subj = await admin.post(`/api/admin/catalog/versions/${draftId}/subjects`, {
       grade: 10, track: 'sec', block: 'Foundation year', code: 'ai', nameEn: 'Artificial Intelligence', nameAr: 'الذكاء الاصطناعي', status: 'pass', materials: [{ kind: 'moe', title: 'Ministry AI course' }],

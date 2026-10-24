@@ -12,7 +12,7 @@ import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { countScopes, countSeats, getEntitlements, usageFor } from './entitlements.js';
 import { SandboxProvider } from './providers/sandbox.js';
-import { WebhookSignatureError } from './providers/types.js';
+import { ProviderRequestError, WebhookSignatureError } from './providers/types.js';
 import { applyProviderEvent, cancelAtPeriodEnd, createCheckoutInvoice, resumeSubscription, scheduleChange } from './service.js';
 
 export function publicPlan(p: Plan) {
@@ -88,17 +88,33 @@ export async function registerBillingRoutes(app: FastifyInstance, ctx: AppContex
     if (!invoice) throw notFound('Invoice');
     if (invoice.status !== 'open') throw conflict(`Invoice is ${invoice.status}`, 'INVOICE_NOT_OPEN');
     const plan = await db.selectFrom('plans').select('name').where('id', '=', invoice.plan_id).executeTakeFirstOrThrow();
-    const result = await ctx.payments.createCheckout({
-      invoiceId: invoice.id,
-      invoiceNumber: invoice.number,
-      amountCents: invoice.amount_cents,
-      currency: invoice.currency,
-      description: `${plan.name} (${invoice.billing_interval}ly)`,
-      customer,
-      returnUrl: `${config.APP_URL}/org/${orgId}/billing?invoice=${invoice.id}`,
-      webhookUrl: `${config.APP_URL}/api/billing/webhooks/${ctx.payments.name}`,
+    const provider = ctx.payments;
+    let result;
+    try {
+      result = await provider.createCheckout({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        amountCents: invoice.amount_cents,
+        currency: invoice.currency,
+        description: `${plan.name} (${invoice.billing_interval}ly)`,
+        customer,
+        returnUrl: `${config.APP_URL}/org/${orgId}/billing?invoice=${invoice.id}`,
+        webhookUrl: `${config.APP_URL}/api/billing/webhooks/${provider.name}`,
+      });
+    } catch (err) {
+      if (!(err instanceof ProviderRequestError)) throw err;
+      app.log.error({ err, provider: provider.name, invoiceId: invoice.id }, 'checkout creation failed');
+      throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'The payment provider could not start a checkout. Please try again later.');
+    }
+    const providerRef = result.providerRef;
+    await withOrgContext(db, { orgId }, async (trx) => {
+      await trx.updateTable('invoices').set({ provider_ref: providerRef, provider: provider.name }).where('id', '=', invoice.id).execute();
+      await trx
+        .insertInto('checkout_sessions')
+        .values({ org_id: orgId, invoice_id: invoice.id, provider: provider.name, provider_ref: providerRef })
+        .onConflict((oc) => oc.columns(['provider', 'provider_ref']).doNothing())
+        .execute();
     });
-    await withOrgContext(db, { orgId }, (trx) => trx.updateTable('invoices').set({ provider_ref: result.providerRef, provider: ctx.payments!.name }).where('id', '=', invoice.id).execute());
     return { invoiceId: invoice.id, checkoutUrl: result.checkoutUrl };
   }
 

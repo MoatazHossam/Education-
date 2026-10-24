@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-22. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-23. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -13,11 +13,12 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | ID | Blocker | Impact | Needed from |
 | --- | --- | --- | --- |
 | B-1 | ~~`git push` refused with HTTP 403~~ — **resolved 2026-10-22**: access granted, branch `claude/friendly-rubin-hmemjl` pushed and `main` created from it. | — | — |
-| B-2 | No payment-provider credentials | Paymob adapter unverified; real billing impossible | Business: Paymob merchant account (or another provider decision) |
+| B-2 | No Paymob keys | Adapter is contract-tested but has not been run against Paymob; real billing impossible | Business: Paymob account — test-mode keys now (for `npm run paymob:check`), live keys after Paymob's merchant verification |
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
-| B-6 | Catalogue content unverified (sourced from news articles in the original) | Product value and liability | Curriculum specialist |
+| B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
+| B-6 | Catalogue content unverified (sourced from news articles in the original). The tool to record verification now exists (Platform admin → Catalogue); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 
 ## 2. Deliverables
 
@@ -51,17 +52,24 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Subscription lifecycle (trial, subscribe, prorated upgrade, scheduled downgrade, cancel/resume, renewal invoices, past-due grace, move to Free) | COMPLETE | Tested with sandbox provider and time-travelled worker runs |
 | Webhook security (signatures, replay, idempotency, amount check) | COMPLETE | |
 | Sandbox provider (dev/test) | COMPLETE | Refused in production |
-| Paymob adapter | **NOT VERIFIED** | Implemented from documentation + a published SDK's source; HMAC unit-tested; needs B-2 |
+| Paymob adapter | PARTIALLY COMPLETE | Contract-tested end to end against a simulator of Paymob's documented API (`paymob-contract.test.ts`, 11 tests); HMAC matches the reference vector of an independent implementation (Odoo `payment_paymob`). **Not yet run against Paymob's servers** — `npm run paymob:check` with test-mode keys (B-2) |
+| Callbacks bound to the signed Paymob order (`checkout_sessions`, migration 0002) | COMPLETE | Found while cross-checking: `merchant_order_id` is not covered by Paymob's HMAC, so it no longer decides which invoice is paid |
 | Invoices, payment history, billing emails, in-app notifications | COMPLETE | VAT not applied (B-3) |
 | Platform admin (overview, orgs, users, plans, catalogue editor, audit, webhook log, health) | COMPLETE | |
 | Customer-granted support access with audit | COMPLETE | |
 | Audit log (org + platform) | COMPLETE | |
 - **Files:** `src/billing/*`, `src/admin/*`, `src/audit/*`, `src/notifications/*`, `src/jobs/*`, `src/worker.ts`, `public/js/views/{billing,admin}.js`.
-- **Tests:** `billing.test.ts` (13), `admin-api-ops.test.ts` (12), unit billing/security tests, E2E 4, 7 — pass.
+- **Tests:** `billing.test.ts` (13), `paymob-contract.test.ts` (11), `admin-api-ops.test.ts` (12), unit billing/security tests, E2E 4, 7 — pass.
+
+### Catalogue verification marks · COMPLETE
+- **Implemented:** per-subject and per-material marks (verified / needs review / not verified) with source, link, public note and review date; set by platform admins singly, per subject with its materials, or per grade; allowed on published versions (marks are annotations; content stays frozen); content edits in a draft clear the edited entry's mark; same-year draft copies keep marks, a new academic year starts unverified; every change audited. Customers see badges, details and coverage in the picker, and the marks in CSV/JSON exports and the v1 API. The reviewer's identity is not exposed.
+- **Files:** `src/db/migrations/0003_catalog_verification.ts`, `src/admin/routes.ts`, `src/catalog/service.ts`, `src/scopes/export.ts`, `public/js/verify.js`, `public/js/views/{picker,admin}.js`.
+- **Tests:** `catalog-verification.test.ts` (6), unit CSV test, E2E 8 (admin marks a subject; customer sees badge, source link, Arabic label) — pass.
+- **Limitations:** the marks are only as good as the review behind them (B-6); no bulk import of marks from a spreadsheet yet.
 
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
-- **Tests:** E2E 1–8, `i18n.test.ts`; visual QA screenshots reviewed (three layout bugs fixed).
+- **Tests:** E2E 1–9, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
 - **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; no automated accessibility audit.
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
@@ -70,7 +78,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Security review + fixes (open redirect, MFA brute force, session hygiene) | COMPLETE | `authz-coverage.test.ts` |
 | Dockerfile, compose (dev + prod overlay with Caddy) | COMPLETE (local) | Image built; stack healthy on latest code |
 | Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
-| CI workflow | **NOT VERIFIED** | First run triggered by creating `main`; result pending |
+| CI workflow | PARTIALLY COMPLETE | GitHub Actions runs on `main` are refused (B-7). All workflow steps pass when run with `scripts/ci-local.sh` on a clean clone of `main` (2026-10-23) |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
 | Monitoring & alerting | **NOT STARTED** | Needs B-4 (health endpoints and admin health page exist) |
 | Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 |
@@ -86,16 +94,16 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (91 unit/integration + 8 E2E passing) |
+| Core workflows function correctly | ✓ (111 unit/integration + 9 E2E passing) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
 | Authentication secure | ✓ in tests; ✗ no external pen test |
 | Backend authorization enforced | ✓ (route-enumeration test) |
-| Subscriptions and billing tested in an appropriate environment | ✗ only with the sandbox provider (B-2) |
+| Subscriptions and billing tested in an appropriate environment | ✗ sandbox provider and a Paymob simulator only; not yet in Paymob test mode (B-2) |
 | Plan limits enforced | ✓ |
 | Admin interfaces operate correctly | ✓ |
-| Automated tests pass | ✓ locally; CI first run pending |
+| Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
 | Monitoring and alerts configured | ✗ (B-4) |
 | Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
@@ -105,7 +113,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-1. Get CI green on `main`, then unblock B-2/B-3 (provider + tax) and run the Paymob test-mode checklist.
-2. Catalogue verification (B-6) with per-item verification marks.
+1. Clear the GitHub billing lock (B-7) and confirm CI on GitHub-hosted runners, then get Paymob test-mode keys and run `npm run paymob:check` followed by the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position (B-3).
+2. Catalogue verification (B-6): a curriculum specialist reviews entries against decrees and publishers and records marks in Platform admin → Catalogue.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.

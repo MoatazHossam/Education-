@@ -36,7 +36,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Account enumeration (A07) | Same response for existing/new emails on register, forgot, resend; equalised login timing | `src/auth/routes.ts` | `auth.test.ts` |
 | Session hijacking / fixation (A07) | 256-bit random tokens; rotation on login and MFA; idle (7 d) and absolute expiry (30 d; 12 h for platform admins); revoke on password change/reset, suspension; list/revoke sessions | `src/auth/sessions.ts` | `auth.test.ts` |
 | MFA bypass / replay | Pending-MFA sessions cannot call the API; TOTP step replay blocked; single-use recovery codes | `src/auth/mfa.ts` | `auth.test.ts` |
-| Forged / replayed payment webhooks (A08) | Provider signature (sandbox: HMAC-SHA256 with timestamp tolerance; Paymob: HMAC-SHA512 documented field order); idempotent event and transaction tables; amount/currency must match the invoice | `src/billing/*` | `billing.test.ts`, unit |
+| Forged / replayed payment webhooks (A08) | Provider signature (sandbox: HMAC-SHA256 with timestamp tolerance; Paymob: HMAC-SHA512 documented field order, invoice resolved from the signed order id); idempotent event and transaction tables; amount/currency must match the invoice | `src/billing/*` | `billing.test.ts`, `paymob-contract.test.ts`, unit |
 | Plan-limit bypass (A04) | Limits enforced in the transaction with an org row lock; atomic conditional upsert for monthly counters | `src/billing/entitlements.ts` | `scopes.test.ts` (concurrent invites), `admin-api-ops.test.ts` |
 | Security misconfiguration (A05) | Zod-validated config; production refuses sandbox billing, non-SMTP email, non-HTTPS URL, superuser/BYPASSRLS DB role; Helmet headers (HSTS in prod, nosniff, frame-ancestors none, no-referrer) | `src/config.ts`, `src/server.ts` | unit, Docker smoke |
 | Vulnerable dependencies (A06) | `npm audit` clean at commit time (vulnerable `@fastify/static`, `nodemailer` and `vitest` versions were upgraded); CI audit step | `package.json`, CI | `npm audit` |
@@ -83,7 +83,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 4. No WebAuthn/passkeys yet; TOTP only.
 5. No malware scanning needed today (no file uploads); revisit if uploads are added.
 6. Platform admins can see member names/emails of customer orgs (needed for support); document in the privacy policy.
-7. The Paymob adapter's webhook verification is implemented from documentation and unit-tested, but has not been exercised against Paymob's servers.
+7. The Paymob adapter's webhook verification is contract-tested against a simulator and matches an independent implementation's HMAC vector, but has not been exercised against Paymob's servers.
 
 ## 7. Privacy and regulatory notes (not legal advice)
 

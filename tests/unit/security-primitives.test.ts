@@ -2,7 +2,7 @@ import { authenticator } from 'otplib';
 import { describe, expect, it } from 'vitest';
 import { generateRecoveryCodes, normalizeRecoveryCode, verifyTotp } from '../../src/auth/mfa.js';
 import { hashPassword, verifyPassword } from '../../src/auth/password.js';
-import { paymobTransactionHmac, PaymobProvider } from '../../src/billing/providers/paymob.js';
+import { paymobHmac, paymobTransactionHmac, PaymobProvider, type PaymobTransaction } from '../../src/billing/providers/paymob.js';
 import { SandboxProvider } from '../../src/billing/providers/sandbox.js';
 import { WebhookSignatureError } from '../../src/billing/providers/types.js';
 import { loadConfig } from '../../src/config.js';
@@ -74,15 +74,38 @@ describe('webhook signatures', () => {
     const provider = new PaymobProvider({ apiBase: 'https://accept.paymob.com', secretKey: 's', publicKey: 'p', hmacSecret: 'hmac-secret', integrationIds: [1] });
     const raw = Buffer.from(JSON.stringify({ type: 'TRANSACTION', obj: txn }));
     const evt = provider.parseWebhook({ rawBody: raw, headers: {}, query: { hmac: paymobTransactionHmac('hmac-secret', txn) } });
-    expect(evt).toMatchObject({ type: 'payment.succeeded', invoiceId: '7c1a3f7e-0000-4000-8000-000000000001', amountCents: 99000, currency: 'EGP' });
+    expect(evt).toMatchObject({ type: 'payment.succeeded', invoiceId: '7c1a3f7e-0000-4000-8000-000000000001', checkoutRef: '217503754', amountCents: 99000, currency: 'EGP' });
     expect(() => provider.parseWebhook({ rawBody: raw, headers: {}, query: { hmac: 'deadbeef' } })).toThrow(WebhookSignatureError);
+  });
+
+  // Independent reference: the fixture and expected signature in Odoo's
+  // payment_paymob module (odoo/odoo, branch 19.0, addons/payment_paymob/tests/common.py),
+  // where the same HMAC is asserted for the redirect query and the webhook object.
+  it('paymob: matches the signature vector of an independent implementation (Odoo)', () => {
+    const expected = '51860052ecc6d9f08ac30a549359019e2eee837913b5673094c242c817ddf57c055ba5e3e9c0894b1171e62c2d37cd55ff98a46a0e28e1ccf2e4a907e6683aa5';
+    const redirect = {
+      amount_cents: '111111', created_at: '2025-04-01T17:29:16.967925', currency: 'EGP', error_occured: 'false', has_parent_transaction: 'false',
+      id: 'dummy_id', integration_id: '1234', is_3d_secure: 'true', is_auth: 'false', is_capture: 'false', is_refunded: 'false',
+      is_standalone_payment: 'true', is_voided: 'false', order: '123', owner: '12', pending: 'false', 'source_data.pan': '1111',
+      'source_data.sub_type': 'Visa', 'source_data.type': 'card', success: 'true', 'data.message': 'Approved', merchant_order_id: 'S00001',
+    };
+    expect(paymobHmac('dummy_hmac', redirect)).toBe(expected);
+    const webhookObj = {
+      amount_cents: 111111, created_at: '2025-04-01T17:29:16.967925', currency: 'EGP', error_occured: false, has_parent_transaction: false,
+      id: 'dummy_id', integration_id: 1234, is_3d_secure: true, is_auth: false, is_capture: false, is_hidden: false, is_refunded: false,
+      is_standalone_payment: true, is_voided: false, order: { id: '123', merchant_order_id: 'S00001' }, owner: 12, pending: false,
+      source_data: { pan: '1111', sub_type: 'Visa', type: 'card' }, success: true, data: { message: 'Approved' },
+    };
+    expect(paymobTransactionHmac('dummy_hmac', webhookObj as unknown as PaymobTransaction)).toBe(expected);
   });
 });
 
 describe('exports', () => {
   const row = (over: Partial<ExportRow>): ExportRow => ({
     grade: 1, gradeEn: 'Primary 1', gradeAr: 'الصف الأول الابتدائي', track: 'moe', block: 'Block', subjectCode: 'ma', subjectEn: 'Mathematics',
-    subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book', ...over,
+    subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book',
+    subjectVerification: 'unverified', subjectVerificationSource: null, subjectReviewedAt: null,
+    materialVerification: 'unverified', materialVerificationSource: null, materialReviewedAt: null, ...over,
   });
   it('text export keeps the original "Copy list" layout', () => {
     expect(toText([row({}), row({ materialTitle: 'Workbook' })])).toBe('Primary 1 / الصف الأول الابتدائي\n  • Block — Mathematics\n      - Book\n      - Workbook');
@@ -93,6 +116,12 @@ describe('exports', () => {
     expect(csv.startsWith('﻿grade,')).toBe(true);
     expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);
     expect(csv).toContain('"A, ""quoted"" title"');
+  });
+  it('CSV carries verification columns, with the same formula guard on sources', () => {
+    const csv = toCsv([row({ subjectVerification: 'verified', subjectVerificationSource: '=cmd|calc', subjectReviewedAt: '2026-10-23T10:00:00.000Z' })]);
+    const [header, line] = csv.replace('﻿', '').split('\r\n');
+    expect(header!.split(',').slice(-6)).toEqual(['subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at']);
+    expect(line!.split(',').slice(-6)).toEqual(['verified', "'=cmd|calc", '2026-10-23T10:00:00.000Z', 'unverified', '', '']);
   });
 });
 

@@ -22,29 +22,32 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**10 files, 91 tests, 91 passed, 0 failed** (16.5 s). Integration tests ran against a real
+**12 files, 111 tests, 111 passed, 0 failed** (2026-10-23). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
 | --- | --- | --- |
 | unit/catalog-fidelity | 3 | Pass — the seed equals the original artifact's 231 subjects / 1,038 materials item-for-item |
 | unit/billing-logic | 9 | Pass |
-| unit/security-primitives | 9 | Pass |
+| unit/security-primitives | 11 | Pass |
 | unit/i18n | 2 | Pass |
 | integration/auth | 13 | Pass |
-| integration/tenancy | 15 | Pass |
+| integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/billing | 13 | Pass |
+| integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
+| integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 91</summary>
+<details><summary>Show all 111</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
 - tenancy › cross-tenant isolation over the API › rejects malformed org ids without leaking errors
+- tenancy › Row-Level Security › every table with an org_id column has forced RLS, apart from the documented exceptions
 - tenancy › Row-Level Security › returns no tenant rows without a tenant context, even for an unscoped query
 - tenancy › Row-Level Security › only exposes the current tenant’s rows inside a tenant context
 - tenancy › Row-Level Security › blocks writing rows for another tenant (WITH CHECK)
@@ -116,8 +119,27 @@ Full test names (verbatim from the verbose reporter):
 - unit › TOTP: generates unique recovery codes and normalizes input
 - unit › webhook signatures: sandbox verifies signed payloads, rejects tampering and stale timestamps
 - unit › webhook signatures: paymob HMAC-SHA512 over the documented field order
+- unit › webhook signatures: paymob matches the signature vector of an independent implementation (Odoo)
+- paymob-contract › creates an intention as documented and sends the customer to Unified Checkout
+- paymob-contract › turns a Paymob API rejection into a 502 without exposing provider details; retry works
+- paymob-contract › turns an unreachable Paymob API into a 502 as well
+- paymob-contract › a successful payment marks the invoice paid and activates the plan; retried callbacks are deduplicated
+- paymob-contract › a declined payment is recorded and the invoice stays open; a new checkout attempt can then be paid
+- paymob-contract › applies a payment made on an earlier checkout attempt of the same invoice
+- paymob-contract › rejects callbacks with a missing or wrong HMAC, a tampered body or an unsupported type
+- paymob-contract › binds the payment to the signed Paymob order, not to the unsigned merchant_order_id
+- paymob-contract › the browser redirect is signed over the same fields (what `npm run paymob:check` verifies)
+- paymob-contract › ignores signed callbacks for orders this app did not create
+- paymob-contract › does not apply pending, refunded or wrong-amount transactions
 - unit › exports: text export keeps the original "Copy list" layout
 - unit › exports: CSV neutralises spreadsheet formulas and quotes properly
+- unit › exports: CSV carries verification columns, with the same formula guard on sources
+- catalog-verification › marks entries of the published catalogue; customers see the mark and coverage, not the reviewer
+- catalog-verification › records entries that need review with a public note, and resets marks to unverified
+- catalog-verification › validates the request and the targets
+- catalog-verification › is admin-only and refuses archived versions
+- catalog-verification › copies marks into a draft of the same academic year only; content edits reset them, unchanged saves do not
+- catalog-verification › scope exports carry the marks
 - unit › configuration: refuses unsafe production settings
 - unit › catalogue fidelity: same 231 subject rows and 1,038 selectable materials
 - unit › catalogue fidelity: every subject and material in order, except the documented intl kind correction
@@ -132,7 +154,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**8 tests, 8 passed** (20.7 s), Chromium, real server process on port 3100.
+**9 tests, 9 passed** (24.5 s, 2026-10-23), Chromium, real server process on port 3100.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -143,7 +165,8 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 | 5 | Plan limits are enforced in the UI (second organization starts on Free) | Pass |
 | 6 | Service recovers after a server crash: sessions and saved selections survive a restart | Pass |
 | 7 | Platform admin signs in with two-factor authentication and suspends then restores an organization | Pass |
-| 8 | Arabic interface switches to right-to-left and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
+| 8 | Platform admin verifies a subject against a decree in the catalogue editor; the customer sees the badge, its source link and the coverage line | Pass |
+| 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -183,9 +206,46 @@ caching change):
 These are sandbox figures, not capacity guarantees; the p99 tail on the catalogue endpoint under
 20-way concurrency remains. Re-run on production-sized hardware before launch.
 
-## 6. Not executed
+## 6. CI pipeline on a clean checkout (local equivalent of GitHub Actions)
 
-- CI workflow on GitHub Actions (the branch could not be pushed — see PROJECT_STATUS.md).
-- Paymob checkout/webhook against Paymob's servers (no credentials).
+2026-10-23: `scripts/ci-local.sh` on a fresh `git clone --branch main` (commit `59265a2`), Node.js 22,
+`postgres:16-alpine` service container with the workflow's credentials. Two sandbox-only adjustments:
+Chromium was preinstalled (Playwright's download CDN is blocked here), and `docker build` received the
+proxy settings and CA as build arguments/secret.
+
+| Step (job) | Result |
+| --- | --- |
+| npm ci | Pass |
+| lint (checks) | Pass |
+| typecheck (checks) | Pass |
+| unit + integration tests (checks) | Pass — 10 files, 91 tests |
+| dependency audit, production (checks) | Pass — 0 vulnerabilities |
+| Playwright journeys (e2e) | Pass — 8 tests |
+| docker build (docker) | Pass |
+| production configuration guard (docker) | Pass |
+
+Running the workflow file itself with `act` reached the job's services but could not fetch the
+`actions/setup-node` action through this sandbox's git proxy, so the steps were run by the script instead.
+
+## 7. Paymob verification without Paymob credentials (2026-10-23)
+
+| Check | Result |
+| --- | --- |
+| HMAC against an independent implementation: fixture and expected signature from Odoo's `payment_paymob` module (`odoo/odoo` 19.0, `tests/common.py`), redirect and webhook forms | Match |
+| Request format vs Paymob's Create Intention docs and Odoo's client (`POST /v1/intention/`, `Authorization: Token <secret>`, amount in piastres, `special_reference` → callback `merchant_order_id`, `intention_order_id` → callback `order.id`) | Consistent; enforced by the simulator |
+| Contract tests: real adapter over HTTP against `tests/helpers/paymob-simulator.ts` | 11/11 pass |
+| Mutation check: the contract tests run against the previous billing service | 2 fail (a rewritten `merchant_order_id` paid another organization's invoice; a callback for an order this app never created was applied) — fixed by `checkout_sessions` |
+| `npm run paymob:check` dry run against the simulator | Valid redirect → exit 0; tampered HMAC → exit 1; live keys refused |
+| Migration `0002_checkout_sessions` down → up on the test database | Pass |
+| Full suite after the change: lint, typecheck, 104 unit/integration, 8 E2E, `npm audit --omit=dev`, build | Pass, 0 vulnerabilities |
+
+The simulator encodes Paymob's documentation; it cannot show where Paymob's live behaviour differs
+from it. paymob.com was not reachable from this environment's network, so the docs were read via
+search results, the official Python SDK on PyPI and Odoo's open-source module.
+
+## 8. Not executed
+
+- CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
+- Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
 - Cross-browser E2E (Firefox, WebKit), automated accessibility audit, external penetration test.
 - Production deployment, TLS issuance by Caddy, monitoring and alerting.

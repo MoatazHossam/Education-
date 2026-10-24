@@ -4,9 +4,14 @@ import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { auditTable } from './settings.js';
 import { pageHead } from './shell.js';
+import { materialMark, verificationDetails } from '../verify.js';
 
 const stat = (k, v) => h('div', { class: 'stat' }, h('div', { class: 'k' }, k), h('div', { class: 'v' }, v));
 const safe = async (fn, ok) => { try { await fn(); if (ok) toast(ok); return true; } catch (e) { toast(errorMessage(e), 'error'); return false; } };
+
+// Catalogue editor state kept across re-renders: open grade sections per version and the verification filter.
+const openGrades = new Map();
+let verifFilter = 'all';
 
 export async function overviewView() {
   const [o, health] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health')]);
@@ -151,11 +156,12 @@ export async function catalogView(ctx) {
   return h('div', {},
     pageHead(t('admin.catalog'), t('admin.catalogSub')),
     h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, ['Version', 'Status', 'Subjects', 'Materials', 'Published', ''].map((c) => h('th', { scope: 'col' }, c)))),
+      h('thead', {}, h('tr', {}, ['Version', 'Status', 'Subjects', 'Materials', t('verify.colVerified'), 'Published', ''].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, versions.map((v) => h('tr', {},
         h('td', {}, link(`/admin/catalog/${v.id}`, `${v.academicYear} — ${v.label}`)),
         h('td', {}, h('span', { class: `pill ${v.status === 'published' ? 'ok' : v.status === 'draft' ? 'warn' : ''}` }, v.status)),
         h('td', { class: 'mono' }, String(v.subjects)), h('td', { class: 'mono' }, String(v.materials)),
+        h('td', { class: 'mono' }, `${v.subjectsVerified}/${v.subjects}`),
         h('td', {}, fmtDate(v.publishedAt)),
         h('td', {}, h('div', { class: 'row' },
           v.status === 'draft' ? h('button', { type: 'button', class: 'btn small', onclick: async () => { if (await confirmDialog(t('admin.publish'), t('admin.publishText')) && (await safe(() => post(`/api/admin/catalog/versions/${v.id}/publish`)))) ctx.render(); } }, t('admin.publish')) : null,
@@ -168,7 +174,40 @@ export async function catalogVersionView(ctx) {
   const { versionId } = ctx.params;
   const tree = await get(`/api/admin/catalog/versions/${versionId}`);
   const draft = tree.version.status === 'draft';
+  const editable = tree.version.status !== 'archived';
   const reload = () => ctx.render();
+
+  // Marks may change on drafts and published versions; customers see status, date, source and note.
+  const verifyDialog = async ({ title, current, subjectIds = [], materialIds = [], extraMaterialIds = [] }) => {
+    const status = h('select', {}, [['unverified', 'verify.statusUnverified'], ['verified', 'verify.statusVerified'], ['needs_review', 'verify.statusNeedsReview']]
+      .map(([v, k]) => h('option', { value: v, selected: (current?.status ?? 'unverified') === v ? 'selected' : null }, t(k))));
+    const source = h('input', { type: 'text', maxlength: '300', value: current?.source ?? '' });
+    const url = h('input', { type: 'url', maxlength: '2000', placeholder: 'https://', value: current?.url ?? '' });
+    const note = h('textarea', { maxlength: '1000' }, current?.note ?? '');
+    const include = extraMaterialIds.length ? h('input', { type: 'checkbox', checked: true }) : null;
+    const err = h('div', { class: 'alert error', hidden: true });
+    return dialog({
+      title,
+      body: h('div', { class: 'stack' }, err,
+        h('label', { class: 'field' }, t('verify.status'), status),
+        h('label', { class: 'field' }, t('verify.source'), source),
+        h('label', { class: 'field' }, t('verify.url'), url),
+        h('label', { class: 'field' }, t('verify.note'), note),
+        include ? h('label', { class: 'check' }, include, t('verify.includeMaterials', { n: extraMaterialIds.length })) : null,
+        h('p', { class: 'muted' }, t('verify.publicHint'))),
+      actions: [{ label: t('common.cancel'), value: false, kind: 'ghost' }, {
+        label: t('common.save'), value: true, validate: async () => {
+          const opt = (k, el) => (el.value.trim() ? { [k]: el.value.trim() } : {});
+          const body = { subjectIds, materialIds: [...materialIds, ...(include?.checked ? extraMaterialIds : [])], status: status.value, ...opt('source', source), ...opt('url', url), ...opt('note', note) };
+          try {
+            await post(`/api/admin/catalog/versions/${versionId}/verification`, body);
+            toast(t('verify.applied'));
+            return true;
+          } catch (e) { err.textContent = errorMessage(e); err.hidden = false; return false; }
+        },
+      }],
+    });
+  };
 
   const subjectDialog = async (subject) => {
     const fields = {
@@ -207,17 +246,39 @@ export async function catalogVersionView(ctx) {
     onSubmit: async (v) => { await patch(`/api/admin/catalog/versions/${versionId}`, v); toast(t('common.saved')); reload(); },
   });
 
+  const matches = (s) => {
+    if (verifFilter === 'verified') return s.verification?.status === 'verified';
+    if (verifFilter === 'needs_review') return s.verification?.status === 'needs_review' || s.materials.some((m) => m.verification?.status === 'needs_review');
+    if (verifFilter === 'unverified') return !s.verification;
+    return true;
+  };
+  const opened = openGrades.get(versionId) ?? new Set();
+  openGrades.set(versionId, opened);
   const grades = [];
   for (let g = 1; g <= 12; g++) {
-    const subs = tree.subjects.filter((s) => s.grade === g);
-    grades.push(h('details', { class: 'card' }, h('summary', {}, `${tree.grades[g - 1].nameEn} — ${subs.length} subjects`),
+    const all = tree.subjects.filter((s) => s.grade === g);
+    const subs = all.filter(matches);
+    if (!subs.length && verifFilter !== 'all') continue;
+    const gradeName = tree.grades[g - 1].nameEn;
+    grades.push(h('details', { class: 'card', open: opened.has(g) || null, ontoggle: (e) => { if (e.target.open) opened.add(g); else opened.delete(g); } },
+      h('summary', {}, `${gradeName} — ${subs.length} subjects`),
+      editable && all.length ? h('div', { class: 'row' }, h('button', {
+        type: 'button', class: 'btn small ghost', onclick: async () => {
+          if (await verifyDialog({ title: t('verify.gradeTarget', { grade: gradeName, s: all.length }), subjectIds: all.map((s) => s.id), extraMaterialIds: all.flatMap((s) => s.materials.map((m) => m.id)) })) reload();
+        },
+      }, t('verify.gradeAll'))) : null,
       subs.map((s) => h('div', { class: 'subj' },
         h('div', { class: 'sname' }, h('b', {}, s.nameEn), h('span', { class: 'ar', lang: 'ar', dir: 'rtl' }, s.nameAr), h('span', { class: 'mono muted' }, `${s.track} · ${s.code} · ${s.status}`), h('div', { class: 'muted' }, s.block),
-          draft ? h('div', { class: 'row' },
-            h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await subjectDialog(s)) reload(); } }, t('common.edit')),
-            h('button', { type: 'button', class: 'btn small danger ghost', onclick: async () => { if (await confirmDialog(t('common.delete'), s.nameEn, { danger: true }) && (await safe(() => del(`/api/admin/catalog/subjects/${s.id}`)))) reload(); } }, t('common.delete'))) : null),
+          verificationDetails(s),
+          h('div', { class: 'row' },
+            editable ? h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${s.nameEn}`, current: s.verification, subjectIds: [s.id], extraMaterialIds: s.materials.map((m) => m.id) })) reload(); } }, t('verify.set')) : null,
+            draft ? [
+              h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await subjectDialog(s)) reload(); } }, t('common.edit')),
+              h('button', { type: 'button', class: 'btn small danger ghost', onclick: async () => { if (await confirmDialog(t('common.delete'), s.nameEn, { danger: true }) && (await safe(() => del(`/api/admin/catalog/subjects/${s.id}`)))) reload(); } }, t('common.delete')),
+            ] : null)),
         h('div', { class: 'mats' },
-          s.materials.map((m) => h('span', { class: `mat ${m.kind}` }, m.title,
+          s.materials.map((m) => h('span', { class: `mat ${m.kind}` }, m.title, materialMark(m),
+            editable ? h('button', { type: 'button', class: 'linkbtn', 'aria-label': `${t('verify.set')} ${m.title}`, onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${m.title}`, current: m.verification, materialIds: [m.id] })) reload(); } }, t('verify.short')) : null,
             draft ? h('button', { type: 'button', class: 'linkbtn', 'aria-label': `${t('common.delete')} ${m.title}`, onclick: async () => { if (await safe(() => del(`/api/admin/catalog/materials/${m.id}`))) reload(); } }, '×') : null)),
           draft ? h('button', {
             type: 'button', class: 'btn small ghost', onclick: async () => {
@@ -229,11 +290,20 @@ export async function catalogVersionView(ctx) {
           }, `+ ${t('admin.addMaterial')}`) : null)))));
   }
 
+  const vc = tree.counts.verification;
+  const filterSel = h('select', { 'aria-label': t('verify.filter'), onchange: (e) => { verifFilter = e.target.value; reload(); } },
+    [['all', 'verify.filterAll'], ['unverified', 'verify.filterUnverified'], ['verified', 'verify.filterVerified'], ['needs_review', 'verify.filterReview']]
+      .map(([v, k]) => h('option', { value: v, selected: verifFilter === v ? 'selected' : null }, t(k))));
+  const verificationBar = h('div', { class: 'card row' },
+    h('span', {}, t('verify.adminCoverage', { sv: vc.subjectsVerified, s: tree.counts.subjects, mv: vc.materialsVerified, m: tree.counts.materials, r: vc.subjectsNeedReview + vc.materialsNeedReview })),
+    h('label', { class: 'row' }, t('verify.filter'), filterSel));
+
   return h('div', {},
     pageHead(`${tree.version.academicYear} — ${tree.version.label}`, `${tree.version.status} · ${tree.counts.subjects} subjects · ${tree.counts.materials} materials`,
-      h('div', { class: 'row' }, link('/admin/catalog', t('admin.backToVersions')), draft ? h('button', { type: 'button', class: 'btn small', onclick: async () => { if (await subjectDialog(null)) reload(); } }, `+ ${t('admin.addSubject')}`) : h('span', { class: 'muted' }, t('admin.readOnlyVersion')))),
+      h('div', { class: 'row' }, link('/admin/catalog', t('admin.backToVersions')), draft ? h('button', { type: 'button', class: 'btn small', onclick: async () => { if (await subjectDialog(null)) reload(); } }, `+ ${t('admin.addSubject')}`) : h('span', { class: 'muted' }, t(editable ? 'admin.readOnlyContent' : 'admin.readOnlyVersion')))),
     draft ? h('div', { class: 'card' }, h('h2', {}, t('admin.versionDetails')), meta.el) : null,
-    grades);
+    verificationBar,
+    grades.length ? grades : h('p', { class: 'empty' }, t('picker.noMatch')));
 }
 
 export async function plansView(ctx) {

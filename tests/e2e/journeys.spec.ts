@@ -41,6 +41,20 @@ async function payInSandbox(page: Page) {
   await expect(page.getByText('Payment received')).toBeVisible({ timeout: 20_000 });
 }
 
+async function signInAsPlatformAdmin(page: Page) {
+  const email = `admin.${uid()}@e2e.test`;
+  const secret = authenticator.generateSecret();
+  await ownerQuery(
+    `INSERT INTO users (email, name, password_hash, email_verified_at, is_platform_admin, mfa_enabled, mfa_secret_enc) VALUES ($1, 'E2E Admin', $2, now(), true, true, $3)`,
+    [email, await hashPassword(PASSWORD), encryptSecret(E2E_ENV.DATA_ENCRYPTION_KEY!, secret)],
+  );
+  await login(page, email);
+  await expect(page.getByRole('heading', { name: 'Two-factor verification' })).toBeVisible();
+  await page.getByLabel('Authentication code').fill(authenticator.generate(secret));
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith('/mfa'));
+}
+
 function orgIdFromUrl(page: Page): string {
   return /\/org\/([0-9a-f-]{36})/.exec(page.url())![1]!;
 }
@@ -180,17 +194,7 @@ test('service recovers after a server crash: sessions and saved selections survi
 });
 
 test('platform admin signs in with two-factor authentication and suspends then restores an organization', async ({ page, browser }) => {
-  const email = `admin.${uid()}@e2e.test`;
-  const secret = authenticator.generateSecret();
-  await ownerQuery(
-    `INSERT INTO users (email, name, password_hash, email_verified_at, is_platform_admin, mfa_enabled, mfa_secret_enc) VALUES ($1, 'E2E Admin', $2, now(), true, true, $3)`,
-    [email, await hashPassword(PASSWORD), encryptSecret(E2E_ENV.DATA_ENCRYPTION_KEY!, secret)],
-  );
-  await login(page, email);
-  await expect(page.getByRole('heading', { name: 'Two-factor verification' })).toBeVisible();
-  await page.getByLabel('Authentication code').fill(authenticator.generate(secret));
-  await page.getByRole('button', { name: 'Verify' }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith('/mfa'));
+  await signInAsPlatformAdmin(page);
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);
@@ -214,6 +218,36 @@ test('platform admin signs in with two-factor authentication and suspends then r
   await ownerCtx.close();
 });
 
+test('platform admin verifies a subject against a decree; customers see the mark and its source', async ({ page, browser }) => {
+  await signInAsPlatformAdmin(page);
+  await page.goto('/admin/catalog');
+  await page.getByRole('link', { name: /^2026\/2027/ }).first().click();
+  await expect(page.getByText('Verified: 0/231 subjects')).toBeVisible();
+  await page.locator('summary', { hasText: /^Primary 1 —/ }).click();
+  await page.getByRole('button', { name: 'Verification…' }).first().click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('Status').selectOption('verified');
+  await dlg.getByLabel(/^Source checked/).fill('Ministerial Decree 123/2026');
+  await dlg.getByLabel('Source link (optional)').fill('https://moe.gov.eg/decrees/123');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Verified: 1\/231 subjects/)).toBeVisible();
+  await expect(page.locator('.verif.ok summary').first()).toHaveText('Verified');
+
+  const ownerCtx = await browser.newContext();
+  const owner = await ownerCtx.newPage();
+  await login(owner, ownerEmail);
+  await owner.goto(`/org/${orgAId}`);
+  await expect(owner.locator('.vcoverage')).toContainText('1 of 231 subjects verified');
+  const badge = owner.locator('.verif.ok').first();
+  await badge.locator('summary').click();
+  // The subject and its materials were marked together, so one line covers them all.
+  await expect(badge.locator('li')).toHaveCount(1);
+  await expect(badge.locator('li')).toContainText(/Subject and all \d+ materials: checked/);
+  await expect(badge.getByRole('link', { name: 'Ministerial Decree 123/2026' })).toHaveAttribute('href', 'https://moe.gov.eg/decrees/123');
+  await expect(owner.locator('.mat .mv.ok').first()).toBeVisible();
+  await ownerCtx.close();
+});
+
 test('Arabic interface switches to right-to-left and the picker fits a phone screen', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
@@ -225,6 +259,7 @@ test('Arabic interface switches to right-to-left and the picker fits a phone scr
   await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('link', { name: 'دليل المناهج' })).toBeVisible();
+  await expect(page.locator('.verif.ok summary').first()).toHaveText('تم التحقق');
   const overflowAr = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflowAr).toBeLessThanOrEqual(1);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();

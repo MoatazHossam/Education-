@@ -23,7 +23,7 @@ describe('catalogue API', () => {
     const res = await client.get(`/api/catalog/versions/${versions[0].id}`);
     expect(res.statusCode).toBe(200);
     const tree = res.json();
-    expect(tree.counts).toEqual({ subjects: 231, materials: 1038 });
+    expect(tree.counts).toMatchObject({ subjects: 231, materials: 1038, verification: { subjectsVerified: 0, materialsVerified: 0 } });
     expect(tree.grades).toHaveLength(12);
     expect(tree.sources).toHaveLength(10);
     expect(tree.version.gradeNotes['10']).toMatch(/Bakaloria/);

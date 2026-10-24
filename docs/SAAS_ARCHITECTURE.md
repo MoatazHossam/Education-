@@ -30,7 +30,7 @@ flowchart LR
 | --- | --- | --- |
 | Web app | REST API (`/api/*`), static SPA, health endpoints | `src/app.ts`, route modules |
 | Worker | Email outbox delivery, subscription lifecycle (trial end, renewals, grace), retention cleanup, heartbeat | `src/worker.ts`, `src/jobs/tasks.ts`, `src/billing/service.ts` |
-| PostgreSQL | All state; Row-Level Security for tenant tables | `src/db/migrations/0001_initial.ts` |
+| PostgreSQL | All state; Row-Level Security for tenant tables | `src/db/migrations/` |
 | SPA | Picker and management UI; no build step; strict CSP | `public/` |
 | Caddy | Automatic TLS, compression, reverse proxy | `deploy/Caddyfile` |
 
@@ -109,7 +109,7 @@ readable only through an active support grant (see SECURITY_DESIGN.md).
 - `PaymentProvider` interface (`src/billing/providers/types.ts`): `createCheckout()` and
   `parseWebhook()` (signature verification + normalisation). Implementations: `SandboxProvider`
   (dev/test; refused in production by config validation) and `PaymobProvider` (Intention API +
-  Unified Checkout + HMAC-SHA512 callback; **not verified against a live account**).
+  Unified Checkout + HMAC-SHA512 callback; contract-tested against a simulator, **not yet run against a Paymob account**).
 - **Our database is the source of truth.** Providers only report money movements; the billing
   service applies them (`applyProviderEvent`) inside the webhook transaction.
 - Idempotency: `billing_events (provider, event_id)` unique; `payments (provider, provider_txn_id)`

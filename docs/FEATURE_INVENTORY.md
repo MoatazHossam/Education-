@@ -45,7 +45,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-12 | Read API with API keys | Integrations | MISSING | IMPLEMENTED | `/api/v1`, hashed keys, quota | Webhooks on scope change | P1 | `admin-api-ops.test.ts` |
 | S-13 | Plans & server-side limits | Monetization | MISSING | IMPLEMENTED | Seats, scopes, exports/month, API/month, features | — | P0 | `scopes.test.ts`, E2E journey 5 |
 | S-14 | Subscription lifecycle | Revenue | MISSING | IMPLEMENTED | Trial, subscribe, prorated upgrade, scheduled downgrade, cancel/resume, renewal invoices, past-due grace, move to Free | Card-on-file auto-renew | P0 | `billing.test.ts`; E2E journey 4 |
-| S-15 | Payment provider | Collect money | MISSING | PARTIALLY IMPLEMENTED | Provider abstraction; **sandbox** (dev/test) verified; **Paymob** adapter written, NOT VERIFIED | Paymob merchant account + sandbox run | P0 | Unit HMAC test only |
+| S-15 | Payment provider | Collect money | MISSING | PARTIALLY IMPLEMENTED | Provider abstraction; **sandbox** (dev/test) verified; **Paymob** adapter contract-tested, not yet run against Paymob | Paymob test-mode keys + `npm run paymob:check` | P0 | Simulator contract tests + independent HMAC vector |
 | S-16 | Webhook security | Prevent fraud | MISSING | IMPLEMENTED | Signature check, timestamp tolerance, idempotent event store, amount check | — | P0 | `billing.test.ts` |
 | S-17 | Invoices & payment history | Accounting | MISSING | IMPLEMENTED | Sequential numbers, payments table | Tax invoices (ETA e-invoicing) | P1 | `billing.test.ts` |
 | S-18 | Email notifications | Lifecycle comms | MISSING | IMPLEMENTED | Transactional outbox + worker, retries, EN/AR templates | Deliverability setup (SPF/DKIM) | P0 | `admin-api-ops.test.ts`; compose run delivered to Mailpit |
@@ -54,7 +54,8 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-21 | Platform admin console | Operate the business | MISSING | IMPLEMENTED | Overview/MRR, orgs, users, catalogue, plans, audit, webhooks, health | Impersonation intentionally absent | P0 | `admin-api-ops.test.ts`; E2E journey 7 |
 | S-22 | Support access grants | Privacy-respecting support | MISSING | IMPLEMENTED | Owner grants 1–72 h, every read audited | — | P1 | `admin-api-ops.test.ts` |
 | S-23 | Catalogue versioning & editing | Keep data current yearly | MISSING | IMPLEMENTED | Draft clone → edit → publish → archive | Bulk import (CSV), diff view | P0 | `admin-api-ops.test.ts` |
-| S-24 | Arabic UI + RTL | Market fit | MISSING | IMPLEMENTED | Dictionaries, `dir=rtl`, logical CSS | Professional translation review | P0 | E2E journey 8, i18n test |
+| S-23a | Catalogue verification marks | Trust in accuracy | MISSING | IMPLEMENTED | Verified / needs review per subject and material with source, link, note, date; admin editor with filter and per-grade marking; picker badges and coverage; in exports and API | The review work itself (B-6); bulk import of marks | P0 | `catalog-verification.test.ts`; E2E journey 8 |
+| S-24 | Arabic UI + RTL | Market fit | MISSING | IMPLEMENTED | Dictionaries, `dir=rtl`, logical CSS | Professional translation review | P0 | E2E journey 9, i18n test |
 | S-25 | Health/readiness, worker heartbeat | Operations | MISSING | IMPLEMENTED | `/healthz`, `/readyz`, heartbeat health | External uptime monitoring | P0 | `admin-api-ops.test.ts`; compose healthy |
 | S-26 | Backups & restore | Disaster recovery | MISSING | IMPLEMENTED | Scripts + backup role; verified locally | Scheduled off-site job in production | P0 | Manual run recorded in TEST_REPORT.md |
 | S-27 | Containerised deployment | Reproducibility | MISSING | IMPLEMENTED | Dockerfile, compose (dev/prod), Caddy TLS | Real host | P0 | Local stack verified |

@@ -1,8 +1,10 @@
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { authenticator } from 'otplib';
+import { hashPassword } from '../../src/auth/password.js';
 import { buildApp } from '../../src/app.js';
 import { loadConfig, type AppConfig } from '../../src/config.js';
 import { createDatabase, type Database } from '../../src/db/index.js';
+import { encryptSecret } from '../../src/lib/crypto.js';
 import { OWNER_URL, TEST_ENV } from './env.js';
 
 export interface Harness {
@@ -44,6 +46,11 @@ export async function resetData(ownerDb: Database): Promise<void> {
   await sql`DELETE FROM users`.execute(ownerDb);
   // Keep only the seeded catalogue version (tests may create and publish others).
   await sql`DELETE FROM catalog_versions WHERE id <> (SELECT id FROM catalog_versions ORDER BY created_at LIMIT 1)`.execute(ownerDb);
+  for (const table of ['catalog_subjects', 'catalog_materials']) {
+    await sql`UPDATE ${sql.table(table)} SET verification_status = 'unverified', verification_source = NULL, verification_url = NULL,
+              verification_note = NULL, reviewed_by = NULL, reviewed_at = NULL WHERE verification_status <> 'unverified'`.execute(ownerDb);
+  }
+  // Also bumps updated_at (trigger), so the app's cached catalogue trees are rebuilt.
   await sql`UPDATE catalog_versions SET status = 'published'`.execute(ownerDb);
   await sql`UPDATE plans SET price_monthly_cents = 99000 WHERE id = 'starter'`.execute(ownerDb);
 }
@@ -136,6 +143,34 @@ export async function signUp(h: Harness, opts: { email?: string; org?: string; n
   const me = await client.refresh();
   const orgId: string = me.json().organizations[0].id;
   return { client, email, orgId, userId: me.json().user.id as string };
+}
+
+/** Creates a platform administrator (with TOTP unless `mfa: false`) and returns a signed-in client. */
+export async function createPlatformAdmin(h: Harness, opts: { mfa: boolean } = { mfa: true }) {
+  const email = uniqueEmail('admin');
+  const secret = authenticator.generateSecret();
+  await h.ownerDb
+    .insertInto('users')
+    .values({
+      email,
+      name: 'Ops',
+      password_hash: await hashPassword(PASSWORD),
+      email_verified_at: new Date(),
+      is_platform_admin: true,
+      mfa_enabled: opts.mfa,
+      mfa_secret_enc: opts.mfa ? encryptSecret(h.config.DATA_ENCRYPTION_KEY, secret) : null,
+    })
+    .execute();
+  const client = new Client(h.app);
+  const login = await client.post('/api/auth/login', { email, password: PASSWORD });
+  if (login.statusCode !== 200) throw new Error(`admin login failed: ${login.body}`);
+  await client.refresh();
+  if (opts.mfa) {
+    const verify = await client.post('/api/auth/mfa/verify', { code: authenticator.generate(secret) });
+    if (verify.statusCode !== 200) throw new Error(`admin MFA failed: ${verify.body}`);
+    await client.refresh();
+  }
+  return client;
 }
 
 /** Invites `email` with `role` into the org and returns a signed-in client for the new member. */

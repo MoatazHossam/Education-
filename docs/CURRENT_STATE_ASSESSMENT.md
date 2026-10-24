@@ -49,8 +49,9 @@ running code or tests in this repository, not by reading alone.
 The catalogue cites news sites (Parlmany, Masrawy, Fil Gamaa, …) and the Ministry digital library.
 Its own notice says decrees and editions must be confirmed. **No item in the catalogue has been
 independently verified in this project.** Platform admins can now correct it through draft
-versions (see the admin catalogue editor), but the editorial verification itself is an open
-business task (see PROJECT_STATUS.md).
+versions and record per-entry verification marks (source, date, note) in the admin catalogue
+editor, and customers see those marks; the editorial review itself is an open business task
+(see PROJECT_STATUS.md).
 
 ## 2. SaaS codebase (current)
 
@@ -63,9 +64,9 @@ business task (see PROJECT_STATUS.md).
 | Multi-tenancy with PostgreSQL Row-Level Security | COMPLETE | DB-level RLS tests, route-enumeration authorization test, E2E journey 3 |
 | Plans, limits, usage metering | COMPLETE | `scopes.test.ts`, `billing.test.ts`, E2E journey 5 |
 | Billing lifecycle (sandbox provider) | COMPLETE | `billing.test.ts`, E2E journey 4 |
-| Paymob payment adapter | NOT VERIFIED | Unit-tested HMAC only; no Paymob credentials available |
+| Paymob payment adapter | NOT VERIFIED (against Paymob) | Contract-tested against a simulator; HMAC matches Odoo's reference vector; no Paymob keys available |
 | Platform admin, support access, audit log | COMPLETE | `admin-api-ops.test.ts`, E2E journey 7 |
-| Front end (EN/AR, RTL, responsive) | COMPLETE | E2E journeys 1–8, visual QA screenshots |
+| Front end (EN/AR, RTL, responsive) | COMPLETE | E2E journeys 1–9, visual QA screenshots |
 | Docker / compose / backups | COMPLETE (locally verified) | Built image, full stack healthy, backup→restore→verify run |
 | CI pipeline | NOT VERIFIED | Workflow written; not executed on GitHub (push to the repository was refused — see PROJECT_STATUS.md) |
 | Production deployment, monitoring/alerting | NOT STARTED / BLOCKED | Requires hosting account, domain, SMTP, provider credentials |

@@ -22,6 +22,7 @@ export async function accountView(ctx) {
     fields: [
       { name: 'name', label: t('auth.name'), value: user.name, required: true },
       { name: 'locale', label: t('account.language'), type: 'select', value: user.locale, options: [{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }] },
+      { name: 'catalogEmails', label: t('account.catalogEmails'), type: 'checkbox', value: user.catalogEmails },
     ],
     submitLabel: t('common.save'),
     onSubmit: async (v) => { await patch('/api/auth/profile', v); setLocale(v.locale); toast(t('common.saved')); await refresh(); },

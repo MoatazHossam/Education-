@@ -297,9 +297,14 @@ test('a newer catalogue is published and the owner carries a scope forward after
   const owner = await ownerCtx.newPage();
   await login(owner, ownerEmail);
   await owner.goto(`/org/${orgAId}`);
-  const banner = owner.locator('.carry-banner');
-  await expect(banner).toContainText('A newer catalogue (2027/2028) has been published.');
-  await banner.getByRole('link', { name: 'Carry this scope forward' }).click();
+  await expect(owner.locator('.carry-banner')).toContainText('A newer catalogue (2027/2028) has been published.');
+  // Publishing also notified the owner; the notification opens the review page.
+  await owner.getByRole('button', { name: 'Notifications' }).click();
+  // One notification per organization the owner runs; this one is for "Nile Learning".
+  const note = owner.getByRole('dialog').locator('li', { hasText: '“Grade 4 pilot” still uses an older catalogue.' });
+  await expect(note).toContainText('The 2027/2028 catalogue is published');
+  await note.getByRole('link', { name: 'Open' }).click();
+  await expect(owner.getByRole('dialog')).toHaveCount(0);
   await expect(owner.getByRole('heading', { name: 'Carry “Grade 4 pilot” forward' })).toBeVisible();
   await expect(owner.getByText(`${items.length - 1} of ${items.length} selected items carry over as they are. 1 need your decision.`)).toBeVisible();
   await expect(owner.getByRole('heading', { name: 'Not in the 2027/2028 catalogue' })).toBeVisible();

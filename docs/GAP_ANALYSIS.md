@@ -14,7 +14,7 @@
 | 10 | Security | Static page | OWASP-aligned controls | See SECURITY_DESIGN.md; tests for BOLA, CSRF, brute force, webhook forgery/replay | External penetration test; secret rotation runbooks | Recommended before launch |
 | 11 | Privacy / compliance | None | PDPL-aware handling | Data export, account & org deletion, retention jobs, minimal data | Legal review, privacy policy, terms, DPA template, PDPL licensing/registration check | **Yes (legal)** |
 | 12 | Localization | English UI | Arabic + English, RTL | Implemented | Professional review of Arabic copy | No |
-| 13 | Testing | None | Automated unit/integration/E2E | 29 unit, 90 integration, 10 E2E — all passing | Load test on production-like hardware | No |
+| 13 | Testing | None | Automated unit/integration/E2E | 29 unit, 94 integration, 10 E2E — all passing | Load test on production-like hardware | No |
 | 14 | Deployment | Claude artifact | Reproducible, TLS, health checks | Docker image, compose (dev/prod), Caddy TLS, health/readiness | Provision host; DNS; run CI on GitHub | **Yes (ops)** |
 | 15 | Observability | None | Logs, metrics, alerts | JSON logs, health endpoints, worker heartbeat, admin health page | Uptime monitor + alert routing, error tracking | **Yes** |
 

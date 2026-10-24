@@ -65,6 +65,10 @@ at seed time for development only.
 Verification, reset and invitation links carry 256-bit random tokens; only hashes are stored.
 The outbox keeps the rendered body (with the link) until delivery, then redacts it.
 Pages that receive tokens send `Referrer-Policy: no-referrer`.
+Catalogue update emails (new academic year, entries under review) are product notices rather than
+security or billing messages, so each user can turn them off in their account (`users.catalog_emails`);
+every such email links to that setting. They go only to owners, admins and editors of active
+organizations, and name only the recipient's own organization's scopes and selected items.
 
 ## 5. Audit events (selection)
 

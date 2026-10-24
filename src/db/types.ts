@@ -58,6 +58,7 @@ export interface UsersTable {
   last_login_at: NullableTimestamp;
   password_changed_at: Generated<Date>;
   trial_used: Generated<boolean>;
+  catalog_emails: Generated<boolean>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
@@ -275,6 +276,13 @@ export interface CheckoutSessionsTable {
   created_at: Generated<Date>;
 }
 
+export interface CatalogNoticesTable {
+  org_id: string;
+  kind: string;
+  ref: string;
+  sent_at: Generated<Date>;
+}
+
 export interface BillingEventsTable {
   id: Generated<string>;
   provider: string;
@@ -379,6 +387,7 @@ export interface DB {
   invoices: InvoicesTable;
   payments: PaymentsTable;
   checkout_sessions: CheckoutSessionsTable;
+  catalog_notices: CatalogNoticesTable;
   billing_events: BillingEventsTable;
   usage_counters: UsageCountersTable;
   billing_notices: BillingNoticesTable;

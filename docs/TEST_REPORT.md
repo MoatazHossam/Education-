@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**14 files, 119 tests, 119 passed, 0 failed** (2026-10-24). Integration tests ran against a real
+**15 files, 123 tests, 123 passed, 0 failed** (2026-10-24). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -36,6 +36,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
+| integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
 | integration/billing | 13 | Pass |
 | integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
@@ -44,7 +45,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 119</summary>
+<details><summary>Show all 123</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -150,6 +151,10 @@ Full test names (verbatim from the verbose reporter):
 - scope-carry-forward › copies into a new scope for the new year, with chosen replacements; the old scope is untouched
 - scope-carry-forward › moves a scope in place, which also works at the Free plan scope limit
 - scope-carry-forward › validates the target and the materials, and requires an editor to apply
+- catalog-notifications › a newer catalogue notifies owners, admins and editors of organizations behind it, in their language, once per year
+- catalog-notifications › organizations already on a year hear about its correction only when the version they use is archived
+- catalog-notifications › entries newly flagged for review notify organizations that selected them; repeats and other marks do not
+- catalog-notifications › users can turn catalogue emails off and on in their profile
 - unit › configuration: refuses unsafe production settings
 - unit › catalogue fidelity: same 231 subject rows and 1,038 selectable materials
 - unit › catalogue fidelity: every subject and material in order, except the documented intl kind correction
@@ -177,7 +182,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 | 7 | Platform admin signs in with two-factor authentication and suspends then restores an organization | Pass |
 | 8 | Platform admin verifies a subject against a decree in the catalogue editor; the customer sees the badge, its source link and the coverage line | Pass |
 | 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
-| 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope; the review page lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
+| 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope and the owner is notified; the notification opens the review page, which lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle

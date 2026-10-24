@@ -13,6 +13,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | FR-C3 | Customers can browse only published/archived versions; drafts are invisible to them. | `integration/admin-api-ops` |
 | FR-C4 | Each version carries its notice, grade notes and source links. | `integration/scopes` |
 | FR-C5 | Platform admins can mark subjects and materials as verified (with the source checked) or as needing review (with a public note), on drafts and published versions but not archived ones; customers see the marks, review date and coverage, but not the reviewer; editing an entry's content clears its mark; a copy for the same academic year keeps marks, a new year starts unverified. | `integration/catalog-verification`, E2E journey 8 |
+| FR-C6 | When a later academic year's catalogue is published (or a version a customer uses is archived), owners, admins and editors of organizations with scopes on an older catalogue are notified in the app and by email, in their language, once per academic year, with a link to carry the scope forward. Newly flagged "needs review" entries notify the organizations that selected them. Users can turn these emails off. | `integration/catalog-notifications`, E2E journey 10 |
 
 ### Picker and scopes
 | ID | Requirement | Verification |

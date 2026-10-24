@@ -37,6 +37,7 @@ export function publicUser(u: User) {
     isPlatformAdmin: u.is_platform_admin,
     mfaEnabled: u.mfa_enabled,
     emailVerified: Boolean(u.email_verified_at),
+    catalogEmails: u.catalog_emails,
     createdAt: u.created_at,
   };
 }
@@ -368,10 +369,14 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
 
   app.patch('/api/auth/profile', async (req) => {
     const { user } = requireUser(req);
-    const body = parse(z.object({ name: zName.optional(), locale: zLocale.optional() }), req.body);
+    const body = parse(z.object({ name: zName.optional(), locale: zLocale.optional(), catalogEmails: z.boolean().optional() }), req.body);
     const updated = await db
       .updateTable('users')
-      .set({ ...(body.name ? { name: body.name } : {}), ...(body.locale ? { locale: body.locale as Locale } : {}) })
+      .set({
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.locale ? { locale: body.locale as Locale } : {}),
+        ...(body.catalogEmails !== undefined ? { catalog_emails: body.catalogEmails } : {}),
+      })
       .where('id', '=', user.id)
       .returningAll()
       .executeTakeFirstOrThrow();

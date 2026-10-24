@@ -51,7 +51,7 @@ Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+e
 | POST | `/logout` · `/logout-others` | — |
 | GET | `/me` | user, organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
-| PATCH | `/profile` | `{name?, locale?}` |
+| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean}` (catalogue update emails; in-app notifications are always created) |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
 | POST | `/mfa/setup` · `/mfa/enable` · `/mfa/disable` · `/mfa/recovery-codes` | setup returns `{secret, otpauthUrl, qrSvg}`; enable `{code}` → `{recoveryCodes}` |
 | GET | `/account/export` | personal data as JSON |
@@ -137,7 +137,8 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 `POST /orgs/:orgId/invoices {planId, interval, amountCents, periodStart?, markPaid}`, `POST /invoices/:id/mark-paid`,
 `GET /users?q=`, `POST /users/:id/suspend|unsuspend|unlock`, `GET /audit-logs?orgId=&action=&actor=&before=`,
 `GET /billing-events?status=`, `GET /plans`, `PATCH /plans/:id`,
-`GET|POST /catalog/versions`, `GET|PATCH|DELETE /catalog/versions/:id`, `POST /catalog/versions/:id/publish|archive|subjects`,
+`GET|POST /catalog/versions`, `GET|PATCH|DELETE /catalog/versions/:id`, `POST /catalog/versions/:id/publish|archive|subjects`
+(publish and archive return `notifiedOrgs`: organizations told that their scopes are behind the newest catalogue),
 `PATCH|DELETE /catalog/subjects/:id`, `POST /catalog/subjects/:id/materials`, `PATCH|DELETE /catalog/materials/:id`,
 `POST /catalog/versions/:id/verification {subjectIds?, materialIds?, status: "verified"|"needs_review"|"unverified", source?, url?, note?}`
 (draft or published versions; `409 VERSION_ARCHIVED` for archived ones; `verified` needs `source`, `needs_review` needs `note`;

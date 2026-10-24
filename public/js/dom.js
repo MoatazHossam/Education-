@@ -63,6 +63,8 @@ export function dialog({ title, body, actions }) {
       }, a.label))),
     );
     d.addEventListener('cancel', () => { d.remove(); resolve(null); });
+    // Closed another way (e.g. a link inside it was followed): clean up too.
+    d.addEventListener('close', () => { d.remove(); resolve(null); });
     document.body.append(d);
     d.showModal();
   });

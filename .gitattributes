@@ -1,0 +1,4 @@
+# Check out text files with LF line endings on every OS, including Windows with
+# core.autocrlf=true. Shell scripts run inside Linux containers (the PostgreSQL
+# init script, backups) fail with CRLF: "/bin/sh^M: bad interpreter".
+* text=auto eol=lf

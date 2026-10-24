@@ -7,6 +7,7 @@ import * as auth from './views/auth.js';
 import * as account from './views/account.js';
 import * as admin from './views/admin.js';
 import * as billing from './views/billing.js';
+import * as carry from './views/carry.js';
 import * as members from './views/members.js';
 import * as picker from './views/picker.js';
 import * as scopes from './views/scopes.js';
@@ -31,6 +32,7 @@ route('/billing/sandbox-checkout', { access: 'public', bare: true, view: billing
 route('/account', { access: 'user', view: account.accountView });
 route('/org/:orgId', { access: 'user', org: true, view: picker.pickerView });
 route('/org/:orgId/scopes', { access: 'user', org: true, view: scopes.scopesView });
+route('/org/:orgId/scopes/:scopeId/carry', { access: 'user', org: true, view: carry.carryView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });
 route('/org/:orgId/settings', { access: 'user', org: true, view: settings.settingsView });

@@ -23,6 +23,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | FR-P4 | Scopes can be renamed, described, duplicated (with items) and deleted. | `integration/scopes` |
 | FR-P5 | Scopes export as TXT (original "Copy list" layout), CSV (UTF-8 BOM, formula-injection safe) and JSON. | `integration/scopes`, `unit/security-primitives` |
 | FR-P6 | Materials that do not belong to the scope's catalogue version are rejected. | `integration/scopes` |
+| FR-P7 | A scope can be carried to another published catalogue version (usually the next academic year): the system matches the selection by natural key, shows what carries over, what has no counterpart (with the subject's new books as replacements), what changed in the covered subjects and what is new; editors then copy it into a new scope (within the plan's scope limit) or move it in place. Viewers can see the preview. The picker and the scopes list offer it when a newer catalogue exists. | `unit/carry-forward`, `integration/scope-carry-forward`, E2E journey 10 |
 
 ### Accounts and organizations
 | ID | Requirement | Verification |

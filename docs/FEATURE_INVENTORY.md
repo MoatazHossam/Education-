@@ -40,7 +40,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-07 | Roles & permissions | Team control | MISSING | IMPLEMENTED | owner/admin/editor/viewer enforced in `inOrg()` | Custom roles | P0 | `tenancy.test.ts`; E2E journey 2 |
 | S-08 | Invitations | Onboard teams | MISSING | IMPLEMENTED | Hashed single-use tokens, 7-day expiry, seat-checked | — | P0 | `tenancy.test.ts` |
 | S-09 | Ownership transfer | Continuity | MISSING | IMPLEMENTED | Password-confirmed, single-owner index | — | P1 | `tenancy.test.ts` |
-| S-10 | Named content scopes | Multiple plans per org | MISSING | IMPLEMENTED | CRUD, duplicate, per-version | Move scope to a new catalogue year | P0 | `scopes.test.ts` |
+| S-10 | Named content scopes | Multiple plans per org | MISSING | IMPLEMENTED | CRUD, duplicate, per-version; carry to the next academic year with review of missing, changed and new items (copy or move) | Notify customers when a new catalogue is published | P0 | `scopes.test.ts`, `scope-carry-forward.test.ts`; E2E journey 10 |
 | S-11 | Exports TXT/CSV/JSON | Hand-off | MISSING | IMPLEMENTED | Metered; CSV injection-safe | XLSX/PDF | P0 | `scopes.test.ts`, unit CSV test |
 | S-12 | Read API with API keys | Integrations | MISSING | IMPLEMENTED | `/api/v1`, hashed keys, quota | Webhooks on scope change | P1 | `admin-api-ops.test.ts` |
 | S-13 | Plans & server-side limits | Monetization | MISSING | IMPLEMENTED | Seats, scopes, exports/month, API/month, features | — | P0 | `scopes.test.ts`, E2E journey 5 |

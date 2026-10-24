@@ -3,11 +3,12 @@
 // search, blocks of subjects, selection tray, copy list). Selections are saved
 // to a server-side "content scope" instead of localStorage.
 import { ApiError, del, get, post } from '../api.js';
-import { confirmDialog, dialog, downloadText, errorMessage, h, toast } from '../dom.js';
+import { confirmDialog, dialog, downloadText, errorMessage, h, link, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg } from '../state.js';
 import { coverageLine, materialMark, verificationDetails } from '../verify.js';
+import { newerVersionFor } from './carry.js';
 import { planLimitHint } from './shell.js';
 
 const TRACKS = ['all', 'moe', 'sec', 'bac', 'ta', 'intl'];
@@ -325,7 +326,7 @@ export async function pickerView(ctx) {
 
   const scopeSelect = scopes.length
     ? h('select', { 'aria-label': t('picker.scope'), onchange: async (e) => { await flushing; navigate(`/org/${orgId}?scope=${e.target.value}`); } },
-      scopes.map((s) => h('option', { value: s.id, selected: s.id === scope?.id ? 'selected' : null }, `${s.name} (${s.academicYear})`)))
+      scopes.map((s) => h('option', { value: s.id, selected: s.id === scope?.id ? 'selected' : null }, s.name.includes(s.academicYear) ? s.name : `${s.name} (${s.academicYear})`)))
     : null;
   const scopeBar = h('div', { class: 'scopebar' },
     h('span', { class: 'lbl' }, t('picker.scope')),
@@ -345,6 +346,13 @@ export async function pickerView(ctx) {
       canEdit ? h('button', { type: 'button', class: 'btn', onclick: createScope }, t('scopes.createFirst')) : h('p', {}, t('picker.askEditor')))
     : null;
 
+  // A newer catalogue has been published since this scope was made: offer to carry it forward.
+  const next = scope ? newerVersionFor(scope, versions) : null;
+  const carryBanner = next
+    ? h('div', { class: 'notice carry-banner', role: 'status' }, t('carry.banner', { year: next.academicYear }), ' ',
+      canEdit ? link(`/org/${orgId}/scopes/${scope.id}/carry?to=${next.id}`, t('carry.bannerLink')) : null)
+    : null;
+
   drawControls();
   render();
 
@@ -355,7 +363,8 @@ export async function pickerView(ctx) {
       h('h1', {}, 'Egypt Curriculum Picker ', h('span', { lang: 'ar' }, '· دليل المناهج')),
       h('p', { class: 'lede' }, t('picker.lede')),
       noticeEl,
-      coverageLine(tree)),
+      coverageLine(tree),
+      carryBanner),
     h('div', { class: 'controls', role: 'region', 'aria-label': t('picker.filters') },
       scopeBar,
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.track')), tracksEl),

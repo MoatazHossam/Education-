@@ -73,7 +73,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | NFR-4 Latency | p95 < 300 ms for API reads and writes at 20 concurrent users on 2 vCPU **(assumption)** | Measured on 4 vCPU dev sandbox: p95 53–152 ms (TEST_REPORT.md) | Met in sandbox; re-measure on production hardware |
 | NFR-5 Recoverability | RPO ≤ 24 h, RTO ≤ 4 h **(assumption)** | Daily dumps + verified restore procedure | Procedure verified locally |
 | NFR-6 Localization | Full EN/AR UI, RTL, Arabic emails | — | Met |
-| NFR-7 Accessibility | Keyboard operable, labelled controls, visible focus, sufficient contrast; WCAG 2.1 AA target | — | Partially verified (manual + E2E role/label queries); no automated axe audit yet |
+| NFR-7 Accessibility | Keyboard operable, labelled controls, visible focus, sufficient contrast; WCAG 2.2 AA target | 0 automated WCAG 2.2 A/AA findings (axe-core) on every screen | Met for automated checks (41 screens: English/Arabic, light/dark, desktop/phone) and a keyboard-only journey (TEST_REPORT §3); no manual screen-reader review yet |
 | NFR-8 Browser support | Current Chrome, Edge, Firefox, Safari; phones ≥ 360 px | — | Chromium verified by E2E; others not tested |
 | NFR-9 Maintainability | TypeScript strict, lint, CI, migrations | — | Met |
 | NFR-10 Portability | Containerised; any Linux host with Docker and PostgreSQL 16 | — | Met (local) |

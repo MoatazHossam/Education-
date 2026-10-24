@@ -7,7 +7,8 @@
 | Unit | Vitest | `tests/unit` | pure functions | Billing maths (effective plan, proration), time helpers, crypto envelope, password hashing, TOTP replay, webhook signatures (sandbox, Paymob), export formats (text layout, CSV injection), configuration guards, translation completeness, **fidelity of the catalogue to the original artifact** |
 | Integration | Vitest + `app.inject` | `tests/integration` | real PostgreSQL with production-like roles | API behaviour end to end inside the server, including database constraints and RLS |
 | Provider contract | Vitest + local HTTP simulator | `tests/integration/paymob-contract.test.ts`, `tests/helpers/paymob-simulator.ts` | simulator of Paymob's documented API | The real Paymob adapter's requests, callbacks, signatures and invoice binding |
-| End-to-end | Playwright (Chromium) | `tests/e2e` | real server process + real browser | User journeys, UI, crash recovery |
+| End-to-end | Playwright (Chromium) | `tests/e2e/journeys.spec.ts` | real server process + real browser | User journeys, UI, crash recovery |
+| Accessibility | Playwright + axe-core | `tests/e2e/accessibility.spec.ts` (runs after the journeys) | the same server, with the journeys' data | WCAG 2.2 A/AA rules on every screen and the main dialogs in English and Arabic, light and dark, desktop and phone; keyboard-only use of the picker and dialogs |
 | Security (cross-cutting) | Vitest | `tenancy`, `authz-coverage`, `auth`, `billing` | | BOLA/IDOR, privilege escalation, CSRF, brute force, webhook forgery/replay, plan-limit bypass |
 | Performance smoke | `scripts/perf-smoke.mjs` | — | running server | Latency/throughput of key endpoints |
 | Operational | shell scripts | `scripts/*.sh`, Docker | real containers | Image build, compose health, backup → restore → verify |
@@ -73,7 +74,7 @@ build with a production-guard smoke test.
 
 ## 6. Gaps
 
-- No automated accessibility audit (axe) yet; no cross-browser E2E (Firefox/WebKit).
+- Accessibility is checked automatically (axe-core finds roughly a third to a half of WCAG issues) plus one keyboard journey; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet. No cross-browser E2E (Firefox/WebKit).
 - Paymob adapter tested against a simulator and an independent HMAC vector, not against Paymob; run `npm run paymob:check` with test-mode keys, then the staging checklist.
 - No load test on production-sized infrastructure; no chaos testing of PostgreSQL failover.
 - E2E runs Chromium only.

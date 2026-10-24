@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, form, h, promptDialog, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, form, h, promptDialog, tableCard, toast } from '../dom.js';
 import { setLocale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
@@ -80,7 +80,7 @@ export async function accountView(ctx) {
   drawMfa();
 
   const { sessions } = await get('/api/auth/sessions');
-  const sessionsCard = h('div', { class: 'card table-wrap' }, h('h2', {}, t('account.sessions')),
+  const sessionsCard = tableCard(t('account.sessions'), h('h2', {}, t('account.sessions')),
     h('table', { class: 'data' }, h('tbody', {}, sessions.map((s) => h('tr', {},
       h('td', {}, s.userAgent ? s.userAgent.slice(0, 80) : '—', h('div', { class: 'muted mono' }, s.ip || '')),
       h('td', {}, t('account.lastActive'), ' ', fmtDate(s.lastSeenAt, true)),

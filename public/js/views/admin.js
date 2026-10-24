@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, promptDialog, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, promptDialog, tableCard, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { auditTable } from './settings.js';
@@ -46,7 +46,7 @@ export async function orgsView(ctx) {
   return h('div', {},
     pageHead(t('admin.orgs'), t('admin.orgsSub')),
     h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); navigate(`/admin/orgs?q=${encodeURIComponent(input.value)}`); } }, input, h('button', { class: 'btn small', type: 'submit' }, t('admin.search'))),
-    h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+    tableCard(t('admin.orgs'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, ['Name', 'Plan', 'Members', 'Scopes', 'Status', 'Created'].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, organizations.map((o) => h('tr', {},
         h('td', {}, link(`/admin/orgs/${o.id}`, o.name), h('div', { class: 'mono muted' }, o.slug)),
@@ -112,7 +112,7 @@ export async function orgDetailView(ctx) {
       h('div', { class: 'card' }, h('h2', {}, t('nav.members')), h('ul', {}, d.members.map((m) => h('li', {}, `${m.name} <${m.email}> — ${m.role}${m.status !== 'active' ? ' (suspended)' : ''}${m.mfaEnabled ? ' · MFA' : ''}`))),
         h('p', { class: 'muted' }, t('admin.scopeCount', { n: d.scopeCount })))),
     supportCard,
-    h('div', { class: 'card table-wrap' }, h('h2', {}, t('billing.history')), h('table', { class: 'data' }, h('tbody', {}, d.invoices.map((i) => h('tr', {},
+    tableCard(t('billing.history'), h('h2', {}, t('billing.history')), h('table', { class: 'data' }, h('tbody', {}, d.invoices.map((i) => h('tr', {},
       h('td', { class: 'mono' }, i.number), h('td', {}, `${i.planId} · ${i.kind}`), h('td', { class: 'mono' }, fmtMoney(i.amountCents, i.currency)), h('td', {}, i.status),
       h('td', {}, i.status === 'open' ? h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await confirmDialog(t('admin.markPaid'), t('admin.markPaidText', { n: i.number })) && (await safe(() => post(`/api/admin/invoices/${i.id}/mark-paid`)))) reload(); } }, t('admin.markPaid')) : fmtDate(i.paidAt))))))),
     h('p', {}, link(`/admin/audit?orgId=${orgId}`, t('admin.orgAudit'))));
@@ -130,7 +130,7 @@ export async function usersView(ctx) {
   return h('div', {},
     pageHead(t('admin.users'), null),
     h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); navigate(`/admin/users?q=${encodeURIComponent(input.value)}`); } }, input, h('button', { class: 'btn small', type: 'submit' }, t('admin.search'))),
-    h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+    tableCard(t('admin.users'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, ['User', 'Status', 'MFA', 'Last login', ''].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, users.map((u) => h('tr', {},
         h('td', {}, h('b', {}, u.name), u.isPlatformAdmin ? h('span', { class: 'pill warn' }, ' admin') : null, h('div', { class: 'muted' }, u.email)),
@@ -155,7 +155,7 @@ export async function catalogView(ctx) {
   });
   return h('div', {},
     pageHead(t('admin.catalog'), t('admin.catalogSub')),
-    h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+    tableCard(t('admin.catalog'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, ['Version', 'Status', 'Subjects', 'Materials', t('verify.colVerified'), 'Published', ''].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, versions.map((v) => h('tr', {},
         h('td', {}, link(`/admin/catalog/${v.id}`, `${v.academicYear} — ${v.label}`)),
@@ -413,8 +413,8 @@ export async function eventsView(ctx) {
   const { events } = await get(`/api/admin/billing-events?limit=100${status ? `&status=${status}` : ''}`);
   return h('div', {},
     pageHead(t('admin.events'), t('admin.eventsSub')),
-    h('div', { class: 'seg' }, ['', 'processed', 'ignored', 'failed'].map((s) => link(`/admin/events${s ? `?status=${s}` : ''}`, s || 'all', { class: 'chipbtn', 'aria-pressed': String(s === status) }))),
-    h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+    h('div', { class: 'seg' }, ['', 'processed', 'ignored', 'failed'].map((s) => link(`/admin/events${s ? `?status=${s}` : ''}`, s || 'all', { class: 'chipbtn', 'aria-current': s === status ? 'page' : null }))),
+    tableCard(t('admin.events'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, ['Received', 'Provider', 'Event', 'Type', 'Status', 'Note'].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, events.map((e) => h('tr', {},
         h('td', {}, fmtDate(e.receivedAt, true)), h('td', {}, e.provider), h('td', { class: 'mono' }, e.eventId), h('td', { class: 'mono' }, e.type),

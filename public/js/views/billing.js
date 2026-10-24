@@ -1,5 +1,5 @@
 import { get, post } from '../api.js';
-import { confirmDialog, errorMessage, fmtDate, fmtMoney, fmtNum, h, link, toast } from '../dom.js';
+import { confirmDialog, errorMessage, fmtDate, fmtMoney, fmtNum, h, link, tableCard, toast } from '../dom.js';
 import { locale, setLocale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, session } from '../state.js';
@@ -37,7 +37,7 @@ function meter(label, used, max) {
   return h('div', { class: 'stat' },
     h('div', { class: 'k' }, label),
     h('div', { class: 'v' }, `${fmtNum(used)} / ${fmtNum(max)}`),
-    max === null ? null : h('div', { class: `meter ${pct >= 100 ? 'full' : ''}`, role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(used) }, bar));
+    max === null ? null : h('div', { class: `meter ${pct >= 100 ? 'full' : ''}`, role: 'meter', 'aria-label': label, 'aria-valuetext': `${fmtNum(used)} / ${fmtNum(max)}`, 'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(used) }, bar));
 }
 
 async function goCheckout(fn) {
@@ -152,7 +152,7 @@ export async function billingView(ctx) {
     open.map((i) => h('div', { class: 'row' }, h('span', { class: 'mono' }, i.number), h('span', {}, fmtMoney(i.amountCents, i.currency)), h('span', { class: 'muted' }, t(`invoice.kind.${i.kind}`)),
       isOwner && b.provider ? h('button', { type: 'button', class: 'btn small', onclick: () => goCheckout(() => post(`/api/orgs/${orgId}/billing/invoices/${i.id}/checkout`)) }, t('billing.payInvoice')) : null))) : null;
 
-  const history = h('div', { class: 'card table-wrap' }, h('h2', {}, t('billing.history')),
+  const history = tableCard(t('billing.history'), h('h2', {}, t('billing.history')),
     b.invoices.length ? h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, [t('billing.invoice'), t('billing.description'), t('billing.amount'), t('billing.status'), t('billing.date')].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, b.invoices.map((i) => h('tr', {},

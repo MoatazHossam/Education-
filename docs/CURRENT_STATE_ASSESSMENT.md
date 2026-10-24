@@ -66,7 +66,7 @@ editor, and customers see those marks; the editorial review itself is an open bu
 | Billing lifecycle (sandbox provider) | COMPLETE | `billing.test.ts`, E2E journey 4 |
 | Paymob payment adapter | NOT VERIFIED (against Paymob) | Contract-tested against a simulator; HMAC matches Odoo's reference vector; no Paymob keys available |
 | Platform admin, support access, audit log | COMPLETE | `admin-api-ops.test.ts`, E2E journey 7 |
-| Front end (EN/AR, RTL, responsive) | COMPLETE | E2E journeys 1–10, visual QA screenshots |
+| Front end (EN/AR, RTL, responsive) | COMPLETE | E2E journeys 1–11, visual QA screenshots |
 | Docker / compose / backups | COMPLETE (locally verified) | Built image, full stack healthy, backup→restore→verify run |
 | CI pipeline | NOT VERIFIED | Workflow written; not executed on GitHub (push to the repository was refused — see PROJECT_STATUS.md) |
 | Production deployment, monitoring/alerting | NOT STARTED / BLOCKED | Requires hosting account, domain, SMTP, provider credentials |

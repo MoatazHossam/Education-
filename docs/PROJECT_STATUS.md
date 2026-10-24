@@ -18,7 +18,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
 | B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
-| B-6 | Catalogue content unverified (sourced from news articles in the original). The tool to record verification now exists (Platform admin → Catalogue); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
+| B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 
 ## 2. Deliverables
 
@@ -37,7 +37,13 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** bulk import/export of catalogue edits and verification marks (Roadmap P2).
+- **Next:** accessibility audit (Roadmap P1).
+
+### Catalogue spreadsheet export and import · COMPLETE
+- **Implemented:** platform admins download any catalogue version as a CSV (UTF-8 with BOM, one row per subject and per material with ids, content and verification columns; subject columns repeat on material rows for filtering) and upload the edited file. Uploads show a preview first: every change by row, every error, and notes; nothing is written until the admin applies it, and applying re-checks the file inside the transaction and writes all of it or none of it. Verification marks can change on drafts and published versions; content corrections and new materials in existing subjects only on drafts; subjects are added and entries deleted only in the editor. A corrected entry loses its mark unless the same row updates the mark. Newly flagged entries notify customers as in the editor; imports are audited (`admin.catalog_imported`). Excel quirks handled: semicolon-separated files, CRLF, trailing blank rows, formula guard round trip; non-UTF-8 files are rejected with instructions.
+- **Files:** `src/lib/csv.ts`, `src/catalog/sheet.ts`, `src/admin/routes.ts`, `public/js/views/admin.js`.
+- **Tests:** `unit/csv.test.ts` (3), `unit/catalog-sheet.test.ts` (6), `catalog-sheet.test.ts` (5), E2E 11 (download, edit three marks, upload, preview, apply) — pass.
+- **Limitations:** CSV only (no .xlsx); no new subjects or deletions by spreadsheet; up to 20,000 rows and 8 MB per file.
 
 ### Catalogue change notifications · COMPLETE
 - **Implemented:** when a platform admin publishes a catalogue for a later academic year, or archives the version an organization's scopes use, the owners, admins and editors of each active organization with scopes behind the newest published catalogue get an in-app notification and an email in their own language. The link goes to the carry-forward review (one scope) or the scopes list (several). Each organization hears about a given academic year once (`catalog_notices`), so corrections and archiving don't repeat it. When admins newly flag entries "needs review" (or change the note), organizations that selected those entries (directly or through the subject) are told which items and why; re-saving the same flag, verified marks and unselected entries notify no one. Users can turn the emails off in their account (`users.catalog_emails`); in-app notifications stay. Following a link in the notifications dialog now closes it.
@@ -77,11 +83,11 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** per-subject and per-material marks (verified / needs review / not verified) with source, link, public note and review date; set by platform admins singly, per subject with its materials, or per grade; allowed on published versions (marks are annotations; content stays frozen); content edits in a draft clear the edited entry's mark; same-year draft copies keep marks, a new academic year starts unverified; every change audited. Customers see badges, details and coverage in the picker, and the marks in CSV/JSON exports and the v1 API. The reviewer's identity is not exposed.
 - **Files:** `src/db/migrations/0003_catalog_verification.ts`, `src/admin/routes.ts`, `src/catalog/service.ts`, `src/scopes/export.ts`, `public/js/verify.js`, `public/js/views/{picker,admin}.js`.
 - **Tests:** `catalog-verification.test.ts` (6), unit CSV test, E2E 8 (admin marks a subject; customer sees badge, source link, Arabic label) — pass.
-- **Limitations:** the marks are only as good as the review behind them (B-6); no bulk import of marks from a spreadsheet yet.
+- **Limitations:** the marks are only as good as the review behind them (B-6); marks can also be imported from a spreadsheet (see below).
 
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
-- **Tests:** E2E 1–10, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
+- **Tests:** E2E 1–11, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
 - **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; no automated accessibility audit.
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
@@ -106,7 +112,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (123 unit/integration + 10 E2E passing) |
+| Core workflows function correctly | ✓ (137 unit/integration + 11 E2E passing) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

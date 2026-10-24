@@ -10,6 +10,7 @@ import { publicPlan } from '../billing/routes.js';
 import { markInvoicePaid } from '../billing/service.js';
 import { notifyFlaggedForReview, notifyScopesBehind } from '../catalog/notify.js';
 import { invalidateCatalogCache, loadCatalogTree } from '../catalog/service.js';
+import { applyImport, exportSheet, loadSheetState, planImport, UNVERIFIED } from '../catalog/sheet.js';
 import { checkDatabase, withSystemContext, type Trx } from '../db/index.js';
 import { pendingMigrations } from '../db/migrator.js';
 import type { AppContext } from '../http/context.js';
@@ -63,8 +64,7 @@ const VerificationBody = z
   .refine((b) => b.status !== 'verified' || b.source, { message: 'A verified entry needs the source it was checked against', path: ['source'] })
   .refine((b) => b.status !== 'needs_review' || b.note, { message: 'Explain what needs review', path: ['note'] });
 
-// Content edits invalidate an entry's verification: it attested the previous content.
-const UNVERIFIED = { verification_status: 'unverified', verification_source: null, verification_url: null, verification_note: null, reviewed_by: null, reviewed_at: null } as const;
+// Content edits invalidate an entry's verification (UNVERIFIED): it attested the previous content.
 
 function adminActor(req: FastifyRequest): AuditActor {
   const { user } = requirePlatformAdmin(req);
@@ -732,6 +732,40 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
         requestMeta(req),
       );
       return { status: body.status, subjects: subjectIds.length, materials: materialIds.length };
+    });
+  });
+
+  // ------------------------------------------------------------ spreadsheet export / import
+  app.get('/api/admin/catalog/versions/:id/sheet', async (req, reply) => {
+    requirePlatformAdmin(req);
+    const { id } = parse(z.object({ id: zUuid }), req.params);
+    const version = await db.selectFrom('catalog_versions').select(['academic_year', 'status']).where('id', '=', id).executeTakeFirst();
+    if (!version) throw notFound('Catalog version');
+    const csv = exportSheet(await loadSheetState(db, id));
+    const name = `catalogue-${version.academic_year.replace('/', '-')}-${version.status}.csv`;
+    return reply.type('text/csv; charset=utf-8').header('Content-Disposition', `attachment; filename="${name}"`).send(csv);
+  });
+
+  // Preview (apply: false) or apply an edited sheet. Applying re-plans inside the
+  // transaction, so it never writes a stale preview; any error rejects the whole file.
+  app.post('/api/admin/catalog/versions/:id/sheet', { bodyLimit: 10 * 1_048_576 }, async (req) => {
+    const actor = adminActor(req);
+    const { id } = parse(z.object({ id: zUuid }), req.params);
+    const body = parse(z.object({ csv: z.string().max(8_000_000), apply: z.boolean().default(false) }), req.body);
+    return sys(async (trx) => {
+      const version = await trx.selectFrom('catalog_versions').select(['id', 'status']).where('id', '=', id).forUpdate().executeTakeFirst();
+      if (!version) throw notFound('Catalog version');
+      if (version.status === 'archived') throw conflict('Archived catalogue versions are read-only.', 'VERSION_ARCHIVED');
+      const plan = planImport(await loadSheetState(trx, id), body.csv, { draft: version.status === 'draft' });
+      if (!body.apply) return { applied: false, plan };
+      if (plan.errors.length) throw new AppError(400, 'IMPORT_INVALID', `The sheet has ${plan.errors.length} error${plan.errors.length === 1 ? '' : 's'}; nothing was changed`, { errors: plan.errors.slice(0, 200) });
+      if (!plan.changes.length) return { applied: true, summary: plan.summary };
+      const flagged = await applyImport(trx, id, plan, actor.userId ?? null);
+      await trx.updateTable('catalog_versions').set({ updated_at: new Date() }).where('id', '=', id).execute();
+      invalidateCatalogCache(id);
+      for (const [note, materialIds] of flagged) await notifyFlaggedForReview(trx, config, [...new Set(materialIds)], note);
+      await recordAudit(trx, actor, { action: 'admin.catalog_imported', targetType: 'catalog_version', targetId: id, metadata: { ...plan.summary, warnings: plan.warnings.length } }, requestMeta(req));
+      return { applied: true, summary: plan.summary };
     });
   });
 

@@ -39,7 +39,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | P1 | ~~Verification badges and source per subject/material~~ — done (PROJECT_STATUS: catalogue verification marks) | — | Trust |
 | P1 | Shared rate-limit store (Redis) and second app instance | 1–2 | Availability |
 | P1 | Accessibility audit (axe + manual), Firefox/WebKit E2E | 2–3 | NFR-7/8 |
-| P2 | Bulk catalogue import/export (CSV) for editors | 2–3 | Editorial efficiency |
+| P2 | ~~Bulk catalogue import/export (CSV) for editors~~ — done (PROJECT_STATUS: catalogue spreadsheet export and import) | — | Editorial efficiency |
 | P2 | Scope comparison/diff and per-item notes/assignees | 4–6 | Team workflow |
 | P2 | Webhooks to customer systems on scope change | 2–3 | Integrations |
 | P2 | Card-on-file automatic renewals (Paymob subscriptions module) | 3–5 | Reduce involuntary churn |

@@ -143,6 +143,10 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 `POST /catalog/versions/:id/verification {subjectIds?, materialIds?, status: "verified"|"needs_review"|"unverified", source?, url?, note?}`
 (draft or published versions; `409 VERSION_ARCHIVED` for archived ones; `verified` needs `source`, `needs_review` needs `note`;
 every id must belong to the version; changes the catalogue ETag; audited as `admin.catalog_verification_set`),
+`GET /catalog/versions/:id/sheet` (CSV download: one row per subject and material with ids, content and verification columns),
+`POST /catalog/versions/:id/sheet {csv, apply?: boolean}` (up to 8 MB / 20,000 rows; `apply: false` returns `{plan: {changes, errors, warnings, summary}}`
+and writes nothing; `apply: true` writes the whole file or nothing (`400 IMPORT_INVALID` with the errors); verification columns on drafts and
+published versions, content and new materials on drafts only; `409 VERSION_ARCHIVED`; audited as `admin.catalog_imported`),
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited).
 
 ## 3. Public API v1 (for customer integrations)

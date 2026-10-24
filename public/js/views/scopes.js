@@ -3,13 +3,14 @@ import { confirmDialog, dialog, errorMessage, fmtDate, h, link, promptDialog, to
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg } from '../state.js';
+import { newerVersionFor } from './carry.js';
 import { pageHead, planLimitHint } from './shell.js';
 
 export async function scopesView(ctx) {
   const { orgId } = ctx.params;
   const info = ctx.info;
   const canEdit = can(info.role, 'editor');
-  const { scopes, limit } = await get(`/api/orgs/${orgId}/scopes`);
+  const [{ scopes, limit }, { versions }] = await Promise.all([get(`/api/orgs/${orgId}/scopes`), get('/api/catalog/versions')]);
 
   const refresh = () => { invalidateOrg(orgId); ctx.render(); };
   const act = async (fn) => { try { await fn(); refresh(); } catch (err) { toast(errorMessage(err), 'error'); } };
@@ -43,6 +44,11 @@ export async function scopesView(ctx) {
     }
   }
 
+  const carryLink = (s) => {
+    const next = newerVersionFor(s, versions);
+    return next ? link(`/org/${orgId}/scopes/${s.id}/carry?to=${next.id}`, t('carry.action', { year: next.academicYear }), { class: 'btn small' }) : null;
+  };
+
   const body = scopes.length
     ? h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, [t('scopes.name'), t('scopes.year'), t('scopes.items'), t('scopes.updated'), ''].map((c) => h('th', { scope: 'col' }, c)))),
@@ -52,6 +58,7 @@ export async function scopesView(ctx) {
         h('td', { class: 'mono' }, String(s.itemCount)),
         h('td', {}, fmtDate(s.updatedAt)),
         h('td', {}, canEdit ? h('div', { class: 'row' },
+          carryLink(s),
           s.readOnly ? null : h('button', { type: 'button', class: 'btn small ghost', onclick: () => rename(s) }, t('common.edit')),
           h('button', { type: 'button', class: 'btn small ghost', onclick: () => duplicate(s) }, t('scopes.duplicate')),
           h('button', { type: 'button', class: 'btn small danger ghost', onclick: () => remove(s) }, t('common.delete'))) : null))))))

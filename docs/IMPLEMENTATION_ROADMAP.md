@@ -34,7 +34,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 
 | Priority | Item | Effort | Why |
 | --- | --- | --- | --- |
-| P1 | "Carry scope to next academic year": map selections from version N to N+1 by natural key, show what changed | 4–6 | Yearly renewal moment for every customer |
+| P1 | ~~"Carry scope to next academic year": map selections from version N to N+1 by natural key, show what changed~~ — done (PROJECT_STATUS: carry a scope to the next academic year) | — | Yearly renewal moment for every customer |
 | P1 | Catalogue change notifications (subjects/editions changed since your scope was made) | 3–5 | Core value: freshness |
 | P1 | ~~Verification badges and source per subject/material~~ — done (PROJECT_STATUS: catalogue verification marks) | — | Trust |
 | P1 | Shared rate-limit store (Redis) and second app instance | 1–2 | Availability |

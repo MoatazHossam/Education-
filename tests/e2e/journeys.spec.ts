@@ -267,3 +267,49 @@ test('Arabic interface switches to right-to-left and the picker fits a phone scr
   await ctx.close();
 });
 
+test('a newer catalogue is published and the owner carries a scope forward after reviewing what changed', async ({ page, browser }) => {
+  // The platform admin prepares 2027/2028 from the admin UI; one book in the owner's scope is dropped from the new year.
+  await signInAsPlatformAdmin(page);
+  await page.goto('/admin/catalog');
+  await page.getByLabel('Academic year').fill('2027/2028');
+  await page.getByLabel('Label').fill('Egypt K-12 curriculum — academic year 2027/2028');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await page.waitForURL(/\/admin\/catalog\/[0-9a-f-]{36}$/);
+  const nextId = /catalog\/([0-9a-f-]{36})/.exec(page.url())![1]!;
+  const items = await ownerQuery(
+    `SELECT i.material_id, m.title FROM scope_items i JOIN scopes s ON s.id = i.scope_id JOIN catalog_materials m ON m.id = i.material_id
+     WHERE s.org_id = $1 AND s.name = 'Grade 4 pilot' ORDER BY m.title`,
+    [orgAId],
+  );
+  const dropped = items[0] as { material_id: string; title: string };
+  await ownerQuery(
+    `DELETE FROM catalog_materials nm USING catalog_subjects ns, catalog_materials om, catalog_subjects os
+     WHERE om.id = $2 AND os.id = om.subject_id AND ns.version_id = $1 AND nm.subject_id = ns.id AND nm.title = om.title
+       AND ns.grade = os.grade AND ns.track = os.track AND ns.block = os.block AND ns.code = os.code`,
+    [nextId, dropped.material_id],
+  );
+  await page.goto('/admin/catalog');
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+  await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
+
+  const ownerCtx = await browser.newContext();
+  const owner = await ownerCtx.newPage();
+  await login(owner, ownerEmail);
+  await owner.goto(`/org/${orgAId}`);
+  const banner = owner.locator('.carry-banner');
+  await expect(banner).toContainText('A newer catalogue (2027/2028) has been published.');
+  await banner.getByRole('link', { name: 'Carry this scope forward' }).click();
+  await expect(owner.getByRole('heading', { name: 'Carry “Grade 4 pilot” forward' })).toBeVisible();
+  await expect(owner.getByText(`${items.length - 1} of ${items.length} selected items carry over as they are. 1 need your decision.`)).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Not in the 2027/2028 catalogue' })).toBeVisible();
+  await expect(owner.locator('.carry-subj li', { hasText: dropped.title })).toBeVisible();
+  await owner.getByRole('button', { name: 'Carry forward' }).click();
+
+  await owner.waitForURL(/\/org\/[0-9a-f-]{36}\?scope=/);
+  await expect(owner.locator('.eyebrow')).toContainText('Academic year 2027/2028');
+  await expect(owner.locator('.scopebar select option:checked')).toHaveText('Grade 4 pilot (2027/2028)');
+  await expect(owner.locator('.tray .count')).toHaveText(`Selected: ${items.length - 1} items`);
+  await expect(owner.locator('.carry-banner')).toHaveCount(0);
+  await ownerCtx.close();
+});

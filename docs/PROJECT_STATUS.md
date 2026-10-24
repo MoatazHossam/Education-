@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-23. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-24. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -37,7 +37,13 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** carry a scope to the next academic year's catalogue (Roadmap P1).
+- **Next:** catalogue change notifications (Roadmap P1).
+
+### Carry a scope to the next academic year · COMPLETE
+- **Implemented:** a scope's selection is matched to another published catalogue version by natural key. Subjects match on grade, track, block and code, falling back to grade, track and code when that is unambiguous on both sides; materials match on title, then on title ignoring case and spacing. The preview lists carried items (and loose renames), items with no counterpart (with the subject's new books offered as replacements), changes to subjects the scope covers, and new books. Apply either copies into a new scope (counts toward the plan's scope limit) or moves the scope in place (works at the Free plan's single scope; read-only scopes can't be moved). Chosen replacements are added and unticked items left out; audited as `scope.carried_forward`. Entry points: a banner in the picker and a button in the scopes list whenever a newer published catalogue exists.
+- **Files:** `src/scopes/carry.ts`, `src/scopes/routes.ts`, `public/js/views/carry.js`, `public/js/views/{scopes,picker}.js`.
+- **Tests:** `unit/carry-forward.test.ts` (4), `scope-carry-forward.test.ts` (4), E2E 10 (admin publishes 2027/2028 with a book dropped; the owner reviews and carries the scope) — pass.
+- **Limitations:** matching is by title, so a book retitled beyond case and spacing appears as "missing" with its new edition offered as a replacement, not matched automatically; no notification is sent when a new catalogue is published (only the in-app banner).
 
 ### Phase 3 — SaaS capabilities · COMPLETE
 - **Implemented:** registration + verification, login with lockout and rate limits, sessions (rotation, idle/absolute expiry, revocation), CSRF (origin + HMAC token), TOTP MFA with encrypted secrets, replay protection and recovery codes (mandatory for platform admins, optional org policy), password reset/change, organizations, 4 roles, invitations, ownership transfer, member removal, org deletion, personal-data export, account deletion, plan limits.
@@ -69,7 +75,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
-- **Tests:** E2E 1–9, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
+- **Tests:** E2E 1–10, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
 - **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; no automated accessibility audit.
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
@@ -94,7 +100,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (111 unit/integration + 9 E2E passing) |
+| Core workflows function correctly | ✓ (119 unit/integration + 10 E2E passing) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

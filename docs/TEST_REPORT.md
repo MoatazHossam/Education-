@@ -186,7 +186,8 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**11 tests, 11 passed** (29.5 s, 2026-10-24), Chromium, real server process on port 3100.
+**13 tests, 13 passed** (2.7 min, 2026-10-24), Chromium, real server process on port 3100: 11 journeys
+(25 s), then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -205,6 +206,30 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
 back — correct behaviour; the test was changed to wait for "Saved".
+
+### Accessibility (`tests/e2e/accessibility.spec.ts`)
+
+| # | Test | Result |
+| --- | --- | --- |
+| 12 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 41 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog | Pass — 0 findings (2.1 min) |
+| 13 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+
+Before the fixes (same tests, front end at the previous commit) test 12 reported 26 findings:
+
+| Rule (impact) | Count | Where | Fix |
+| --- | --- | --- | --- |
+| `color-contrast` (serious) | 13 | amber text (`--pass`): the trial banner on every organization page, picker notices and "needs review" statuses, admin user warning pills | `--pass` #9a6a12 → #83580c: 4.17:1 → 5.50:1 on #faf0d9, 6.24:1 on white |
+| `target-size` (serious) | 8 | picker source links; verification badge `summary` in the admin editor | 24 px minimum height via padding |
+| `aria-meter-name` (serious) | 3 | billing usage meters (English, Arabic, dark) | `aria-label` and `aria-valuetext` "used / limit" |
+| `scrollable-region-focusable` (serious) | 1 | admin audit table | all 11 table cards are labelled, focusable regions (`tableCard`) |
+| `aria-allowed-attr` (critical) | 1 | admin webhook filter links with `aria-pressed` | `aria-current="page"` |
+
+Test 13 failed on the old front end: following the skip link redrew the page (the router treated `#main`
+as a navigation). With that fixed, it then failed because Escape removed the dialog before the browser
+could return focus; the dialog helper now cleans up on `close` and focuses the opener.
+
+Automated checks find only part of WCAG failures (no judgement of reading order, meaningful labels or
+screen-reader output); a manual screen-reader review is still to be done.
 
 ## 4. Operational verification (manual, executed)
 
@@ -281,5 +306,5 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 
 - CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
-- Cross-browser E2E (Firefox, WebKit), automated accessibility audit, external penetration test.
+- Cross-browser E2E (Firefox, WebKit), manual screen-reader review, external penetration test.
 - Production deployment, TLS issuance by Caddy, monitoring and alerting.

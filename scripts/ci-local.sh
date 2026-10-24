@@ -64,7 +64,7 @@ if [[ "$JOBS" == *e2e* ]]; then
   if [[ -z "${CI_SKIP_BROWSER_INSTALL:-}" ]]; then
     step "e2e: install Chromium" npx playwright install --with-deps chromium
   fi
-  step "e2e: Playwright journeys" npm run test:e2e
+  step "e2e: Playwright journeys and accessibility" npm run test:e2e
 fi
 
 if [[ "$JOBS" == *docker* ]]; then

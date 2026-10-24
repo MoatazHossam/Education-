@@ -30,6 +30,11 @@ export function append(el, children) {
 
 export function clear(el) { while (el.firstChild) el.firstChild.remove(); return el; }
 
+/** A card holding a table that may scroll sideways: a labelled, focusable region so keyboard users can scroll it. */
+export function tableCard(label, ...children) {
+  return h('div', { class: 'card table-wrap', tabindex: '0', role: 'region', 'aria-label': label }, ...children);
+}
+
 export function link(href, text, attrs = {}) {
   return h('a', { href, 'data-link': '', ...attrs }, text);
 }
@@ -52,19 +57,26 @@ export function errorMessage(err) {
 /** Modal dialog built on <dialog>; resolves with the clicked action value. */
 export function dialog({ title, body, actions }) {
   return new Promise((resolve) => {
+    const opener = document.activeElement;
+    let value = null;
     const d = h('dialog', { 'aria-labelledby': 'dlg-title' },
       h('h2', { id: 'dlg-title' }, title),
       body,
       h('div', { class: 'dialog-actions' }, actions.map((a) => h('button', {
         type: 'button', class: `btn ${a.kind || ''}`, onclick: async () => {
           if (a.validate && !(await a.validate())) return;
-          d.close(); d.remove(); resolve(a.value);
+          value = a.value;
+          d.close();
         },
       }, a.label))),
     );
-    d.addEventListener('cancel', () => { d.remove(); resolve(null); });
-    // Closed another way (e.g. a link inside it was followed): clean up too.
-    d.addEventListener('close', () => { d.remove(); resolve(null); });
+    // However it closes (an action, Escape, a link inside it), clean up and return
+    // focus to the control that opened it, when that is still on the page.
+    d.addEventListener('close', () => {
+      d.remove();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      resolve(value);
+    });
     document.body.append(d);
     d.showModal();
   });

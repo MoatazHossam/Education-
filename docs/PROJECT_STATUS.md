@@ -37,7 +37,19 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** accessibility audit (Roadmap P1).
+- **Next:** shared rate-limit store and a second app instance; manual screen-reader review (Roadmap P1).
+
+### Accessibility audit · COMPLETE
+- **Implemented:** an automated WCAG 2.2 A/AA check (axe-core 4.13 in Playwright) of 41 screens and dialogs: the signed-out pages, every organization page, the picker in four states, the new-scope, notifications and verification dialogs, and every platform-admin page, in English and Arabic, light and dark, desktop and a 390 px phone. It runs in the E2E suite after the journeys, so pages carry real data, and any finding fails it. The first run reported 26 findings, all fixed:
+  - colour contrast (13): the amber used for the trial banner, notices, "needs review" statuses and warnings measured 4.17:1 on its pale background; it is now 5.50:1 (light theme; dark already passed);
+  - target size (8): source links in the picker and the verification badges were under 24 px tall;
+  - unnamed meters (3): billing usage meters now have a name and a "used / limit" value;
+  - keyboard access to a scrolling table (1): every table card is now a labelled region that takes focus, so it can be scrolled with the keyboard;
+  - invalid ARIA (1): the admin webhook filter links used `aria-pressed`; they now mark the current filter with `aria-current`.
+  A keyboard-only test found two more problems, also fixed: closing a dialog with Escape lost focus instead of returning it to the button that opened it, and following the skip link was handled by the router as a navigation and redrew the page; it now moves focus to the page heading.
+- **Files:** `tests/e2e/accessibility.spec.ts`, `tests/e2e/helpers.ts` (shared with the journeys), `playwright.config.ts`, `public/js/{dom,main}.js`, `public/app.css`, `public/js/views/{account,admin,billing,members,scopes,settings}.js`.
+- **Tests:** E2E 12 (audit of 41 screens) and 13 (keyboard) — pass. Against the front end before the fixes, 12 reports the 26 findings and 13 fails.
+- **Limitations:** automated rules cover only part of WCAG; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet; Chromium only.
 
 ### Catalogue spreadsheet export and import · COMPLETE
 - **Implemented:** platform admins download any catalogue version as a CSV (UTF-8 with BOM, one row per subject and per material with ids, content and verification columns; subject columns repeat on material rows for filtering) and upload the edited file. Uploads show a preview first: every change by row, every error, and notes; nothing is written until the admin applies it, and applying re-checks the file inside the transaction and writes all of it or none of it. Verification marks can change on drafts and published versions; content corrections and new materials in existing subjects only on drafts; subjects are added and entries deleted only in the editor. A corrected entry loses its mark unless the same row updates the mark. Newly flagged entries notify customers as in the editor; imports are audited (`admin.catalog_imported`). Excel quirks handled: semicolon-separated files, CRLF, trailing blank rows, formula guard round trip; non-UTF-8 files are rejected with instructions.
@@ -88,7 +100,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
 - **Tests:** E2E 1–11, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
-- **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; no automated accessibility audit.
+- **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; accessibility checked automatically and by keyboard, not yet with a screen reader.
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
 | Deliverable | Status | Evidence |
@@ -112,7 +124,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (137 unit/integration + 11 E2E passing) |
+| Core workflows function correctly | ✓ (137 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

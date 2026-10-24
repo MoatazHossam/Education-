@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, errorMessage, fmtDate, form, h, promptDialog, toast } from '../dom.js';
+import { confirmDialog, errorMessage, fmtDate, form, h, promptDialog, tableCard, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession, session } from '../state.js';
@@ -75,7 +75,7 @@ export async function membersView(ctx) {
       f.el, err);
   })() : null;
 
-  const pending = invites.invitations.length ? h('div', { class: 'card table-wrap' }, h('h2', {}, t('members.pending')),
+  const pending = invites.invitations.length ? tableCard(t('members.pending'), h('h2', {}, t('members.pending')),
     h('table', { class: 'data' }, h('tbody', {}, invites.invitations.map((i) => h('tr', {},
       h('td', {}, i.email), h('td', {}, t(`role.${i.role}`)),
       h('td', {}, i.expired ? h('span', { class: 'pill bad' }, t('members.expired')) : `${t('members.expires')} ${fmtDate(i.expiresAt)}`),
@@ -86,7 +86,7 @@ export async function membersView(ctx) {
 
   return h('div', {},
     pageHead(t('members.title'), t('members.sub')),
-    h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+    tableCard(t('nav.members'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, [t('members.member'), t('members.role'), t('members.mfa'), t('members.joined'), ''].map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', {}, rows))),
     inviteCard, pending,

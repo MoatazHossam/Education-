@@ -87,6 +87,16 @@ setUnauthorizedHandler(() => {
   }
 });
 
+// The skip link moves focus to the page heading. Following "#main" as a link would
+// fire popstate, which re-renders the page.
+document.getElementById('skip-link')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const main = document.getElementById('main');
+  const target = main?.querySelector('h1') ?? main;
+  target?.setAttribute('tabindex', '-1');
+  target?.focus();
+});
+
 initLocale();
 await loadSession();
 initLocale(session.me?.user?.locale);

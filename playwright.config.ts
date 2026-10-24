@@ -15,5 +15,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // The accessibility audit runs after the journeys, so pages carry realistic data
+  // (verification badges, notifications, a newer catalogue to carry scopes to).
+  projects: [
+    { name: 'journeys', testMatch: /journeys\.spec\.ts$/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'accessibility', testMatch: /accessibility\.spec\.ts$/, dependencies: ['journeys'], use: { ...devices['Desktop Chrome'] } },
+  ],
 });

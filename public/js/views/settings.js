@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, form, h, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, form, h, tableCard, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession } from '../state.js';
@@ -126,7 +126,7 @@ export async function auditView(ctx) {
 
 export function auditTable(entries, { showOrg = false } = {}) {
   if (!entries.length) return h('div', { class: 'card' }, h('p', { class: 'empty' }, t('audit.empty')));
-  return h('div', { class: 'card table-wrap' }, h('table', { class: 'data' },
+  return tableCard(t('nav.audit'), h('table', { class: 'data' },
     h('thead', {}, h('tr', {}, [t('audit.when'), t('audit.actor'), t('audit.action'), t('audit.target'), showOrg ? 'Org' : null, t('audit.details')].filter(Boolean).map((c) => h('th', { scope: 'col' }, c)))),
     h('tbody', {}, entries.map((e) => h('tr', {},
       h('td', {}, fmtDate(e.createdAt, true)),

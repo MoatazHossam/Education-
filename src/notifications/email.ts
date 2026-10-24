@@ -61,6 +61,14 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
     en: (p) => ({ subject: `${p.orgName} moved to the Free plan`, text: `The ${p.planName} subscription for ${p.orgName} ended (${p.reason}). Your data is kept; items over the Free limits are read-only until you subscribe again.\n\n${p.link}${SIGN_EN}` }),
     ar: (p) => ({ subject: `انتقلت ${p.orgName} إلى الخطة المجانية`, text: `انتهى اشتراك ${p.planName} لـ ${p.orgName} (${p.reason}). بياناتك محفوظة، والعناصر التي تتجاوز الحدود تصبح للقراءة فقط حتى تشترك مجددًا.\n\n${p.link}${SIGN_AR}` }),
   },
+  catalog_published: {
+    en: (p) => ({ subject: `The ${p.year} curriculum catalogue is published`, text: `The ${p.year} catalogue (${p.label}) is now available in Curriculum Scope. These content scopes of ${p.orgName} still use an older catalogue:\n${p.scopes}\n\nReview what changed for each scope (missing books, new editions, subject changes) and carry it forward:\n${p.link}\n\nYou receive this because you can edit scopes in ${p.orgName}. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
+    ar: (p) => ({ subject: `نُشر دليل المناهج لعام ${p.year}`, text: `أصبح دليل عام ${p.year} (${p.label}) متاحًا في منصة نطاق المناهج. ما زالت نطاقات المحتوى التالية في ${p.orgName} تستخدم دليلًا أقدم:\n${p.scopes}\n\nراجع التغييرات لكل نطاق (كتب غير موجودة، طبعات جديدة، تغييرات في المواد) وانقله إلى الدليل الجديد:\n${p.link}\n\nتصلك هذه الرسالة لأنك تستطيع تعديل النطاقات في ${p.orgName}. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
+  },
+  catalog_review: {
+    en: (p) => ({ subject: `${p.count} ${p.count === '1' ? 'item' : 'items'} in your scopes ${p.count === '1' ? 'is' : 'are'} under review`, text: `Our curriculum team flagged ${p.count} catalogue items that ${p.orgName} has selected:\n${p.items}\n\nNote: ${p.note}\n\nAffected scopes:\n${p.scopes}\n\nOpen: ${p.link}\n\nTurn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
+    ar: (p) => ({ subject: `${p.count} من العناصر في نطاقاتك قيد المراجعة`, text: `أشار فريق المناهج إلى ${p.count} من عناصر الدليل التي اختارتها ${p.orgName}:\n${p.items}\n\nالملاحظة: ${p.note}\n\nالنطاقات المتأثرة:\n${p.scopes}\n\nفتح: ${p.link}\n\nيمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
+  },
 };
 
 export type EmailTemplate = keyof typeof TEMPLATES;

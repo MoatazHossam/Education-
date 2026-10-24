@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -38,7 +38,7 @@ erDiagram
 
 | Table | Purpose | Key constraints | RLS |
 | --- | --- | --- | --- |
-| `users` | Accounts | `email` lower-case, unique; status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used` | — |
+| `users` | Accounts | `email` lower-case, unique; status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out) | — |
 | `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
 | `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org** | org **or** own user rows |
 | `sessions` | Server-side sessions | id = SHA-256(token), 64 hex; state `active/mfa_pending`; `expires_at` | — |
@@ -62,6 +62,7 @@ erDiagram
 | `audit_logs` | Security & change history | bigint identity; indexes by org/time, action, actor; **app role has no UPDATE** | ✓ |
 | `support_access_grants` | Customer-granted support windows | reason length; expiry; revocation | ✓ |
 | `notifications` | In-app notifications | per user | — |
+| `catalog_notices` | Organizations already told about an academic year's catalogue (dedupe) | PK `(org_id, kind, ref)`; ref = academic year | ✓ |
 | `email_outbox` | Transactional email queue | partial index on pending | — |
 | `worker_heartbeats` | Liveness of background workers | PK name | — |
 

@@ -40,7 +40,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-07 | Roles & permissions | Team control | MISSING | IMPLEMENTED | owner/admin/editor/viewer enforced in `inOrg()` | Custom roles | P0 | `tenancy.test.ts`; E2E journey 2 |
 | S-08 | Invitations | Onboard teams | MISSING | IMPLEMENTED | Hashed single-use tokens, 7-day expiry, seat-checked | — | P0 | `tenancy.test.ts` |
 | S-09 | Ownership transfer | Continuity | MISSING | IMPLEMENTED | Password-confirmed, single-owner index | — | P1 | `tenancy.test.ts` |
-| S-10 | Named content scopes | Multiple plans per org | MISSING | IMPLEMENTED | CRUD, duplicate, per-version; carry to the next academic year with review of missing, changed and new items (copy or move) | Notify customers when a new catalogue is published | P0 | `scopes.test.ts`, `scope-carry-forward.test.ts`; E2E journey 10 |
+| S-10 | Named content scopes | Multiple plans per org | MISSING | IMPLEMENTED | CRUD, duplicate, per-version; carry to the next academic year with review of missing, changed and new items (copy or move) | — | P0 | `scopes.test.ts`, `scope-carry-forward.test.ts`, `catalog-notifications.test.ts`; E2E journey 10 |
 | S-11 | Exports TXT/CSV/JSON | Hand-off | MISSING | IMPLEMENTED | Metered; CSV injection-safe | XLSX/PDF | P0 | `scopes.test.ts`, unit CSV test |
 | S-12 | Read API with API keys | Integrations | MISSING | IMPLEMENTED | `/api/v1`, hashed keys, quota | Webhooks on scope change | P1 | `admin-api-ops.test.ts` |
 | S-13 | Plans & server-side limits | Monetization | MISSING | IMPLEMENTED | Seats, scopes, exports/month, API/month, features | — | P0 | `scopes.test.ts`, E2E journey 5 |
@@ -50,6 +50,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-17 | Invoices & payment history | Accounting | MISSING | IMPLEMENTED | Sequential numbers, payments table | Tax invoices (ETA e-invoicing) | P1 | `billing.test.ts` |
 | S-18 | Email notifications | Lifecycle comms | MISSING | IMPLEMENTED | Transactional outbox + worker, retries, EN/AR templates | Deliverability setup (SPF/DKIM) | P0 | `admin-api-ops.test.ts`; compose run delivered to Mailpit |
 | S-19 | In-app notifications | Awareness | MISSING | IMPLEMENTED | Notifications table + bell | — | P2 | Manual |
+| S-19a | Catalogue change notifications | Renewal and data freshness | MISSING | IMPLEMENTED | New academic year / archived version → in-app + email to owners, admins, editors (localized, once per year, opt-out); newly flagged entries → organizations that selected them | Move fan-out to the worker at large scale | P1 | `catalog-notifications.test.ts`; E2E journey 10 |
 | S-20 | Audit log | Trust, compliance | MISSING | IMPLEMENTED | Append-only for app role, org view with plan retention, platform search | Export | P0 | `tenancy.test.ts`, `admin-api-ops.test.ts` |
 | S-21 | Platform admin console | Operate the business | MISSING | IMPLEMENTED | Overview/MRR, orgs, users, catalogue, plans, audit, webhooks, health | Impersonation intentionally absent | P0 | `admin-api-ops.test.ts`; E2E journey 7 |
 | S-22 | Support access grants | Privacy-respecting support | MISSING | IMPLEMENTED | Owner grants 1–72 h, every read audited | — | P1 | `admin-api-ops.test.ts` |

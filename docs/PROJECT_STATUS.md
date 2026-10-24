@@ -37,7 +37,13 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** catalogue change notifications (Roadmap P1).
+- **Next:** bulk import/export of catalogue edits and verification marks (Roadmap P2).
+
+### Catalogue change notifications · COMPLETE
+- **Implemented:** when a platform admin publishes a catalogue for a later academic year, or archives the version an organization's scopes use, the owners, admins and editors of each active organization with scopes behind the newest published catalogue get an in-app notification and an email in their own language. The link goes to the carry-forward review (one scope) or the scopes list (several). Each organization hears about a given academic year once (`catalog_notices`), so corrections and archiving don't repeat it. When admins newly flag entries "needs review" (or change the note), organizations that selected those entries (directly or through the subject) are told which items and why; re-saving the same flag, verified marks and unselected entries notify no one. Users can turn the emails off in their account (`users.catalog_emails`); in-app notifications stay. Following a link in the notifications dialog now closes it.
+- **Files:** `src/db/migrations/0004_catalog_notifications.ts`, `src/catalog/notify.ts`, `src/admin/routes.ts`, `src/notifications/email.ts`, `src/auth/routes.ts`, `public/js/views/{account,shell}.js`, `public/js/dom.js`.
+- **Tests:** `catalog-notifications.test.ts` (4); E2E 10 now follows the notification to the review page — pass.
+- **Limitations:** the fan-out runs inside the admin's publish/flag request (fine for hundreds of organizations; move it to the worker before thousands); viewers are not notified because they cannot act.
 
 ### Carry a scope to the next academic year · COMPLETE
 - **Implemented:** a scope's selection is matched to another published catalogue version by natural key. Subjects match on grade, track, block and code, falling back to grade, track and code when that is unambiguous on both sides; materials match on title, then on title ignoring case and spacing. The preview lists carried items (and loose renames), items with no counterpart (with the subject's new books offered as replacements), changes to subjects the scope covers, and new books. Apply either copies into a new scope (counts toward the plan's scope limit) or moves the scope in place (works at the Free plan's single scope; read-only scopes can't be moved). Chosen replacements are added and unticked items left out; audited as `scope.carried_forward`. Entry points: a banner in the picker and a button in the scopes list whenever a newer published catalogue exists.
@@ -100,7 +106,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (119 unit/integration + 10 E2E passing) |
+| Core workflows function correctly | ✓ (123 unit/integration + 10 E2E passing) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

@@ -23,7 +23,7 @@ async function showNotifications(btn) {
   const list = notifications.length
     ? h('ul', { class: 'notif-list' }, notifications.map((n) => h('li', { class: n.readAt ? '' : 'unread' },
       h('b', {}, n.title), h('div', { class: 'muted' }, n.body), h('div', { class: 'mono muted' }, fmtDate(n.createdAt, true)),
-      n.link ? link(n.link, t('notifications.open')) : null)))
+      n.link ? link(n.link, t('notifications.open'), { onclick: (e) => e.target.closest('dialog')?.close() }) : null)))
     : h('p', { class: 'muted' }, t('notifications.empty'));
   if (notifications.some((n) => !n.readAt)) {
     await post('/api/notifications/read', {});

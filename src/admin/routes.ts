@@ -8,6 +8,7 @@ import { effectivePlan } from '../billing/entitlements.js';
 import { FREE_PLAN_ID } from '../billing/plans.js';
 import { publicPlan } from '../billing/routes.js';
 import { markInvoicePaid } from '../billing/service.js';
+import { notifyFlaggedForReview, notifyScopesBehind } from '../catalog/notify.js';
 import { invalidateCatalogCache, loadCatalogTree } from '../catalog/service.js';
 import { checkDatabase, withSystemContext, type Trx } from '../db/index.js';
 import { pendingMigrations } from '../db/migrator.js';
@@ -518,8 +519,9 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       if (Number(counts.n) === 0) throw badRequest('Cannot publish an empty catalogue version');
       await trx.updateTable('catalog_versions').set({ status: 'published', published_at: new Date() }).where('id', '=', id).execute();
       invalidateCatalogCache(id);
-      await recordAudit(trx, actor, { action: 'admin.catalog_version_published', targetType: 'catalog_version', targetId: id }, requestMeta(req));
-      return { status: 'published' };
+      const { orgs } = await notifyScopesBehind(trx, config, id);
+      await recordAudit(trx, actor, { action: 'admin.catalog_version_published', targetType: 'catalog_version', targetId: id, metadata: { notifiedOrgs: orgs } }, requestMeta(req));
+      return { status: 'published', notifiedOrgs: orgs };
     });
   });
 
@@ -530,8 +532,11 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       const res = await trx.updateTable('catalog_versions').set({ status: 'archived' }).where('id', '=', id).where('status', '=', 'published').executeTakeFirst();
       if (!Number(res.numUpdatedRows)) throw conflict('Only published versions can be archived', 'VERSION_NOT_PUBLISHED');
       invalidateCatalogCache(id);
-      await recordAudit(trx, actor, { action: 'admin.catalog_version_archived', targetType: 'catalog_version', targetId: id }, requestMeta(req));
-      return { status: 'archived' };
+      // Scopes on the archived version are now behind the newest published one.
+      const newest = await trx.selectFrom('catalog_versions').select('id').where('status', '=', 'published').orderBy('academic_year', 'desc').orderBy('published_at', 'desc').executeTakeFirst();
+      const { orgs } = newest ? await notifyScopesBehind(trx, config, newest.id) : { orgs: 0 };
+      await recordAudit(trx, actor, { action: 'admin.catalog_version_archived', targetType: 'catalog_version', targetId: id, metadata: { notifiedOrgs: orgs } }, requestMeta(req));
+      return { status: 'archived', notifiedOrgs: orgs };
     });
   });
 
@@ -699,12 +704,24 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       };
       await inVersion('catalog_subjects', subjectIds);
       await inVersion('catalog_materials', materialIds);
+      // Entries newly flagged for review (or with a changed note): their customers are told.
+      const newlyFlagged = async (table: 'catalog_subjects' | 'catalog_materials', ids: string[]) => {
+        if (body.status !== 'needs_review' || !ids.length) return [];
+        const prev = await trx.selectFrom(table).select(['id', 'verification_status', 'verification_note']).where('id', 'in', ids).execute();
+        return prev.filter((r) => r.verification_status !== 'needs_review' || r.verification_note !== body.note).map((r) => r.id);
+      };
+      const flaggedSubjects = await newlyFlagged('catalog_subjects', subjectIds);
+      const flaggedMaterials = await newlyFlagged('catalog_materials', materialIds);
       const values =
         body.status === 'unverified'
           ? UNVERIFIED
           : { verification_status: body.status, verification_source: body.source ?? null, verification_url: body.url ?? null, verification_note: body.note ?? null, reviewed_by: actor.userId ?? null, reviewed_at: new Date() };
       if (subjectIds.length) await trx.updateTable('catalog_subjects').set(values).where('version_id', '=', id).where('id', 'in', subjectIds).execute();
       if (materialIds.length) await trx.updateTable('catalog_materials').set(values).where('version_id', '=', id).where('id', 'in', materialIds).execute();
+      if (flaggedSubjects.length || flaggedMaterials.length) {
+        const ofSubjects = flaggedSubjects.length ? await trx.selectFrom('catalog_materials').select('id').where('subject_id', 'in', flaggedSubjects).execute() : [];
+        await notifyFlaggedForReview(trx, config, [...new Set([...flaggedMaterials, ...ofSubjects.map((m) => m.id)])], body.note!);
+      }
       // A new updated_at changes the catalogue ETag and refreshes the cached tree.
       await trx.updateTable('catalog_versions').set({ updated_at: new Date() }).where('id', '=', id).execute();
       invalidateCatalogCache(id);

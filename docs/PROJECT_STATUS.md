@@ -37,7 +37,17 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** a second app instance behind Caddy; manual screen-reader review (Roadmap P1).
+- **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1).
+
+### Two app instances behind Caddy · COMPLETE (verified locally)
+- **Implemented:** production runs two app instances (`app`, `app2`) of the same image behind Caddy. Caddy balances requests round robin, checks each instance's `/readyz` every 2 s (database reachable, schema current, not draining) and routes around an instance it cannot reach. A request whose connection failed is tried on the other instance; one that failed after it was sent is retried only if it is a GET, so no write is applied twice. On SIGTERM an instance reports "draining" for 5 s (`SHUTDOWN_DRAIN_MS`), so Caddy stops sending it requests, then finishes the requests in flight and exits; a second signal exits at once. `scripts/rolling-restart.sh [--build]` restarts or upgrades `app`, then `app2`, then the worker, waiting for each instance to be ready. Sessions, rate limits and the catalogue cache already work across instances (see shared rate limits).
+- **Files:** `docker-compose.prod.yml`, `deploy/Caddyfile`, `src/server.ts`, `src/http/health.ts`, `src/config.ts`, `scripts/rolling-restart.sh`.
+- **Tests:** `shutdown.test.ts` (the real server process: draining on SIGTERM, still serving during the drain, clean exit; fails without the draining flag). The production-settings stack was run locally with Docker (HTTPS through Caddy, two app instances, worker, PostgreSQL, Mailpit for SMTP) and loaded with paced reads and writes (TEST_REPORT §4):
+  - 0 failed requests out of 1,280 across three rolling restarts;
+  - 0 failed out of 600 with `scripts/rolling-restart.sh` itself;
+  - 2 writes failed (502) with the drain switched off;
+  - killing an instance's process caused 1 failed write (in flight at the moment of the crash) in 646 requests, and Docker restarted the instance within a second.
+- **Limitations:** both instances run on one host, so this protects against an instance crashing or restarting, not against losing the host or the database. A write in flight on an instance that crashes can fail (the picker rolls the change back and the user retries). Not yet run on the production host (B-4).
 
 ### Shared rate limits · COMPLETE
 - **Implemented:** every route with its own limit now counts in PostgreSQL, so the limit holds across several app instances and across restarts. That covers registration, email verification, login, two-factor codes and setup, password reset and change, account export and deletion, invitations, organization creation and deletion, checkout and the v1 API quota. The counters use fixed windows timed by the database clock, with one atomic upsert per limited request. They are stored HMAC-keyed, so no IP addresses or emails are stored, in an UNLOGGED table (migration 0005); the worker deletes expired counters hourly. The global limit of 600 API requests a minute per address stays in each process's memory as a flood guard. It costs no database work per request, so a flood does not reach the shared database; with N instances one address can make up to N × 600 requests a minute.
@@ -45,7 +55,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `src/http/rate-limit-store.ts`, `src/db/migrations/0005_rate_limits.ts`, `src/app.ts`, `src/jobs/tasks.ts`.
 - **Tests:** `rate-limit-store.test.ts` (6), `unit/rate-limit-memory.test.ts` (2) — pass. With the route limits moved back to per-process memory, the two-instance and hashing tests fail.
 - **Cost:** about 0.9 ms per limited request (one database round trip); other API requests are unchanged (TEST_REPORT §5).
-- **Limitations:** a second app instance is not deployed yet; the compose files run one app container, and load balancing in Caddy is the next step. Counters restart from zero after a database crash or failover (UNLOGGED).
+- **Limitations:** counters restart from zero after a database crash or failover (UNLOGGED).
 
 ### Accessibility audit · COMPLETE
 - **Implemented:** an automated WCAG 2.2 A/AA check (axe-core 4.13 in Playwright) of 41 screens and dialogs: the signed-out pages, every organization page, the picker in four states, the new-scope, notifications and verification dialogs, and every platform-admin page, in English and Arabic, light and dark, desktop and a 390 px phone. It runs in the E2E suite after the journeys, so pages carry real data, and any finding fails it. The first run reported 26 findings, all fixed:
@@ -114,7 +124,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Deliverable | Status | Evidence |
 | --- | --- | --- |
 | Security review + fixes (open redirect, MFA brute force, session hygiene) | COMPLETE | `authz-coverage.test.ts` |
-| Dockerfile, compose (dev + prod overlay with Caddy) | COMPLETE (local) | Image built; stack healthy on latest code |
+| Dockerfile, compose (dev + prod overlay: Caddy and two app instances) | COMPLETE (local) | Image built; production-settings stack healthy; rolling restarts under load without failed requests (TEST_REPORT §4) |
 | Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
 | CI workflow | PARTIALLY COMPLETE | GitHub Actions runs on `main` are refused (B-7). All workflow steps pass when run with `scripts/ci-local.sh` on a clean clone of `main` (2026-10-23) |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
@@ -132,7 +142,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (145 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (146 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -147,7 +157,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 | Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
 | Deployment reproducible | ✓ locally (Docker/compose) |
 | Documentation accurate | ✓ |
-| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §5–7); ✗ not exercised |
+| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–7); rolling restart exercised on a local production-settings stack; ✗ not on the production host |
 
 ## 4. Next development priorities
 

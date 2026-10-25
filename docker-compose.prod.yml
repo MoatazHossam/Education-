@@ -1,12 +1,32 @@
-# Production overrides: TLS-terminating Caddy in front of the app, no Mailpit,
-# app port not published directly.
+# Production overrides: TLS-terminating Caddy in front of two app instances, no
+# Mailpit, app ports not published directly.
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
+# Restart the app instances one at a time so one keeps serving (DEPLOYMENT_GUIDE §5).
+
+# On SIGTERM an instance reports "draining" on /readyz for 5 s, so Caddy (which
+# checks every 2 s) stops sending it requests, then finishes the ones in flight.
+x-app-production: &app-production
+  ports: !reset []
+  environment:
+    NODE_ENV: production
+    TRUST_PROXY: "true"
+    SHUTDOWN_DRAIN_MS: "5000"
+  stop_grace_period: 30s
+
 services:
   app:
-    ports: !reset []
-    environment:
-      NODE_ENV: production
-      TRUST_PROXY: "true"
+    <<: *app-production
+
+  # Second instance of the same image and configuration. Sessions, rate limits and
+  # every other piece of shared state live in PostgreSQL.
+  app2:
+    extends:
+      file: docker-compose.yml
+      service: app
+    <<: *app-production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   worker:
     environment:
@@ -34,6 +54,7 @@ services:
       - caddy_config:/config
     depends_on:
       - app
+      - app2
 
 volumes:
   caddy_data:

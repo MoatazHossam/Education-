@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**20 files, 145 tests, 145 passed, 0 failed** (2026-10-25). Integration tests ran against a real
+**21 files, 146 tests, 146 passed, 0 failed** (2026-10-25). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -46,11 +46,12 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
+| integration/shutdown | 1 | Pass — the real server process reports draining on SIGTERM, keeps serving during the drain, exits cleanly |
 | integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 145</summary>
+<details><summary>Show all 146</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -186,6 +187,7 @@ Full test names (verbatim from the verbose reporter):
 - rate-limit-store › counts concurrent requests from several instances exactly
 - rate-limit-store › starts a new window when the old one ends; reading does not count; namespaces are separate
 - rate-limit-store › the worker deletes expired counters and keeps live ones
+- shutdown › reports draining on SIGTERM, keeps serving during the drain, then exits cleanly
 - unit › in-memory flood guard windows: counts within a window and starts again when it ends
 - unit › in-memory flood guard windows: stays bounded, dropping the oldest windows first
 
@@ -256,6 +258,34 @@ screen-reader output); a manual screen-reader review is still to be done.
 | Restore into a new DB and query as the app role | Pass — catalogue readable, tenant rows hidden without context |
 | Backup from inside the compose stack (`docker compose exec postgres pg_dump -U curriculum_backup`) | Pass |
 | Re-run after the final code changes (image rebuilt at commit `1310087`; stack from an empty volume) | Pass — app, worker, postgres, mailpit healthy; `/readyz` 200; image contains no `.env` and no build CA |
+
+### Two app instances behind Caddy (2026-10-25)
+
+The production compose files (`docker-compose.yml` + `docker-compose.prod.yml`) were run with production
+settings: `NODE_ENV=production`, `APP_URL=https://localhost` (Caddy's local certificate authority,
+trusted by the test client, TLS verification on), `BILLING_PROVIDER=disabled`, SMTP to Mailpit. The
+services were PostgreSQL, migrate, `app`, `app2`, worker, Caddy and Mailpit. Two sandbox-only
+adjustments: Docker Hub refused anonymous pulls (429), so the same official images were pulled
+from `mirror.gcr.io` and tagged with their usual names, and the image was built with the proxy
+settings (DEPLOYMENT_GUIDE §2). The test client registered through Caddy, received the
+confirmation email via the worker and Mailpit, confirmed, signed in and created a scope. The load
+was 4 clients sending about 8 requests a second in total, kept under the per-instance flood guard:
+reads of `/api/auth/me` and the scope, and writes adding and removing a scope item, half of all
+requests.
+
+| Check | Result |
+| --- | --- |
+| Stack from empty volumes | All healthy; migrations 0001–0005 applied; `https://localhost/readyz` 200 through Caddy |
+| Load with both instances up (20 s) | 160 requests, 0 failed; one session served by both instances, split evenly |
+| 12 wrong-password logins for one account | 10 × 401 then 2 × 429; Caddy sent 6 to each instance (shared limit) |
+| Rolling restart (`docker compose restart app`, then `app2`), drain 5 s, three runs | 480 + 400 + 400 requests, **0 failed**; while one restarted the other served (e.g. 2 vs 38 requests in that 5 s window); Caddy logged the 503 "draining", then "host is up" |
+| Same with the drain switched off (`SHUTDOWN_DRAIN_MS=0`) | 336 requests, **2 failed**: one write (502) per restart, caught on a connection the closing instance dropped |
+| `scripts/rolling-restart.sh`, after a separate `docker compose run --rm migrate` | 600 requests, **0 failed**; app, app2 and worker recreated and healthy; the script took 35 s |
+| `kill -9` of an instance's process (three crashes over two runs) | 360 + 286 requests; **1 failed**: a write in flight on the crashed instance (502, correctly not retried); Docker restarted each instance within a second; the first was ready again 6 s after the kill |
+| Worker during all runs | 0 failed ticks |
+
+The `--build` path of `scripts/rolling-restart.sh` (`docker compose build`) was not run here,
+because builds in this sandbox need the proxy settings; the migration step it runs was.
 
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
@@ -337,5 +367,5 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
 - Cross-browser E2E (Firefox, WebKit), manual screen-reader review, external penetration test.
-- Two app containers behind a load balancer. The shared limits were tested with two app instances in one test process on one database.
+- Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - Production deployment, TLS issuance by Caddy, monitoring and alerting.

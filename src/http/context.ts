@@ -22,5 +22,7 @@ declare module 'fastify' {
   }
   interface FastifyInstance {
     routeList: { method: string; url: string }[];
+    /** Set on shutdown: /readyz reports "draining" so the load balancer stops routing here. */
+    lifecycle: { draining: boolean };
   }
 }

@@ -92,6 +92,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   // Registered routes, used by tests to prove every admin/org route is protected.
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);
+  app.decorate('lifecycle', { draining: false });
   app.addHook('onRoute', (r) => {
     for (const m of ([] as string[]).concat(r.method)) if (m !== 'HEAD') routeList.push({ method: m, url: r.url });
   });

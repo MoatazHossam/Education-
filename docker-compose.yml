@@ -1,6 +1,6 @@
 # Local development / single-host stack:
 #   cp .env.docker.example .env.docker && docker compose --env-file .env.docker up --build
-# Production adds docker-compose.prod.yml (Caddy TLS proxy, no Mailpit).
+# Production adds docker-compose.prod.yml (Caddy TLS proxy, a second app instance, no Mailpit).
 name: curriculum-scope
 
 x-app-env: &app-env

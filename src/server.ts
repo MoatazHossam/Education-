@@ -15,8 +15,16 @@ async function main() {
     app.log.warn(msg);
   }
 
+  // Behind a load balancer, /readyz first reports "draining" for SHUTDOWN_DRAIN_MS so no new
+  // requests are routed here; closing then finishes the requests in flight. A second signal
+  // exits at once.
+  let stopping = false;
   const shutdown = async (signal: string) => {
-    app.log.info({ signal }, 'shutting down');
+    if (stopping) process.exit(1);
+    stopping = true;
+    app.log.info({ signal, drainMs: config.SHUTDOWN_DRAIN_MS }, 'shutting down');
+    app.lifecycle.draining = true;
+    if (config.SHUTDOWN_DRAIN_MS > 0) await new Promise((r) => setTimeout(r, config.SHUTDOWN_DRAIN_MS));
     await app.close();
     await db.destroy();
     process.exit(0);

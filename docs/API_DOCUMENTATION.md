@@ -148,7 +148,9 @@ every id must belong to the version; changes the catalogue ETag; audited as `adm
 `POST /catalog/versions/:id/sheet {csv, apply?: boolean}` (up to 8 MB / 20,000 rows; `apply: false` returns `{plan: {changes, errors, warnings, summary}}`
 and writes nothing; `apply: true` writes the whole file or nothing (`400 IMPORT_INVALID` with the errors); verification columns on drafts and
 published versions, content and new materials on drafts only; `409 VERSION_ARCHIVED`; audited as `admin.catalog_imported`),
-`GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited).
+`GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited),
+`GET /alerts` (`{channels: {emails, emailTransport, webhook}, alerts: [...]}`: firing alerts and those resolved in the last 30 days),
+`POST /alerts/test` (sends a test alert to every configured channel; returns `{result: {email, webhook}}`, each `sent`, `failed` or `off`; 5/h; audited as `admin.alert_test`).
 
 ## 3. Public API v1 (for customer integrations)
 

@@ -374,6 +374,17 @@ export interface RateLimitsTable {
   expires_at: Timestamp;
 }
 
+export interface OpsAlertsTable {
+  key: string;
+  status: 'firing' | 'resolved';
+  summary: string;
+  details: Json<Record<string, unknown>>;
+  first_seen_at: Timestamp;
+  last_seen_at: Timestamp;
+  notified_at: Timestamp;
+  resolved_at: NullableTimestamp;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
@@ -403,6 +414,7 @@ export interface DB {
   email_outbox: EmailOutboxTable;
   worker_heartbeats: WorkerHeartbeatsTable;
   rate_limits: RateLimitsTable;
+  ops_alerts: OpsAlertsTable;
 }
 
 export type User = Selectable<UsersTable>;

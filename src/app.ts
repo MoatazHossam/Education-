@@ -18,6 +18,7 @@ import type { Database } from './db/index.js';
 import type { AppContext } from './http/context.js';
 import { registerHealthRoutes } from './http/health.js';
 import { rateLimitStore } from './http/rate-limit-store.js';
+import { ServerErrorCounter } from './ops/alerts.js';
 import { AppError } from './lib/errors.js';
 import { safeEqual } from './lib/crypto.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
@@ -93,6 +94,10 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);
   app.decorate('lifecycle', { draining: false });
+  app.decorate('serverErrors', new ServerErrorCounter());
+  app.addHook('onResponse', async (req, reply) => {
+    if (reply.statusCode >= 500 && req.url !== '/readyz' && req.url !== '/healthz') app.serverErrors.record();
+  });
   app.addHook('onRoute', (r) => {
     for (const m of ([] as string[]).concat(r.method)) if (m !== 'HEAD') routeList.push({ method: m, url: r.url });
   });

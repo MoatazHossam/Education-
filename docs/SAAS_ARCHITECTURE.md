@@ -32,6 +32,7 @@ flowchart LR
 | Worker | Email outbox delivery, subscription lifecycle (trial end, renewals, grace), retention cleanup, heartbeat | `src/worker.ts`, `src/jobs/tasks.ts`, `src/billing/service.ts` |
 | PostgreSQL | All state; Row-Level Security for tenant tables | `src/db/migrations/` |
 | SPA | Picker and management UI; no build step; strict CSP | `public/` |
+| Alert monitor | In each app instance: checks the worker heartbeat, email delivery, server errors, payment webhooks, migrations and the database every minute; sends alerts by SMTP and webhook (one instance per message, via `ops_alerts`) | `src/ops/alerts.ts` |
 | Caddy | Automatic TLS, compression, load balancing across the two app instances (readiness checked every 2 s; failed connections tried on the other instance) | `deploy/Caddyfile` |
 
 **Technology choices** (kept close to the original vanilla-JS artifact, avoiding unnecessary

@@ -14,7 +14,7 @@ const openGrades = new Map();
 let verifFilter = 'all';
 
 export async function overviewView() {
-  const [o, health] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health')]);
+  const [o, health, alerts] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health'), get('/api/admin/alerts')]);
   const worker = health.workers.find((w) => w.name === 'worker');
   return h('div', {},
     pageHead(t('admin.overview'), t('admin.overviewSub')),
@@ -36,7 +36,39 @@ export async function overviewView() {
           h('li', {}, `${t('admin.outbox')}: ${o.operations.outbox.pending ?? 0} pending · ${o.operations.outbox.failed ?? 0} failed`),
           h('li', {}, `${t('admin.failedWebhooks')}: ${o.operations.failedWebhooksLast7Days}`),
           h('li', {}, `${t('admin.billingProvider')}: ${health.billingProvider}`),
-          h('li', {}, `Node ${health.process.node} · RSS ${health.process.rssMb} MB · up ${Math.round(health.process.uptimeSeconds / 60)} min`)))));
+          h('li', {}, `Node ${health.process.node} · RSS ${health.process.rssMb} MB · up ${Math.round(health.process.uptimeSeconds / 60)} min`)))),
+    alertsCard(alerts));
+}
+
+/** Operational alerts (src/ops/alerts.ts): what is failing now, what recently cleared, where alerts are sent. */
+function alertsCard({ channels, alerts }) {
+  const firing = alerts.filter((a) => a.status === 'firing');
+  const resolved = alerts.filter((a) => a.status === 'resolved').slice(0, 5);
+  const emailOn = channels.emails > 0 && channels.emailTransport !== 'none';
+  const result = (r) => ({ sent: t('admin.alertResult.sent'), failed: t('admin.alertResult.failed'), off: t('admin.alertResult.off') })[r];
+  const test = h('button', {
+    type: 'button', class: 'btn ghost', onclick: async () => {
+      test.disabled = true;
+      await safe(async () => {
+        const r = (await post('/api/admin/alerts/test')).result;
+        toast(t('admin.alertTestResult', { email: result(r.email), webhook: result(r.webhook) }), r.email === 'failed' || r.webhook === 'failed' ? 'error' : 'info');
+      });
+      test.disabled = false;
+    },
+  }, t('admin.alertTest'));
+  return h('div', { class: 'card' },
+    h('h2', {}, t('admin.alerts')),
+    firing.length
+      ? h('ul', {}, firing.map((a) => h('li', {}, h('span', { class: 'pill bad' }, t('admin.alertFiring')), ' ', a.summary, ' · ', t('admin.alertSince', { date: fmtDate(a.firstSeenAt, true) }))))
+      : h('p', {}, h('span', { class: 'pill ok' }, t('admin.alertsNone'))),
+    resolved.length
+      ? [h('h3', {}, t('admin.alertsResolved')), h('ul', {}, resolved.map((a) => h('li', {}, a.summary, ' · ', t('admin.alertResolvedAt', { date: fmtDate(a.resolvedAt, true) }))))]
+      : null,
+    h('p', { class: 'muted' },
+      emailOn ? (channels.emails === 1 ? t('admin.alertEmailOne') : t('admin.alertEmailMany', { n: channels.emails })) : t('admin.alertEmailOff'),
+      ' · ', channels.webhook ? t('admin.alertWebhookOn') : t('admin.alertWebhookOff')),
+    emailOn || channels.webhook ? null : h('p', { class: 'notice' }, t('admin.alertsNoChannels')),
+    h('p', {}, test));
 }
 
 export async function orgsView(ctx) {

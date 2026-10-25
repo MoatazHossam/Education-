@@ -25,7 +25,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | 6.5 | **Editorial verification of the 2026/27 catalogue** against Ministry decrees and publishers' current editions, recorded as verification marks in Platform admin → Catalogue (tool built) | 10–20 (curriculum specialist) | — | Content |
 | 6.6 | Legal: privacy policy, terms, DPA template, PDPL licensing/registration, hosting location decision | external | 6.2 | Legal counsel |
 | 6.7 | Production host, managed PostgreSQL, DNS, SMTP (SPF/DKIM/DMARC), Caddy TLS | 1–2 | 6.2, 6.6 | Ops |
-| 6.8 | Monitoring: uptime checks on `/readyz`, log shipping + error alerts, worker health alert, backup job + weekly verify | 1–2 | 6.7 | Ops |
+| 6.8 | Monitoring: set `ALERT_EMAILS`/`ALERT_WEBHOOK_URL` and send a test alert (alerts are built in); external uptime check on `/readyz`; log shipping; backup job + weekly verify | 0.5–1 | 6.7 | Ops |
 | 6.9 | External penetration test; fix findings | 3–5 + vendor | 6.7 | Security |
 | 6.10 | Pilot: 3–5 design partners (ed-tech/publishers), onboarding sessions, feedback loop | 2–4 weeks elapsed | 6.5, 6.7 | Product |
 | 6.11 | Release checklist (DEPLOYMENT_GUIDE §7), operational readiness review | 0.5 | all above | Team |

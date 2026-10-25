@@ -67,6 +67,7 @@ export interface UsersTable {
   trial_used: Generated<boolean>;
   catalog_emails: Generated<boolean>;
   assignment_emails: Generated<boolean>;
+  due_reminder_emails: Generated<boolean>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
@@ -210,6 +211,19 @@ export interface ScopeItemsTable {
   status: ItemStatus | null;
   /** Due date (a calendar day, returned as YYYY-MM-DD). */
   due_on: ColumnType<string | null, string | null | undefined, string | null>;
+}
+
+export type ReminderKind = 'due_soon' | 'overdue';
+
+/** One reminder the worker sent for a book, its assignee and its due date (never repeated). */
+export interface ItemRemindersTable {
+  org_id: string;
+  scope_id: string;
+  material_id: string;
+  assignee_id: string;
+  due_on: string;
+  kind: ReminderKind;
+  sent_at: Generated<Date>;
 }
 
 export interface ApiKeysTable {
@@ -427,6 +441,7 @@ export interface DB {
   catalog_materials: CatalogMaterialsTable;
   scopes: ScopesTable;
   scope_items: ScopeItemsTable;
+  item_reminders: ItemRemindersTable;
   api_keys: ApiKeysTable;
   plans: PlansTable;
   subscriptions: SubscriptionsTable;

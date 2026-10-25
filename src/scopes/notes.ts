@@ -15,6 +15,8 @@ export const ITEM_STATUSES = ['todo', 'in_progress', 'done'] as const satisfies 
  * Cairo's date, so a book due today is not overdue at 1 a.m. Cairo time.
  */
 const TODAY = sql<string>`(now() AT TIME ZONE 'Africa/Cairo')::date`;
+/** "Due soon": due today or in the next two days (the app's marker and the reminder emails). */
+export const DUE_SOON_DAYS = 2;
 
 export interface Annotation {
   materialId: string;
@@ -72,13 +74,14 @@ export async function annotationCounts(exec: Executor, orgId: string, userId: st
   return new Map(rows.map((r) => [r.scope_id, { notes: Number(r.notes), assigned: Number(r.assigned), assignedToMe: Number(r.mine) }]));
 }
 
-/** The member's open assignments in the organization (not done), and how many are overdue. */
-export async function assignmentCounts(exec: Executor, orgId: string, userId: string): Promise<{ open: number; overdue: number }> {
-  const { rows } = await sql<{ open: string; overdue: string }>`
-    SELECT count(*) AS open, count(*) FILTER (WHERE due_on < ${TODAY}) AS overdue
+/** The member's open assignments in the organization (not done), and how many are overdue or due soon. */
+export async function assignmentCounts(exec: Executor, orgId: string, userId: string): Promise<{ open: number; overdue: number; dueSoon: number }> {
+  const { rows } = await sql<{ open: string; overdue: string; due_soon: string }>`
+    SELECT count(*) AS open, count(*) FILTER (WHERE due_on < ${TODAY}) AS overdue,
+           count(*) FILTER (WHERE due_on BETWEEN ${TODAY} AND ${TODAY} + ${DUE_SOON_DAYS}::int) AS due_soon
     FROM scope_items
     WHERE org_id = ${orgId} AND assignee_id = ${userId} AND status IS DISTINCT FROM 'done'`.execute(exec);
-  return { open: Number(rows[0]?.open ?? 0), overdue: Number(rows[0]?.overdue ?? 0) };
+  return { open: Number(rows[0]?.open ?? 0), overdue: Number(rows[0]?.overdue ?? 0), dueSoon: Number(rows[0]?.due_soon ?? 0) };
 }
 
 /**

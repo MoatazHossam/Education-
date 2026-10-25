@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -34,6 +34,8 @@ erDiagram
   scopes ||--o{ scope_items : "selects"
   catalog_materials ||--o{ scope_items : "selected as"
   memberships |o--o{ scope_items : "assignee"
+  scope_items ||--o{ item_reminders : "reminded about"
+  memberships ||--o{ item_reminders : "reminded"
   organizations ||..o{ audit_logs : "org_id (no FK)"
   billing_events }o..o| organizations : "org_id (no FK)"
 ```
@@ -42,7 +44,7 @@ erDiagram
 
 | Table | Purpose | Key constraints | RLS |
 | --- | --- | --- | --- |
-| `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out); `assignment_emails` (emails when books are assigned) | — |
+| `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out); `assignment_emails` (emails when books are assigned); `due_reminder_emails` (due-date reminder emails) | — |
 | `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
 | `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org**; staff accounts only (trigger) | org **or** own user rows |
 | `students` | School-created student accounts (`docs/STUDENT_ACCOUNTS.md`) | PK `user_id` (a `kind = 'student'` user: trigger); unique `(org_id, username)`; username pattern; grade 1–12; `(scope_id, org_id)` references `scopes(id, org_id)` with `ON DELETE SET NULL (scope_id)`; deleting the row deletes the account (trigger) | org **or** own user row |
@@ -54,7 +56,8 @@ erDiagram
 | `catalog_subjects` | Subject rows | unique `(version, grade, track, block, code)`; grade 1–12; track/status enums; verification columns (below) | — |
 | `catalog_materials` | Selectable materials | unique `(subject, title)`; unique `(id, version_id)`; trigger keeps `version_id` = subject's; verification columns (below) | — |
 | `scopes` | Content scopes (tenant data) | unique `(org_id, name)`; unique `(id, org_id, catalog_version_id)`; unique `(id, org_id)` (for students) | ✓ |
-| `scope_items` | Selected materials, with the team's note and assignee | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version); `note` 1–500 characters; `(org_id, assignee_id)` references `memberships`, so the assignee is a member of the same organization and is cleared (`ON DELETE SET NULL (assignee_id)`) when the membership ends; `status` (`todo`/`in_progress`/`done`) and `due_on` (a `date`, 2000–2100; read as `YYYY-MM-DD`, never as a time); `annotated_by`, `annotated_at` | ✓ |
+| `scope_items` | Selected materials, with the team's note and assignee | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version); `note` 1–500 characters; `(org_id, assignee_id)` references `memberships`, so the assignee is a member of the same organization and is cleared (`ON DELETE SET NULL (assignee_id)`) when the membership ends; `status` (`todo`/`in_progress`/`done`) and `due_on` (a `date`, 2000–2100; read as `YYYY-MM-DD`, never as a time); `annotated_by`, `annotated_at`; partial index `scope_items_due_idx` on `due_on` for assigned books with a date (the reminder worker) | ✓ |
+| `item_reminders` | Due-date reminders already sent, so none is repeated | PK `(scope_id, material_id, assignee_id, due_on, kind)`; `kind` `due_soon`/`overdue`; foreign keys to the selected book, the scope (with its org) and the assignee's membership, all `ON DELETE CASCADE`. A new due date or a new assignee is a new key, so it is reminded again; reopening a done book is not | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
 | `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
@@ -143,6 +146,7 @@ are never created when `NODE_ENV=production`.
 | Expired unaccepted invitations | 90 d after expiry | worker |
 | Rate-limit counters | until their window ends (≤ 1 h) | worker hourly |
 | Resolved operational alerts | 90 d after resolution | worker |
+| Due-date reminder records | 60 d after the due date | worker hourly |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |
 | Deleted organizations | Tenant rows removed immediately (cascade), student accounts included; the deletion audit entry is kept | API |

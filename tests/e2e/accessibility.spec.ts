@@ -101,7 +101,14 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await page.getByRole('dialog').getByLabel('Due date').fill('2020-01-05');
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await audit(page, 'notes and assignees (status, overdue)');
+  // And the second book due tomorrow: marked "due soon" here and counted on My assignments.
+  await page.getByRole('button', { name: /^Edit the note on / }).nth(1).click();
+  await page.getByRole('dialog').getByLabel('Assigned to').selectOption({ index: 1 });
+  await page.getByRole('dialog').getByLabel('Due date').fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('table.items .pill', { hasText: 'due soon' })).toHaveCount(1);
+  await audit(page, 'notes and assignees (status, overdue, due soon)');
   const assignmentsPath = `/org/${orgId}/assignments`;
   await visit(page, assignmentsPath, 'my assignments');
 

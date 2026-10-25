@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**27 files, 206 tests, 206 passed, 0 failed** (2026-10-25, after the notes follow-ups). Integration tests ran against a real
+**29 files, 219 tests, 219 passed, 0 failed** (2026-10-25, after the due-date reminders). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -37,12 +37,14 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
 | unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
 | unit/rate-limit-memory | 2 | Pass — fixed windows; memory bounded, oldest windows dropped first |
+| unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/scope-compare | 3 | Pass — same catalogue with CSV (counted, audited); last year against this year; other organization 404, same scope 400, viewer allowed, CSV refused on Free |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
 | integration/scope-notes | 21 | Pass — status and due dates (validation, the assignee-viewer rule, bulk changes), assignment emails (language, opt-out, none for yourself, long lists shortened), My assignments (order, filters, navigation counts), status and due date in duplicates, carry-forward and exports; notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
+| integration/due-reminders | 10 | Pass — the worker's due-date reminders: one email per member and organization listing overdue and due-soon books, once (the next day only what changed); each member's language; done, unassigned and long-overdue books left out; only between 08:00 and 21:00 Cairo time; reminded again after a new due date or assignee, not after reopening; the email opt-out and unverified addresses keep the in-app notice; suspended accounts and organizations skipped until active; three concurrent passes send each reminder once; long lists shortened; records removed with the book, the member and 60 days after the due date, and invisible to other organizations; the navigation's due-soon count |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
 | integration/billing | 13 | Pass |
@@ -57,7 +59,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 206</summary>
+<details><summary>Show all 219</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -256,6 +258,19 @@ Full test names (verbatim from the verbose reporter):
 - scope-notes › status, due dates, assignment emails and my assignments › my assignments: across scopes, overdue first, then by due date; done ones apart; counts for the navigation
 - scope-notes › status, due dates, assignment emails and my assignments › status and due date travel with duplicates and carry-forward, and appear in exports
 - unit › exports › CSV ends with the item note, assignee, status and due date, formula-guarded
+- due-reminders › due-date reminders › reminds the assignee once about books due soon and overdue, in one email listing both
+- due-reminders › due-date reminders › writes to each member in their language, one email per member
+- due-reminders › due-date reminders › leaves out done books, unassigned books and books overdue for more than a week; sends only between 8:00 and 21:00 Cairo time
+- due-reminders › due-date reminders › a new due date or a new assignee is reminded again; reopening a book is not
+- due-reminders › due-date reminders › turning reminder emails off keeps the in-app notice; unverified addresses get the notice only
+- due-reminders › due-date reminders › suspended accounts and organizations get nothing until they are active again
+- due-reminders › due-date reminders › two workers running at once send each reminder once
+- due-reminders › due-date reminders › a long list is shortened in the email
+- due-reminders › due-date reminders › records go with the book, the member and old due dates, and stay inside the organization
+- due-reminders › due-date reminders › the navigation counts books due soon
+- unit › due-date reminder wording › says today, tomorrow, or the date, across month and year ends
+- unit › due-date reminder wording › lists overdue books first, each section by due date, and shortens long lists
+- unit › due-date reminder wording › titles the in-app notice by what is due
 
 </details>
 
@@ -264,7 +279,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**17 tests, 17 passed** (3.4 min, 2026-10-25), Chromium, real server process on port 3100: 15 journeys,
+**18 tests, 18 passed** (3.7 min, 2026-10-25), Chromium, real server process on port 3100: 16 journeys,
 then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -284,6 +299,7 @@ then the accessibility project (2 tests), which reuses the journeys' data.
 | 13 | Student accounts: the Students page is closed until a platform admin sets the school's student override in the admin console; the owner adds a student (password shown once) and imports a roster (a file with a bad line is refused, the corrected one imported, the credentials CSV downloaded and checked); the student follows the link on the staff sign-in page, is refused with a wrong password, signs in, sees exactly the three books chosen for grade 7, is sent back to the portal from a staff page, switches to Arabic; a staff password reset signs the student out | Pass |
 | 14 | Notes and assignees: an editor joins by invitation; the owner writes a note on a book (focus returns to its Edit button) and assigns two books to the editor at once; the editor is notified, follows the notification to the page filtered to their two books and sees the note; the scopes list shows the counts; in the picker the annotated book carries its mark, deselecting it asks first (Cancel keeps it, Remove drops it with its note) | Pass |
 | 15 | Status and due dates (reuses journey 14's school, as sign-ups are limited to 10 an hour per address): the owner makes Hana a viewer and assigns her two books with status To do and a past due date in one step, then moves one date later; the Overdue count goes 2 → 1 and the Overdue filter shows one book; Hana's email lists the books; she opens My assignments (3) from the navigation, sees the overdue book first, marks it Done (the overdue mark goes), filters to Done, and turns assignment emails off in her account | Pass |
+| 16 | Due-date reminders (same school): the owner assigns Hana a third book due tomorrow and the notes page marks it "due soon"; one pass of the worker's reminder job (run directly against the E2E database at 10:30 Cairo time, since the E2E run starts no worker) sends one reminder and a second pass none; Hana's email lists the book as "due tomorrow" with a link to My assignments, although she turned assignment emails off (a separate choice); she sees Due soon 1 on My assignments and the reminder in her notifications, and turns reminder emails off | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -293,8 +309,8 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 16 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 69 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone) | Pass — 0 findings |
-| 17 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 17 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 69 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone) | Pass — 0 findings |
+| 18 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 
 Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 

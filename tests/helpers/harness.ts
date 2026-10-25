@@ -196,6 +196,17 @@ export async function someMaterialIds(h: Harness, versionId: string, n: number, 
   return rows.map((r) => r.id);
 }
 
+/**
+ * Materials with different titles. The catalogue repeats titles across subjects
+ * (1,038 materials, 113 titles), so tests that look for a title in an email
+ * need books whose titles cannot be confused.
+ */
+export async function distinctTitleMaterialIds(h: Harness, versionId: string, n: number): Promise<string[]> {
+  const rows = await h.ownerDb.selectFrom('catalog_materials').select('id').distinctOn('title').where('version_id', '=', versionId).orderBy('title').orderBy('id').limit(n).execute();
+  if (rows.length < n) throw new Error(`only ${rows.length} distinct titles`);
+  return rows.map((r) => r.id);
+}
+
 export function totp(secret: string): string {
   return authenticator.generate(secret);
 }

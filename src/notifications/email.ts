@@ -69,6 +69,16 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
     en: (p) => ({ subject: `${p.by} assigned you ${p.count} ${p.count === '1' ? 'book' : 'books'} in “${p.scope}”`, text: `${p.by} assigned you ${p.count === '1' ? 'a book' : `${p.count} books`} to follow up in the scope “${p.scope}” (${p.orgName}):\n${p.items}\n\nSee your books, their notes and due dates:\n${p.link}\n\nYou receive this because books were assigned to you. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
     ar: (p) => ({ subject: `أسند إليك ${p.by} كتبًا في «${p.scope}» (${p.count})`, text: `أسند إليك ${p.by} كتبًا للمتابعة في النطاق «${p.scope}» (${p.orgName}):\n${p.items}\n\nاطّلع على كتبك وملاحظاتها ومواعيدها:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا أُسندت إليك. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
   },
+  items_assigned_daily: {
+    en: (p) => ({
+      subject: `Your daily summary: ${p.count} ${p.count === '1' ? 'book' : 'books'} assigned to you`,
+      text: `Hello ${p.name},\n\nBooks assigned to you since your last summary:\n\n${p.sections}\n\nYou receive one summary a day instead of an email for each assignment, as chosen in your account settings, where you can change it: ${p.settingsLink}${SIGN_EN}`,
+    }),
+    ar: (p) => ({
+      subject: `ملخصك اليومي: كتب أُسندت إليك (${p.count})`,
+      text: `مرحبًا ${p.name}،\n\nالكتب التي أُسندت إليك منذ آخر ملخص:\n\n${p.sections}\n\nيصلك ملخص واحد يوميًا بدلًا من رسالة لكل إسناد، كما اخترت في إعدادات حسابك، ويمكنك تغيير ذلك من هناك: ${p.settingsLink}${SIGN_AR}`,
+    }),
+  },
   items_due: {
     en: (p) => ({
       subject:

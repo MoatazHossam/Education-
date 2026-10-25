@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, runReminderPass, startServer, stopServer } from './server.js';
+import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 
 let ownerEmail = '';
 let orgAId = '';
-// The notes team (journey 14) is reused by journeys 15 and 16: sign-ups are limited to 10 an hour per address.
+// The notes team (journey 14) is reused by journeys 15 to 17: sign-ups are limited to 10 an hour per address.
 const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
@@ -581,11 +581,11 @@ test('status and due dates: the owner plans the work, the assignee gets an email
 
   // The viewer turns assignment emails off in their account.
   await viewer.goto('/account');
-  await viewer.getByLabel('Email me when books are assigned to me').uncheck();
+  await viewer.getByLabel('Emails when books are assigned to me').selectOption({ label: 'None (notifications in the app only)' });
   await viewer.getByRole('button', { name: 'Save' }).first().click();
   await expect(viewer.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
   await viewer.reload();
-  await expect(viewer.getByLabel('Email me when books are assigned to me')).not.toBeChecked();
+  await expect(viewer.getByLabel('Emails when books are assigned to me')).toHaveValue('off');
   await viewerCtx.close();
 });
 
@@ -628,11 +628,58 @@ test('due-date reminders: a book due tomorrow is marked due soon and its assigne
   await expect(hana.getByRole('dialog').getByText('1 book is due soon')).toBeVisible();
   await hana.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
   await hana.goto('/account');
-  await expect(hana.getByLabel('Email me when books are assigned to me')).not.toBeChecked();
+  await expect(hana.getByLabel('Emails when books are assigned to me')).toHaveValue('off');
   await hana.getByLabel('Email me a reminder when my books are due soon or overdue').uncheck();
   await hana.getByRole('button', { name: 'Save' }).first().click();
   await expect(hana.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
   await hana.reload();
   await expect(hana.getByLabel('Email me a reminder when my books are due soon or overdue')).not.toBeChecked();
+  await ctx.close();
+});
+
+test('daily summary: the assignee chooses one email each morning; a new assignment waits for it', async ({ page, browser }) => {
+  // Journey 15's school. Hana switches assignment emails from none to one summary each morning.
+  const orgId = notesTeam.orgId;
+  const ctx = await browser.newContext();
+  const hana = await ctx.newPage();
+  await login(hana, notesTeam.editorEmail);
+  await hana.goto('/account');
+  await hana.getByLabel('Emails when books are assigned to me').selectOption({ label: 'One summary each morning' });
+  await hana.getByRole('button', { name: 'Save' }).first().click();
+  await expect(hana.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
+  await hana.reload();
+  await expect(hana.getByLabel('Emails when books are assigned to me')).toHaveValue('daily');
+
+  // The owner selects a fourth book and assigns it to Hana: she is notified in the app, and no email goes yet.
+  const assignedEmails = async () =>
+    Number((await ownerQuery(`SELECT count(*) AS n FROM email_outbox WHERE to_email = $1 AND template = 'items_assigned'`, [notesTeam.editorEmail]))[0].n);
+  const before = await assignedEmails();
+  await login(page, notesTeam.ownerEmail);
+  await page.goto(`/org/${orgId}`);
+  const option = page.locator('.scopebar select option', { hasText: 'Grade 6 books' });
+  await page.locator('.scopebar select').selectOption((await option.getAttribute('value'))!);
+  await page.getByRole('button', { name: 'Grade 6' }).click();
+  await page.locator('.mat').nth(3).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+  // The three earlier books are Hana's; the new one is the only book not assigned.
+  await page.getByLabel('Show', { exact: true }).selectOption({ label: 'Not assigned' });
+  const row = page.locator('table.items tbody tr:not(.group)');
+  await expect(row).toHaveCount(1);
+  const title = (await row.locator('th[scope="row"] > span').first().innerText()).trim();
+  await row.getByRole('button', { name: /^Edit the note on / }).click();
+  await page.getByRole('dialog').getByLabel('Assigned to').selectOption({ label: 'Hana Editor' });
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await assignedEmails()).toBe(before);
+
+  // The worker's summary pass the next morning (run directly: the E2E run starts no worker) sends one summary, once.
+  const morning = new Date(Date.now() + 86_400_000);
+  morning.setUTCHours(8, 30, 0, 0);
+  expect(await runDigestPass(morning)).toMatchObject({ members: 1, emails: 1, books: 1 });
+  expect(await runDigestPass(morning)).toMatchObject({ members: 0, emails: 0 });
+  const mail = await latestEmailText(notesTeam.editorEmail, 'items_assigned_daily');
+  expect(mail).toContain(`Books assigned to you since your last summary:\n\nNotes Academy (1 book):\n“Grade 6 books”, assigned by E2E Owner:\n• ${title}`);
+  expect(mail).toContain(`/org/${orgId}/assignments`);
   await ctx.close();
 });

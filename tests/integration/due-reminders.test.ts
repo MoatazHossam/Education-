@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { withOrgContext, withSystemContext } from '../../src/db/index.js';
 import { runCleanup } from '../../src/jobs/tasks.js';
 import { runDueReminders } from '../../src/scopes/reminders.js';
-import { addMember, createHarness, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
+import { addMember, createHarness, distinctTitleMaterialIds, publishedVersionId, resetData, signUp, type Harness } from '../helpers/harness.js';
 
 let h: Harness;
 beforeAll(async () => {
@@ -21,7 +21,7 @@ async function team(n = 4) {
   const editor = await addMember(h, owner.client, owner.orgId, 'editor');
   const viewer = await addMember(h, owner.client, owner.orgId, 'viewer');
   const versionId = await publishedVersionId(h);
-  const books = await someMaterialIds(h, versionId, n);
+  const books = await distinctTitleMaterialIds(h, versionId, n);
   const scopeId = (await owner.client.post(`/api/orgs/${owner.orgId}/scopes`, { name: 'Plan', catalogVersionId: versionId })).json().scope.id as string;
   expect((await owner.client.post(`/api/orgs/${owner.orgId}/scopes/${scopeId}/items`, { add: books })).statusCode).toBe(200);
   const base = `/api/orgs/${owner.orgId}/scopes/${scopeId}`;

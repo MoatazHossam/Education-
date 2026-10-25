@@ -146,8 +146,9 @@ const EMAIL_LIST_MAX = 10;
 
 /**
  * Tells the new assignee: an in-app notification and, unless they turned it
- * off, an email listing the books. Both in their language. Nothing when people
- * assign themselves.
+ * off, an email listing the books, both in their language. Members who chose
+ * one summary a day get the books in tomorrow morning's summary instead
+ * (scopes/digest.ts). Nothing when people assign themselves.
  */
 export async function notifyAssigned(
   exec: Executor,
@@ -157,7 +158,7 @@ export async function notifyAssigned(
   if (p.assigneeId === p.byUserId || count === 0) return;
   const to = await exec
     .selectFrom('users')
-    .select(['locale', 'email', 'assignment_emails', 'email_verified_at', 'status'])
+    .select(['locale', 'email', 'assignment_emails', 'assignment_email_frequency', 'email_verified_at', 'status'])
     .where('id', '=', p.assigneeId)
     .where('kind', '=', 'staff')
     .$narrowType<{ email: NotNull }>()
@@ -166,7 +167,16 @@ export async function notifyAssigned(
   const path = `/org/${p.orgId}/scopes/${p.scope.id}/items?show=mine`;
   const text = ASSIGNED[to.locale]({ by: p.byName, count, scope: p.scope.name });
   await notify(exec, { userId: p.assigneeId, orgId: p.orgId, kind: 'item_assigned', title: text.title, body: text.body, link: path });
-  if (!to.assignment_emails || !to.email_verified_at || to.status !== 'active') return;
+  if (!to.assignment_emails) return;
+  if (to.assignment_email_frequency === 'daily') {
+    await exec
+      .insertInto('assignment_digest_items')
+      .values(p.materialIds.map((id) => ({ org_id: p.orgId, user_id: p.assigneeId, scope_id: p.scope.id, material_id: id, assigned_by: p.byUserId })))
+      .onConflict((oc) => oc.doNothing())
+      .execute();
+    return;
+  }
+  if (!to.email_verified_at || to.status !== 'active') return;
   const titles = await exec.selectFrom('catalog_materials').select('title').where('id', 'in', p.materialIds.slice(0, EMAIL_LIST_MAX)).orderBy('title').execute();
   const more = count - titles.length;
   const items = titles.map((t) => `• ${t.title}`).join('\n') + (more > 0 ? (to.locale === 'ar' ? `\n• و${more} غيرها` : `\n• and ${more} more`) : '');

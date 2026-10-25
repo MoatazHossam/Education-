@@ -43,6 +43,7 @@ export function publicUser(u: User) {
     catalogEmails: u.catalog_emails,
     assignmentEmails: u.assignment_emails,
     dueReminderEmails: u.due_reminder_emails,
+    assignmentEmailFrequency: u.assignment_email_frequency,
     createdAt: u.created_at,
   };
 }
@@ -458,7 +459,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
 
   app.patch('/api/auth/profile', async (req) => {
     const { user } = requireUser(req);
-    const body = parse(z.object({ name: zName.optional(), locale: zLocale.optional(), catalogEmails: z.boolean().optional(), assignmentEmails: z.boolean().optional(), dueReminderEmails: z.boolean().optional() }), req.body);
+    const body = parse(z.object({ name: zName.optional(), locale: zLocale.optional(), catalogEmails: z.boolean().optional(), assignmentEmails: z.boolean().optional(), assignmentEmailFrequency: z.enum(['instant', 'daily']).optional(), dueReminderEmails: z.boolean().optional() }), req.body);
     const updated = await db
       .updateTable('users')
       .set({
@@ -467,10 +468,15 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         ...(body.catalogEmails !== undefined ? { catalog_emails: body.catalogEmails } : {}),
         ...(body.assignmentEmails !== undefined ? { assignment_emails: body.assignmentEmails } : {}),
         ...(body.dueReminderEmails !== undefined ? { due_reminder_emails: body.dueReminderEmails } : {}),
+        ...(body.assignmentEmailFrequency ? { assignment_email_frequency: body.assignmentEmailFrequency } : {}),
       })
       .where('id', '=', user.id)
       .returningAll()
       .executeTakeFirstOrThrow();
+    // No more daily summary: drop what was waiting for it (the in-app notices were sent).
+    if (!updated.assignment_emails || updated.assignment_email_frequency !== 'daily') {
+      await withUserContext(db, user.id, (trx) => trx.deleteFrom('assignment_digest_items').where('user_id', '=', user.id).execute());
+    }
     return { user: publicUser(updated) };
   });
 

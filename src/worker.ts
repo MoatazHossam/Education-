@@ -4,6 +4,7 @@ import { loadConfig } from './config.js';
 import { createDatabase } from './db/index.js';
 import { heartbeat, processOutbox, runCleanup } from './jobs/tasks.js';
 import { createMailer } from './notifications/mailer.js';
+import { runAssignmentDigests } from './scopes/digest.js';
 import { runDueReminders } from './scopes/reminders.js';
 
 const CLEANUP_EVERY_MS = 3_600_000;
@@ -34,6 +35,9 @@ async function main() {
         const reminders = await runDueReminders(db, config);
         if (reminders.failed) log.warn({ reminders }, 'some due-date reminders failed; they are retried on the next pass');
         tick.reminders = reminders;
+        const digests = await runAssignmentDigests(db, config);
+        if (digests.failed) log.warn({ digests }, 'some daily summaries failed; they are retried on the next pass');
+        tick.digests = digests;
         lastReminders = Date.now();
       }
       if (Date.now() - lastCleanup > CLEANUP_EVERY_MS) {

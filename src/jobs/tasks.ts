@@ -58,6 +58,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const notifications = await trx.deleteFrom('notifications').where('read_at', '<=', addDays(now, -180)).executeTakeFirst();
     const invitations = await trx.deleteFrom('invitations').where('accepted_at', 'is', null).where('expires_at', '<=', addDays(now, -90)).executeTakeFirst();
     const audit = await trx.deleteFrom('audit_logs').where('created_at', '<=', addDays(now, -config.AUDIT_RETENTION_DAYS)).executeTakeFirst();
+    // Database clock, as the counters' windows use it (rate-limit-store.ts).
+    const rateLimits = await trx.deleteFrom('rate_limits').where('expires_at', '<=', sql<Date>`now()`).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -65,6 +67,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       notifications: Number(notifications.numDeletedRows),
       invitations: Number(invitations.numDeletedRows),
       auditLogs: Number(audit.numDeletedRows),
+      rateLimits: Number(rateLimits.numDeletedRows),
     };
   });
 }

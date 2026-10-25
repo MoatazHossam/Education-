@@ -368,6 +368,12 @@ export interface WorkerHeartbeatsTable {
   details: Json<Record<string, unknown>>;
 }
 
+export interface RateLimitsTable {
+  key: string;
+  count: number;
+  expires_at: Timestamp;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
@@ -396,6 +402,7 @@ export interface DB {
   notifications: NotificationsTable;
   email_outbox: EmailOutboxTable;
   worker_heartbeats: WorkerHeartbeatsTable;
+  rate_limits: RateLimitsTable;
 }
 
 export type User = Selectable<UsersTable>;

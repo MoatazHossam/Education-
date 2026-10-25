@@ -37,7 +37,15 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** shared rate-limit store and a second app instance; manual screen-reader review (Roadmap P1).
+- **Next:** a second app instance behind Caddy; manual screen-reader review (Roadmap P1).
+
+### Shared rate limits · COMPLETE
+- **Implemented:** every route with its own limit now counts in PostgreSQL, so the limit holds across several app instances and across restarts. That covers registration, email verification, login, two-factor codes and setup, password reset and change, account export and deletion, invitations, organization creation and deletion, checkout and the v1 API quota. The counters use fixed windows timed by the database clock, with one atomic upsert per limited request. They are stored HMAC-keyed, so no IP addresses or emails are stored, in an UNLOGGED table (migration 0005); the worker deletes expired counters hourly. The global limit of 600 API requests a minute per address stays in each process's memory as a flood guard. It costs no database work per request, so a flood does not reach the shared database; with N instances one address can make up to N × 600 requests a minute.
+- **Why not Redis:** PostgreSQL is already run, backed up and monitored. Redis would be one more service to host and secure, for a load far below what one upsert per login can handle (TEST_REPORT §5). The store sits behind the plugin's store interface, so Redis can replace it later.
+- **Files:** `src/http/rate-limit-store.ts`, `src/db/migrations/0005_rate_limits.ts`, `src/app.ts`, `src/jobs/tasks.ts`.
+- **Tests:** `rate-limit-store.test.ts` (6), `unit/rate-limit-memory.test.ts` (2) — pass. With the route limits moved back to per-process memory, the two-instance and hashing tests fail.
+- **Cost:** about 0.9 ms per limited request (one database round trip); other API requests are unchanged (TEST_REPORT §5).
+- **Limitations:** a second app instance is not deployed yet; the compose files run one app container, and load balancing in Caddy is the next step. Counters restart from zero after a database crash or failover (UNLOGGED).
 
 ### Accessibility audit · COMPLETE
 - **Implemented:** an automated WCAG 2.2 A/AA check (axe-core 4.13 in Playwright) of 41 screens and dialogs: the signed-out pages, every organization page, the picker in four states, the new-scope, notifications and verification dialogs, and every platform-admin page, in English and Arabic, light and dark, desktop and a 390 px phone. It runs in the E2E suite after the journeys, so pages carry real data, and any finding fails it. The first run reported 26 findings, all fixed:
@@ -73,7 +81,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** registration + verification, login with lockout and rate limits, sessions (rotation, idle/absolute expiry, revocation), CSRF (origin + HMAC token), TOTP MFA with encrypted secrets, replay protection and recovery codes (mandatory for platform admins, optional org policy), password reset/change, organizations, 4 roles, invitations, ownership transfer, member removal, org deletion, personal-data export, account deletion, plan limits.
 - **Files:** `src/auth/*`, `src/orgs/*`, `src/billing/entitlements.ts`, `public/js/views/{auth,members,settings,account}.js`.
 - **Tests:** `auth.test.ts` (13), `tenancy.test.ts` (15), `authz-coverage.test.ts` (5), E2E 1–3, 5, 7 — pass.
-- **Limitations:** rate-limit counters are in-memory (single instance); no WebAuthn/SSO.
+- **Limitations:** no WebAuthn/SSO. (Rate-limit counters are now shared by app instances: see shared rate limits.)
 
 ### Phase 4 — Commercial operations · PARTIALLY COMPLETE
 | Deliverable | Status | Notes |
@@ -124,7 +132,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (137 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (145 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

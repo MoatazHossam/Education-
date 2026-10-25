@@ -17,6 +17,7 @@ import type { AppConfig } from './config.js';
 import type { Database } from './db/index.js';
 import type { AppContext } from './http/context.js';
 import { registerHealthRoutes } from './http/health.js';
+import { rateLimitStore } from './http/rate-limit-store.js';
 import { AppError } from './lib/errors.js';
 import { safeEqual } from './lib/crypto.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
@@ -72,7 +73,10 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
     crossOriginEmbedderPolicy: false,
   });
   await app.register(cookie);
+  // Route-specific limits count in PostgreSQL, so every app instance enforces the
+  // same limits; the global limit is a per-process flood guard (rate-limit-store.ts).
   await app.register(rateLimit, {
+    store: rateLimitStore(db, config.SESSION_SECRET),
     global: config.RATE_LIMIT_ENABLED,
     max: 600,
     timeWindow: '1 minute',

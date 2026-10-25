@@ -33,7 +33,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | S-01 | Registration with email verification | Self-serve sign-up | MISSING | IMPLEMENTED | `src/auth/routes.ts`, outbox emails | — | P0 | `auth.test.ts`; E2E journey 1 |
 | S-02 | Login, logout, sessions | Access | MISSING | IMPLEMENTED | DB sessions, hashed tokens, idle+absolute expiry, rotation | — | P0 | `auth.test.ts` |
-| S-03 | Brute-force protection | Security | MISSING | IMPLEMENTED | Per-account lockout (password and TOTP), per-IP+account rate limits | Shared rate-limit store for >1 instance | P0 | `auth.test.ts`, `authz-coverage.test.ts` |
+| S-03 | Brute-force protection | Security | MISSING | IMPLEMENTED | Per-account lockout (password and TOTP), per-IP+account rate limits shared by all app instances (PostgreSQL) | Provider/CDN-level limit for volumetric attacks | P0 | `auth.test.ts`, `authz-coverage.test.ts`, `rate-limit-store.test.ts` |
 | S-04 | Password reset/change | Account recovery | MISSING | IMPLEMENTED | Single-use 1 h tokens, revokes sessions | — | P0 | `auth.test.ts` |
 | S-05 | TOTP MFA + recovery codes | Protect privileged users | MISSING | IMPLEMENTED | otplib, AES-GCM secret at rest, replay protection; required for platform admins; optional org policy | WebAuthn/passkeys | P0 | `auth.test.ts`; E2E journey 7 |
 | S-06 | Organizations & multi-tenancy | Sell to teams | MISSING | IMPLEMENTED | Shared DB + `org_id` + Row-Level Security | — | P0 | `tenancy.test.ts`, `authz-coverage.test.ts`; E2E journey 3 |

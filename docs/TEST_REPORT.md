@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**18 files, 137 tests, 137 passed, 0 failed** (2026-10-24). Integration tests ran against a real
+**20 files, 145 tests, 145 passed, 0 failed** (2026-10-25). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -34,6 +34,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
+| unit/rate-limit-memory | 2 | Pass — fixed windows; memory bounded, oldest windows dropped first |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
@@ -45,10 +46,11 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
+| integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 137</summary>
+<details><summary>Show all 145</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -178,6 +180,14 @@ Full test names (verbatim from the verbose reporter):
 - unit › catalogue fidelity: legacy selection keys unique
 - unit › effective plan (4 tests), proration (2), time helpers (3)
 - unit › translations: Arabic covers every English key and placeholders match; every referenced key exists
+- rate-limit-store › two app instances enforce one login limit, and a restarted instance still enforces it
+- rate-limit-store › stores keyed hashes only: no IP address or email
+- rate-limit-store › the global flood guard stays per process: it limits at 600 a minute and writes nothing to the database
+- rate-limit-store › counts concurrent requests from several instances exactly
+- rate-limit-store › starts a new window when the old one ends; reading does not count; namespaces are separate
+- rate-limit-store › the worker deletes expired counters and keeps live ones
+- unit › in-memory flood guard windows: counts within a window and starts again when it ends
+- unit › in-memory flood guard windows: stays bounded, dropping the oldest windows first
 
 </details>
 
@@ -186,8 +196,8 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**13 tests, 13 passed** (2.7 min, 2026-10-24), Chromium, real server process on port 3100: 11 journeys
-(25 s), then the accessibility project (2 tests), which reuses the journeys' data.
+**13 tests, 13 passed** (2.3 min, 2026-10-25, with the shared rate-limit store), Chromium, real server
+process on port 3100: 11 journeys, then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -265,6 +275,26 @@ caching change):
 These are sandbox figures, not capacity guarantees; the p99 tail on the catalogue endpoint under
 20-way concurrency remains. Re-run on production-sized hardware before launch.
 
+### Rate-limit store cost (2026-10-25)
+
+Ad hoc scripts (not committed) on the same sandbox, local PostgreSQL 16, app driven in-process with
+`app.inject` and a distinct client address per request, so no limit was reached:
+
+| Measurement | p50 | p95 | p99 | Throughput |
+| --- | --- | --- | --- | --- |
+| Store upsert alone, 20 concurrent, 500 different clients | 2.53 ms | 6.81 ms | 9.09 ms | 6,667/s |
+| Store upsert alone, 20 concurrent, one shared address (one hot row) | 1.63 ms | 3.92 ms | 6.26 ms | 10,323/s |
+| Anonymous API request, one at a time: no limiter / limit counted in PostgreSQL | 0.20 / 1.12 ms | 0.46 / 1.54 ms | 0.91 / 3.15 ms | — |
+| Same, 20 concurrent: no limiter / limit counted in PostgreSQL | 1.34 / 8.34 ms | 3.88 / 15.37 ms | 5.34 / 19.48 ms | — |
+| Same, 20 concurrent: no limiter / global limit in process memory (as shipped) | 1.25 / 1.62 ms | 5.59 / 4.63 ms | 10.91 / 7.30 ms | — |
+
+Counting the global limit in PostgreSQL added one round trip to every API request. At full load it
+made the database write the bottleneck, and under a flood it would push the flood onto the shared
+database. So the global limit stays a per-process flood guard, and only the route-specific limits
+(login, two-factor codes, resets, registration, invitations, checkout, the v1 API) are counted in
+PostgreSQL, where the extra ~0.9 ms is small next to the work those requests already do (a login
+hashes a password with Argon2id).
+
 ## 6. CI pipeline on a clean checkout (local equivalent of GitHub Actions)
 
 2026-10-23: `scripts/ci-local.sh` on a fresh `git clone --branch main` (commit `59265a2`), Node.js 22,
@@ -307,4 +337,5 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
 - Cross-browser E2E (Firefox, WebKit), manual screen-reader review, external penetration test.
+- Two app containers behind a load balancer. The shared limits were tested with two app instances in one test process on one database.
 - Production deployment, TLS issuance by Caddy, monitoring and alerting.

@@ -10,6 +10,8 @@ export type Executor = Kysely<DB> | Transaction<DB>;
 // Return int8/bigint columns (COUNT, identity ids) as strings to avoid precision loss;
 // callers convert counts explicitly.
 pg.types.setTypeParser(pg.types.builtins.INT8, (v) => v);
+// DATE columns are calendar days: keep 'YYYY-MM-DD' rather than a Date at local midnight.
+pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
 
 export function createDatabase(connectionString: string, opts: { poolMax?: number; ssl?: boolean } = {}): Database {
   const pool = new pg.Pool({

@@ -75,7 +75,7 @@ export async function pickerView(ctx) {
     const a = notes.get(id);
     if (!a) return null;
     return h('span', { class: 'note-mark' }, h('span', { class: 'mnote', 'aria-hidden': 'true' }, '✎'),
-      h('span', { class: 'sr-only' }, ` (${a.note ? t('items.markNote') : t('items.markAssigned', { name: a.assigneeName ?? '' })})`));
+      h('span', { class: 'sr-only' }, ` (${a.note ? t('items.markNote') : a.assigneeName ? t('items.markAssigned', { name: a.assigneeName }) : t('items.markTracked')})`));
   };
   const readOnly = !scope || !canEdit || scope.readOnly;
   const st = { track: 'all', grades: new Set(), kinds: new Set(KINDS), q: '' };

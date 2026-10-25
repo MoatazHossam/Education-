@@ -7,6 +7,8 @@ test.describe.configure({ mode: 'serial' });
 
 let ownerEmail = '';
 let orgAId = '';
+// The notes team (journey 14) is reused by journey 15: sign-ups are limited to 10 an hour per address.
+const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
   ownerEmail = `owner.${uid()}@e2e.test`;
@@ -444,6 +446,7 @@ test('the team notes and assigns selected books; the assignee is notified and fi
   await registerAndVerify(page, email, 'Notes Academy');
   await login(page, email);
   const orgId = orgIdFromUrl(page);
+  Object.assign(notesTeam, { ownerEmail: email, orgId });
   await createScope(page, 'Grade 5 books');
   await expect(page.locator('.scopebar select option:checked')).toHaveText(/Grade 5 books/);
   await page.getByRole('button', { name: 'Grade 5' }).click();
@@ -457,6 +460,7 @@ test('the team notes and assigns selected books; the assignee is notified and fi
   // An editor joins.
   await page.goto(`/org/${orgId}/members`);
   const editorEmail = `notes.editor.${uid()}@e2e.test`;
+  notesTeam.editorEmail = editorEmail;
   await page.getByLabel('Email').fill(editorEmail);
   await page.getByRole('button', { name: 'Send invitation' }).click();
   await expect(page.getByText(`Invitation sent to ${editorEmail}`)).toBeVisible();
@@ -481,9 +485,9 @@ test('the team notes and assigns selected books; the assignee is notified and fi
   await page.getByLabel(`Choose ${titles[0]}`).check();
   await page.getByLabel(`Choose ${titles[1]}`).check();
   await expect(page.getByText('2 chosen')).toBeVisible();
-  await page.getByLabel('Assign the chosen books to').selectOption({ label: 'Hana Editor' });
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await expect(page.getByText('Assignment saved for 2 books')).toBeVisible();
+  await page.getByLabel('Assigned to', { exact: true }).selectOption({ label: 'Hana Editor' });
+  await page.getByRole('button', { name: 'Apply to the chosen books' }).click();
+  await expect(page.getByText('Saved for 2 books')).toBeVisible();
   await expect(page.locator('.stat', { hasText: 'Assigned' }).first().locator('.v')).toHaveText('2');
 
   // The editor is notified, follows the link and sees only their books.
@@ -517,4 +521,70 @@ test('the team notes and assigns selected books; the assignee is notified and fi
   await page.goto(`/org/${orgId}/scopes`);
   await expect(page.getByRole('link', { name: '0 with notes · 1 assigned' })).toBeVisible();
   await editorCtx.close();
+});
+
+test('status and due dates: the owner plans the work, the assignee gets an email and closes a book from My assignments', async ({ page, browser }) => {
+  // Journey 14's school: Hana becomes a viewer, and viewers can still update the status of books assigned to them.
+  await login(page, notesTeam.ownerEmail);
+  const orgId = notesTeam.orgId;
+  await page.goto(`/org/${orgId}/members`);
+  await page.getByLabel('Role for Hana Editor').selectOption('viewer');
+  await expect(page.getByText('Role updated')).toBeVisible();
+  await page.goto(`/org/${orgId}`);
+  await createScope(page, 'Grade 6 books');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/Grade 6 books/);
+  await page.getByRole('button', { name: 'Grade 6' }).click();
+  for (let i = 0; i < 3; i++) await page.locator('.mat').nth(i).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  const viewerCtx = await browser.newContext();
+  const viewer = await viewerCtx.newPage();
+  await login(viewer, notesTeam.editorEmail);
+
+  // The owner assigns two books with a status and a due date in one go, then moves one date later.
+  await page.goto(`/org/${orgId}`);
+  await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+  const boxes = page.locator('table.items tbody tr:not(.group) input[type="checkbox"]');
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await page.getByLabel('Assigned to', { exact: true }).selectOption({ label: 'Hana Editor' });
+  await page.getByLabel('Status', { exact: true }).selectOption({ label: 'To do' });
+  await page.getByLabel('Due date', { exact: true }).fill('2020-01-05');
+  await page.getByRole('button', { name: 'Apply to the chosen books' }).click();
+  await expect(page.getByText('Saved for 2 books')).toBeVisible();
+  await expect(page.locator('.stat', { hasText: 'Overdue' }).locator('.v')).toHaveText('2');
+  await page.getByRole('button', { name: /^Edit the note on / }).nth(1).click();
+  await page.getByRole('dialog').getByLabel('Due date').fill('2099-06-30');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.stat', { hasText: 'Overdue' }).locator('.v')).toHaveText('1');
+  await page.getByLabel('Show', { exact: true }).selectOption({ label: 'Overdue' });
+  await expect(page.locator('table.items tbody tr:not(.group)')).toHaveCount(1);
+  await expect(page.locator('table.items tbody tr:not(.group)').first()).toContainText('overdue');
+
+  // The viewer got an email listing the books, and finds them under My assignments, overdue first.
+  expect(await latestEmailText(notesTeam.editorEmail, 'items_assigned')).toContain('E2E Owner assigned you 2 books to follow up in the scope “Grade 6 books” (Notes Academy)');
+  await viewer.goto(`/org/${orgId}`);
+  // Two new books plus the one still assigned to Hana from journey 14.
+  await viewer.locator('.topbar').getByRole('link', { name: 'My assignments (3)' }).click();
+  await expect(viewer.getByRole('heading', { name: 'My assignments', level: 1 })).toBeVisible();
+  const rows = viewer.locator('table.items tbody tr');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first()).toContainText('overdue');
+  await rows.first().getByRole('combobox').selectOption({ label: 'Done' });
+  await expect(viewer.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
+  await expect(rows.first()).not.toContainText('overdue');
+  await expect(rows.first().locator('td.prog')).toContainText('Done');
+  await viewer.getByLabel('Show', { exact: true }).selectOption({ label: 'Done' });
+  await expect(viewer.locator('table.items tbody tr')).toHaveCount(1);
+  await viewer.reload();
+  await expect(viewer.locator('.topbar').getByRole('link', { name: 'My assignments (2)' })).toBeVisible();
+
+  // The viewer turns assignment emails off in their account.
+  await viewer.goto('/account');
+  await viewer.getByLabel('Email me when books are assigned to me').uncheck();
+  await viewer.getByRole('button', { name: 'Save' }).first().click();
+  await expect(viewer.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
+  await viewer.reload();
+  await expect(viewer.getByLabel('Email me when books are assigned to me')).not.toBeChecked();
+  await viewerCtx.close();
 });

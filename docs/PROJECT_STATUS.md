@@ -53,10 +53,31 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - Audited as `scope.item_annotated` and `scope.items_assigned`, with which fields changed but never the note's text. Read-only scopes (over the plan limit) cannot be annotated.
 - **Files:** `src/db/migrations/0008_item_notes.ts`, `src/scopes/{notes,routes,export}.ts`, `src/api-v1/routes.ts`, `public/js/views/{items,picker,scopes,carry}.js`, `public/js/main.js`, `public/js/i18n.js`, `public/app.css`.
 - **Tests:** `scope-notes.test.ts` (14) and a new unit test for the CSV columns. E2E journey 14: an editor joins, the owner writes a note and assigns two books at once, the editor is notified and opens a list of exactly their books, the scopes list counts them, and the picker asks before dropping an annotated book. The accessibility audit adds 6 screens (the page, its dialog, Arabic, dark, phone) with 0 findings. All pass.
+- **Limitations:** see the follow-ups below.
+
+### Notes follow-ups: status, due dates, assignment emails, My assignments · COMPLETE
+- **Implemented:**
+  - **Status and due date per book:** To do, In progress or Done, and an optional due date. They are set in the note dialog or for several books at once: the bulk bar now changes the assignee, status and/or due date, and fields left on "Keep as it is" are not sent. A book past its due date that is not done shows as **overdue**, in words, not only by colour. The notes page gains a Progress column, an Overdue count, and filters for not done, overdue and done.
+  - **The assignee updates the status:** the member a book is assigned to can change its status even as a viewer, and nothing else (checked by the API).
+  - **My assignments** (`/org/:orgId/assignments`): every book assigned to you across the organization's scopes, overdue first, then by due date. Each row links to its scope and has a status select. The navigation shows "My assignments (n)" with the number not done yet.
+  - **Assignment email:** a new assignee also gets an email listing the books (up to 10, then "and N more"), in their language, with a link and an opt-out. "Email me when books are assigned to me" is in the account settings and on by default, like catalogue emails. People assigning themselves get nothing.
+  - Status and due date are kept on duplicate and on carry-forward. Exports gain `status` and `due_on` at the end of the CSV, and `status` and `dueOn` in JSON and the read API.
+  - Due dates are calendar days: stored as `date` and returned as `YYYY-MM-DD`, never as a time. "Overdue" uses Cairo's date on the server and the browser's date on screen.
+- **Files:** `src/db/migrations/0009_item_tracking.ts`, `src/db/index.ts`, `src/scopes/{notes,routes,export}.ts`, `src/orgs/routes.ts`, `src/auth/routes.ts`, `src/notifications/email.ts`, `public/js/views/{items,assignments,account,shell,picker}.js`, `public/js/main.js`, `public/js/i18n.js`, `public/app.css`.
+- **Tests:** `scope-notes.test.ts` now has 21 tests (7 new):
+  - status and due date validation;
+  - the assignee-viewer rule;
+  - bulk status and due date;
+  - emails in Arabic, the opt-out, and none for self-assignment;
+  - a shortened list for 13 books;
+  - My assignments ordering, filters and counts;
+  - status and due date in duplicates, carry-forward and exports.
+
+  The CSV unit test was updated. E2E journey 15 (it reuses journey 14's school, since sign-ups are limited to 10 an hour per address): the owner makes Hana a viewer and assigns two books with a status and past due date in one go, then moves one date later. Overdue counts and filters follow. Hana's email lists the books; she opens My assignments (3) from the navigation, marks the overdue book done, filters to done, and turns the emails off. The accessibility audit adds 5 screens (the notes page with an overdue book, and My assignments in English, Arabic, dark and on a phone) with 0 findings. All pass.
 - **Limitations:**
-  - Notifications are in-app only (no email).
-  - No status or due date per book.
-  - No cross-scope "my assignments" page (each scope's page filters to you, and the scopes list shows your count per scope).
+  - No reminder before a due date (the overdue state shows on screen only).
+  - Assignment emails are sent once per assignment, not batched into a daily digest.
+  - My assignments covers one organization at a time.
 
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
@@ -213,7 +234,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (199 unit/integration + 16 E2E passing: 14 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (206 unit/integration + 17 E2E passing: 15 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

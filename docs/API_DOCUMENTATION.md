@@ -59,7 +59,7 @@ counted across all app instances; the global limit is counted per app instance.
 | POST | `/logout` · `/logout-others` | — |
 | GET | `/me` | user (with `kind`: `staff` or `student`), organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA. For a student: `organizations: []` and `student {username, grade, school {id, name, code, locale}}` |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
-| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean}` (catalogue update emails; in-app notifications are always created) |
+| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean}` (catalogue update emails; emails when books are assigned to you; in-app notifications are always created) |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
 | POST | `/mfa/setup` · `/mfa/enable` · `/mfa/disable` · `/mfa/recovery-codes` | setup returns `{secret, otpauthUrl, qrSvg}`; enable `{code}` → `{recoveryCodes}` |
 | GET | `/account/export` | personal data as JSON |
@@ -97,7 +97,7 @@ Tree shape:
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/orgs` | user | `{name}` → new org (owner); trial only for a user's first org |
-| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage · `{name?, locale?, requireMfaForAdmins?}` · `{password, confirmName}` |
+| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage + `myAssignments {open, overdue}` · `{name?, locale?, requireMfaForAdmins?}` · `{password, confirmName}` |
 | GET | `/:orgId/members` | viewer | |
 | PATCH / DELETE | `/:orgId/members/:userId` | admin | `{role}` · remove (members may remove themselves) |
 | POST | `/:orgId/transfer-ownership` | owner | `{userId, password}` |
@@ -125,15 +125,16 @@ Tree shape:
 | GET | `/api/orgs/:orgId/scopes` | viewer | `{scopes:[…, itemCount, readOnly, notes, assigned, assignedToMe], limit}` |
 | POST | `/api/orgs/:orgId/scopes` | editor | `{name, description?, catalogVersionId}` |
 | GET / PATCH / DELETE | `/api/orgs/:orgId/scopes/:scopeId` | viewer / editor / editor | GET returns `materialIds` and `annotations:[{materialId, note, assigneeId, assigneeName, annotatedAt, annotatedBy}]` (selected books with a note or an assignee) |
-| PATCH | `/api/orgs/:orgId/scopes/:scopeId/items/:materialId` | editor | `{note?: string ≤500 \| null, assigneeId?: uuid \| null}` (at least one; `""` clears the note) → `{annotation}`. The book must be selected (`404`); the assignee must be a member of the organization (`400 ASSIGNEE_NOT_MEMBER`); read-only scopes `402`. A new assignee other than yourself gets an in-app notification. Audited as `scope.item_annotated` (which fields changed, not the note's text) |
-| POST | `/api/orgs/:orgId/scopes/:scopeId/items/assign` | editor | `{materialIds: uuid[1–2000], assigneeId: uuid \| null}` → `{updated}`; every book must be selected, or nothing changes (`400 INVALID_MATERIALS`); notes are kept; one notification with the count. Audited as `scope.items_assigned` |
+| PATCH | `/api/orgs/:orgId/scopes/:scopeId/items/:materialId` | editor (status: also the assignee, any role) | `{note?: string ≤500 \| null, assigneeId?: uuid \| null, status?: "todo"\|"in_progress"\|"done" \| null, dueOn?: "YYYY-MM-DD" (2000–2100) \| null}` (at least one; `""` clears the note) → `{annotation}`. A member who is not an editor may change only the `status` of a book assigned to them (`403` otherwise). The book must be selected (`404`); the assignee must be a member of the organization (`400 ASSIGNEE_NOT_MEMBER`); read-only scopes `402`. A new assignee other than yourself gets an in-app notification. Audited as `scope.item_annotated` (which fields changed, not the note's text) |
+| POST | `/api/orgs/:orgId/scopes/:scopeId/items/assign` | editor | `{materialIds: uuid[1–2000], assigneeId?: uuid \| null, status?: … \| null, dueOn?: date \| null}` (at least one field) → `{updated}`; fields left out stay as they are, notes are never touched; every book must be selected, or nothing changes (`400 INVALID_MATERIALS`); a new assignee gets one notification and one email with the count. Audited as `scope.items_assigned` (with an assignee) or `scope.items_tracked` |
+| GET | `/api/orgs/:orgId/assignments?show=open\|done\|all` | viewer | Books assigned to the signed-in member across the organization's scopes (default `open`: not done): `{items:[{scopeId, scopeName, academicYear, materialId, title, kind, grade, subjectEn, subjectAr, note, status, dueOn, overdue, readOnly, annotatedAt, annotatedBy}], canEditAll}`, overdue first, then by due date (none last). "Overdue" uses the date in Cairo |
 | POST | `/api/orgs/:orgId/scopes/:scopeId/items` | editor | `{add?: uuid[≤2000], remove?: uuid[≤2000]}` → `{itemCount}` |
 | DELETE | `/api/orgs/:orgId/scopes/:scopeId/items` | editor | clear |
 | POST | `/api/orgs/:orgId/scopes/:scopeId/duplicate` | editor | `{name}`; the copy keeps notes and assignees |
 | GET | `/api/orgs/:orgId/scopes/compare?a=<scopeId>&b=<scopeId>[&format=csv]` | viewer | Two scopes of the organization side by side: `{a, b, sameVersion, subjects:[{grade, track, block, code, nameEn, nameAr, onlyIn?, materials:[{title, kind, side: "a"\|"b"\|"both", aId, bId, titleInB?, notInOtherCatalog?}]}], summary:{onlyA, onlyB, both}}`; across catalogue versions books are matched by subject and title. `400` when `a` equals `b`; `404` for a scope of another organization. `format=csv` downloads it (needs CSV export: `402 FEATURE_NOT_IN_PLAN`; counted as an export; audited as `scope.comparison_exported`) |
 | GET | `/api/orgs/:orgId/scopes/:scopeId/carry-forward?to=<versionId>` | viewer | Preview of carrying the scope to another **published** version: `{scope, from, to, suggestedName, plan:{subjects:[{source, target\|null, changes:[{field, from, to}], carried:[{fromId, toId, title, kind, renamedFrom?}], missing:[{fromId, title, kind}], added:[{id, title, kind}]}], summary}}`; `400` for the scope's own or an unpublished version. `notes:{carried, lost}`: notes and assignees that follow their books, and those on books that cannot be carried |
 | POST | `/api/orgs/:orgId/scopes/:scopeId/carry-forward` | editor | `{targetVersionId, mode?: "copy"\|"move", name?, add?: uuid[], skip?: uuid[]}`. `copy` (default) → `201`, new scope in the target version (`402 PLAN_LIMIT_REACHED` at the scope limit, `409 SCOPE_NAME_TAKEN`); `move` → `200`, the scope switches version and its items are replaced (refused for read-only scopes). `add` must be materials of the target version (`400 INVALID_MATERIALS`); `skip` leaves carried items out. Notes and assignees follow carried books (`notesCarried` in the response). Audited as `scope.carried_forward` |
-| GET | `/api/orgs/:orgId/scopes/:scopeId/export?format=txt\|csv\|json` | viewer | attachment; counts toward monthly exports; CSV/JSON need Starter+. CSV ends with `note` and `assignee` columns, JSON items carry `note` and `assignee` (also in `GET /api/v1/scopes/:id`); TXT keeps the original layout |
+| GET | `/api/orgs/:orgId/scopes/:scopeId/export?format=txt\|csv\|json` | viewer | attachment; counts toward monthly exports; CSV/JSON need Starter+. CSV ends with `note`, `assignee`, `status`, `due_on` columns, JSON items carry `note`, `assignee`, `status`, `dueOn` (also in `GET /api/v1/scopes/:id`); TXT keeps the original layout |
 
 Example:
 ```bash

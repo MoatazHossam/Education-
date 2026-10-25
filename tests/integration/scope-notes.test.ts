@@ -172,7 +172,7 @@ describe('notes travel with the scope', () => {
     expect((await admin.delete(`/api/admin/catalog/materials/${(await draftCopy(dropped)).id}`)).statusCode).toBe(200);
     expect((await admin.post(`/api/admin/catalog/versions/${nextId}/publish`)).statusCode).toBe(200);
 
-    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { note: 'Follows the book', assigneeId: t.editor.userId });
+    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { note: 'Follows the book', assigneeId: t.editor.userId, status: 'todo', dueOn: '2027-09-01' });
     await t.owner.client.patch(`${t.base}/items/${t.books[1]}`, { note: 'Book is dropped' });
     const preview = (await t.owner.client.get(`${t.base}/carry-forward?to=${nextId}`)).json();
     expect(preview.notes).toEqual({ carried: 1, lost: 1 });
@@ -181,7 +181,7 @@ describe('notes travel with the scope', () => {
     expect(res.statusCode, res.body).toBe(201);
     expect(res.json().notesCarried).toBe(1);
     const carried = (await t.owner.client.get(`/api/orgs/${t.owner.orgId}/scopes/${res.json().scope.id}`)).json();
-    expect(carried.annotations).toEqual([expect.objectContaining({ materialId: (await draftCopy(kept)).id, note: 'Follows the book', assigneeId: t.editor.userId })]);
+    expect(carried.annotations).toEqual([expect.objectContaining({ materialId: (await draftCopy(kept)).id, note: 'Follows the book', assigneeId: t.editor.userId, status: 'todo', dueOn: '2027-09-01' })]);
 
     // Moving the original in place keeps its note too.
     const moved = await t.owner.client.post(`${t.base}/carry-forward`, { targetVersionId: nextId, mode: 'move' });
@@ -195,8 +195,8 @@ describe('notes travel with the scope', () => {
     const csv = parseCsv((await t.owner.client.get(`${t.base}/export?format=csv`)).body);
     const header = csv[0]!;
     const row = csv.find((r) => r[header.indexOf('material_id')] === t.books[0])!;
-    expect(header.slice(-2)).toEqual(['note', 'assignee']);
-    expect(row.slice(-2)).toEqual(["'=SUM(1) check edition", 'Member editor']);
+    expect(header.slice(-4, -2)).toEqual(['note', 'assignee']);
+    expect(row.slice(-4, -2)).toEqual(["'=SUM(1) check edition", 'Member editor']);
     const json = JSON.parse((await t.owner.client.get(`${t.base}/export?format=json`)).body);
     expect(json.items.find((i: { materialId: string }) => i.materialId === t.books[0])).toMatchObject({ note: '=SUM(1) check edition', assignee: 'Member editor' });
     expect((await t.owner.client.get(`${t.base}/export?format=txt`)).body).not.toContain('SUM');
@@ -212,5 +212,123 @@ describe('notes travel with the scope', () => {
     expect((await other.client.patch(`${t.base}/items/${t.books[0]}`, { note: 'x' })).statusCode).toBe(404);
     expect((await other.client.post(`${t.base}/items/assign`, { materialIds: [t.books[0]], assigneeId: other.userId })).statusCode).toBe(404);
     expect((await other.client.get(t.base)).statusCode).toBe(404);
+  });
+});
+
+describe('status, due dates, assignment emails and my assignments', () => {
+  const emails = (to: string) => h.ownerDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', 'items_assigned').execute();
+
+  it('an editor sets a status and a due date; bad values are refused', async () => {
+    const t = await team();
+    const res = await t.editor.client.patch(`${t.base}/items/${t.books[0]}`, { status: 'in_progress', dueOn: '2026-11-15' });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().annotation).toMatchObject({ status: 'in_progress', dueOn: '2026-11-15', note: null, assigneeId: null });
+    expect((await t.viewer.client.get(t.base)).json().annotations).toEqual([expect.objectContaining({ materialId: t.books[0], status: 'in_progress', dueOn: '2026-11-15' })]);
+    for (const bad of [{ status: 'finished' }, { dueOn: '2026-13-01' }, { dueOn: '15/11/2026' }, { dueOn: '1999-12-31' }]) {
+      expect((await t.editor.client.patch(`${t.base}/items/${t.books[0]}`, bad)).json().error.code, JSON.stringify(bad)).toBe('VALIDATION_ERROR');
+    }
+    // Clearing everything leaves nothing to follow up.
+    await t.editor.client.patch(`${t.base}/items/${t.books[0]}`, { status: null, dueOn: null });
+    expect((await t.viewer.client.get(t.base)).json().annotations).toEqual([]);
+  });
+
+  it('the member a book is assigned to can update its status, even as a viewer, and nothing else', async () => {
+    const t = await team();
+    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { assigneeId: t.viewer.userId, note: 'Check the edition' });
+    expect((await t.viewer.client.patch(`${t.base}/items/${t.books[0]}`, { status: 'done' })).statusCode).toBe(200);
+    expect((await t.viewer.client.patch(`${t.base}/items/${t.books[0]}`, { status: 'done', note: 'changed' })).statusCode).toBe(403);
+    expect((await t.viewer.client.patch(`${t.base}/items/${t.books[0]}`, { dueOn: '2026-12-01' })).statusCode).toBe(403);
+    expect((await t.viewer.client.patch(`${t.base}/items/${t.books[1]}`, { status: 'done' })).statusCode).toBe(403);
+    const a = (await t.owner.client.get(t.base)).json().annotations[0];
+    expect(a).toMatchObject({ status: 'done', note: 'Check the edition', assigneeId: t.viewer.userId, annotatedBy: 'Member viewer' });
+  });
+
+  it('updates status and due date of several books at once, keeping notes and assignees', async () => {
+    const t = await team();
+    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { note: 'Keep', assigneeId: t.editor.userId });
+    const res = await t.owner.client.post(`${t.base}/items/assign`, { materialIds: t.books.slice(0, 3), status: 'todo', dueOn: '2026-12-01' });
+    expect(res.json()).toEqual({ updated: 3 });
+    const list = (await t.owner.client.get(t.base)).json().annotations;
+    expect(list).toHaveLength(3);
+    expect(list.find((a: { materialId: string }) => a.materialId === t.books[0])).toMatchObject({ note: 'Keep', assigneeId: t.editor.userId, status: 'todo', dueOn: '2026-12-01' });
+    expect((await t.owner.client.post(`${t.base}/items/assign`, { materialIds: t.books.slice(0, 1) })).json().error.code).toBe('VALIDATION_ERROR');
+    const audit = (await t.owner.client.get(`/api/orgs/${t.owner.orgId}/audit-logs?action=scope.items_`)).json().entries;
+    expect(audit[0]).toMatchObject({ action: 'scope.items_tracked', metadata: { count: 3, status: 'todo', dueOn: '2026-12-01' } });
+    // No editor rights, no bulk updates.
+    expect((await t.viewer.client.post(`${t.base}/items/assign`, { materialIds: t.books.slice(0, 1), status: 'done' })).statusCode).toBe(403);
+  });
+
+  it('emails the new assignee the list of books, in their language, unless they turned it off', async () => {
+    const t = await team();
+    await t.editor.client.patch('/api/auth/profile', { locale: 'ar' });
+    const titles = await h.ownerDb.selectFrom('catalog_materials').select('title').where('id', 'in', t.books.slice(0, 2)).execute();
+    await t.owner.client.post(`${t.base}/items/assign`, { materialIds: t.books.slice(0, 2), assigneeId: t.editor.userId });
+    const mail = await emails(t.editor.email);
+    expect(mail).toHaveLength(1);
+    expect(mail[0]!.subject).toBe('أسند إليك Owner Olfat كتبًا في «Plan» (2)');
+    for (const { title } of titles) expect(mail[0]!.text_body).toContain(`• ${title}`);
+    expect(mail[0]!.text_body).toContain(`/org/${t.owner.orgId}/scopes/${t.scopeId}/items?show=mine`);
+    expect(mail[0]!.text_body).toContain('/account');
+
+    // Assigning yourself sends nothing; turning emails off keeps the in-app notice only.
+    await t.editor.client.patch(`${t.base}/items/${t.books[2]}`, { assigneeId: t.editor.userId });
+    expect((await t.editor.client.patch('/api/auth/profile', { assignmentEmails: false })).json().user.assignmentEmails).toBe(false);
+    await t.owner.client.patch(`${t.base}/items/${t.books[3]}`, { assigneeId: t.editor.userId });
+    expect(await emails(t.editor.email)).toHaveLength(1);
+    expect(await notifications(t.editor.userId)).toHaveLength(2);
+  });
+
+  it('a long list is shortened in the email', async () => {
+    const owner = await signUp(h, { org: 'Big School', name: 'Owner Olfat' });
+    const editor = await addMember(h, owner.client, owner.orgId, 'editor');
+    const versionId = await publishedVersionId(h);
+    const books = await someMaterialIds(h, versionId, 13);
+    const scopeId = (await owner.client.post(`/api/orgs/${owner.orgId}/scopes`, { name: 'Big', catalogVersionId: versionId })).json().scope.id as string;
+    await owner.client.post(`/api/orgs/${owner.orgId}/scopes/${scopeId}/items`, { add: books });
+    await owner.client.post(`/api/orgs/${owner.orgId}/scopes/${scopeId}/items/assign`, { materialIds: books, assigneeId: editor.userId });
+    const [mail] = await emails(editor.email);
+    expect(mail!.subject).toBe('Owner Olfat assigned you 13 books in “Big”');
+    expect(mail!.text_body.match(/^• /gm)).toHaveLength(11);
+    expect(mail!.text_body).toContain('• and 3 more');
+  });
+
+  it('my assignments: across scopes, overdue first, then by due date; done ones apart; counts for the navigation', async () => {
+    const t = await team();
+    const second = (await t.owner.client.post(`/api/orgs/${t.owner.orgId}/scopes`, { name: 'Second plan', catalogVersionId: t.versionId })).json().scope.id as string;
+    const secondBase = `/api/orgs/${t.owner.orgId}/scopes/${second}`;
+    await t.owner.client.post(`${secondBase}/items`, { add: t.books.slice(0, 1) });
+    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { assigneeId: t.editor.userId, dueOn: '2100-01-10' });
+    await t.owner.client.patch(`${t.base}/items/${t.books[1]}`, { assigneeId: t.editor.userId });
+    await t.owner.client.patch(`${t.base}/items/${t.books[2]}`, { assigneeId: t.editor.userId, dueOn: '2000-01-05', status: 'in_progress' });
+    await t.owner.client.patch(`${t.base}/items/${t.books[3]}`, { assigneeId: t.editor.userId, status: 'done' });
+    await t.owner.client.patch(`${secondBase}/items/${t.books[0]}`, { assigneeId: t.editor.userId, dueOn: '2100-01-01', note: 'Other scope' });
+    await t.owner.client.patch(`${t.base}/items/${t.books[1]}`, { note: 'not mine' });
+
+    const open = (await t.editor.client.get(`/api/orgs/${t.owner.orgId}/assignments`)).json();
+    expect(open.items.map((i: { materialId: string; scopeName: string }) => [i.materialId, i.scopeName])).toEqual([
+      [t.books[2], 'Plan'], [t.books[0], 'Second plan'], [t.books[0], 'Plan'], [t.books[1], 'Plan'],
+    ]);
+    expect(open.items[0]).toMatchObject({ overdue: true, status: 'in_progress', dueOn: '2000-01-05', title: expect.any(String), grade: expect.any(Number), readOnly: false });
+    expect(open.items[1]).toMatchObject({ overdue: false, note: 'Other scope' });
+    expect(open.canEditAll).toBe(true);
+    const done = (await t.editor.client.get(`/api/orgs/${t.owner.orgId}/assignments?show=done`)).json().items;
+    expect(done.map((i: { materialId: string }) => i.materialId)).toEqual([t.books[3]]);
+    expect((await t.editor.client.get(`/api/orgs/${t.owner.orgId}/assignments?show=all`)).json().items).toHaveLength(5);
+    expect((await t.editor.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 4, overdue: 1 });
+    expect((await t.owner.client.get(`/api/orgs/${t.owner.orgId}/assignments`)).json().items).toEqual([]);
+    expect((await t.viewer.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 0, overdue: 0 });
+  });
+
+  it('status and due date travel with duplicates and carry-forward, and appear in exports', async () => {
+    const t = await team();
+    await t.owner.client.patch(`${t.base}/items/${t.books[0]}`, { status: 'in_progress', dueOn: '2026-11-15' });
+    const copy = (await t.owner.client.post(`${t.base}/duplicate`, { name: 'Plan copy' })).json().scope.id as string;
+    expect((await t.owner.client.get(`/api/orgs/${t.owner.orgId}/scopes/${copy}`)).json().annotations).toEqual([expect.objectContaining({ status: 'in_progress', dueOn: '2026-11-15' })]);
+    const csv = parseCsv((await t.owner.client.get(`${t.base}/export?format=csv`)).body);
+    const header = csv[0]!;
+    expect(header.slice(-4)).toEqual(['note', 'assignee', 'status', 'due_on']);
+    expect(csv.find((r) => r[header.indexOf('material_id')] === t.books[0])!.slice(-2)).toEqual(['in_progress', '2026-11-15']);
+    const json = JSON.parse((await t.owner.client.get(`${t.base}/export?format=json`)).body);
+    expect(json.items.find((i: { materialId: string }) => i.materialId === t.books[0])).toMatchObject({ status: 'in_progress', dueOn: '2026-11-15' });
   });
 });

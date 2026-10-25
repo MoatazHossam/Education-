@@ -22,14 +22,14 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**27 files, 199 tests, 199 passed, 0 failed** (2026-10-25, after notes and assignees). Integration tests ran against a real
+**27 files, 206 tests, 206 passed, 0 failed** (2026-10-25, after the notes follow-ups). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
 | --- | --- | --- |
 | unit/catalog-fidelity | 3 | Pass — the seed equals the original artifact's 231 subjects / 1,038 materials item-for-item |
 | unit/billing-logic | 9 | Pass |
-| unit/security-primitives | 12 | Pass — includes the CSV `note` and `assignee` columns (at the end, formula-guarded) |
+| unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded) |
 | unit/i18n | 2 | Pass |
 | unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
@@ -42,7 +42,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/scopes | 10 | Pass |
 | integration/scope-compare | 3 | Pass — same catalogue with CSV (counted, audited); last year against this year; other organization 404, same scope 400, viewer allowed, CSV refused on Free |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
-| integration/scope-notes | 14 | Pass — notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
+| integration/scope-notes | 21 | Pass — status and due dates (validation, the assignee-viewer rule, bulk changes), assignment emails (language, opt-out, none for yourself, long lists shortened), My assignments (order, filters, navigation counts), status and due date in duplicates, carry-forward and exports; notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
 | integration/billing | 13 | Pass |
@@ -57,7 +57,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 199</summary>
+<details><summary>Show all 206</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -248,7 +248,14 @@ Full test names (verbatim from the verbose reporter):
 - scope-notes › notes travel with the scope › carrying forward keeps notes on carried books and reports those on books that cannot be carried
 - scope-notes › notes travel with the scope › CSV and JSON exports and the read API carry note and assignee; the text export stays the original layout
 - scope-notes › notes travel with the scope › another organization cannot read or change them
-- unit › exports › CSV ends with the item note and assignee, formula-guarded
+- scope-notes › status, due dates, assignment emails and my assignments › an editor sets a status and a due date; bad values are refused
+- scope-notes › status, due dates, assignment emails and my assignments › the member a book is assigned to can update its status, even as a viewer, and nothing else
+- scope-notes › status, due dates, assignment emails and my assignments › updates status and due date of several books at once, keeping notes and assignees
+- scope-notes › status, due dates, assignment emails and my assignments › emails the new assignee the list of books, in their language, unless they turned it off
+- scope-notes › status, due dates, assignment emails and my assignments › a long list is shortened in the email
+- scope-notes › status, due dates, assignment emails and my assignments › my assignments: across scopes, overdue first, then by due date; done ones apart; counts for the navigation
+- scope-notes › status, due dates, assignment emails and my assignments › status and due date travel with duplicates and carry-forward, and appear in exports
+- unit › exports › CSV ends with the item note, assignee, status and due date, formula-guarded
 
 </details>
 
@@ -257,7 +264,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**16 tests, 16 passed** (3.3 min, 2026-10-25), Chromium, real server process on port 3100: 14 journeys,
+**17 tests, 17 passed** (3.4 min, 2026-10-25), Chromium, real server process on port 3100: 15 journeys,
 then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -276,6 +283,7 @@ then the accessibility project (2 tests), which reuses the journeys' data.
 | 12 | Owner builds two scopes with one book in common, opens Compare scopes from the scopes list: 1 only in each, 1 in both; differences only by default, everything after clearing the filter; Swap; the downloaded CSV has the right yes/no columns | Pass |
 | 13 | Student accounts: the Students page is closed until a platform admin sets the school's student override in the admin console; the owner adds a student (password shown once) and imports a roster (a file with a bad line is refused, the corrected one imported, the credentials CSV downloaded and checked); the student follows the link on the staff sign-in page, is refused with a wrong password, signs in, sees exactly the three books chosen for grade 7, is sent back to the portal from a staff page, switches to Arabic; a staff password reset signs the student out | Pass |
 | 14 | Notes and assignees: an editor joins by invitation; the owner writes a note on a book (focus returns to its Edit button) and assigns two books to the editor at once; the editor is notified, follows the notification to the page filtered to their two books and sees the note; the scopes list shows the counts; in the picker the annotated book carries its mark, deselecting it asks first (Cancel keeps it, Remove drops it with its note) | Pass |
+| 15 | Status and due dates (reuses journey 14's school, as sign-ups are limited to 10 an hour per address): the owner makes Hana a viewer and assigns her two books with status To do and a past due date in one step, then moves one date later; the Overdue count goes 2 → 1 and the Overdue filter shows one book; Hana's email lists the books; she opens My assignments (3) from the navigation, sees the overdue book first, marks it Done (the overdue mark goes), filters to Done, and turns assignment emails off in her account | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -285,8 +293,8 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 15 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 64 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, Arabic, dark, phone) and its edit dialog | Pass — 0 findings |
-| 16 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 16 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 69 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone) | Pass — 0 findings |
+| 17 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 
 Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 

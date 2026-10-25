@@ -13,6 +13,7 @@ import { AppError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { parse, zEmail, zLocale, zUuid } from '../lib/validation.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
+import { assignmentCounts } from '../scopes/notes.js';
 import { createOrganization } from './service.js';
 
 const INVITE_TTL_DAYS = 7;
@@ -41,7 +42,7 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
 
   app.get('/api/orgs/:orgId', async (req) => {
     const { orgId } = parse(OrgParams, req.params);
-    return inOrg(ctx, req, orgId, 'viewer', async (trx, { org, role }) => {
+    return inOrg(ctx, req, orgId, 'viewer', async (trx, { org, role, user }) => {
       const ent = await getEntitlements(trx, org.id, grace);
       const seats = await countSeats(trx, org.id);
       const scopes = await countScopes(trx, org.id);
@@ -51,6 +52,8 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
         role,
         plan: { id: ent.planId, name: ent.planName, state: ent.state, limits: ent.limits, features: ent.features, trialEndsAt: ent.subscription?.trial_ends_at ?? null },
         usage: { members: seats.members, pendingInvites: seats.pendingInvites, scopes, ...usage },
+        // Books assigned to the signed-in member that are not done yet (for the navigation).
+        myAssignments: await assignmentCounts(trx, org.id, user.id),
       };
     });
   });

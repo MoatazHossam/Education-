@@ -1,13 +1,34 @@
 // Notes and assignees on a scope's selected books: a work list for the team.
-// Editors write a short note on any selected book and name the member
-// responsible for it, one book at a time or several at once.
+// Editors write a short note on any selected book, name the member responsible
+// for it, and track a status and due date, one book at a time or several at once.
 import { get, patch, post } from '../api.js';
 import { dialog, errorMessage, fmtDate, form, h, link, tableCard, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { can, invalidateOrg, session } from '../state.js';
 import { pageHead } from './shell.js';
 
-const SHOW = ['all', 'mine', 'notes', 'assigned', 'unassigned'];
+const SHOW = ['all', 'mine', 'notes', 'assigned', 'unassigned', 'open', 'overdue', 'done'];
+export const STATUSES = ['todo', 'in_progress', 'done'];
+
+/** Today in the browser's time zone, as YYYY-MM-DD (due dates are calendar days). */
+export function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+export const isOverdue = (a) => Boolean(a?.dueOn && a.status !== 'done' && a.dueOn < today());
+/** A calendar day shown in the user's language (built at local midnight, so the day never shifts). */
+export const fmtDay = (day) => fmtDate(new Date(`${day}T00:00:00`));
+
+/** Status pill and due date of a book; "overdue" is said in words, not only by colour. */
+export function progress(a) {
+  const parts = [];
+  if (a?.status) parts.push(h('span', { class: `pill ${a.status === 'done' ? 'ok' : a.status === 'in_progress' ? 'warn' : ''}` }, t(`items.status.${a.status}`)));
+  if (a?.dueOn) {
+    parts.push(h('div', { class: 'small' }, t('items.due', { date: fmtDay(a.dueOn) }),
+      isOverdue(a) ? [' ', h('span', { class: 'pill bad' }, t('items.overdue'))] : null));
+  }
+  return parts.length ? parts : h('span', { class: 'muted' }, '—');
+}
 const auto = (...c) => h('span', { dir: 'auto' }, ...c);
 const stat = (k, v) => h('div', { class: 'stat' }, h('div', { class: 'k' }, k), h('div', { class: 'v' }, String(v)));
 
@@ -42,6 +63,9 @@ export async function itemsView(ctx) {
     if (st.show === 'notes' && !a?.note) return false;
     if (st.show === 'assigned' && !a?.assigneeId) return false;
     if (st.show === 'unassigned' && a?.assigneeId) return false;
+    if (st.show === 'open' && a?.status === 'done') return false;
+    if (st.show === 'done' && a?.status !== 'done') return false;
+    if (st.show === 'overdue' && !isOverdue(a)) return false;
     if (st.grade && String(r.subject.grade) !== st.grade) return false;
     if (st.q) {
       const hay = `${r.m.title} ${r.subject.nameEn} ${r.subject.nameAr} ${a?.note ?? ''} ${a?.assigneeName ?? ''}`.toLowerCase();
@@ -56,11 +80,14 @@ export async function itemsView(ctx) {
       fields: [
         { name: 'note', label: t('items.note'), type: 'textarea', value: a?.note ?? '', maxlength: 500, hint: t('items.noteHint') },
         { name: 'assigneeId', label: t('items.assignee'), type: 'select', value: a?.assigneeId ?? '', options: [{ value: '', label: t('items.nobody') }, ...members.map((m) => ({ value: m.userId, label: m.name }))] },
+        { name: 'status', label: t('items.statusLabel'), type: 'select', value: a?.status ?? '', options: [{ value: '', label: t('items.status.none') }, ...STATUSES.map((k) => ({ value: k, label: t(`items.status.${k}`) }))] },
+        { name: 'dueOn', label: t('items.dueLabel'), type: 'date', value: a?.dueOn ?? '', hint: t('items.dueHint') },
       ],
       submitLabel: t('common.save'),
       onSubmit: async (v) => {
-        const res = await patch(`/api/orgs/${orgId}/scopes/${scopeId}/items/${r.m.id}`, { note: v.note, assigneeId: v.assigneeId || null });
-        if (res.annotation.note || res.annotation.assigneeId) notes.set(r.m.id, res.annotation); else notes.delete(r.m.id);
+        const res = await patch(`/api/orgs/${orgId}/scopes/${scopeId}/items/${r.m.id}`, { note: v.note, assigneeId: v.assigneeId || null, status: v.status || null, dueOn: v.dueOn || null });
+        const x = res.annotation;
+        if (x.note || x.assigneeId || x.status || x.dueOn) notes.set(r.m.id, x); else notes.delete(r.m.id);
         f.el.closest('dialog')?.close();
         toast(t('common.saved'));
         invalidateOrg(orgId);
@@ -71,31 +98,52 @@ export async function itemsView(ctx) {
     await dialog({ title: t('items.editTitle'), body: h('div', { class: 'stack' }, h('p', { class: 'muted', dir: 'auto' }, r.m.title), f.el), actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }] });
   }
 
-  // ------------------------------------------------------------ bulk assignment (editors)
+  // ------------------------------------------------------------ several books at once (editors)
+  // Each control starts at "keep", so only what the editor changes is sent.
   const chosenCount = h('span', {});
-  const bulkSelect = h('select', { 'aria-label': t('items.assignTo') },
-    h('option', { value: '' }, t('items.nobody')), members.map((m) => h('option', { value: m.userId }, m.name)));
+  const KEEP = '__keep';
+  const bulkAssignee = h('select', { id: 'bulk-assignee' },
+    h('option', { value: KEEP }, t('items.keep')), h('option', { value: '' }, t('items.nobody')), members.map((m) => h('option', { value: m.userId }, m.name)));
+  const bulkStatus = h('select', { id: 'bulk-status' },
+    h('option', { value: KEEP }, t('items.keep')), h('option', { value: '' }, t('items.status.none')), STATUSES.map((k) => h('option', { value: k }, t(`items.status.${k}`))));
+  const bulkDue = h('input', { id: 'bulk-due', type: 'date' });
   const bulkBtn = h('button', {
     type: 'button', class: 'btn small', onclick: async () => {
       if (!chosen.size) return toast(t('items.chooseFirst'));
+      const body = { materialIds: [...chosen] };
+      if (bulkAssignee.value !== KEEP) body.assigneeId = bulkAssignee.value || null;
+      if (bulkStatus.value !== KEEP) body.status = bulkStatus.value || null;
+      if (bulkDue.value) body.dueOn = bulkDue.value;
+      if (Object.keys(body).length === 1) return toast(t('items.chooseChange'));
       try {
-        const assigneeId = bulkSelect.value || null;
-        const res = await post(`/api/orgs/${orgId}/scopes/${scopeId}/items/assign`, { materialIds: [...chosen], assigneeId });
-        const name = members.find((m) => m.userId === assigneeId)?.name ?? null;
+        const res = await post(`/api/orgs/${orgId}/scopes/${scopeId}/items/assign`, body);
+        const name = members.find((m) => m.userId === body.assigneeId)?.name ?? null;
         for (const id of chosen) {
-          const a = notes.get(id) ?? { materialId: id, note: null };
-          const next = { ...a, assigneeId, assigneeName: name };
-          if (next.note || next.assigneeId) notes.set(id, next); else notes.delete(id);
+          const a = notes.get(id) ?? { materialId: id, note: null, assigneeId: null, assigneeName: null, status: null, dueOn: null };
+          const next = { ...a,
+            ...('assigneeId' in body ? { assigneeId: body.assigneeId, assigneeName: name } : {}),
+            ...('status' in body ? { status: body.status } : {}),
+            ...('dueOn' in body ? { dueOn: body.dueOn } : {}) };
+          if (next.note || next.assigneeId || next.status || next.dueOn) notes.set(id, next); else notes.delete(id);
         }
         chosen.clear();
-        toast(t('items.assigned', { n: res.updated }));
+        // Back to "keep", so a second click cannot repeat the change by accident.
+        bulkAssignee.value = KEEP;
+        bulkStatus.value = KEEP;
+        bulkDue.value = '';
+        toast(t('items.applied', { n: res.updated }));
         invalidateOrg(orgId);
         draw();
       } catch (err) { toast(errorMessage(err), 'error'); }
     },
-  }, t('items.assign'));
-  const bulk = canEdit ? h('div', { class: 'card row items-bulk', role: 'region', 'aria-label': t('items.bulkTitle') },
-    h('b', {}, t('items.bulkTitle')), chosenCount, bulkSelect, bulkBtn) : null;
+  }, t('items.apply'));
+  const bulk = canEdit ? h('div', { class: 'card items-bulk', role: 'region', 'aria-labelledby': 'bulk-h' },
+    h('div', { class: 'row' }, h('h2', { id: 'bulk-h' }, t('items.bulkTitle')), chosenCount),
+    h('div', { class: 'compare-controls' },
+      h('div', { class: 'field' }, h('label', { for: 'bulk-assignee' }, t('items.assignee')), bulkAssignee),
+      h('div', { class: 'field' }, h('label', { for: 'bulk-status' }, t('items.statusLabel')), bulkStatus),
+      h('div', { class: 'field' }, h('label', { for: 'bulk-due' }, t('items.dueLabel')), bulkDue),
+      bulkBtn)) : null;
 
   // ------------------------------------------------------------ filters
   const showSel = h('select', { id: 'items-show', onchange: (e) => { st.show = e.target.value; chosen.clear(); draw(); } },
@@ -126,7 +174,8 @@ export async function itemsView(ctx) {
       stat(t('items.stat.selected'), rows.length),
       stat(t('items.stat.notes'), all.filter((a) => a.note).length),
       stat(t('items.stat.assigned'), all.filter((a) => a.assigneeId).length),
-      stat(t('items.stat.mine'), all.filter((a) => a.assigneeId === me).length));
+      stat(t('items.stat.mine'), all.filter((a) => a.assigneeId === me).length),
+      stat(t('items.stat.overdue'), all.filter(isOverdue).length));
     gradeBoxes.length = 0;
     const shown = rows.filter(matches);
     if (!rows.length) return results.replaceChildren(h('div', { class: 'card' }, h('p', { class: 'empty' }, t('items.noneSelected')), link(`/org/${orgId}?scope=${scopeId}`, t('items.openPicker'), { class: 'btn' })));
@@ -149,11 +198,11 @@ export async function itemsView(ctx) {
       }) : null;
       if (allBox) gradeBoxes.push({ box: allBox, ids });
       const subjects = [...new Set(list.map((r) => r.subject))];
-      const cols = canEdit ? 5 : 3;
+      const cols = canEdit ? 6 : 4;
       return tableCard(title, h('h2', {}, title), h('table', { class: 'data compare items' },
         h('thead', {}, h('tr', {},
           canEdit ? h('th', { scope: 'col', class: 'pick' }, allBox) : null,
-          h('th', { scope: 'col' }, t('compare.material')), h('th', { scope: 'col' }, t('items.note')), h('th', { scope: 'col' }, t('items.assignee')),
+          h('th', { scope: 'col' }, t('compare.material')), h('th', { scope: 'col' }, t('items.note')), h('th', { scope: 'col' }, t('items.assignee')), h('th', { scope: 'col' }, t('items.progress')),
           canEdit ? h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, t('common.edit'))) : null)),
         subjects.map((s) => h('tbody', {},
           h('tr', { class: 'group' }, h('th', { scope: 'colgroup', colspan: String(cols) }, auto(ar ? s.nameAr : s.nameEn))),
@@ -168,6 +217,7 @@ export async function itemsView(ctx) {
               h('td', { class: 'note' }, a?.note ? auto(a.note) : h('span', { class: 'muted' }, '—'),
                 a?.annotatedAt ? h('div', { class: 'muted small' }, t('items.by', { name: a.annotatedBy ?? '—', date: fmtDate(a.annotatedAt) })) : null),
               h('td', {}, a?.assigneeName ? h('span', { class: a.assigneeId === me ? 'pill ok' : '' }, auto(a.assigneeName)) : h('span', { class: 'muted' }, '—')),
+              h('td', {}, progress(a)),
               canEdit ? h('td', {}, h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('items.editFor', { title: r.m.title }), dataset: { edit: r.m.id }, onclick: () => edit(r).catch((e) => toast(errorMessage(e), 'error')) }, t('common.edit'))) : null);
           }))),
       ));

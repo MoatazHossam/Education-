@@ -10,6 +10,7 @@ export type Track = 'moe' | 'sec' | 'bac' | 'ta' | 'intl';
 export type SubjectStatus = 'scored' | 'pass' | 'act';
 export type MaterialKind = 'moe' | 'lang' | 'ext' | 'prog' | 'exam';
 export type VerificationStatus = 'unverified' | 'verified' | 'needs_review';
+export type ItemStatus = 'todo' | 'in_progress' | 'done';
 
 /** Editorial verification columns shared by catalogue subjects and materials. */
 interface VerificationColumns {
@@ -65,6 +66,7 @@ export interface UsersTable {
   password_changed_at: Generated<Date>;
   trial_used: Generated<boolean>;
   catalog_emails: Generated<boolean>;
+  assignment_emails: Generated<boolean>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
@@ -205,6 +207,9 @@ export interface ScopeItemsTable {
   assignee_id: string | null;
   annotated_by: string | null;
   annotated_at: NullableTimestamp;
+  status: ItemStatus | null;
+  /** Due date (a calendar day, returned as YYYY-MM-DD). */
+  due_on: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 export interface ApiKeysTable {

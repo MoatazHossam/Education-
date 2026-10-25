@@ -10,6 +10,7 @@ import * as billing from './views/billing.js';
 import * as carry from './views/carry.js';
 import * as compare from './views/compare.js';
 import * as items from './views/items.js';
+import * as assignments from './views/assignments.js';
 import * as members from './views/members.js';
 import * as picker from './views/picker.js';
 import * as scopes from './views/scopes.js';
@@ -41,6 +42,7 @@ route('/org/:orgId/scopes', { access: 'user', org: true, view: scopes.scopesView
 route('/org/:orgId/scopes/:scopeId/carry', { access: 'user', org: true, view: carry.carryView });
 route('/org/:orgId/scopes/compare', { access: 'user', org: true, view: compare.compareView });
 route('/org/:orgId/scopes/:scopeId/items', { access: 'user', org: true, view: items.itemsView });
+route('/org/:orgId/assignments', { access: 'user', org: true, view: assignments.assignmentsView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });

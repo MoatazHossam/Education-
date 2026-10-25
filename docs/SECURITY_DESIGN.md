@@ -24,7 +24,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Threat (OWASP Top 10 2021) | Control | Where | Test |
 | --- | --- | --- | --- |
 | Cross-tenant data access / BOLA (A01) | Membership check per request (`inOrg`); 404 for non-members; RLS on every tenant table with fail-closed default; composite FKs | `src/auth/guards.ts`, migration | `tenancy.test.ts`, `authz-coverage.test.ts` (enumerates every route), E2E journey 3 |
-| Privilege escalation within an org (A01) | Role ranks; admins cannot grant admin/owner; single-owner index; ownership transfer needs password | `src/orgs/routes.ts` | `tenancy.test.ts` |
+| Privilege escalation within an org (A01) | Role ranks; admins cannot grant admin/owner; single-owner index; ownership transfer needs password; a viewer may change only the status of a book assigned to them (no other field, no other book) | `src/orgs/routes.ts` | `tenancy.test.ts` |
 | Student accounts reaching staff features (A01) | Students are `users.kind = 'student'` with no email and no membership. `requireUser` (used by every staff route and by `inOrg`) refuses them with 403 `STAFF_ONLY`; the portal's own routes use `requireStudentSession` and take the school from the student's record, never from the request. Database triggers forbid a membership for a student and any change of `users.kind`; a check constraint forbids a student with an email, platform-admin flag or MFA | `src/auth/guards.ts`, `src/students/routes.ts`, migration `0007` | `students.test.ts` (enumerates every route with a student session), `authz-coverage.test.ts` |
 | Cross-school access to students (A01) | Staff routes for students are org routes (`inOrg`, admins and owner only); `students` has forced RLS; a student's scope must belong to the same school (composite foreign key) | `src/students/routes.ts`, migration `0007` | `students.test.ts`, `tenancy.test.ts` (RLS on every `org_id` table) |
 | Admin surface discovery (A01) | `/api/admin/*` returns 404 to non-admins; admin requires MFA-verified session | `requirePlatformAdmin` | `authz-coverage.test.ts`, `admin-api-ops.test.ts` |
@@ -80,7 +80,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `auth.login`, `auth.login_failed`, `auth.account_locked`, `auth.mfa_enabled/disabled/failed`,
 `auth.password_changed/reset`, `auth.sessions_revoked`, `user.registered/email_verified/deleted/data_exported`,
 `org.created/updated/deleted/ownership_transferred`, `member.role_changed/removed/left`,
-`invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned`
+`invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
 `api_key.created/revoked`, `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins

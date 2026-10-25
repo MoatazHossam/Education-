@@ -19,6 +19,8 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
 | B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
+| B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
+| B-9 | The product stores no student records by design (SECURITY_DESIGN §7). A student portal reverses that | No student features can be built | Owner decision + legal assessment (minors' data, consent, how students join) |
 
 ## 2. Deliverables
 
@@ -202,3 +204,9 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 2. Catalogue verification (B-6): a curriculum specialist reviews entries against decrees and publishers and records marks in Platform admin → Catalogue.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.
+
+**Resume point (paused 2026-10-25).** Product work stopped after PR #10 (scope comparison, merged at
+`b298586`). The next feature proposed and agreed in principle, but **not started**, is per-item notes
+and assignees on scopes (Roadmap P2, about 2–3 days): a short note on any selected book (e.g.
+"waiting for the 2027 edition") and the member responsible for it. Work then switched to the
+Wise EduAgent student-portal integration (`docs/wise-integration/`).

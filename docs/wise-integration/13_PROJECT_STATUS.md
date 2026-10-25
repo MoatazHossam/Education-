@@ -1,9 +1,10 @@
 # Wise EduAgent integration — project status
 
-**Overall: BLOCKED** (2026-10-25). Nothing of Wise EduAgent has been implemented, because the
-application could not be inspected and the SaaS has no student concept. Building student features now
-would mean inventing Wise's functionality and reversing a documented security decision without the
-owner's say.
+**Overall: PARTIALLY COMPLETE — Wise features BLOCKED** (2026-10-25). The owner decided to add
+students with school-created accounts, and the student portal foundation is built and tested
+(`../STUDENT_ACCOUNTS.md`, `04_STUDENT_EXPERIENCE_DESIGN.md`). Nothing of Wise EduAgent itself is
+implemented: the application could not be inspected and no AI provider is chosen, so building its
+features would mean inventing them.
 
 | Phase (integration brief) | Status | Evidence / blocker |
 | --- | --- | --- |
@@ -12,10 +13,12 @@ owner's say.
 | Phase 1: audit the existing SaaS | COMPLETE | `02_EXISTING_SAAS_ASSESSMENT.md`; no student portal, no AI |
 | Gap analysis | COMPLETE (with Wise side NOT ACCESSIBLE) | `../WISE_INTEGRATION_GAP_ANALYSIS.md` |
 | Executive report (Arabic) | COMPLETE | `01_WISE_PROJECT_ANALYSIS.md` |
-| Phase 2: student experience design (`04`) | NOT STARTED | Needs the Wise inventory and the decision on students |
-| Phases 3–5: functionality, AI architecture, SaaS integration (`05`–`10`) | NOT STARTED | Same |
-| Phase 6: implementation | NOT STARTED | Same |
-| Phase 7: tests (`12`) | NOT STARTED | Same |
+| Decision on students | DECIDED (owner, 2026-10-25) | School-created accounts |
+| Phase 2: student experience design (`04`) | PARTIALLY COMPLETE | Foundation designed and built; Wise features wait for the inventory |
+| Student portal foundation: accounts, sign-in, staff management, curriculum view, entitlement switch | COMPLETE (off for every school; legal assessment pending before real use) | `../STUDENT_ACCOUNTS.md`; 25 integration tests, E2E journey 13, 12 more accessibility screens with 0 findings |
+| Phases 3–5: functionality, AI architecture, SaaS integration (`05`–`10`) | BLOCKED | Needs the Wise inventory (B-8) and an AI provider (B-10) |
+| Phase 6: implementation of Wise features | BLOCKED | Same |
+| Phase 7: tests (`12`) | PARTIALLY COMPLETE | Tests of the foundation done (above); Wise features not built |
 | Roadmap (`11`) | NOT STARTED | Written with the design |
 
 Documents `04`–`12` will be written with the design and implementation they describe, not ahead of
@@ -25,8 +28,8 @@ them.
 
 1. Access to Wise EduAgent: an AI Studio source export (preferred) and/or network access to
    `wise-eduagent.ai.studio` with an authorized account.
-2. Whether to add students to Curriculum Scope, and how they join (school-managed accounts or
-   invitations; age range; parental consent), with a legal assessment.
+2. ~~Whether to add students~~ — **decided: school-created accounts.** Still needed: the legal
+   assessment (age range, parental consent, terms with schools) before real students use it.
 3. The AI provider and model, and who holds the key and pays for usage.
 
 ## Branch

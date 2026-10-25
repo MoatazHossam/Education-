@@ -69,6 +69,8 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [Security](docs/SECURITY_DESIGN.md) ·
 [API](docs/API_DOCUMENTATION.md) ·
 [Subscriptions](docs/SUBSCRIPTION_MODEL.md) ·
+[Student accounts](docs/STUDENT_ACCOUNTS.md) ·
+[Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
 [Test strategy](docs/TEST_STRATEGY.md) ·
 [Test report](docs/TEST_REPORT.md) ·

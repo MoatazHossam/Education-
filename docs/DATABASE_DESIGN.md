@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -12,6 +12,9 @@ erDiagram
   users ||--o{ sessions : "signs in"
   users ||--o{ user_tokens : "verify/reset"
   users ||--o{ notifications : "receives"
+  users ||--o| students : "student account"
+  organizations ||--o{ students : "enrols"
+  scopes |o--o{ students : "curriculum"
   organizations ||--o{ invitations : "issues"
   organizations ||--|| subscriptions : "has one"
   plans ||--o{ subscriptions : "plan / pending plan"
@@ -38,9 +41,10 @@ erDiagram
 
 | Table | Purpose | Key constraints | RLS |
 | --- | --- | --- | --- |
-| `users` | Accounts | `email` lower-case, unique; status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out) | — |
+| `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out) | — |
 | `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
-| `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org** | org **or** own user rows |
+| `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org**; staff accounts only (trigger) | org **or** own user rows |
+| `students` | School-created student accounts (`docs/STUDENT_ACCOUNTS.md`) | PK `user_id` (a `kind = 'student'` user: trigger); unique `(org_id, username)`; username pattern; grade 1–12; `(scope_id, org_id)` references `scopes(id, org_id)` with `ON DELETE SET NULL (scope_id)`; deleting the row deletes the account (trigger) | org **or** own user row |
 | `sessions` | Server-side sessions | id = SHA-256(token), 64 hex; state `active/mfa_pending`; `expires_at` | — |
 | `user_tokens` | Email verification / password reset | `token_hash` unique; single use (`used_at`); expiry | — |
 | `invitations` | Pending invites | `token_hash` unique; **one open invite per (org, email)**; role ≠ owner | ✓ |
@@ -48,10 +52,10 @@ erDiagram
 | `catalog_sources` | Citations per version | URL must be http(s) | — |
 | `catalog_subjects` | Subject rows | unique `(version, grade, track, block, code)`; grade 1–12; track/status enums; verification columns (below) | — |
 | `catalog_materials` | Selectable materials | unique `(subject, title)`; unique `(id, version_id)`; trigger keeps `version_id` = subject's; verification columns (below) | — |
-| `scopes` | Content scopes (tenant data) | unique `(org_id, name)`; unique `(id, org_id, catalog_version_id)` | ✓ |
+| `scopes` | Content scopes (tenant data) | unique `(org_id, name)`; unique `(id, org_id, catalog_version_id)`; unique `(id, org_id)` (for students) | ✓ |
 | `scope_items` | Selected materials | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version) | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
-| `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB | — (global) |
+| `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
 | `invoices` | Invoices | `number` unique (sequence `invoice_number_seq`); kind; status `open/paid/void` | ✓ |
 | `payments` | Payment attempts | unique `(provider, provider_txn_id)` — idempotency | ✓ |
@@ -92,7 +96,7 @@ Helper functions read transaction-local settings:
 CREATE POLICY scopes_isolation ON scopes
   USING (app_rls_bypass() OR org_id = app_current_org())
   WITH CHECK (app_rls_bypass() OR org_id = app_current_org());
--- memberships: USING also allows user_id = app_current_user()
+-- memberships and students: USING also allows user_id = app_current_user()
 ```
 
 Settings are applied with `set_config(..., true)` (transaction-local), which is safe with
@@ -140,7 +144,8 @@ are never created when `NODE_ENV=production`.
 | Resolved operational alerts | 90 d after resolution | worker |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |
-| Deleted organizations | Tenant rows removed immediately (cascade); the deletion audit entry is kept | API |
+| Deleted organizations | Tenant rows removed immediately (cascade), student accounts included; the deletion audit entry is kept | API |
+| Student accounts | Until the school removes the student or deletes the organization; then the account, its sessions and notifications are deleted | API (trigger `students_delete_account`) |
 | Backups | `RETENTION_DAYS` (default 14 d locally) + off-site policy | `scripts/backup.sh` |
 
 ## 7. Backups

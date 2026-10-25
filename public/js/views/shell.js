@@ -83,6 +83,7 @@ export async function renderShell(root, ctx, handler, isCurrent) {
       navLink(`/org/${orgId}`, t('nav.picker')),
       navLink(`/org/${orgId}/scopes`, t('nav.scopes')),
       navLink(`/org/${orgId}/members`, t('nav.members')),
+      can(role, 'admin') && info.plan.limits.max_students !== 0 ? navLink(`/org/${orgId}/students`, t('nav.students')) : null,
       can(role, 'admin') ? navLink(`/org/${orgId}/billing`, t('nav.billing')) : null,
       can(role, 'admin') ? navLink(`/org/${orgId}/settings`, t('nav.settings')) : null,
       can(role, 'admin') ? navLink(`/org/${orgId}/audit`, t('nav.audit')) : null,

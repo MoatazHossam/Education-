@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**25 files, 159 tests, 159 passed, 0 failed** (2026-10-25). Integration tests ran against a real
+**26 files, 184 tests, 184 passed, 0 failed** (2026-10-25, after student accounts). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -49,13 +49,14 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
+| integration/students | 25 | Pass — student accounts (`docs/STUDENT_ACCOUNTS.md`): off by default and per-school override; sign-in, equal errors, lockout, staff reset, password change; every application route called with a student session (only the portal answers); database triggers and constraints; roles; another school 404 and RLS; scopes of the same school only; account deletion; platform user list; roster import (preview, all or nothing, Excel/Arabic files, limit); the portal's curriculum; suspended school; generated passwords |
 | integration/alerts | 6 | Pass — one alert across two instances, reminder after 6 h, one resolution after 5 min clear; every check; no customer data in messages; database outage from memory; a failing channel does not stop the other; 5xx counting; admin list and audited test alert |
 | integration/shutdown | 1 | Pass — the real server process reports draining on SIGTERM, keeps serving during the drain, exits cleanly |
 | integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 159</summary>
+<details><summary>Show all 184</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -207,6 +208,31 @@ Full test names (verbatim from the verbose reporter):
 - unit › alert helpers: considers the worker stopped after four intervals, at least two minutes
 - unit › in-memory flood guard windows: counts within a window and starts again when it ends
 - unit › in-memory flood guard windows: stays bounded, dropping the oldest windows first
+- students › student accounts are off until enabled › no plan includes them; the staff page says so and creation is refused
+- students › student accounts are off until enabled › a platform administrator turns them on per school with a limit override, and the limit holds
+- students › student accounts are off until enabled › a school back on the Free plan loses the override: no sign-in, and open sessions stop working
+- students › student sign-in › signs in with school code, username and password; /me describes the student and school
+- students › student sign-in › gives the same answer for an unknown school, an unknown username and a wrong password
+- students › student sign-in › cannot sign in through the staff sign-in, and a student username is per school
+- students › student sign-in › locks after five wrong passwords; a staff reset lifts the lock and ends existing sessions
+- students › student sign-in › a student can change their password; other sessions end
+- students › a student account reaches only the student portal › every other route refuses a signed-in student, including their own school's staff routes
+- students › a student account reaches only the student portal › staff accounts cannot use the student portal routes
+- students › a student account reaches only the student portal › the database refuses a membership for a student and a kind change
+- students › school staff manage their students › admins and the owner only; editors and viewers are refused
+- students › school staff manage their students › another school cannot see, change, reset or remove them (404)
+- students › school staff manage their students › assigns a scope of the same school only, and edits name and grade
+- students › school staff manage their students › removing a student deletes the account and its sessions; deleting the school deletes all its students
+- students › school staff manage their students › platform administrators do not see student accounts in the user list
+- students › roster import › previews problems line by line and imports nothing while any remain
+- students › roster import › reads Excel-style files (semicolons, BOM, Arabic headers) and returns each password once
+- students › roster import › refuses a file that would pass the plan limit, as a whole
+- students › roster import › rejects files without the required columns or with too many rows
+- students › the student portal › shows the books of the student's grade that are in the assigned scope, and nothing else
+- students › the student portal › without a scope it says so, and other students' or schools' data never appears
+- students › the student portal › a student can switch the interface language
+- students › the student portal › a suspended school blocks its students
+- students › generated passwords › use an unambiguous alphabet and do not repeat
 
 </details>
 
@@ -215,7 +241,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**14 tests, 14 passed** (2.6 min, 2026-10-25), Chromium, real server process on port 3100: 12 journeys,
+**15 tests, 15 passed** (3.0 min, 2026-10-25), Chromium, real server process on port 3100: 13 journeys,
 then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -232,6 +258,7 @@ then the accessibility project (2 tests), which reuses the journeys' data.
 | 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope and the owner is notified; the notification opens the review page, which lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
 | 11 | Platform admin downloads the 2027/2028 sheet, marks three books verified, uploads it, sees the preview and applies it; coverage shows 3 verified materials | Pass |
 | 12 | Owner builds two scopes with one book in common, opens Compare scopes from the scopes list: 1 only in each, 1 in both; differences only by default, everything after clearing the filter; Swap; the downloaded CSV has the right yes/no columns | Pass |
+| 13 | Student accounts: the Students page is closed until a platform admin sets the school's student override in the admin console; the owner adds a student (password shown once) and imports a roster (a file with a bad line is refused, the corrected one imported, the credentials CSV downloaded and checked); the student follows the link on the staff sign-in page, is refused with a wrong password, signs in, sees exactly the three books chosen for grade 7, is sent back to the portal from a staff page, switches to Arabic; a staff password reset signs the student out | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -241,8 +268,8 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 13 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 46 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone) | Pass — 0 findings |
-| 14 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 14 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 58 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog | Pass — 0 findings |
+| 15 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 
 Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 

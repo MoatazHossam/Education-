@@ -199,3 +199,40 @@ export async function someMaterialIds(h: Harness, versionId: string, n: number, 
 export function totp(secret: string): string {
   return authenticator.generate(secret);
 }
+
+/**
+ * The student portal routes (besides sign-in and sign-out, the only ones a
+ * student account may use). Reviewed list: the student tests check that every
+ * other route rejects a student session.
+ */
+export const STUDENT_ROUTES = ['POST /api/auth/student-login', 'GET /api/student/curriculum', 'PATCH /api/student/profile', 'POST /api/student/password'];
+
+/**
+ * Enables student accounts for the organization (the platform-admin override)
+ * and creates one through the staff API. Returns its one-time password.
+ */
+export async function enableStudents(h: Harness, orgId: string, max = 50) {
+  const { sql } = await import('kysely');
+  const { withSystemContext } = await import('../../src/db/index.js');
+  await withSystemContext(h.ownerDb, (trx) =>
+    sql`UPDATE subscriptions SET limit_overrides = limit_overrides || ${JSON.stringify({ max_students: max })}::jsonb WHERE org_id = ${orgId}`.execute(trx),
+  );
+}
+
+export async function createStudent(h: Harness, owner: Client, orgId: string, body: { username?: string; name?: string; grade?: number; scopeId?: string | null } = {}) {
+  userCounter++;
+  const res = await owner.post(`/api/orgs/${orgId}/students`, { username: body.username ?? `student${userCounter}`, name: body.name ?? 'Test Student', grade: body.grade ?? 7, scopeId: body.scopeId ?? null });
+  if (res.statusCode !== 201) throw new Error(`student creation failed: ${res.body}`);
+  const { student, password } = res.json() as { student: { userId: string; username: string }; password: string };
+  const school = (await h.ownerDb.selectFrom('organizations').select('slug').where('id', '=', orgId).executeTakeFirstOrThrow()).slug;
+  return { ...student, password, school };
+}
+
+/** Signs a student in through the student sign-in route and loads the CSRF token. */
+export async function studentLogin(h: Harness, s: { school: string; username: string; password: string }) {
+  const client = new Client(h.app);
+  const res = await client.post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password });
+  if (res.statusCode !== 200) throw new Error(`student login failed: ${res.body}`);
+  await client.refresh();
+  return client;
+}

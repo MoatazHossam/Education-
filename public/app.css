@@ -230,6 +230,17 @@ dialog:has(.sheet-preview){max-width:min(760px,calc(100vw - 32px))}
 .mat[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .mat[aria-pressed="true"]::before{opacity:1;background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--sheet)}
 .mat.saving{opacity:.75}
+/* Student portal: books are listed, not selected. */
+.mat.book{padding-inline:9px}
+.mat.book::before{display:none}
+ul.legend{list-style:none;padding:0;margin:12px 0 0}
+.student-foot{margin-top:24px}
+.student-top .tools{margin-inline-start:auto}
+.cred{font-family:var(--f-mono);font-size:15px;letter-spacing:.02em}
+.code-big{font-family:var(--f-mono);font-size:18px;font-weight:600}
+.card-actions{margin-top:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;align-items:baseline}
+.kv dd{margin:0}
 .snote{grid-column:2;font-size:12.5px;color:var(--muted);margin:0}
 .empty{padding:40px 0;color:var(--muted);text-align:center}
 

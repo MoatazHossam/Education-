@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { createScope, login, orgIdFromUrl, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
+import { ownerQuery } from './server.js';
 
 // Automated WCAG 2.2 A/AA audit (axe-core) of every screen and the main
 // dialogs, in English and Arabic, light and dark, desktop and phone. Runs after
@@ -82,6 +83,57 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, comparePath, 'compare scopes (two catalogue years)');
   await page.getByLabel('Show only differences').uncheck();
   await audit(page, 'compare scopes (everything shown)');
+
+  // Student accounts (turned on for this school as a platform administrator would):
+  // the Students page and its dialogs, then the student sign-in and portal.
+  await ownerQuery(`UPDATE subscriptions SET limit_overrides = limit_overrides || '{"max_students": 10}'::jsonb WHERE org_id = $1`, [orgId]);
+  await visit(page, `/org/${orgId}/students`, 'students (none yet)');
+  await page.getByRole('button', { name: 'Add student' }).click();
+  await audit(page, 'add student dialog');
+  const username = `ally.${uid()}`;
+  let sd = page.getByRole('dialog');
+  await sd.getByLabel('Username').fill(username);
+  await sd.getByLabel('Student’s name').fill('Ally Student');
+  const lastYearScope = await sd.getByLabel('Curriculum').locator('option', { hasText: 'Last year plan' }).getAttribute('value');
+  await sd.getByLabel('Curriculum').selectOption(lastYearScope!);
+  await sd.getByRole('button', { name: 'Add student' }).click();
+  sd = page.getByRole('dialog', { name: 'Student passwords' });
+  await audit(page, 'student password dialog');
+  const studentPassword = (await sd.locator('.cred').textContent())!.trim();
+  await sd.getByRole('button', { name: 'Done' }).click();
+  await audit(page, 'students (with a student)');
+  await page.getByRole('button', { name: 'Import CSV…' }).click();
+  sd = page.getByRole('dialog', { name: 'Import students' });
+  await sd.getByLabel('Roster file (CSV)').setInputFiles({ name: 'roster.csv', mimeType: 'text/csv', buffer: Buffer.from('username,name,grade\nok.one,One,1\nbad name,Two,1\n') });
+  await expect(sd.getByText('Problems to fix first: 1.')).toBeVisible();
+  await audit(page, 'import students dialog (preview with a problem)');
+  await page.keyboard.press('Escape');
+  const schoolCode = (await page.locator('.code-big').textContent())!.trim();
+  const studentPage = await newPage(browser);
+  await visit(studentPage, `/student-login?school=${schoolCode}`, 'student sign-in');
+  await studentPage.getByLabel('Username').fill(username);
+  await studentPage.getByLabel('Password').fill(studentPassword);
+  await studentPage.getByRole('button', { name: 'Sign in' }).click();
+  await studentPage.waitForURL(/\/student$/);
+  await expect(studentPage.locator('.subj .mat.book').first()).toBeVisible();
+  await audit(studentPage, 'student portal');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'Change password' }).click();
+  await audit(studentPage, 'student change password dialog');
+  await studentPage.keyboard.press('Escape');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(studentPage.locator('html')).toHaveAttribute('dir', 'rtl');
+  await audit(studentPage, 'student portal (Arabic)');
+  await studentPage.emulateMedia({ colorScheme: 'dark' });
+  await audit(studentPage, 'student portal (Arabic, dark)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await audit(studentPage, 'student portal (dark)');
+  const studentPhone = await newPage(browser, { viewport: { width: 390, height: 844 } });
+  await studentPhone.goto(`/student-login?school=${schoolCode}`);
+  await studentPhone.getByLabel('Username').fill(username);
+  await studentPhone.getByLabel('Password').fill(studentPassword);
+  await studentPhone.getByRole('button', { name: 'Sign in' }).click();
+  await studentPhone.waitForURL(/\/student$/);
+  await audit(studentPhone, 'student portal (phone)');
 
   // Arabic (right to left).
   await page.goto(`/org/${orgId}?scope=${scopeId}`);

@@ -1,4 +1,4 @@
-import { sql } from 'kysely';
+import { sql, type NotNull } from 'kysely';
 import type { AppConfig } from '../config.js';
 import type { Executor } from '../db/index.js';
 import type { Locale } from '../db/types.js';
@@ -42,6 +42,8 @@ async function recipientsByOrg(exec: Executor, orgIds: string[]): Promise<Map<st
     .where('m.role', 'in', ['owner', 'admin', 'editor'])
     .where('u.status', '=', 'active')
     .where('u.email_verified_at', 'is not', null)
+    // Members are staff accounts, which always have an email (migration 0007).
+    .$narrowType<{ email: NotNull }>()
     .execute();
   for (const r of rows) {
     const list = out.get(r.org_id) ?? [];

@@ -75,7 +75,9 @@ decision, exportable into content-production and AI pipelines.
 | Private/international school groups | Map identity-subject and programme coverage across schools |
 | Curriculum consultants | Prepare scope proposals for clients |
 
-It is **B2B**. Individual students and parents are not users.
+It is **B2B**. Individual students and parents do not sign up. Since 2026-10-25 a school can give its
+students accounts that it creates and manages (off unless a platform administrator enables it;
+`docs/STUDENT_ACCOUNTS.md`); those students see their school's curriculum and nothing else.
 
 ## Competitive position (summary — see COMMERCIAL_FEASIBILITY.md)
 

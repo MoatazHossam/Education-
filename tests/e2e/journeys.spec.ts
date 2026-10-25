@@ -340,3 +340,101 @@ test('owner compares two scopes side by side and downloads the comparison', asyn
   expect(csv[0]![8]).toMatch(/^Campus North \(\d{4}\/\d{4}\)$/);
   expect(csv.slice(1).map((r) => [r[5], r[7], r[8]])).toEqual([[titles[0], 'no', 'yes'], [titles[1], 'yes', 'yes'], [titles[2], 'yes', 'no']]);
 });
+
+test('a platform admin turns on student accounts; the school adds students; a student signs in and sees their books', async ({ page, browser }) => {
+  const email = `students.${uid()}@e2e.test`;
+  await registerAndVerify(page, email, 'Delta Prep School');
+  await login(page, email);
+  const orgId = orgIdFromUrl(page);
+  await createScope(page, 'Prep 1 books');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/Prep 1 books/);
+  await page.getByRole('button', { name: 'Grade 7' }).click();
+  const titles: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    titles.push(await page.locator('.mat').nth(i).evaluate((el) => (el.firstChild?.textContent ?? '').trim()));
+    await page.locator('.mat').nth(i).click();
+  }
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+
+  // Off until the platform turns it on for this school.
+  await expect(page.locator('.topbar').getByRole('link', { name: 'Students' })).toHaveCount(0);
+  await page.goto(`/org/${orgId}/students`);
+  await expect(page.getByRole('heading', { name: 'Student accounts are not turned on' })).toBeVisible();
+
+  const adminCtx = await browser.newContext();
+  const admin = await adminCtx.newPage();
+  await signInAsPlatformAdmin(admin);
+  await admin.goto(`/admin/orgs/${orgId}`);
+  await admin.getByLabel('Student accounts (override)').fill('30');
+  await admin.getByRole('button', { name: 'Apply' }).click();
+  await expect(admin.getByText('Saved')).toBeVisible();
+  await expect(admin.getByText('Student accounts: 0')).toBeVisible();
+
+  // The school adds one student by hand and one from a roster file.
+  await page.goto(`/org/${orgId}`);
+  await page.locator('.topbar').getByRole('link', { name: 'Students' }).click();
+  await expect(page.getByRole('heading', { name: 'Students', level: 1 })).toBeVisible();
+  const schoolCode = (await page.locator('.code-big').textContent())!.trim();
+  await page.getByRole('button', { name: 'Add student' }).click();
+  let dlg = page.getByRole('dialog');
+  await dlg.getByLabel('Username').fill('laila.e2e');
+  await dlg.getByLabel('Student’s name').fill('Laila Hassan');
+  await dlg.getByLabel('Grade', { exact: true }).selectOption('7');
+  const scopeOption = await dlg.getByLabel('Curriculum').locator('option', { hasText: 'Prep 1 books' }).getAttribute('value');
+  await dlg.getByLabel('Curriculum').selectOption(scopeOption!);
+  await dlg.getByRole('button', { name: 'Add student' }).click();
+  dlg = page.getByRole('dialog', { name: 'Student passwords' });
+  const password = (await dlg.locator('.cred').textContent())!.trim();
+  expect(password).toMatch(/^[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}$/);
+  await dlg.getByRole('button', { name: 'Done' }).click();
+
+  await page.getByRole('button', { name: 'Import CSV…' }).click();
+  dlg = page.getByRole('dialog', { name: 'Import students' });
+  await dlg.getByLabel('Roster file (CSV)').setInputFiles({ name: 'roster.csv', mimeType: 'text/csv', buffer: Buffer.from('username,name,grade,scope\nomar.e2e,Omar Adel,7,Prep 1 books\nbad name,X,7,\n') });
+  await expect(dlg.getByText('Problems to fix first: 1.')).toBeVisible();
+  await dlg.getByLabel('Roster file (CSV)').setInputFiles({ name: 'roster.csv', mimeType: 'text/csv', buffer: Buffer.from('username,name,grade,scope\nomar.e2e,Omar Adel,7,Prep 1 books\n') });
+  await expect(dlg.getByText('Students ready to import: 1')).toBeVisible();
+  await dlg.getByRole('button', { name: 'Import' }).click();
+  dlg = page.getByRole('dialog', { name: 'Student passwords' });
+  const [download] = await Promise.all([page.waitForEvent('download'), dlg.getByRole('button', { name: 'Download passwords (CSV)' }).click()]);
+  const sheet = parseCsv(await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
+  expect(sheet[0]).toEqual(['school_code', 'username', 'name', 'password', 'sign_in_link']);
+  expect(sheet[1]!.slice(0, 3)).toEqual([schoolCode, 'omar.e2e', 'Omar Adel']);
+  await dlg.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('table.data tbody tr')).toHaveCount(2);
+
+  // The student signs in from the staff sign-in page's link and sees only their grade's books.
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto('/login');
+  await student.getByRole('link', { name: 'Student? Sign in with your school account' }).click();
+  await student.getByLabel('School code').fill(schoolCode);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill('wrong-password');
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await expect(student.getByText('Incorrect school code, username or password')).toBeVisible();
+  await student.getByLabel('Password').fill(password);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await student.waitForURL(/\/student$/);
+  await expect(student.getByRole('heading', { name: 'My curriculum', level: 1 })).toBeVisible();
+  await expect(student.getByText('Hello Laila Hassan.')).toBeVisible();
+  const books = student.locator('.subj .mat.book');
+  await expect(books).toHaveCount(3);
+  for (const title of titles) await expect(books.filter({ hasText: title })).toHaveCount(1);
+  // Staff pages are not reachable: the app sends the student back to the portal.
+  await student.goto(`/org/${orgId}/members`);
+  await student.waitForURL(/\/student$/);
+  await student.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(student.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(student.getByRole('heading', { name: 'منهجي', level: 1 })).toBeVisible();
+
+  // A staff password reset signs the student out.
+  await page.getByRole('button', { name: 'New password for Laila Hassan' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'New password' }).click();
+  await expect(page.getByRole('dialog', { name: 'Student passwords' }).locator('.cred')).not.toHaveText(password);
+  await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
+  await student.reload();
+  await student.waitForURL(/\/student-login$/);
+  await studentCtx.close();
+  await adminCtx.close();
+});

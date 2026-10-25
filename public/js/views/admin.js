@@ -107,12 +107,19 @@ export async function orgDetailView(ctx) {
       { name: 'status', label: 'Status', type: 'select', value: s?.status === 'trialing' ? 'trialing' : 'active', options: [{ value: 'active', label: 'active' }, { value: 'trialing', label: 'trialing' }] },
       { name: 'periodEnd', label: t('admin.periodEnd'), type: 'datetime-local', hint: t('admin.periodEndHint') },
       { name: 'maxMembers', label: t('admin.overrideMembers'), type: 'number', value: s?.limitOverrides?.max_members ?? '' },
+      { name: 'maxStudents', label: t('admin.overrideStudents'), type: 'number', value: s?.limitOverrides?.max_students ?? '', hint: t('admin.overrideStudentsHint') },
     ],
     submitLabel: t('admin.applyPlan'),
     onSubmit: async (v) => {
       const body = { planId: v.planId, status: v.status, currentPeriodEnd: v.periodEnd ? new Date(v.periodEnd).toISOString() : null };
       if (v.status === 'trialing') body.trialEndsAt = new Date(v.periodEnd || Date.now() + 14 * 86_400_000).toISOString();
-      if (v.maxMembers !== '') body.limitOverrides = { max_members: Number(v.maxMembers) };
+      // Overrides replace the stored set: keep the ones this form does not show; an empty field removes one.
+      const overrides = { ...(s?.limitOverrides ?? {}) };
+      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students']]) {
+        if (v[field] === '') delete overrides[key];
+        else overrides[key] = Number(v[field]);
+      }
+      body.limitOverrides = overrides;
       await patch(`/api/admin/orgs/${orgId}/subscription`, body);
       toast(t('common.saved'));
       reload();
@@ -142,7 +149,8 @@ export async function orgDetailView(ctx) {
         s.pendingPlanId ? h('li', {}, `Pending: ${s.pendingPlanId}`) : null) : null,
       h('h3', {}, t('admin.manualPlan')), planForm.el),
       h('div', { class: 'card' }, h('h2', {}, t('nav.members')), h('ul', {}, d.members.map((m) => h('li', {}, `${m.name} <${m.email}> — ${m.role}${m.status !== 'active' ? ' (suspended)' : ''}${m.mfaEnabled ? ' · MFA' : ''}`))),
-        h('p', { class: 'muted' }, t('admin.scopeCount', { n: d.scopeCount })))),
+        h('p', { class: 'muted' }, t('admin.scopeCount', { n: d.scopeCount })),
+        h('p', { class: 'muted' }, t('admin.studentCount', { n: d.studentCount })))),
     supportCard,
     tableCard(t('billing.history'), h('h2', {}, t('billing.history')), h('table', { class: 'data' }, h('tbody', {}, d.invoices.map((i) => h('tr', {},
       h('td', { class: 'mono' }, i.number), h('td', {}, `${i.planId} · ${i.kind}`), h('td', { class: 'mono' }, fmtMoney(i.amountCents, i.currency)), h('td', {}, i.status),

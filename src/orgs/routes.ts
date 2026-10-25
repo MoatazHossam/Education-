@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { sql } from 'kysely';
+import { sql, type NotNull } from 'kysely';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { withSystemContext } from '../db/index.js';
@@ -162,6 +162,8 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
         .select(['u.id', 'u.email', 'u.name', 'u.locale', 'u.status'])
         .where('m.org_id', '=', orgId)
         .where('m.user_id', '=', body.userId)
+        // Members are staff accounts, which always have an email (migration 0007).
+        .$narrowType<{ email: NotNull }>()
         .executeTakeFirst();
       if (!target) throw notFound('Member');
       if (target.status !== 'active') throw conflict('The new owner must have an active account');

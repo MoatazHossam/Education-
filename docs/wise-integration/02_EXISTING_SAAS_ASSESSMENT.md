@@ -39,6 +39,10 @@ and data conventions in any integration.
 
 ## 4. Student portal assessment
 
+As found at the start of the integration. **Since then (2026-10-25)** items 1–3 and 10 exist in a first
+form: school-created student accounts, a student sign-in and a curriculum page
+(`../STUDENT_ACCOUNTS.md`).
+
 | # | Capability | Exists? | Notes |
 | --- | --- | --- | --- |
 | 1 | Student dashboard | **Missing** | Organization pages serve staff only |

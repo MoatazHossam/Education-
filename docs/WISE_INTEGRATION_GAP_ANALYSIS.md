@@ -25,7 +25,14 @@ feature has been observed.
 | Audit, alerts, rate limits | n/a | Audit log, operational alerts, shared rate limits. | REUSE EXISTING | — |
 | Localization, RTL, accessibility | n/a | EN/AR with RTL, automated WCAG 2.2 AA audit in E2E. | REUSE EXISTING; new pages join the audit. | — |
 
-## 2. What can start once the owner decides, whatever Wise contains
+## 2. Foundations needed whatever Wise contains
+
+**Update 2026-10-25:** the owner chose school-created student accounts (decision 2). Foundations 1, 3
+and 4 are built (`docs/STUDENT_ACCOUNTS.md`, `wise-integration/04_STUDENT_EXPERIENCE_DESIGN.md`);
+students hold no membership but a separate student record, which keeps every staff route closed to
+them. Foundation 2 (consent and age handling) waits for the legal assessment. The matrix in §1 is the
+analysis as of the start of the integration.
+
 
 These foundations are needed by any student-facing integration. They do not depend on Wise's feature
 list, but they **do** depend on decisions only the owner can make (§3):
@@ -41,8 +48,8 @@ list, but they **do** depend on decisions only the owner can make (§3):
 
 1. **Access to Wise EduAgent:** an AI Studio source export (preferred) and/or network access to
    `wise-eduagent.ai.studio` with an authorized account.
-2. **Students in Curriculum Scope:** whether to add students to a product designed as B2B with no
-   student data, and how students join (school-managed accounts or invitations; age range; parental
-   consent). This reverses a documented security decision and needs a legal assessment.
+2. ~~**Students in Curriculum Scope**~~ — **decided 2026-10-25: school-created accounts.** Built, off
+   for every school until a platform administrator enables it. Still needed: the legal assessment
+   (age range, parental consent, controller/processor terms) before real students use it.
 3. **AI provider:** which provider and model (Gemini, if Wise uses it; or provider-independent), and
    who holds the API key and pays for usage.

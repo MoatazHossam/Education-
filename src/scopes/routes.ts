@@ -271,6 +271,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
         dueOn: was(next.due_on, item.due_on, next.due_on),
       };
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.item_annotated', targetType: 'scope', targetId: scope.id, metadata: { materialId, ...changes } }, requestMeta(req));
+      if (Object.values(changes).some((c) => c !== 'unchanged')) await emitScopeEvent(trx, orgId, grace, 'scope.items_annotated', scope, [materialId]);
       if (next.assignee_id && next.assignee_id !== item.assignee_id) {
         await notifyAssigned(trx, { orgId, orgName: org.name, appUrl: ctx.config.APP_URL, scope, assigneeId: next.assignee_id, byUserId: user.id, byName: user.name, materialIds: [materialId] });
       }
@@ -315,6 +316,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
         await trx.updateTable('scopes').set({ updated_at: sql`now()` }).where('id', '=', scope.id).execute();
         const metadata = { count: changed.length, ...(body.assigneeId !== undefined ? { assigneeId: body.assigneeId } : {}), ...(body.status !== undefined ? { status: body.status } : {}), ...(body.dueOn !== undefined ? { dueOn: body.dueOn } : {}) };
         await recordAudit(trx, actorFromRequest(req), { orgId, action: body.assigneeId !== undefined ? 'scope.items_assigned' : 'scope.items_tracked', targetType: 'scope', targetId: scope.id, metadata }, requestMeta(req));
+        await emitScopeEvent(trx, orgId, grace, 'scope.items_annotated', scope, changed);
         if (body.assigneeId) {
           const newlyAssigned = present.filter((p) => p.assignee_id !== body.assigneeId).map((p) => p.material_id);
           await notifyAssigned(trx, { orgId, orgName: org.name, appUrl: ctx.config.APP_URL, scope, assigneeId: body.assigneeId, byUserId: user.id, byName: user.name, materialIds: newlyAssigned });

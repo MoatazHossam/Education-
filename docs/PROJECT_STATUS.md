@@ -193,10 +193,27 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - **Accessibility:** the audit adds the secret, deliveries and edit dialogs and the settings page with an endpoint, also in Arabic, dark and on a phone (80 screens, 0 findings).
   - **Migration:** 0012 was applied, reverted and applied again on a scratch database.
 - **Limitations:**
-  - No events for notes, assignees, statuses or due dates.
+  - ~~No events for notes, assignees, statuses or due dates~~: added, see below.
   - Deliveries already queued are still sent if the plan loses API access; new events stop.
   - No customer-side delivery log export, and no per-endpoint IP allow-list for receivers to pin.
   - In production, an egress firewall is recommended as a second layer (SECURITY_DESIGN §6).
+
+### Webhook events for notes and assignments · COMPLETE
+- **Implemented:** a new event, `scope.items_annotated`. It is sent when a book's note, assignee, status or due date changes, whether one book is edited, several are changed at once, or the assignee (any role) updates a status.
+  - **Payload:** the scope's state plus `materialIds`, the books changed. It never includes a note's text or a member's name; receivers read them with the API, where each item has its note, assignee, status and due date.
+  - **Merging:** changes made while an event is still waiting are merged into one event, listing every book changed. The merge happens in the same `INSERT … ON CONFLICT` statement, so concurrent requests cannot lose a book.
+  - **No change, no event:** saving without a change sends nothing.
+  - **Opt-in:** endpoints subscribe to it explicitly ("Notes, assignees, statuses or due dates changed" in Settings, ticked by default for new endpoints). Existing endpoints don't receive it until it is ticked.
+  - Member removal, which clears that member's assignments in the database, is not reported.
+- **Files:** `src/webhooks/service.ts`, `src/scopes/routes.ts`, `public/js/i18n.js`.
+- **Tests:**
+  - `integration/webhooks` gains one test:
+    - a note and a bulk assignment merged into one event naming the three books, without the note text or the member's name;
+    - an endpoint not subscribed receives nothing;
+    - a viewer assignee's status update sends a new event;
+    - saving without a change sends nothing.
+  - E2E journey 19 now also writes a note in the browser and checks the signed event names one book and not the note's text.
+- **Limitations:** removing a member (which clears their assignments) and carrying a scope forward (which copies its notes; it is already reported as `scope.created`) send no `scope.items_annotated`.
 
 ### Encryption key rotation · COMPLETE
 - **Implemented:** `DATA_ENCRYPTION_KEY`, which encrypts two-factor secrets and customer webhook signing secrets, can now be replaced without downtime (DEPLOYMENT_GUIDE §4, "Rotating `DATA_ENCRYPTION_KEY`").
@@ -378,7 +395,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (254 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (255 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

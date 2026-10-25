@@ -759,7 +759,7 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
     const row = page.locator('#webhooks tbody tr', { hasText: url });
     await expect(row).toContainText('Active');
-    await expect(row).toContainText('Scope created, Scope renamed or described, Books added or removed');
+    await expect(row).toContainText('Scope created, Scope renamed or described, Books added or removed, Notes, assignees, statuses or due dates changed');
 
     await page.getByRole('button', { name: `Send a test to ${url}` }).click();
     await expect(page.locator('#toasts').getByText('Test delivered (200)')).toBeVisible();
@@ -786,6 +786,23 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     await expect(rows.first()).toContainText('Books added or removed');
     await expect(rows.first()).toContainText('Delivered (200)');
     await expect(rows.nth(1)).toContainText('Test');
+    await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+
+    // A note on a book of Grade 6 books is sent as "notes, assignees, statuses or due dates changed", naming the book only.
+    await page.goto(`/org/${orgId}`);
+    const grade6 = page.locator('.scopebar select option', { hasText: 'Grade 6 books' });
+    await page.locator('.scopebar select').selectOption((await grade6.getAttribute('value'))!);
+    await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+    await page.getByRole('button', { name: /^Edit the note on / }).first().click();
+    await page.getByRole('dialog').getByLabel('Note').fill('Order 30 copies');
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await runWebhookPass()).toMatchObject({ delivered: 1 });
+    const annotated = JSON.parse(received[2]!.body);
+    expect(annotated).toMatchObject({ type: 'scope.items_annotated', data: { scope: { name: 'Grade 6 books' } } });
+    expect(annotated.data.materialIds).toHaveLength(1);
+    expect(received[2]!.body).not.toContain('Order 30 copies');
+    expect(signedBy(secret, received[2]!)).toBe(true);
   } finally {
     server.closeAllConnections();
     server.close();

@@ -19,7 +19,7 @@ beforeAll(async () => {
 afterAll(async () => h.close());
 beforeEach(async () => resetData(h.ownerDb));
 
-interface WebhookEvent { id: string; type: string; createdAt: string; organizationId: string; data: { scope?: { id: string; name: string; itemCount?: number }; endpointId?: string } }
+interface WebhookEvent { id: string; type: string; createdAt: string; organizationId: string; data: { scope?: { id: string; name: string; itemCount?: number }; endpointId?: string; materialIds?: string[] } }
 interface Received { headers: http.IncomingHttpHeaders; body: string; json: WebhookEvent }
 
 /** A local HTTP receiver answering `status` (or not at all, or with a redirect). */
@@ -164,6 +164,41 @@ describe('webhook endpoints', () => {
     await s.owner.client.delete(`${s.base}/scopes/${scopeId}/items`);
     await deliver();
     expect(r.received.map((x) => x.json.data.scope?.itemCount)).toEqual([3, 0]);
+  });
+
+  it('notes, assignees, statuses and due dates are one event per scope naming every book changed, without the notes themselves', async () => {
+    const s = await school();
+    const r = await newReceiver();
+    const hook = await s.addHook(r.url, ['scope.items_annotated']);
+    const other = await newReceiver();
+    await s.addHook(other.url, ['scope.items_changed']);
+    const scopeId = await s.newScope();
+    const scopeBase = `${s.base}/scopes/${scopeId}`;
+    await s.owner.client.post(`${scopeBase}/items`, { add: s.books });
+    const viewer = await addMember(h, s.owner.client, s.owner.orgId, 'viewer');
+
+    // A note on one book, then two books assigned with a due date: one event naming the three.
+    expect((await s.owner.client.patch(`${scopeBase}/items/${s.books[0]}`, { note: 'Waiting for the 2027 edition' })).statusCode).toBe(200);
+    expect((await s.owner.client.post(`${scopeBase}/items/assign`, { materialIds: s.books.slice(1, 3), assigneeId: viewer.userId, dueOn: '2026-12-01' })).statusCode).toBe(200);
+    expect((await deliveries()).filter((d) => d.event_type === 'scope.items_annotated')).toHaveLength(1);
+    await deliver();
+    const [annotated] = r.received;
+    expect(annotated!.json).toMatchObject({ type: 'scope.items_annotated', data: { scope: { id: scopeId, itemCount: 4 }, materialIds: s.books.slice(0, 3).sort() } });
+    expect(Object.keys(annotated!.json.data)).toEqual(['scope', 'materialIds']);
+    expect(annotated!.body).not.toContain('Waiting for the 2027 edition');
+    expect(annotated!.body).not.toContain('Member viewer');
+    verify(annotated!, hook.secret);
+    expect(other.received.map((x) => x.json.type)).toEqual(['scope.items_changed']);
+
+    // The assignee, a viewer, marks a book done: a new event naming that book.
+    expect((await viewer.client.patch(`${scopeBase}/items/${s.books[1]}`, { status: 'done' })).statusCode).toBe(200);
+    await deliver();
+    expect(r.received[1]!.json).toMatchObject({ type: 'scope.items_annotated', data: { materialIds: [s.books[1]] } });
+
+    // Saving without a change sends nothing.
+    await s.owner.client.patch(`${scopeBase}/items/${s.books[0]}`, { note: 'Waiting for the 2027 edition' });
+    await s.owner.client.post(`${scopeBase}/items/assign`, { materialIds: s.books.slice(1, 3), assigneeId: viewer.userId });
+    expect((await deliveries()).filter((d) => d.status === 'pending')).toEqual([]);
   });
 
   it('carrying a scope forward and duplicating it are reported too', async () => {

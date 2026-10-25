@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**35 files, 254 tests, 254 passed, 0 failed** (2026-10-25, after encryption key rotation). Integration tests ran against a real
+**35 files, 255 tests, 255 passed, 0 failed** (2026-10-25, after webhook events for notes and assignments). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -48,7 +48,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/scope-notes | 21 | Pass — status and due dates (validation, the assignee-viewer rule, bulk changes), assignment emails (language, opt-out, none for yourself, long lists shortened), My assignments (order, filters, navigation counts), status and due date in duplicates, carry-forward and exports; notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
 | integration/due-reminders | 10 | Pass — the worker's due-date reminders: one email per member and organization listing overdue and due-soon books, once (the next day only what changed); each member's language; done, unassigned and long-overdue books left out; only between 08:00 and 21:00 Cairo time; reminded again after a new due date or assignee, not after reopening; the email opt-out and unverified addresses keep the in-app notice; suspended accounts and organizations skipped until active; three concurrent passes send each reminder once; long lists shortened; records removed with the book, the member and 60 days after the due date, and invisible to other organizations; the navigation's due-soon count |
 | integration/data-keys | 3 | Pass — key rotation across three app instances on one database: two-factor sign-in and webhook signing before re-encryption, after it and with the new key alone; old-format values re-encrypted; idempotent; unreadable values reported and untouched; the command-line tool run as a process (check, rotate, audit without key material, exit 1 on unreadable values) |
-| integration/webhooks | 11 | Pass — customer webhooks against a local receiver: management (secret once, stored encrypted; editors refused; validation; limit of 5; plan without API access 402); signed delivery of every event to subscribed endpoints only, payload and key order; merging of quick changes; duplicate and carry; retries with backoff and final failure; switch-off after 25 failures with notification and audit, switching back on; redirects not followed and timeouts; test, redelivery (same event id), secret rotation; events stop without API access; other organizations 404 and RLS; 30-day retention; with default settings, non-https and private URLs refused and nothing sent to a private address |
+| integration/webhooks | 12 | Pass — customer webhooks against a local receiver: management (secret once, stored encrypted; editors refused; validation; limit of 5; plan without API access 402); signed delivery of every event to subscribed endpoints only, payload and key order; merging of quick changes; notes and assignments as one event naming every book changed, without note text or names, also for a viewer's status update, none for a save without a change; duplicate and carry; retries with backoff and final failure; switch-off after 25 failures with notification and audit, switching back on; redirects not followed and timeouts; test, redelivery (same event id), secret rotation; events stop without API access; other organizations 404 and RLS; 30-day retention; with default settings, non-https and private URLs refused and nothing sent to a private address |
 | integration/all-assignments | 4 | Pass — My assignments across organizations: two organizations merged in one order with totals and per-organization counts, done/all filters, other members' books never shown; status update as a viewer through the book's organization; suspended and two-factor organizations listed as unavailable and not read; same books as the organization's own page; 401 signed out, 403 for students |
 | integration/assignment-digest | 9 | Pass — the daily summary: no email per assignment for members who chose it (in-app notice kept); one summary the next morning, then none; at most one a day (assignments after the morning's sending time wait); one email across two organizations grouped by scope and assigner; unassigned/removed books and suspended organizations left out; switching back or off drops the queue, choice validated; unverified addresses; Arabic and long lists; three concurrent passes send one summary; RLS for other organizations and members; cleanup after 30 days |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
@@ -65,7 +65,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 254</summary>
+<details><summary>Show all 255</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -293,6 +293,7 @@ Full test names (verbatim from the verbose reporter):
 - webhooks › webhook endpoints › admins add endpoints; the secret is shown once and stored encrypted; editors, viewers and plans without API access cannot
 - webhooks › webhook endpoints › scope changes are queued with the change and delivered signed by the worker, to subscribed endpoints only
 - webhooks › webhook endpoints › quick changes to one scope reach the endpoint as one event with the latest state
+- webhooks › webhook endpoints › notes, assignees, statuses and due dates are one event per scope naming every book changed, without the notes themselves
 - webhooks › webhook endpoints › carrying a scope forward and duplicating it are reported too
 - webhooks › webhook endpoints › failures are retried with backoff and fail for good after the last attempt
 - webhooks › webhook endpoints › an endpoint that keeps failing is switched off and the admins are told; switching it on again resumes delivery
@@ -324,7 +325,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**21 tests, 21 passed** (4.0 min, 2026-10-25), Chromium, real server process on port 3100: 19 journeys,
+**21 tests, 21 passed** (4.1 min, 2026-10-25), Chromium, real server process on port 3100: 19 journeys,
 then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -347,7 +348,7 @@ then the accessibility project (2 tests), which reuses the journeys' data.
 | 16 | Due-date reminders (same school): the owner assigns Hana a third book due tomorrow and the notes page marks it "due soon"; one pass of the worker's reminder job (run directly against the E2E database at 10:30 Cairo time, since the E2E run starts no worker) sends one reminder and a second pass none; Hana's email lists the book as "due tomorrow" with a link to My assignments, although she turned assignment emails off (a separate choice); she sees Due soon 1 on My assignments and the reminder in her notifications, and turns reminder emails off | Pass |
 | 17 | Daily summary (same school): Hana switches assignment emails from none to one summary each morning; the owner selects a fourth book and assigns it to her (found with the Not assigned filter) and no assignment email goes; one pass of the worker's summary job for the next morning (run directly, as for journey 16) sends one summary listing the book under Notes Academy, “Grade 6 books”, assigned by E2E Owner, and a second pass none. Journeys 15 and 16 use the new three-way choice instead of the old checkbox | Pass |
 | 18 | All organizations: Hana creates her own organization (Hana Study Group), selects a book and gives it to herself due tomorrow; from Notes Academy's My assignments she follows "See your books in all your organizations (2)"; the page lists 5 books (both due tomorrow first, then by date), Not done yet 5 and Due soon 2, and links each organization; she marks her own organization's book Done there, finds it under Done, and 4 remain not done | Pass |
-| 19 | Webhooks: a local receiver stands in for the school's system (the E2E server allows local targets); the Notes Academy owner adds it in Settings → Webhooks without "Scope deleted", copies the secret shown once, and sees it Active with the three events; Send test → "Test delivered (200)" and the ping's signature checks with the secret; selecting one more book in Grade 6 books and one pass of the worker's webhook job (run directly) delivers `scope.items_changed` with 5 books, signed; the Deliveries dialog lists both, delivered (200) | Pass |
+| 19 | Webhooks: a local receiver stands in for the school's system (the E2E server allows local targets); the Notes Academy owner adds it in Settings → Webhooks without "Scope deleted", copies the secret shown once, and sees it Active with the three events; Send test → "Test delivered (200)" and the ping's signature checks with the secret; selecting one more book in Grade 6 books and one pass of the worker's webhook job (run directly) delivers `scope.items_changed` with 5 books, signed; the Deliveries dialog lists both, delivered (200); a note written on a book is delivered as `scope.items_annotated` naming that one book, signed, without the note's text | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle

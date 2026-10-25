@@ -15,7 +15,7 @@ import { postWebhook, type DeliveryResult } from './net.js';
 // payload carries the scope's current state only; receivers fetch the details
 // with the read API (/api/v1/scopes/:id).
 
-export const WEBHOOK_EVENTS = ['scope.created', 'scope.updated', 'scope.deleted', 'scope.items_changed'] as const;
+export const WEBHOOK_EVENTS = ['scope.created', 'scope.updated', 'scope.deleted', 'scope.items_changed', 'scope.items_annotated'] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 export const MAX_ENDPOINTS = 5;
 /** Minutes to wait before attempts 2, 3, …: about 21 hours in all. */
@@ -57,10 +57,19 @@ async function scopeState(exec: Executor, scopeId: string) {
 
 /**
  * Queues `type` for the organization's endpoints subscribed to it. Several
- * "updated" or "items changed" events for one scope that are still waiting for
- * their first attempt become one, with the latest state.
+ * "updated", "items changed" or "items annotated" events for one scope that are
+ * still waiting for their first attempt become one, with the latest state (and,
+ * for "items annotated", every book changed: notes, assignees, statuses and due
+ * dates are not sent, receivers read them with the API).
  */
-export async function emitScopeEvent(exec: Executor, orgId: string, graceDays: number, type: WebhookEvent, scope: { id: string; name: string }): Promise<void> {
+export async function emitScopeEvent(
+  exec: Executor,
+  orgId: string,
+  graceDays: number,
+  type: WebhookEvent,
+  scope: { id: string; name: string },
+  materialIds?: string[],
+): Promise<void> {
   const endpoints = await exec
     .selectFrom('webhook_endpoints')
     .select('id')
@@ -77,15 +86,29 @@ export async function emitScopeEvent(exec: Executor, orgId: string, graceDays: n
     type,
     createdAt: new Date().toISOString(),
     organizationId: orgId,
-    data: { scope: state ?? { id: scope.id, name: scope.name } },
+    data: {
+      scope: state ?? { id: scope.id, name: scope.name },
+      ...(type === 'scope.items_annotated' ? { materialIds: [...new Set(materialIds ?? [])].sort() } : {}),
+    },
   };
-  const coalesceKey = type === 'scope.updated' || type === 'scope.items_changed' ? `${type}:${scope.id}` : null;
+  const coalesceKey = type === 'scope.deleted' || type === 'scope.created' ? null : `${type}:${scope.id}`;
+  // Merging keeps the latest state; for "items annotated" it also keeps every book changed meanwhile.
   await sql`
     INSERT INTO webhook_deliveries (org_id, endpoint_id, event_id, event_type, payload, coalesce_key)
     SELECT ${orgId}, e.id, ${eventId}, ${type}, ${JSON.stringify(payload)}::json, ${coalesceKey}
     FROM unnest(${endpoints.map((e) => e.id)}::uuid[]) AS e(id)
     ON CONFLICT (endpoint_id, coalesce_key) WHERE status = 'pending' AND attempts = 0 AND coalesce_key IS NOT NULL
-    DO UPDATE SET payload = EXCLUDED.payload, event_id = EXCLUDED.event_id, created_at = now()`.execute(exec);
+    DO UPDATE SET
+      payload = CASE WHEN EXCLUDED.event_type <> 'scope.items_annotated' THEN EXCLUDED.payload ELSE json_build_object(
+        'id', EXCLUDED.payload->'id', 'type', EXCLUDED.payload->'type', 'createdAt', EXCLUDED.payload->'createdAt',
+        'organizationId', EXCLUDED.payload->'organizationId',
+        'data', json_build_object(
+          'scope', EXCLUDED.payload->'data'->'scope',
+          'materialIds', (SELECT json_agg(m ORDER BY m) FROM (
+            SELECT json_array_elements_text(webhook_deliveries.payload->'data'->'materialIds') AS m
+            UNION SELECT json_array_elements_text(EXCLUDED.payload->'data'->'materialIds')) AS u))) END,
+      event_id = EXCLUDED.event_id,
+      created_at = now()`.execute(exec);
 }
 
 /** A test event, sent at once by the management API. */

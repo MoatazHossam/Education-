@@ -112,6 +112,35 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
 3. Rollback: redeploy the previous image tag. If a migration must be reverted, restore from the
    pre-upgrade backup (take one with `scripts/backup.sh` before every release).
 
+### Rotating `DATA_ENCRYPTION_KEY`
+
+The key encrypts two-factor secrets and customer webhook signing secrets. Rotate it about once a
+year, when someone who had access to it leaves, or if it may have leaked. There is no downtime.
+
+1. **Back up first:** run `scripts/backup.sh`. Then check the current state:
+   `docker compose … exec app node dist/cli/rotate-data-key.js --check`. It prints the current key's id
+   (a short fingerprint, not the key) and how many values each key has encrypted.
+2. **Swap the keys:** generate a new key with `openssl rand -base64 32`. In `.env.production`, move the
+   current key to `DATA_ENCRYPTION_KEYS_PREVIOUS` and put the new one in `DATA_ENCRYPTION_KEY`.
+3. **Restart:** run `scripts/rolling-restart.sh`. Every instance now writes with the new key and still
+   reads the old one.
+   - During the few seconds of the restart, an instance not yet restarted cannot read a value that a
+     restarted one has just written, such as a new two-factor enrollment.
+   - A code or test that fails in that window can be retried.
+4. **Re-encrypt:** run `docker compose … exec app node dist/cli/rotate-data-key.js`. It rewrites every
+   value with the new key, prints counts per column, and records `admin.data_key_rotated` in the
+   platform audit log (counts and the key id only).
+   - It exits with 1 and lists any value that none of the configured keys can read.
+   - In that case, add the key that value was written with to `DATA_ENCRYPTION_KEYS_PREVIOUS` and run it again.
+5. **Confirm:** `--check` shows every value with the current key.
+6. **Remove the old key:** clear `DATA_ENCRYPTION_KEYS_PREVIOUS` and run `scripts/rolling-restart.sh` again.
+7. **Keep the old key with old backups:** store it apart from the backups, for as long as you keep backups
+   made before step 4. Restoring one of them needs it: put it back in `DATA_ENCRYPTION_KEYS_PREVIOUS`,
+   run step 4 on the restored database, then remove it again. Destroy the old key when the last of
+   those backups is deleted.
+
+Locally: `npm run keys:check` and `npm run keys:rotate`.
+
 ## 5. Backups and recovery
 
 **Backup (daily, cron on the host):**

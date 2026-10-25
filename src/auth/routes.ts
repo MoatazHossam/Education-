@@ -300,7 +300,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const meta = requestMeta(req);
     let ok = false;
     if (body.code && user.mfa_secret_enc) {
-      const step = verifyTotp(decryptSecret(config.DATA_ENCRYPTION_KEY, user.mfa_secret_enc), body.code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
+      const step = verifyTotp(decryptSecret(config.dataKeys, user.mfa_secret_enc), body.code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
       if (step !== null) {
         await db.updateTable('users').set({ mfa_last_step: step }).where('id', '=', user.id).execute();
         ok = true;
@@ -558,7 +558,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const { user } = requireUser(req);
     if (user.mfa_enabled) throw new AppError(409, 'MFA_ALREADY_ENABLED', 'Two-factor authentication is already enabled');
     const secret = generateTotpSecret();
-    await db.updateTable('users').set({ mfa_pending_secret_enc: encryptSecret(config.DATA_ENCRYPTION_KEY, secret) }).where('id', '=', user.id).execute();
+    await db.updateTable('users').set({ mfa_pending_secret_enc: encryptSecret(config.dataKeys, secret) }).where('id', '=', user.id).execute();
     return enrollmentPayload(user.email, secret);
   });
 
@@ -567,7 +567,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const { code } = parse(z.object({ code: z.string().min(6).max(10) }), req.body);
     if (!user.mfa_pending_secret_enc) throw badRequest('Start two-factor setup first');
     const secretEnc = user.mfa_pending_secret_enc;
-    const step = verifyTotp(decryptSecret(config.DATA_ENCRYPTION_KEY, secretEnc), code, null);
+    const step = verifyTotp(decryptSecret(config.dataKeys, secretEnc), code, null);
     if (step === null) throw new AppError(400, 'MFA_INVALID', 'The code is incorrect. Check your device clock and try again.');
     const { codes, hashes } = generateRecoveryCodes();
     const updated = await db
@@ -589,7 +589,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     if (!user.mfa_enabled || !user.mfa_secret_enc) throw badRequest('Two-factor authentication is not enabled');
     if (user.is_platform_admin) throw forbidden('Platform administrators cannot disable two-factor authentication');
     if (!(await verifyPassword(user.password_hash, body.password))) throw new AppError(400, 'INVALID_PASSWORD', 'Password is incorrect');
-    const step = verifyTotp(decryptSecret(config.DATA_ENCRYPTION_KEY, user.mfa_secret_enc), body.code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
+    const step = verifyTotp(decryptSecret(config.dataKeys, user.mfa_secret_enc), body.code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
     if (step === null) throw new AppError(400, 'MFA_INVALID', 'The code is incorrect');
     await db
       .updateTable('users')
@@ -605,7 +605,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const { user } = requireUser(req);
     const { code } = parse(z.object({ code: z.string().min(6).max(10) }), req.body);
     if (!user.mfa_enabled || !user.mfa_secret_enc) throw badRequest('Two-factor authentication is not enabled');
-    const step = verifyTotp(decryptSecret(config.DATA_ENCRYPTION_KEY, user.mfa_secret_enc), code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
+    const step = verifyTotp(decryptSecret(config.dataKeys, user.mfa_secret_enc), code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
     if (step === null) throw new AppError(400, 'MFA_INVALID', 'The code is incorrect');
     const { codes, hashes } = generateRecoveryCodes();
     await db.updateTable('users').set({ mfa_recovery_hashes: hashes, mfa_last_step: step }).where('id', '=', user.id).execute();

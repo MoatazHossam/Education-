@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { KeyRing } from './lib/crypto.js';
 
 const bool = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
@@ -22,6 +23,13 @@ const EnvSchema = z
     DATA_ENCRYPTION_KEY: z
       .string()
       .refine((v) => Buffer.from(v, 'base64').length === 32, 'DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded'),
+    // During a key rotation: the keys used before, comma-separated. They only decrypt
+    // (docs/DEPLOYMENT_GUIDE.md, "Rotating DATA_ENCRYPTION_KEY").
+    DATA_ENCRYPTION_KEYS_PREVIOUS: z
+      .string()
+      .transform((v) => v.split(',').map((k) => k.trim()).filter(Boolean))
+      .pipe(z.array(z.string().refine((v) => Buffer.from(v, 'base64').length === 32, 'each previous key must be 32 bytes, base64-encoded')).max(5))
+      .default([]),
 
     EMAIL_TRANSPORT: z.enum(['smtp', 'log', 'none']).default('log'),
     SMTP_URL: z.string().optional(),
@@ -79,6 +87,9 @@ const EnvSchema = z
         ctx.addIssue({ code: 'custom', path: ['WEBHOOK_ALLOW_INSECURE_TARGETS'], message: 'WEBHOOK_ALLOW_INSECURE_TARGETS cannot be used in production' });
       }
     }
+    if (env.DATA_ENCRYPTION_KEYS_PREVIOUS.includes(env.DATA_ENCRYPTION_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['DATA_ENCRYPTION_KEYS_PREVIOUS'], message: 'DATA_ENCRYPTION_KEYS_PREVIOUS must not contain the current DATA_ENCRYPTION_KEY' });
+    }
     if (env.EMAIL_TRANSPORT === 'smtp' && !env.SMTP_URL) {
       ctx.addIssue({ code: 'custom', path: ['SMTP_URL'], message: 'SMTP_URL is required when EMAIL_TRANSPORT=smtp' });
     }
@@ -95,6 +106,8 @@ const EnvSchema = z
 export type Env = z.infer<typeof EnvSchema>;
 
 export interface AppConfig extends Env {
+  /** DATA_ENCRYPTION_KEY and the previous keys, for encryptSecret/decryptSecret. */
+  dataKeys: KeyRing;
   isProduction: boolean;
   isTest: boolean;
   secureCookies: boolean;
@@ -113,6 +126,7 @@ export function loadConfig(source: Record<string, string | undefined> = process.
   const env = parsed.data;
   return {
     ...env,
+    dataKeys: { current: env.DATA_ENCRYPTION_KEY, previous: env.DATA_ENCRYPTION_KEYS_PREVIOUS },
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
     secureCookies: env.APP_URL.startsWith('https://'),

@@ -107,7 +107,7 @@ interface Claimed {
 /** Sends one claimed delivery (its attempt already counted). */
 export function sendDelivery(config: AppConfig, d: Claimed, timeoutMs?: number): Promise<DeliveryResult> {
   const body = JSON.stringify(d.payload);
-  const secret = decryptSecret(config.DATA_ENCRYPTION_KEY, d.secret_enc);
+  const secret = decryptSecret(config.dataKeys, d.secret_enc);
   return postWebhook(d.url, body, deliveryHeaders(secret, body, d.event_type, d.id), { allowInsecure: config.WEBHOOK_ALLOW_INSECURE_TARGETS, timeoutMs });
 }
 

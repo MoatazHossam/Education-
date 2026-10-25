@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**33 files, 247 tests, 247 passed, 0 failed** (2026-10-25, after webhooks to customer systems). Integration tests ran against a real
+**35 files, 254 tests, 254 passed, 0 failed** (2026-10-25, after encryption key rotation). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -37,6 +37,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
 | unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
 | unit/rate-limit-memory | 2 | Pass — fixed windows; memory bounded, oldest windows dropped first |
+| unit/data-keys | 4 | Pass — key ids in new values; previous keys decrypt and an unconfigured key is named; old-format values read with whichever key opens them; `DATA_ENCRYPTION_KEYS_PREVIOUS` rules |
 | unit/webhook-net | 4 | Pass — public-address classifier (private, loopback, link-local, CGNAT, documentation, multicast, NAT64, 6to4, IPv4-mapped); URL rules (https only, no credentials, no private or local hosts, development setting); the socket's DNS lookup refusing a host that resolves to loopback; signature format |
 | unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
 | integration/auth | 13 | Pass |
@@ -46,6 +47,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
 | integration/scope-notes | 21 | Pass — status and due dates (validation, the assignee-viewer rule, bulk changes), assignment emails (language, opt-out, none for yourself, long lists shortened), My assignments (order, filters, navigation counts), status and due date in duplicates, carry-forward and exports; notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
 | integration/due-reminders | 10 | Pass — the worker's due-date reminders: one email per member and organization listing overdue and due-soon books, once (the next day only what changed); each member's language; done, unassigned and long-overdue books left out; only between 08:00 and 21:00 Cairo time; reminded again after a new due date or assignee, not after reopening; the email opt-out and unverified addresses keep the in-app notice; suspended accounts and organizations skipped until active; three concurrent passes send each reminder once; long lists shortened; records removed with the book, the member and 60 days after the due date, and invisible to other organizations; the navigation's due-soon count |
+| integration/data-keys | 3 | Pass — key rotation across three app instances on one database: two-factor sign-in and webhook signing before re-encryption, after it and with the new key alone; old-format values re-encrypted; idempotent; unreadable values reported and untouched; the command-line tool run as a process (check, rotate, audit without key material, exit 1 on unreadable values) |
 | integration/webhooks | 11 | Pass — customer webhooks against a local receiver: management (secret once, stored encrypted; editors refused; validation; limit of 5; plan without API access 402); signed delivery of every event to subscribed endpoints only, payload and key order; merging of quick changes; duplicate and carry; retries with backoff and final failure; switch-off after 25 failures with notification and audit, switching back on; redirects not followed and timeouts; test, redelivery (same event id), secret rotation; events stop without API access; other organizations 404 and RLS; 30-day retention; with default settings, non-https and private URLs refused and nothing sent to a private address |
 | integration/all-assignments | 4 | Pass — My assignments across organizations: two organizations merged in one order with totals and per-organization counts, done/all filters, other members' books never shown; status update as a viewer through the book's organization; suspended and two-factor organizations listed as unavailable and not read; same books as the organization's own page; 401 signed out, 403 for students |
 | integration/assignment-digest | 9 | Pass — the daily summary: no email per assignment for members who chose it (in-app notice kept); one summary the next morning, then none; at most one a day (assignments after the morning's sending time wait); one email across two organizations grouped by scope and assigner; unassigned/removed books and suspended organizations left out; switching back or off drops the queue, choice validated; unverified addresses; Arabic and long lists; three concurrent passes send one summary; RLS for other organizations and members; cleanup after 30 days |
@@ -63,7 +65,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 247</summary>
+<details><summary>Show all 254</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -303,6 +305,13 @@ Full test names (verbatim from the verbose reporter):
 - unit › webhook targets › URLs must be https, without credentials, to a public host
 - unit › webhook targets › the socket lookup refuses a host that resolves to a private address
 - unit › webhook targets › signs "<timestamp>.<body>" with HMAC-SHA256
+- data-keys › rotating DATA_ENCRYPTION_KEY › old values keep working during the rotation, are re-encrypted, and then work with the new key alone
+- data-keys › rotating DATA_ENCRYPTION_KEY › a value no configured key can read is reported and left as it is
+- data-keys › rotating DATA_ENCRYPTION_KEY › the command-line tool checks, re-encrypts, records an audit entry, and fails on unreadable values
+- unit › encryption keys › new values name their key; the key id is a short fingerprint
+- unit › encryption keys › previous keys still decrypt; a key that is not configured is named in the error
+- unit › encryption keys › envelopes from before key ids were recorded are read with whichever configured key opens them
+- unit › encryption keys › DATA_ENCRYPTION_KEYS_PREVIOUS takes up to five other 32-byte keys
 
 </details>
 

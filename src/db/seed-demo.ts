@@ -23,7 +23,7 @@ export async function seedDemoData(db: Database, config: AppConfig, catalogVersi
     const owner = await mk('owner@demo.local', 'Demo Owner');
     const editor = await mk('editor@demo.local', 'Demo Editor');
     const viewer = await mk('viewer@demo.local', 'Demo Viewer');
-    await mk('admin@demo.local', 'Platform Admin', { is_platform_admin: true, mfa_enabled: true, mfa_secret_enc: encryptSecret(config.DATA_ENCRYPTION_KEY, adminTotp) });
+    await mk('admin@demo.local', 'Platform Admin', { is_platform_admin: true, mfa_enabled: true, mfa_secret_enc: encryptSecret(config.dataKeys, adminTotp) });
 
     const { org } = await createOrganization(trx, config, { name: 'Demo Ed-Tech Co', owner, locale: 'en' }, null);
     await setOrgContext(trx, org.id, owner.id);

@@ -42,6 +42,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
 - **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
 
+### Notes and assignees on selected books · COMPLETE
+- **Implemented:** a short note (up to 500 characters) on any selected book of a scope, and the organization member responsible for it, e.g. "waiting for the 2027 edition", assigned to whoever follows it up.
+  - A **Notes and assignees** page per scope (from the picker's scope bar and a new column in the scopes list). It shows counts (selected, with a note, assigned, assigned to you) and filters: assigned to me, with a note, assigned, not assigned, by grade, and by text. Editors edit a book's note and assignee in a dialog, or tick several books and assign them at once. Viewers read.
+  - A new assignee other than yourself gets an in-app notification in their language, once per change. It links to the page filtered to their books.
+  - In the picker, annotated books carry a mark (read out as "has a note" or "assigned to …"). Deselecting one asks first, because its note goes with it.
+  - The assignee must be a member of the organization: the database references memberships, so removing a member clears their assignments and keeps the notes.
+  - Notes and assignees are kept when a scope is duplicated and follow their books when it is carried to another year. The carry review says how many follow and how many are on books that cannot be carried.
+  - CSV exports gain `note` and `assignee` columns at the end, so existing column positions do not move. JSON exports and the read API carry the same fields; the TXT export keeps the original layout.
+  - Audited as `scope.item_annotated` and `scope.items_assigned`, with which fields changed but never the note's text. Read-only scopes (over the plan limit) cannot be annotated.
+- **Files:** `src/db/migrations/0008_item_notes.ts`, `src/scopes/{notes,routes,export}.ts`, `src/api-v1/routes.ts`, `public/js/views/{items,picker,scopes,carry}.js`, `public/js/main.js`, `public/js/i18n.js`, `public/app.css`.
+- **Tests:** `scope-notes.test.ts` (14) and a new unit test for the CSV columns. E2E journey 14: an editor joins, the owner writes a note and assigns two books at once, the editor is notified and opens a list of exactly their books, the scopes list counts them, and the picker asks before dropping an annotated book. The accessibility audit adds 6 screens (the page, its dialog, Arabic, dark, phone) with 0 findings. All pass.
+- **Limitations:**
+  - Notifications are in-app only (no email).
+  - No status or due date per book.
+  - No cross-scope "my assignments" page (each scope's page filters to you, and the scopes list shows your count per scope).
+
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
   - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
@@ -197,7 +213,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (184 unit/integration + 15 E2E passing: 13 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (199 unit/integration + 16 E2E passing: 14 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -225,6 +241,4 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 Wise EduAgent student-portal integration (`docs/wise-integration/`). Wise itself could not be inspected
 (B-8); on the owner's decision, student accounts created by schools were built as the portal's
 foundation (above). Waiting on the owner: access to Wise (B-8) and an AI provider (B-10); legal
-assessment before real student use (B-9). Still **not started**, agreed in principle: per-item notes and
-assignees on scopes (Roadmap P2, about 2–3 days): a short note on any selected book (e.g. "waiting for
-the 2027 edition") and the member responsible for it.
+assessment before real student use (B-9). Per-item notes and assignees (Roadmap P2) are done (above).

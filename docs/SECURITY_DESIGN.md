@@ -80,7 +80,8 @@ organizations, and name only the recipient's own organization's scopes and selec
 `auth.login`, `auth.login_failed`, `auth.account_locked`, `auth.mfa_enabled/disabled/failed`,
 `auth.password_changed/reset`, `auth.sessions_revoked`, `user.registered/email_verified/deleted/data_exported`,
 `org.created/updated/deleted/ownership_transferred`, `member.role_changed/removed/left`,
-`invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated`,
+`invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned`
+(which fields changed and the assignee, never the note's text),
 `api_key.created/revoked`, `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`), which go to the school's

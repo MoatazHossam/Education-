@@ -69,6 +69,14 @@ export async function pickerView(ctx) {
   if (scope) writePref(orgId, scope.id);
 
   const sel = new Set(scopeData.materialIds);
+  // Notes and assignees on selected books (managed on the scope's notes page).
+  const notes = new Map((scopeData.annotations ?? []).map((a) => [a.materialId, a]));
+  const noteMark = (id) => {
+    const a = notes.get(id);
+    if (!a) return null;
+    return h('span', { class: 'note-mark' }, h('span', { class: 'mnote', 'aria-hidden': 'true' }, '✎'),
+      h('span', { class: 'sr-only' }, ` (${a.note ? t('items.markNote') : t('items.markAssigned', { name: a.assigneeName ?? '' })})`));
+  };
   const readOnly = !scope || !canEdit || scope.readOnly;
   const st = { track: 'all', grades: new Set(), kinds: new Set(KINDS), q: '' };
   const pending = { add: new Set(), remove: new Set() };
@@ -114,8 +122,14 @@ export async function pickerView(ctx) {
     }
   }
 
-  function toggle(id) {
+  async function toggle(id) {
     if (readOnly) return explainReadOnly();
+    // Deselecting a book drops its note and assignee: ask first.
+    if (sel.has(id) && notes.has(id)) {
+      if (!(await confirmDialog(t('items.removeTitle'), t('items.removeText'), { danger: true, confirmLabel: t('items.removeConfirm') }))) return;
+      notes.delete(id);
+      buttonsById.get(id)?.querySelector('.note-mark')?.remove();
+    }
     if (sel.has(id)) {
       sel.delete(id);
       if (pending.add.has(id)) pending.add.delete(id); else pending.remove.add(id);
@@ -187,7 +201,7 @@ export async function pickerView(ctx) {
           const matWrap = h('div', { class: 'mats' });
           for (const m of mats) {
             shownIds.push(m.id);
-            const btn = mkBtn(`mat ${m.kind}`, [m.title, materialMark(m)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
+            const btn = mkBtn(`mat ${m.kind}`, [m.title, materialMark(m), noteMark(m.id)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
             buttonsById.set(m.id, btn);
             matWrap.append(btn);
           }
@@ -332,6 +346,7 @@ export async function pickerView(ctx) {
     h('span', { class: 'lbl' }, t('picker.scope')),
     scopeSelect || h('span', { class: 'muted' }, t('picker.noScopes')),
     canEdit ? h('button', { type: 'button', class: 'btn small ghost', onclick: createScope }, t('scopes.new')) : null,
+    scope ? link(`/org/${orgId}/scopes/${scope.id}/items`, t('items.link'), { class: 'btn small ghost' }) : null,
     readOnly && scope ? h('span', { class: 'ro-note' }, canEdit ? t('picker.scopeReadOnly') : t('picker.viewerReadOnly')) : null);
 
   const search = h('input', { type: 'search', placeholder: t('picker.searchPlaceholder'), 'aria-label': t('picker.search'), oninput: (e) => { st.q = e.target.value; render(); } });

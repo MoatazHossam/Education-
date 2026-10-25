@@ -438,3 +438,83 @@ test('a platform admin turns on student accounts; the school adds students; a st
   await studentCtx.close();
   await adminCtx.close();
 });
+
+test('the team notes and assigns selected books; the assignee is notified and finds them; deselecting asks first', async ({ page, browser }) => {
+  const email = `notes.${uid()}@e2e.test`;
+  await registerAndVerify(page, email, 'Notes Academy');
+  await login(page, email);
+  const orgId = orgIdFromUrl(page);
+  await createScope(page, 'Grade 5 books');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/Grade 5 books/);
+  await page.getByRole('button', { name: 'Grade 5' }).click();
+  const titles: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    titles.push(await page.locator('.mat').nth(i).evaluate((el) => (el.firstChild?.textContent ?? '').trim()));
+    await page.locator('.mat').nth(i).click();
+  }
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+
+  // An editor joins.
+  await page.goto(`/org/${orgId}/members`);
+  const editorEmail = `notes.editor.${uid()}@e2e.test`;
+  await page.getByLabel('Email').fill(editorEmail);
+  await page.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(page.getByText(`Invitation sent to ${editorEmail}`)).toBeVisible();
+  const editorCtx = await browser.newContext();
+  const editor = await editorCtx.newPage();
+  await editor.goto(`/invite?token=${token(await latestEmailText(editorEmail, 'invitation'))}`);
+  await editor.getByLabel('Your name').fill('Hana Editor');
+  await editor.getByLabel('Password').fill(PASSWORD);
+  await editor.getByRole('button', { name: 'Create account and join' }).click();
+  await expect(editor.locator('.picker h1')).toBeVisible();
+
+  // The owner writes a note on one book and assigns two books to the editor at once.
+  await page.goto(`/org/${orgId}`);
+  await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+  await expect(page.getByRole('heading', { name: 'Notes and assignees', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: `Edit the note on ${titles[0]}` }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('Note').fill('Waiting for the 2027 edition');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: `Edit the note on ${titles[0]}` })).toBeFocused();
+  await page.getByLabel(`Choose ${titles[0]}`).check();
+  await page.getByLabel(`Choose ${titles[1]}`).check();
+  await expect(page.getByText('2 chosen')).toBeVisible();
+  await page.getByLabel('Assign the chosen books to').selectOption({ label: 'Hana Editor' });
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  await expect(page.getByText('Assignment saved for 2 books')).toBeVisible();
+  await expect(page.locator('.stat', { hasText: 'Assigned' }).first().locator('.v')).toHaveText('2');
+
+  // The editor is notified, follows the link and sees only their books.
+  await editor.reload();
+  await editor.getByRole('button', { name: 'Notifications' }).click();
+  await expect(editor.getByText('E2E Owner assigned you 2 books')).toBeVisible();
+  await editor.getByRole('dialog').getByRole('link', { name: 'Open' }).click();
+  await expect(editor.getByRole('heading', { name: 'Notes and assignees', level: 1 })).toBeVisible();
+  await expect(editor.getByLabel('Show', { exact: true })).toHaveValue('mine');
+  const rows = editor.locator('table.items tbody tr:not(.group)');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: titles[0] })).toContainText('Waiting for the 2027 edition');
+  await expect(rows.filter({ hasText: titles[2] })).toHaveCount(0);
+
+  // The scopes list counts them, and the picker marks annotated books and asks before dropping one.
+  await page.goto(`/org/${orgId}/scopes`);
+  await expect(page.getByRole('link', { name: '1 with notes · 2 assigned' })).toBeVisible();
+  await page.goto(`/org/${orgId}`);
+  await page.getByRole('button', { name: 'Grade 5' }).click();
+  // The first book carries the note (several books share a title, so go by position).
+  const annotated = page.locator('.mat').nth(0);
+  await expect(annotated.locator('.note-mark')).toBeVisible();
+  await annotated.click();
+  await expect(page.getByRole('dialog', { name: 'Remove this book?' })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await expect(annotated).toHaveAttribute('aria-pressed', 'true');
+  await annotated.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await expect(annotated).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  await page.goto(`/org/${orgId}/scopes`);
+  await expect(page.getByRole('link', { name: '0 with notes · 1 assigned' })).toBeVisible();
+  await editorCtx.close();
+});

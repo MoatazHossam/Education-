@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -33,6 +33,7 @@ erDiagram
   catalog_versions ||--o{ scopes : "targeted by"
   scopes ||--o{ scope_items : "selects"
   catalog_materials ||--o{ scope_items : "selected as"
+  memberships |o--o{ scope_items : "assignee"
   organizations ||..o{ audit_logs : "org_id (no FK)"
   billing_events }o..o| organizations : "org_id (no FK)"
 ```
@@ -53,7 +54,7 @@ erDiagram
 | `catalog_subjects` | Subject rows | unique `(version, grade, track, block, code)`; grade 1–12; track/status enums; verification columns (below) | — |
 | `catalog_materials` | Selectable materials | unique `(subject, title)`; unique `(id, version_id)`; trigger keeps `version_id` = subject's; verification columns (below) | — |
 | `scopes` | Content scopes (tenant data) | unique `(org_id, name)`; unique `(id, org_id, catalog_version_id)`; unique `(id, org_id)` (for students) | ✓ |
-| `scope_items` | Selected materials | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version) | ✓ |
+| `scope_items` | Selected materials, with the team's note and assignee | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version); `note` 1–500 characters; `(org_id, assignee_id)` references `memberships`, so the assignee is a member of the same organization and is cleared (`ON DELETE SET NULL (assignee_id)`) when the membership ends; `annotated_by`, `annotated_at` | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
 | `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |

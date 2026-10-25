@@ -36,7 +36,8 @@ describe('UI translations', () => {
     }
     const dynamic = ['role.owner', 'role.admin', 'role.editor', 'role.viewer', 'track.all', 'track.moe', 'track.sec', 'track.bac', 'track.ta', 'track.intl',
       'kind.moe', 'kind.lang', 'kind.ext', 'kind.prog', 'kind.exam', 'status.scored', 'status.pass', 'status.act', 'billing.stateName.trialing', 'billing.stateName.active',
-      'billing.stateName.past_due', 'billing.stateName.free', 'invoice.kind.renewal', 'invoice.status.void', 'legend.prog', 'picker.subjects', 'plan.year', 'billing.yearly'];
+      'billing.stateName.past_due', 'billing.stateName.free', 'invoice.kind.renewal', 'invoice.status.void', 'legend.prog', 'picker.subjects', 'plan.year', 'billing.yearly',
+      'items.show.all', 'items.show.mine', 'items.show.notes', 'items.show.assigned', 'items.show.unassigned'];
     const missing = [...used, ...dynamic].filter((k) => !(k in en));
     expect(missing).toEqual([]);
   });

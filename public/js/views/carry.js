@@ -116,6 +116,7 @@ export async function carryView(ctx) {
   return h('div', {},
     // In right-to-left text the "from" year sits on the right, so the arrow points left.
     pageHead(t('carry.title', { name: scope.name }), `${preview.from.academicYear} ${ar ? '←' : '→'} ${year}`, h('div', { class: 'row' }, back, targetPicker)),
-    h('div', { class: 'card' }, h('p', {}, s.selected ? t('carry.summary', { carried: s.carried, selected: s.selected, missing: s.missing }) : t('carry.empty'))),
+    h('div', { class: 'card' }, h('p', {}, s.selected ? t('carry.summary', { carried: s.carried, selected: s.selected, missing: s.missing }) : t('carry.empty')),
+      preview.notes?.carried || preview.notes?.lost ? h('p', { class: preview.notes.lost ? 'notice' : 'muted' }, t('carry.notes', { carried: preview.notes.carried, lost: preview.notes.lost })) : null),
     missingCard, changesCard, newCard, carriedCard, optionsCard);
 }

@@ -199,6 +199,12 @@ export interface ScopeItemsTable {
   material_id: string;
   added_by: string | null;
   added_at: Generated<Date>;
+  /** Short note on the selected book (1–500 characters). */
+  note: string | null;
+  /** Member responsible for the book; a membership of the same organization. */
+  assignee_id: string | null;
+  annotated_by: string | null;
+  annotated_at: NullableTimestamp;
 }
 
 export interface ApiKeysTable {

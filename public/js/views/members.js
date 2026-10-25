@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, errorMessage, fmtDate, form, h, promptDialog, tableCard, toast } from '../dom.js';
+import { confirmDialog, errorMessage, fmtDate, form, h, promptDialog, tableCard, th, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession, session } from '../state.js';
@@ -87,7 +87,7 @@ export async function membersView(ctx) {
   return h('div', {},
     pageHead(t('members.title'), t('members.sub')),
     tableCard(t('nav.members'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, [t('members.member'), t('members.role'), t('members.mfa'), t('members.joined'), ''].map((c) => h('th', { scope: 'col' }, c)))),
+      h('thead', {}, h('tr', {}, [t('members.member'), t('members.role'), t('members.mfa'), t('members.joined'), ''].map(th))),
       h('tbody', {}, rows))),
     inviteCard, pending,
     h('div', { class: 'card' }, h('h2', {}, t('members.rolesTitle')), h('ul', {}, ['owner', 'admin', 'editor', 'viewer'].map((r) => h('li', {}, h('b', {}, t(`role.${r}`)), ' — ', t(`role.${r}.desc`))))));

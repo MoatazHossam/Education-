@@ -2,7 +2,7 @@
 // Editors write a short note on any selected book, name the member responsible
 // for it, and track a status and due date, one book at a time or several at once.
 import { get, patch, post } from '../api.js';
-import { dialog, errorMessage, fmtDate, form, h, link, tableCard, toast } from '../dom.js';
+import { dialog, errorMessage, fmtDate, form, h, link, none, tableCard, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { can, invalidateOrg, session } from '../state.js';
 import { pageHead } from './shell.js';
@@ -31,7 +31,7 @@ export function progress(a) {
     parts.push(h('div', { class: 'small' }, t('items.due', { date: fmtDay(a.dueOn) }),
       isOverdue(a) ? [' ', h('span', { class: 'pill bad' }, t('items.overdue'))] : isDueSoon(a) ? [' ', h('span', { class: 'pill warn' }, t('items.dueSoon'))] : null));
   }
-  return parts.length ? parts : h('span', { class: 'muted' }, '—');
+  return parts.length ? parts : none();
 }
 const auto = (...c) => h('span', { dir: 'auto' }, ...c);
 const stat = (k, v) => h('div', { class: 'stat' }, h('div', { class: 'k' }, k), h('div', { class: 'v' }, String(v)));
@@ -218,9 +218,9 @@ export async function itemsView(ctx) {
                 onchange: (e) => { if (e.target.checked) chosen.add(r.m.id); else chosen.delete(r.m.id); updateChosen(); },
               })) : null,
               h('th', { scope: 'row' }, auto(r.m.title), h('div', { class: 'muted small' }, t(`kind.${r.m.kind}`))),
-              h('td', { class: 'note' }, a?.note ? auto(a.note) : h('span', { class: 'muted' }, '—'),
+              h('td', { class: 'note' }, a?.note ? auto(a.note) : none(),
                 a?.annotatedAt ? h('div', { class: 'muted small' }, t('items.by', { name: a.annotatedBy ?? '—', date: fmtDate(a.annotatedAt) })) : null),
-              h('td', {}, a?.assigneeName ? h('span', { class: a.assigneeId === me ? 'pill ok' : '' }, auto(a.assigneeName)) : h('span', { class: 'muted' }, '—')),
+              h('td', {}, a?.assigneeName ? h('span', { class: a.assigneeId === me ? 'pill ok' : '' }, auto(a.assigneeName)) : none()),
               h('td', {}, progress(a)),
               canEdit ? h('td', {}, h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('items.editFor', { title: r.m.title }), dataset: { edit: r.m.id }, onclick: () => edit(r).catch((e) => toast(errorMessage(e), 'error')) }, t('common.edit'))) : null);
           }))),

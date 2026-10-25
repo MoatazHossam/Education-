@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, h, link, promptDialog, tableCard, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, h, link, promptDialog, tableCard, th, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg } from '../state.js';
@@ -52,7 +52,7 @@ export async function scopesView(ctx) {
 
   const body = scopes.length
     ? tableCard(t('scopes.title'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, [t('scopes.name'), t('scopes.year'), t('scopes.items'), t('items.title'), t('scopes.updated'), ''].map((c) => h('th', { scope: 'col' }, c)))),
+      h('thead', {}, h('tr', {}, [t('scopes.name'), t('scopes.year'), t('scopes.items'), t('items.title'), t('scopes.updated'), ''].map(th))),
       h('tbody', {}, scopes.map((s) => h('tr', {},
         h('td', { dir: 'auto' }, link(`/org/${orgId}?scope=${s.id}`, s.name), s.description ? h('div', { class: 'muted' }, s.description) : null, s.readOnly ? h('span', { class: 'pill warn' }, t('scopes.readOnly')) : null),
         h('td', { class: 'mono' }, s.academicYear),

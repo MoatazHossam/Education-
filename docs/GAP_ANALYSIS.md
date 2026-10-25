@@ -17,7 +17,7 @@
 | 13 | Testing | None | Automated unit/integration/E2E | 44 unit, 115 integration, 14 E2E (12 journeys, 2 accessibility) — all passing | Load test on production-like hardware | No |
 | 14 | Deployment | Claude artifact | Reproducible, TLS, health checks | Docker image, compose (dev/prod), Caddy TLS, two app instances with rolling restarts, health/readiness | Provision host; DNS; run CI on GitHub | **Yes (ops)** |
 | 15 | Observability | None | Logs, metrics, alerts | JSON logs, health endpoints, worker heartbeat, admin health page, in-app alerts by email/webhook | External uptime monitor, real alert channels, log shipping/error tracking | **Yes** |
-| 16 | Accessibility | Toggle buttons and labels, no skip link | WCAG 2.2 AA | Automated WCAG 2.2 A/AA check of every screen (0 findings), a keyboard journey, and checks of names, descriptions and page titles | Manual screen-reader review (checklist: SCREEN_READER_REVIEW.md) | No |
+| 16 | Accessibility | Toggle buttons and labels, no skip link | WCAG 2.2 AA | Automated WCAG 2.2 A/AA check and a simulated screen reader on every screen (0 findings), a keyboard journey, and checks of names, descriptions, page titles and announcements | Manual screen-reader review (checklist: SCREEN_READER_REVIEW.md) | No |
 
 ## Items intentionally not built
 

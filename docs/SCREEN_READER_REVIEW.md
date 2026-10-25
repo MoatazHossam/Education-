@@ -5,11 +5,16 @@ A manual review of Curriculum Scope with screen readers, for the parts of WCAG
 sense, in the right order, in the right language, at the right moment.
 
 The automated checks already in place (TEST_REPORT.md §3) are the axe-core
-WCAG 2.2 A/AA audit of 80 screens and dialogs (English and Arabic, light and
+WCAG 2.2 A/AA audit of 83 screens and dialogs (English and Arabic, light and
 dark, desktop and phone) and a keyboard-only journey. They find roughly a third
 to a half of WCAG problems. This checklist covers the rest for screen-reader
-users. It has **not been carried out yet**; the results table at the end is
-empty until someone does.
+users. It has **not been carried out yet**.
+
+Before it, a simulated screen reader read every audited screen and the fixes it
+led to are listed in §4 (SCREEN_READER_PRECHECK.md has the details and what a
+simulation cannot tell). The tester records results on the shared results page,
+<https://claude.ai/artifact/LCnw1qJ35ZiuZL7AeUFj6r>. It holds the checks of §4–§8,
+saves each one as it is marked, and needs Contributor access from the owner.
 
 ## 1. Who and with what
 
@@ -61,18 +66,25 @@ the exact words: each screen reader phrases it differently.
 
 ## 4. Changes made before this review: confirm them
 
-These were found while preparing the checklist, by reading the markup, and
-fixed. They are covered by automated checks of the accessible name, description
-and page title (tests/e2e/accessibility.spec.ts), but only a screen reader shows
-how they actually sound.
+F1–F5 were found while preparing the checklist, by reading the markup; F6–F12
+by the simulated screen reader (SCREEN_READER_PRECHECK.md). All are fixed and
+covered by automated checks (tests/e2e/accessibility.spec.ts), but only a
+screen reader shows how they actually sound.
 
 | # | Was | Now | Check |
 |---|---|---|---|
 | F1 | The notifications button was named "Notifications"; the unread count shown on it was not announced. | Named "Notifications, 2 unread" while there are unread ones. | The count is announced; after opening the list the button is "Notifications" again. |
 | F2 | The whole page area was a live region, so a page change or a filter change could have the whole page read out. | Not a live region. Pages are announced by moving focus to the heading; messages use the status area. | Moving to another page reads its heading, not the whole page; changing a picker filter announces only the filter's new state. |
 | F3 | Every page had the same title, "Curriculum Scope". | The title is the page heading followed by " · Curriculum Scope" (in Arabic, " · نطاق المناهج"). | The title is announced on each page; the browser tab and history show it. |
-| F4 | In the picker the kind of a book (Ministry, language-school, external reference, programme, assessment) was shown by colour only. | Each book button also says its kind, as the student portal already did. | A book is announced as its title followed by its kind, e.g. "… (Ministry), toggle button, not pressed". |
+| F4 | In the picker the kind of a book (Ministry, language-school, external reference, programme, assessment) was shown by colour only. | Each book button also says its kind, as the student portal already did. | A book is announced as its title followed by its kind, e.g. "… (Ministry material), toggle button, not pressed". |
 | F5 | Form hints and field errors were not linked to their fields; a field with an error was only "invalid". | Hints and errors are the field's description. | On an invalid field the error is read with the field; a corrected field no longer reads the old error. |
+| F6 | Text in the other language was not marked: English titles, names and notes in the Arabic interface, Arabic names in the English one. | Marked with `lang`, so the screen reader can switch voice. | With automatic language switching on, such text is read in its own language, a whole phrase at a time. |
+| F7 | Empty notes, assignees and progress showed only "—"; the line under a note was just a name and a date. | Read as "None"; the line reads "Last changed by …". | Empty cells say "None"; the note's line is understandable on its own. |
+| F8 | After a failed submission with field errors, nothing was announced. | Focus moves to the first field in error. | The field and its error are read at once. |
+| F9 | An error for the whole form could be announced twice. | Announced once. | One announcement per error. |
+| F10 | The ✓ before the verification count and the bell were read as symbols. | Hidden from screen readers. | Neither is read. |
+| F11 | The column holding a row's buttons had a blank header in 7 tables. | Named "Details and actions". | Moving into that column announces its name. |
+| F12 | The picker's colour key had no name; kinds were read as "External refs"; pricing plans jumped from heading level 1 to 3. | A group named "Colour key"; kinds in full; plans are level-2 headings. | As described. |
 
 ## 5. Every page (each combination)
 
@@ -112,7 +124,8 @@ Do each task with the screen reader alone, without looking at the screen.
    updates, assignment emails and their frequency, due-date reminders); "Active
    sessions" and "Sign out all other sessions"; **two-factor setup** (the QR
    code is described as "QR code for your authenticator app", and the key is
-   readable as text in groups of four); recovery codes; "Download my data
+   readable as text in groups of four: note whether groups such as "PNNU" are
+   spelled out or pronounced as words); recovery codes; "Download my data
    (JSON)".
 6. **Switch organization** with the selector in the top bar, and create a new
    organization.
@@ -204,6 +217,10 @@ Repeat §5 and tasks 1, 4, 7, 11, 12, 16 and 20 in Arabic. In addition:
 - Tables that scroll sideways can be explored.
 
 ## 9. Results
+
+Results are recorded on the results page linked at the top, which also
+copies all failures as text for issues. Summarize them here when the review
+is done:
 
 | Date | Tester | Combination | Item | Result | What was announced / expected | Issue |
 |---|---|---|---|---|---|---|

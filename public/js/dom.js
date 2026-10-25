@@ -20,12 +20,60 @@ export function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+// Text in the other language than the page (English book titles in the Arabic
+// interface, Arabic names in the English one) is wrapped in <span lang> so screen
+// readers read it with the right voice (WCAG 3.1.2). Elements that set their own
+// lang, and those whose text cannot hold markup, are left as they are.
+const NO_LANG_MARKING = new Set(['OPTION', 'TEXTAREA', 'PRE', 'TITLE', 'STYLE', 'SCRIPT']);
+const ARABIC = '\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF';
+const OTHER_LANGUAGE = {
+  // In the English interface: Arabic words, with the spaces and punctuation between them.
+  en: { lang: 'ar', any: new RegExp(`[${ARABIC}]`), runs: new RegExp(`[${ARABIC}]+(?:[\\s\\d\u060C\u061B\u061F.,:()\u2013\u2014-]*[${ARABIC}]+)*`, 'g') },
+  // In the Arabic interface: Latin words (with digits and the punctuation inside names).
+  ar: { lang: 'en', any: /[A-Za-z]/, runs: /[A-Za-z][A-Za-z0-9'\u2019&./-]*(?:[\s,;:()&\u2013\u2014-]+[A-Za-z0-9][A-Za-z0-9'\u2019&./-]*)*/g },
+};
+
+function textNodes(text) {
+  const other = OTHER_LANGUAGE[locale()];
+  if (!other || !other.any.test(text)) return [document.createTextNode(text)];
+  const out = [];
+  let last = 0;
+  for (const m of text.matchAll(other.runs)) {
+    if (m.index > last) out.push(document.createTextNode(text.slice(last, m.index)));
+    const span = document.createElement('span');
+    span.lang = other.lang;
+    span.textContent = m[0];
+    out.push(span);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(document.createTextNode(text.slice(last)));
+  return out;
+}
+
 export function append(el, children) {
+  const mark = !NO_LANG_MARKING.has(el.tagName) && !el.hasAttribute('lang');
   for (const c of children.flat(Infinity)) {
     if (c === null || c === undefined || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    if (c instanceof Node) el.append(c);
+    else if (mark) el.append(...textNodes(String(c)));
+    else el.append(document.createTextNode(String(c)));
   }
   return el;
+}
+
+/** Replaces an element's text, marking other-language runs as `append` does (for text set after rendering). */
+export function setText(el, text) {
+  el.replaceChildren(...textNodes(text));
+}
+
+/** A column header; the blank one over a row's buttons is named for screen readers. */
+export function th(label) {
+  return h('th', { scope: 'col' }, label || h('span', { class: 'sr-only' }, t('common.actions')));
+}
+
+/** An empty value: a dash on screen, "None" for screen readers. */
+export function none() {
+  return h('span', { class: 'muted' }, h('span', { 'aria-hidden': 'true' }, '\u2014'), h('span', { class: 'sr-only' }, t('common.none')));
 }
 
 export function clear(el) { while (el.firstChild) el.firstChild.remove(); return el; }
@@ -118,7 +166,8 @@ export function fmtNum(n) {
 
 /** Builds a form whose fields show server-side validation errors next to inputs. */
 export function form({ fields, submitLabel, onSubmit, extra }) {
-  const errBox = h('div', { class: 'alert error', role: 'alert', hidden: true });
+  // Empty, it is not displayed (app.css); filling it is the one change a screen reader announces.
+  const errBox = h('div', { class: 'alert error', role: 'alert' });
   const inputs = {};
   const rows = fields.map((f) => {
     const id = `f-${f.name}-${Math.random().toString(36).slice(2, 7)}`;
@@ -143,7 +192,7 @@ export function form({ fields, submitLabel, onSubmit, extra }) {
   const el = h('form', { class: 'stack', novalidate: true }, errBox, rows, extra || null, h('div', {}, button));
   el.addEventListener('submit', async (e) => {
     e.preventDefault();
-    errBox.hidden = true;
+    errBox.textContent = '';
     for (const inp of Object.values(inputs)) {
       inp.removeAttribute('aria-invalid');
       const errEl = document.getElementById(`${inp.id}-err`);
@@ -164,9 +213,12 @@ export function form({ fields, submitLabel, onSubmit, extra }) {
           if (errEl) { errEl.textContent = d.message; errEl.hidden = false; inp.setAttribute('aria-invalid', 'true'); shown = true; }
         }
       }
-      errBox.textContent = errorMessage(err);
-      errBox.hidden = shown && err.code === 'VALIDATION_ERROR';
-      if (!errBox.hidden) errBox.focus?.();
+      if (shown && err.code === 'VALIDATION_ERROR') {
+        // Field errors are not announced on their own: move to the first one, which reads its label and error.
+        Object.values(inputs).find((inp) => inp.getAttribute('aria-invalid') === 'true')?.focus();
+      } else {
+        errBox.textContent = errorMessage(err);
+      }
     } finally {
       button.disabled = false;
       button.removeAttribute('aria-busy');

@@ -55,5 +55,5 @@ export function coverageLine(tree) {
   if (!c || (!c.subjectsVerified && !c.materialsVerified && !c.subjectsNeedReview && !c.materialsNeedReview)) {
     return h('p', { class: 'vcoverage' }, t('verify.coverageNone'));
   }
-  return h('p', { class: 'vcoverage' }, '✓ ', t('verify.coverage', { v: c.subjectsVerified, n: tree.counts.subjects }));
+  return h('p', { class: 'vcoverage' }, h('span', { 'aria-hidden': 'true' }, '✓ '), t('verify.coverage', { v: c.subjectsVerified, n: tree.counts.subjects }));
 }

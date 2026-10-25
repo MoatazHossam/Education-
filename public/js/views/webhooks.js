@@ -1,7 +1,7 @@
 // Webhooks card on the organization's settings page (owners and admins): the
 // endpoints told about scope changes, their deliveries, tests and secrets.
 import { ApiError, del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, downloadText, errorMessage, fmtDate, fmtNum, form, h, toast } from '../dom.js';
+import { confirmDialog, dialog, downloadText, errorMessage, fmtDate, fmtNum, form, h, th, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { planLimitHint } from './shell.js';
 
@@ -77,7 +77,7 @@ async function showDeliveries(orgId, w) {
         h('button', { type: 'button', class: 'btn small ghost', onclick: () => downloadHistory(orgId, w) }, t('webhooks.download'))) : null,
       rows.length
         ? h('div', { class: 'table-wrap' }, h('table', { class: 'data' },
-          h('thead', {}, h('tr', {}, [t('webhooks.time'), t('webhooks.event'), t('webhooks.result'), t('webhooks.attempts'), ''].map((c) => h('th', { scope: 'col' }, c)))),
+          h('thead', {}, h('tr', {}, [t('webhooks.time'), t('webhooks.event'), t('webhooks.result'), t('webhooks.attempts'), ''].map(th))),
           h('tbody', {}, rows)))
         : h('p', { class: 'empty' }, t('webhooks.noDeliveries'))),
     actions: [{ label: t('common.close'), value: true, kind: 'ghost' }],
@@ -113,7 +113,7 @@ export async function webhooksCard(orgId, info, refresh) {
 
   const list = webhooks.length
     ? h('div', { class: 'table-wrap' }, h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, [t('webhooks.url'), t('webhooks.events'), t('webhooks.lastDelivery'), ''].map((c) => h('th', { scope: 'col' }, c)))),
+      h('thead', {}, h('tr', {}, [t('webhooks.url'), t('webhooks.events'), t('webhooks.lastDelivery'), ''].map(th))),
       h('tbody', {}, webhooks.map((w) => h('tr', {},
         h('td', {}, ltr(w.url), w.description ? h('div', { class: 'muted small', dir: 'auto' }, w.description) : null, h('div', {}, statusPill(w))),
         h('td', {}, w.events.map(eventLabel).join(t('webhooks.listSep'))),

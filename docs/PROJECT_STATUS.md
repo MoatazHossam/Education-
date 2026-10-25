@@ -270,6 +270,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** a new E2E test checks, with the browser's accessibility tree, a field's description before and after an error, page titles in both languages, the picker's book names, the notifications button's name before and after reading, and that the page area is not a live region. Against the previous front end it reports 13 failures, one for each fixed problem (TEST_REPORT §3).
 - **Limitations:** the review itself has not been done: it needs a person who uses a screen reader daily, and a native Arabic reader for the Arabic pass. Until then, how the app sounds is unverified.
 
+### Simulated screen-reader pre-check and tester results page · COMPLETE (manual review still not started)
+- **Implemented:**
+  - **Simulated screen reader:** Guidepup's Virtual Screen Reader (`@guidepup/virtual-screen-reader` 0.33.0, MIT, development dependency only) reads every screen the accessibility audit checks, now 83, from top to bottom. A new test listens to what is announced after actions. The audit fails on an unnamed control or table header, a symbol read on its own, a skipped heading level, or text in the other language without `lang`. Transcripts are written to `test-results/screen-reader/` on each run. Details, coverage of the checklist's 22 tasks, and what a simulation cannot tell: `docs/SCREEN_READER_PRECHECK.md`.
+  - **Results page for the tester:** a shared page holding the checklist's checks, where the tester marks Pass, Fail or Not applicable per combination and language, with notes. Each mark saves as it is made, in the page's own store, so the results can be read back and acted on. It needs Contributor access from the owner. Link in `docs/SCREEN_READER_REVIEW.md`.
+- **Fixed after the pre-check:**
+  - Text in the other language is marked with `lang`: English titles, names and notes in the Arabic interface, Arabic names in the English one (359 places). The element factory does it for every page.
+  - The ✓ before the verification count and the bell emoji are hidden from screen readers.
+  - Empty notes, assignees and progress read "None"; the line under a note reads "Last changed by …".
+  - The column of row buttons is named "Details and actions" in 7 tables.
+  - Pricing plans are level-2 headings.
+  - Book kinds are said in full; the picker's colour key is a named group.
+  - After a failed submission with field errors, focus moves to the first field in error (nothing was announced before); an error for the whole form is announced once.
+- **Files:** `tests/e2e/screen-reader.ts`, `tests/e2e/accessibility.spec.ts`, `tests/e2e/helpers.ts`, `public/js/dom.js`, `public/js/verify.js`, `public/js/views/{shell,picker,student,items,assignments,billing,admin,members,scopes,students,webhooks}.js`, `public/js/i18n.js`, `public/app.css`, `package.json`, `docs/SCREEN_READER_PRECHECK.md`, `docs/SCREEN_READER_REVIEW.md`.
+- **Tests:** E2E 23/23 (the audit with the simulated reader's checks on 83 screens, and the new announcements test).
+- **Limitations:** a simulation has no voices, no language switching and none of a real screen reader's modes or verbosity; the manual review in `docs/SCREEN_READER_REVIEW.md` is still needed. The sandbox checkout page is not covered.
+
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
   - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
@@ -425,7 +441,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (257 unit/integration + 22 E2E passing: 19 journeys, 3 accessibility) |
+| Core workflows function correctly | ✓ (257 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

@@ -177,7 +177,7 @@ export async function pricingView(ctx) {
   const { plans } = await get('/api/billing/plans');
   let interval = 'month';
   const wrap = h('div', { class: 'plans' });
-  const draw = () => wrap.replaceChildren(...plans.map((p) => h('div', { class: 'plan' }, h('h3', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, p.description), planFeatures(p))));
+  const draw = () => wrap.replaceChildren(...plans.map((p) => h('div', { class: 'plan' }, h('h2', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, p.description), planFeatures(p))));
   draw();
   return h('main', { id: 'main', class: 'wrap' },
     h('div', { class: 'row' }, h('span', { class: 'spacer' }), h('button', { type: 'button', class: 'iconbtn', onclick: () => { setLocale(locale() === 'ar' ? 'en' : 'ar'); ctx.render(); } }, locale() === 'ar' ? 'English' : 'العربية')),

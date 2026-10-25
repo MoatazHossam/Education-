@@ -50,13 +50,15 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Data leakage in errors | Uniform error envelope; 500s return a request id only | `src/app.ts` | `admin-api-ops.test.ts` |
 | Abuse / DoS | 1 MB body limit; batch sizes capped (2,000 items); pagination limits; rate limits; a per-process flood guard (600 API requests/min per address) that does no database work, so a flood does not reach the shared database | various | `rate-limit-store.test.ts` |
 | Backup theft | Backups optionally GPG-encrypted; `umask 077`; backup role read-only | `scripts/backup.sh` | manual |
+| Server-side request forgery through customer webhooks (A10) | Webhook URLs must be `https://`, without credentials, to a public host. Every address the host resolves to must be public (private, loopback, link-local, CGNAT, documentation, multicast, NAT64 and 6to4 ranges refused; IPv4-mapped addresses checked as IPv4). The check runs in the socket's own DNS lookup, so the connection goes to the checked address (no DNS-rebinding window). Redirects are not followed, the response body is not read, and each request has a 5-second limit. Only admins can register URLs, on plans with API access, up to 5. `WEBHOOK_ALLOW_INSECURE_TARGETS` (development and tests) is refused in production | `src/webhooks/net.ts` | `unit/webhook-net`, `integration/webhooks` |
+| Forged webhooks received by customers | Each request is signed: HMAC-SHA256 with a per-endpoint secret over `<timestamp>.<body>`, with the timestamp in the header so receivers can reject replays. Secrets are shown once, stored AES-GCM encrypted (they must be read back to sign), and can be replaced | `src/webhooks/service.ts` | `integration/webhooks` |
 
 ## 3. Secrets management
 
 | Secret | Purpose | Rotation impact |
 | --- | --- | --- |
 | `SESSION_SECRET` | CSRF token HMAC | Rotating invalidates CSRF tokens; the SPA refetches automatically |
-| `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets | **Not rotatable yet** without a re-encryption script (envelope has a `v1` prefix to allow one) |
+| `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets and customer webhook signing secrets | **Not rotatable yet** without a re-encryption script (envelope has a `v1` prefix to allow one) |
 | Database passwords (owner/app/backup) | DB access | Standard role password rotation |
 | `PAYMOB_*`, `SANDBOX_WEBHOOK_SECRET` | Provider API and webhook verification | Rotate in provider dashboard + env |
 | SMTP credentials | Email | Provider dashboard |
@@ -82,7 +84,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `org.created/updated/deleted/ownership_transferred`, `member.role_changed/removed/left`,
 `invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
-`api_key.created/revoked`, `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
+`api_key.created/revoked`, `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled` (URLs and events, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`), which go to the school's
 own audit log with the username, never a password.
@@ -99,6 +101,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 7. The Paymob adapter's webhook verification is contract-tested against a simulator and matches an independent implementation's HMAC vector, but has not been exercised against Paymob's servers.
 8. Student accounts are a new category of personal data (minors). Their use with real students is
    subject to the legal assessment in §7.
+9. Customer webhooks are the application's only outbound requests to addresses chosen by customers. The address checks are in the application; in production, also run the worker with an egress firewall that blocks private ranges and the cloud metadata address, as a second layer.
 
 ## 7. Privacy and regulatory notes (not legal advice)
 

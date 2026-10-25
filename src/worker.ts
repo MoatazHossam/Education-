@@ -6,6 +6,7 @@ import { heartbeat, processOutbox, runCleanup } from './jobs/tasks.js';
 import { createMailer } from './notifications/mailer.js';
 import { runAssignmentDigests } from './scopes/digest.js';
 import { runDueReminders } from './scopes/reminders.js';
+import { processWebhookDeliveries } from './webhooks/service.js';
 
 const CLEANUP_EVERY_MS = 3_600_000;
 const REMINDERS_EVERY_MS = 900_000;
@@ -30,6 +31,7 @@ async function main() {
     const tick: Record<string, unknown> = {};
     try {
       if (mailer) tick.outbox = await processOutbox(db, mailer);
+      tick.webhooks = await processWebhookDeliveries(db, config);
       tick.billing = await runBillingLifecycle(db, config);
       if (Date.now() - lastReminders > REMINDERS_EVERY_MS) {
         const reminders = await runDueReminders(db, config);

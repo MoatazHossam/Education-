@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -38,6 +38,8 @@ erDiagram
   memberships ||--o{ item_reminders : "reminded"
   scope_items ||--o{ assignment_digest_items : "waits in summary"
   memberships ||--o{ assignment_digest_items : "summary for"
+  organizations ||--o{ webhook_endpoints : "tells"
+  webhook_endpoints ||--o{ webhook_deliveries : "sends"
   organizations ||..o{ audit_logs : "org_id (no FK)"
   billing_events }o..o| organizations : "org_id (no FK)"
 ```
@@ -61,6 +63,8 @@ erDiagram
 | `scope_items` | Selected materials, with the team's note and assignee | PK `(scope_id, material_id)`; composite FKs to scope (with org & version) and to material (with version); `note` 1–500 characters; `(org_id, assignee_id)` references `memberships`, so the assignee is a member of the same organization and is cleared (`ON DELETE SET NULL (assignee_id)`) when the membership ends; `status` (`todo`/`in_progress`/`done`) and `due_on` (a `date`, 2000–2100; read as `YYYY-MM-DD`, never as a time); `annotated_by`, `annotated_at`; partial index `scope_items_due_idx` on `due_on` for assigned books with a date (the reminder worker) | ✓ |
 | `item_reminders` | Due-date reminders already sent, so none is repeated | PK `(scope_id, material_id, assignee_id, due_on, kind)`; `kind` `due_soon`/`overdue`; foreign keys to the selected book, the scope (with its org) and the assignee's membership, all `ON DELETE CASCADE`. A new due date or a new assignee is a new key, so it is reminded again; reopening a done book is not | ✓ |
 | `assignment_digest_items` | Assignments waiting for the member's morning summary | PK `(user_id, scope_id, material_id)`; `assigned_by`, `assigned_at`; foreign keys to the selected book, the scope (with its org) and the membership, all `ON DELETE CASCADE`. The worker deletes the rows it sends. RLS: the organization, or the member themselves (read and delete only, so they can drop their own queue) | ✓ |
+| `webhook_endpoints` | Customer systems told about scope changes | `url` (≤ 500), `description`, `events text[]`, `secret_enc` (AES-GCM with `DATA_ENCRYPTION_KEY`) and `secret_prefix` for display, `enabled`, `disabled_reason` (`failing`), `consecutive_failures`; unique `(id, org_id)` | ✓ |
+| `webhook_deliveries` | Outbox of events per endpoint | `event_id` (the same for every endpoint and for redeliveries), `event_type`, `payload json` (kept as sent, since it is signed), `status` pending/delivered/failed, `attempts`, `next_attempt_at` (also the worker's 10-minute lease), `last_status_code`, `last_error`; FK `(endpoint_id, org_id)` → `webhook_endpoints` `ON DELETE CASCADE`; partial unique index on `(endpoint_id, coalesce_key)` while waiting for the first attempt, which merges quick changes to one scope | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
 | `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
@@ -151,6 +155,7 @@ are never created when `NODE_ENV=production`.
 | Resolved operational alerts | 90 d after resolution | worker |
 | Due-date reminder records | 60 d after the due date | worker hourly |
 | Assignments waiting for a daily summary | until the next morning's summary; 30 d at most | worker |
+| Webhook deliveries (delivered or failed) | 30 d | worker hourly |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |
 | Deleted organizations | Tenant rows removed immediately (cascade), student accounts included; the deletion audit entry is kept | API |

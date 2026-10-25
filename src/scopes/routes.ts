@@ -9,6 +9,7 @@ import { withUserContext, type Executor } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
+import { emitScopeEvent } from '../webhooks/service.js';
 import { planCarryForward } from './carry.js';
 import { compareScopes, comparisonCsv } from './compare.js';
 import { selectedRows, toCsv, toJson, toText } from './export.js';
@@ -104,6 +105,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
           throw isUniqueViolation(err) ? conflict('A scope with this name already exists', 'SCOPE_NAME_TAKEN') : err;
         });
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.created', targetType: 'scope', targetId: created.id, metadata: { name: created.name } }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.created', created);
       return created;
     });
     return reply.status(201).send({ scope: { id: scope.id, name: scope.name, description: scope.description, catalogVersionId: scope.catalog_version_id, itemCount: 0 } });
@@ -167,6 +169,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
           throw isUniqueViolation(err) ? conflict('A scope with this name already exists', 'SCOPE_NAME_TAKEN') : err;
         });
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.updated', targetType: 'scope', targetId: scope.id, metadata: body }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.updated', updated);
       return { scope: { id: updated.id, name: updated.name, description: updated.description } };
     });
   });
@@ -177,6 +180,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       const scope = await getScope(trx, orgId, scopeId);
       await trx.deleteFrom('scopes').where('id', '=', scope.id).execute();
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.deleted', targetType: 'scope', targetId: scope.id, metadata: { name: scope.name } }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.deleted', scope);
       return { status: 'deleted' };
     });
   });
@@ -211,6 +215,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       await trx.updateTable('scopes').set({ updated_at: sql`now()` }).where('id', '=', scope.id).execute();
       const count = await trx.selectFrom('scope_items').select((eb) => eb.fn.countAll<string>().as('n')).where('scope_id', '=', scope.id).executeTakeFirstOrThrow();
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.items_updated', targetType: 'scope', targetId: scope.id, metadata: { added: add.length, removed: body.remove.length } }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.items_changed', scope);
       return { itemCount: Number(count.n) };
     });
   });
@@ -223,6 +228,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       const res = await trx.deleteFrom('scope_items').where('scope_id', '=', scope.id).executeTakeFirst();
       await trx.updateTable('scopes').set({ updated_at: sql`now()` }).where('id', '=', scope.id).execute();
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.cleared', targetType: 'scope', targetId: scope.id, metadata: { removed: Number(res.numDeletedRows) } }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.items_changed', scope);
       return { itemCount: 0 };
     });
   });
@@ -406,6 +412,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
         SELECT ${copy.id}, org_id, catalog_version_id, material_id, ${user.id}, note, assignee_id, status, due_on, annotated_by, annotated_at
         FROM scope_items WHERE scope_id = ${source.id}`.execute(trx);
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.duplicated', targetType: 'scope', targetId: copy.id, metadata: { from: source.id, name } }, requestMeta(req));
+      await emitScopeEvent(trx, orgId, grace, 'scope.created', copy);
       return copy;
     });
     return reply.status(201).send({ scope: { id: created.id, name: created.name } });
@@ -481,6 +488,8 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       }
       const summary = { mode: body.mode, from: scope.id, fromVersion: source.version.academicYear, toVersion: target.version.academicYear, carried: carried.length, added: add.length, skipped: skip.size, missing: plan.summary.missing, notesCarried: items.filter((id) => noteFor.has(id)).length };
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.carried_forward', targetType: 'scope', targetId: created.id, metadata: summary }, requestMeta(req));
+      // A copy is a new scope; a move changes the scope's catalogue version and its books.
+      await emitScopeEvent(trx, orgId, grace, body.mode === 'move' ? 'scope.items_changed' : 'scope.created', created);
       return { scope: { id: created.id, name: created.name, catalogVersionId: target.version.id }, itemCount: items.length, ...summary };
     });
     return reply.status(body.mode === 'copy' ? 201 : 200).send(result);

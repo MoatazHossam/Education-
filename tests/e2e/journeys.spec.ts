@@ -1,13 +1,16 @@
+import { createHmac } from 'node:crypto';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, startServer, stopServer } from './server.js';
+import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, runWebhookPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 
 let ownerEmail = '';
 let orgAId = '';
-// The notes team (journey 14) is reused by journeys 15 to 18: sign-ups are limited to 10 an hour per address.
+// The notes team (journey 14) is reused by journeys 15 to 19: sign-ups are limited to 10 an hour per address.
 const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
@@ -726,4 +729,65 @@ test('all organizations: a member of two organizations sees and updates all thei
   await expect(page.locator('table.items tbody tr', { hasText: 'Hana Study Group' })).toHaveCount(1);
   await page.getByLabel('Show', { exact: true }).selectOption({ label: 'Not done yet' });
   await expect(page.locator('table.items tbody tr')).toHaveCount(4);
+});
+
+test('webhooks: the owner adds an endpoint, sends a test, and a scope change reaches it signed', async ({ page }) => {
+  // A local receiver standing in for the school's own system.
+  const received: { headers: http.IncomingHttpHeaders; body: string }[] = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => { received.push({ headers: req.headers, body }); res.writeHead(200).end('ok'); });
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/curriculum`;
+  const signedBy = (secret: string, r: { headers: http.IncomingHttpHeaders; body: string }) => {
+    const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(String(r.headers['x-curriculumscope-signature']))!;
+    return v1 === createHmac('sha256', secret).update(`${t}.${r.body}`).digest('hex');
+  };
+  try {
+    const orgId = notesTeam.orgId;
+    await login(page, notesTeam.ownerEmail);
+    await page.goto(`/org/${orgId}/settings`);
+    await expect(page.getByRole('heading', { name: 'Webhooks' })).toBeVisible();
+    await page.getByLabel('Endpoint URL').fill(url);
+    await page.getByLabel('Description (optional)').fill('Content pipeline');
+    await page.getByLabel('Scope deleted').uncheck();
+    await page.getByRole('button', { name: 'Add endpoint' }).click();
+    const secret = (await page.getByRole('dialog').locator('pre').innerText()).trim();
+    expect(secret).toMatch(/^whsec_/);
+    await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
+    const row = page.locator('#webhooks tbody tr', { hasText: url });
+    await expect(row).toContainText('Active');
+    await expect(row).toContainText('Scope created, Scope renamed or described, Books added or removed');
+
+    await page.getByRole('button', { name: `Send a test to ${url}` }).click();
+    await expect(page.locator('#toasts').getByText('Test delivered (200)')).toBeVisible();
+    expect(JSON.parse(received[0]!.body)).toMatchObject({ type: 'ping', organizationId: orgId });
+    expect(signedBy(secret, received[0]!)).toBe(true);
+
+    // Selecting one more book in Grade 6 books is sent by the worker as "books added or removed".
+    await page.goto(`/org/${orgId}`);
+    const option = page.locator('.scopebar select option', { hasText: 'Grade 6 books' });
+    await page.locator('.scopebar select').selectOption((await option.getAttribute('value'))!);
+    await page.getByRole('button', { name: 'Grade 6' }).click();
+    await page.locator('.mat[aria-pressed="false"]').first().click();
+    await expect(page.locator('.tray .toast')).toHaveText('Saved');
+    expect(await runWebhookPass()).toMatchObject({ delivered: 1 });
+    const change = JSON.parse(received[1]!.body);
+    expect(change).toMatchObject({ type: 'scope.items_changed', data: { scope: { name: 'Grade 6 books', itemCount: 5 } } });
+    expect(received[1]!.headers['x-curriculumscope-event']).toBe('scope.items_changed');
+    expect(signedBy(secret, received[1]!)).toBe(true);
+
+    await page.goto(`/org/${orgId}/settings`);
+    await page.getByRole('button', { name: `Deliveries to ${url}` }).click();
+    const rows = page.getByRole('dialog').locator('tbody tr');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.first()).toContainText('Books added or removed');
+    await expect(rows.first()).toContainText('Delivered (200)');
+    await expect(rows.nth(1)).toContainText('Test');
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
 });

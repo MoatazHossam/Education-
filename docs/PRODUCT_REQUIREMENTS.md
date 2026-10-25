@@ -46,6 +46,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | FR-O4 | Owners can require MFA for owners/admins (paid plans), grant time-limited support access, and delete the organization (password + exact name). | `integration/admin-api-ops`, `integration/tenancy` |
 | FR-O5 | Admins can read the organization audit log within the plan's retention window. | `integration/admin-api-ops` |
 | FR-O6 | Admins can create/revoke read-only API keys (Professional+); keys are shown once. | `integration/admin-api-ops` |
+| FR-O7 | Admins can register up to 5 HTTPS endpoints (Professional+) that receive signed notifications when scopes are created, renamed, deleted or have books added or removed. The secret is shown once and can be replaced. They can send a test, see the last 50 deliveries and send one again. Failed deliveries are retried for about 21 hours, and an endpoint that keeps failing is switched off with a notification. Only https URLs to public addresses are accepted. | `integration/webhooks`, `unit/webhook-net`, E2E journey 19 |
 
 ### Billing
 | ID | Requirement | Verification |

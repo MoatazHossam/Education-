@@ -6,6 +6,7 @@ import { loadConfig } from '../../src/config.js';
 import { createDatabase } from '../../src/db/index.js';
 import { runAssignmentDigests } from '../../src/scopes/digest.js';
 import { runDueReminders } from '../../src/scopes/reminders.js';
+import { processWebhookDeliveries } from '../../src/webhooks/service.js';
 import { ADMIN_URL } from '../helpers/env.js';
 
 export const E2E_PORT = 3100;
@@ -35,6 +36,8 @@ export const E2E_ENV: Record<string, string> = {
   EMAIL_TRANSPORT: 'none',
   BILLING_PROVIDER: 'sandbox',
   SANDBOX_WEBHOOK_SECRET: 'e2e-sandbox-secret-123456',
+  // Customer webhooks are delivered to a local receiver in the journeys (refused in production).
+  WEBHOOK_ALLOW_INSECURE_TARGETS: 'true',
 };
 
 export async function startServer(): Promise<number> {
@@ -119,6 +122,16 @@ export async function runDigestPass(now: Date) {
   const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
   try {
     return await runAssignmentDigests(db, loadConfig(E2E_ENV), now);
+  } finally {
+    await db.destroy();
+  }
+}
+
+/** One pass of the worker's webhook deliveries against the E2E database. */
+export async function runWebhookPass() {
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  try {
+    return await processWebhookDeliveries(db, loadConfig(E2E_ENV));
   } finally {
     await db.destroy();
   }

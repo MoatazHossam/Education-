@@ -114,6 +114,12 @@ Tree shape:
 | GET | `/:orgId/audit-logs?action=&before=&limit=` | admin | cursor pagination by `before` |
 | GET / POST / DELETE | `/:orgId/support-access[/:id]` | owner | `{reason, hours 1–72}` |
 | GET / POST / DELETE | `/:orgId/api-keys[/:id]` | admin | POST returns the key once |
+| GET / POST | `/:orgId/webhooks` | admin | Endpoints told about scope changes (§5). GET → `{webhooks:[{id, url, description, events, secretPrefix, enabled, disabledReason, consecutiveFailures, createdAt, lastDelivery}], events, max}`. POST `{url, description?, events[]}` → `201 {webhook, secret}` (secret shown once); needs API access on the plan (`402 FEATURE_NOT_IN_PLAN`), at most 5 (`409 WEBHOOK_LIMIT`), `400 INVALID_WEBHOOK_URL` for a URL that is not https or not public |
+| PATCH / DELETE | `/:orgId/webhooks/:id` | admin | `{url?, description?, events?, enabled?}` (switching on resets the failure count) · delete |
+| POST | `/:orgId/webhooks/:id/rotate-secret` | admin | → `{webhook, secret}` (new secret shown once; requests are signed with it from then on) |
+| POST | `/:orgId/webhooks/:id/test` | admin | Sends a `ping` at once → `{delivery: {id, status, statusCode, error}}`; not retried; 10 a minute |
+| GET | `/:orgId/webhooks/:id/deliveries` | admin | Last 50: `{deliveries:[{id, eventId, eventType, status, attempts, statusCode, error, createdAt, deliveredAt, nextAttemptAt, payload}]}` |
+| POST | `/:orgId/webhooks/:id/deliveries/:deliveryId/redeliver` | admin | Queues the same event again (same event id) → `202`; `409 DELIVERY_PENDING` while it is still being sent |
 | GET | `/:orgId/students` | admin | `{enabled, limit, used, schoolCode, grades, students[]}` |
 | POST | `/:orgId/students` | admin | `{username, name, grade, scopeId?}` → `201 {student, password}` (password shown once); 402 `STUDENTS_NOT_ENABLED` / `PLAN_LIMIT_REACHED` |
 | POST | `/:orgId/students/import` | admin | `{csv, apply}`: preview `{rows, errors, limit, used}`; apply (all or nothing) → `{created[] with passwords, schoolCode}` |
@@ -216,3 +222,67 @@ HMAC-SHA256(SANDBOX_WEBHOOK_SECRET, "t.body")>`, 5-minute tolerance.
 Responses: `200 {received:true, status}` processed/ignored; `200 {duplicate:true}` for a repeated
 event id; `400` bad signature; `500` processing error (provider retries; the event is re-processed
 because failed events are retryable).
+
+## 5. Webhooks to your systems (app → customer)
+
+An organization whose plan includes API access (Professional and above) can register up to 5 HTTPS
+endpoints (Settings → Webhooks, or the routes above). Each is told about the scope changes it
+subscribed to:
+
+| Event | When |
+| --- | --- |
+| `scope.created` | A scope is created, duplicated, or carried forward as a copy |
+| `scope.updated` | A scope is renamed or its description changes |
+| `scope.deleted` | A scope is deleted |
+| `scope.items_changed` | Books are added or removed, the scope is cleared, or it is moved to another catalogue year |
+| `ping` | A test from Settings or `POST …/test` |
+
+Notes, assignees, statuses and due dates are not events. The payload carries the scope's state, not
+its books: fetch them with `GET /api/v1/scopes/:scopeId`.
+
+```http
+POST /your/endpoint HTTP/1.1
+Content-Type: application/json
+User-Agent: CurriculumScope-Webhooks/1
+X-CurriculumScope-Event: scope.items_changed
+X-CurriculumScope-Delivery: 2b0c…            (this attempt's delivery id)
+X-CurriculumScope-Signature: t=1793001600,v1=5f2c…
+
+{"id":"8d1e…","type":"scope.items_changed","createdAt":"2026-10-25T12:00:00.000Z","organizationId":"…",
+ "data":{"scope":{"id":"…","name":"Grade 6 books","catalogVersionId":"…","academicYear":"2026/2027","itemCount":5,"updatedAt":"…"}}}
+```
+
+`scope.deleted` carries `data.scope = {id, name}` only. `id` is the event id: a redelivery repeats it,
+so use it to ignore duplicates.
+
+**Check the signature** before trusting a request. `v1` is the hex HMAC-SHA256, keyed with the
+endpoint's secret (`whsec_…`), of `"<t>.<raw body>"`. Reject old timestamps (for example more than
+5 minutes):
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+function verify(rawBody, header, secret, toleranceSeconds = 300) {
+  const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(header ?? '');
+  if (!m) return false;
+  const [, t, v1] = m;
+  if (Math.abs(Date.now() / 1000 - Number(t)) > toleranceSeconds) return false;
+  const expected = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest();
+  return timingSafeEqual(expected, Buffer.from(v1, 'hex'));
+}
+```
+
+**Delivery.**
+- **When:** events are queued in the transaction that changes the scope, and the worker sends them (every `WORKER_INTERVAL_MS`, 15 s by default).
+- **Merging:** several `scope.updated` or `scope.items_changed` events for one scope that are still waiting for their first attempt are merged into one, with the latest state.
+- **Order:** events may arrive out of order; use `createdAt` and the current state from the API.
+- **Success:** any 2xx answer within 5 seconds. Redirects are not followed, and the response body is ignored.
+- **Retries:** failures are retried after 1 min, 5 min, 30 min, 2 h, 6 h and 12 h (7 attempts, about 21 hours), then the delivery is marked failed.
+- **Switching off:** an endpoint that fails 25 attempts in a row is switched off. Its organization's owners and admins get a notification, and it is audited as `webhook.disabled`. Switching it back on resumes the waiting deliveries.
+- **History:** deliveries are kept for 30 days.
+
+**Targets.**
+- Only `https://` URLs without credentials.
+- Every address the host resolves to must be public. Private, loopback, link-local, CGNAT, documentation, multicast, NAT64 and 6to4 ranges are refused.
+- The check runs in the connection's own DNS lookup, so the request goes to the address that was checked.
+- `WEBHOOK_ALLOW_INSECURE_TARGETS=true` lifts these rules for local development and tests only; the configuration refuses it in production.

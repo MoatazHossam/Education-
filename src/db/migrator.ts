@@ -11,6 +11,7 @@ import * as m0008 from './migrations/0008_item_notes.js';
 import * as m0009 from './migrations/0009_item_tracking.js';
 import * as m0010 from './migrations/0010_due_reminders.js';
 import * as m0011 from './migrations/0011_assignment_digest.js';
+import * as m0012 from './migrations/0012_webhooks.js';
 
 // Static registry: works identically under tsx and the compiled dist build.
 const MIGRATIONS: Record<string, Migration> = {
@@ -25,6 +26,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0009_item_tracking': m0009,
   '0010_due_reminders': m0010,
   '0011_assignment_digest': m0011,
+  '0012_webhooks': m0012,
 };
 
 class StaticProvider implements MigrationProvider {

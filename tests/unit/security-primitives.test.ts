@@ -138,11 +138,13 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production' })).toThrow(/sandbox billing provider cannot be used in production/);
     expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'http://insecure' })).toThrow(/https/);
     expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', ALERT_WEBHOOK_URL: 'http://hooks.example/x' })).toThrow(/ALERT_WEBHOOK_URL must use https/);
+    expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', WEBHOOK_ALLOW_INSECURE_TARGETS: 'true' })).toThrow(/WEBHOOK_ALLOW_INSECURE_TARGETS cannot be used in production/);
     expect(() => loadConfig({ ...TEST_ENV, ALERT_EMAILS: 'ops@example.com,not-an-email' })).toThrow(/ALERT_EMAILS/);
     expect(() => loadConfig({ ...TEST_ENV, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/);
     expect(() => loadConfig({ ...TEST_ENV, DATA_ENCRYPTION_KEY: 'abc' })).toThrow(/DATA_ENCRYPTION_KEY/);
     const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', SALES_EMAIL: '', PAYMOB_SECRET_KEY: '' });
     expect(ok.SALES_EMAIL).toBeUndefined();
     expect(ok.secureCookies).toBe(true);
+    expect(ok.WEBHOOK_ALLOW_INSECURE_TARGETS).toBe(false);
   });
 });

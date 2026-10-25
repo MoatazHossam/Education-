@@ -216,6 +216,41 @@ export interface ScopeItemsTable {
 }
 
 export type ReminderKind = 'due_soon' | 'overdue';
+
+/** A customer system told about scope changes (migration 0012). */
+export interface WebhookEndpointsTable {
+  id: Generated<string>;
+  org_id: string;
+  url: string;
+  description: string | null;
+  events: string[];
+  /** Signing secret, AES-GCM encrypted with DATA_ENCRYPTION_KEY (it is needed to sign). */
+  secret_enc: string;
+  secret_prefix: string;
+  enabled: Generated<boolean>;
+  disabled_reason: 'failing' | null;
+  consecutive_failures: Generated<number>;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface WebhookDeliveriesTable {
+  id: Generated<string>;
+  org_id: string;
+  endpoint_id: string;
+  event_id: string;
+  event_type: string;
+  payload: Json<Record<string, unknown>>;
+  coalesce_key: string | null;
+  status: Generated<'pending' | 'delivered' | 'failed'>;
+  attempts: Generated<number>;
+  next_attempt_at: Generated<Date>;
+  last_status_code: number | null;
+  last_error: string | null;
+  created_at: Generated<Date>;
+  delivered_at: NullableTimestamp;
+}
 export type AssignmentEmailFrequency = 'instant' | 'daily';
 
 /** An assignment waiting for the member's morning summary. */
@@ -456,6 +491,8 @@ export interface DB {
   scope_items: ScopeItemsTable;
   item_reminders: ItemRemindersTable;
   assignment_digest_items: AssignmentDigestItemsTable;
+  webhook_endpoints: WebhookEndpointsTable;
+  webhook_deliveries: WebhookDeliveriesTable;
   api_keys: ApiKeysTable;
   plans: PlansTable;
   subscriptions: SubscriptionsTable;

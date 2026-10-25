@@ -157,6 +157,47 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - The page fetches each organization in turn, so it slows with many memberships (each is a few small queries).
   - The navigation count in each organization still counts that organization only.
 
+### Webhooks to customer systems · COMPLETE
+- **Implemented:** organizations on plans with API access (Professional and above, like the read API) register up to 5 HTTPS endpoints in Settings → Webhooks.
+  - **Events:** each endpoint chooses which scope changes it hears about: created (also duplicates and carried copies), renamed or described, deleted, books added or removed (also clearing and moving to another catalogue year), plus a test ping.
+  - **Payload:** the scope's current state (id, name, catalogue version and year, number of books, last change); receivers fetch the books with the read API.
+  - **Signing:** each request is signed with HMAC-SHA256 over `<timestamp>.<body>`, with a per-endpoint secret.
+    - The secret is shown once, stored encrypted, and can be replaced.
+    - The API documentation has a receiver example, and I checked it against real signatures.
+- **Delivery:**
+  - **Queueing:** events are queued in the transaction that makes the change.
+  - **Merging:** several quick changes to one scope reach the endpoint as one event with the latest state.
+  - **Sending:** the worker sends them in parallel, outside database transactions. A 2xx answer within 5 seconds counts as delivered.
+  - **Retries:** failures are retried after 1 min, 5 min, 30 min, 2 h, 6 h and 12 h, then marked failed.
+  - **Switching off:** an endpoint failing 25 attempts in a row is switched off. Its owners and admins are notified, and it is audited. Switching it back on resumes the waiting deliveries.
+  - **Admin tools:** admins send a test and see the result at once, see the last 50 deliveries with their payloads, and send any finished delivery again (same event id). History is kept 30 days.
+- **Server-side request forgery protection:**
+  - Only https URLs without credentials, to hosts whose every address is public. The check runs in the connection's own DNS lookup, so changing the DNS record after the check can't redirect the request.
+  - Redirects are not followed, and the response body is not read.
+  - A development-only setting, `WEBHOOK_ALLOW_INSECURE_TARGETS`, lifts this for local receivers; the configuration refuses it in production.
+- **Files:** `src/db/migrations/0012_webhooks.ts`, `src/webhooks/{net,service,routes}.ts`, `src/scopes/routes.ts` (events), `src/worker.ts`, `src/jobs/tasks.ts`, `src/config.ts`, `src/app.ts`, `public/js/views/{webhooks,settings}.js`, `public/js/i18n.js`, `public/app.css`, `.env.example`.
+- **Tests:**
+  - **Unit:** `unit/webhook-net` (4): address ranges; URL rules; the connection-time lookup refusing a host that resolves to loopback; the signature format.
+  - **Integration:** `integration/webhooks` (11):
+    - endpoint management, roles, validation, the limit and plan gating;
+    - signed delivery of every event to subscribed endpoints only;
+    - merging; duplicate and carry;
+    - retries with backoff and final failure;
+    - switch-off with notification and audit, then switching back on;
+    - redirects not followed and timeouts;
+    - test, redelivery and secret rotation;
+    - events stopping when the plan loses API access;
+    - other organizations and retention;
+    - with default settings, private and non-https URLs refused and nothing sent to a private address.
+  - **E2E journey 19:** the Notes Academy owner adds an endpoint (a local receiver) and copies the secret. A test is delivered and its signature checks. Selecting a book reaches the receiver, signed, as "books added or removed" with the new count, and both deliveries show in the dialog.
+  - **Accessibility:** the audit adds the secret, deliveries and edit dialogs and the settings page with an endpoint, also in Arabic, dark and on a phone (80 screens, 0 findings).
+  - **Migration:** 0012 was applied, reverted and applied again on a scratch database.
+- **Limitations:**
+  - No events for notes, assignees, statuses or due dates.
+  - Deliveries already queued are still sent if the plan loses API access; new events stop.
+  - No customer-side delivery log export, and no per-endpoint IP allow-list for receivers to pin.
+  - In production, an egress firewall is recommended as a second layer (SECURITY_DESIGN §6).
+
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
   - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
@@ -312,7 +353,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (232 unit/integration + 20 E2E passing: 18 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (247 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

@@ -235,10 +235,13 @@ subscribed to:
 | `scope.updated` | A scope is renamed or its description changes |
 | `scope.deleted` | A scope is deleted |
 | `scope.items_changed` | Books are added or removed, the scope is cleared, or it is moved to another catalogue year |
+| `scope.items_annotated` | A book's note, assignee, status or due date changes (one book or several at once). `data.materialIds` lists the books changed |
 | `ping` | A test from Settings or `POST …/test` |
 
-Notes, assignees, statuses and due dates are not events. The payload carries the scope's state, not
-its books: fetch them with `GET /api/v1/scopes/:scopeId`.
+The payload carries the scope's state, not its books, and never a note's text or a member's name:
+fetch them with `GET /api/v1/scopes/:scopeId` (each item has `note`, `assignee`, `status` and `dueOn`).
+Endpoints subscribe to `scope.items_annotated` explicitly; endpoints created before it existed do
+not receive it until it is ticked in Settings.
 
 ```http
 POST /your/endpoint HTTP/1.1
@@ -274,7 +277,7 @@ function verify(rawBody, header, secret, toleranceSeconds = 300) {
 
 **Delivery.**
 - **When:** events are queued in the transaction that changes the scope, and the worker sends them (every `WORKER_INTERVAL_MS`, 15 s by default).
-- **Merging:** several `scope.updated` or `scope.items_changed` events for one scope that are still waiting for their first attempt are merged into one, with the latest state.
+- **Merging:** several `scope.updated`, `scope.items_changed` or `scope.items_annotated` events for one scope that are still waiting for their first attempt are merged into one, with the latest state; a merged `scope.items_annotated` lists every book changed meanwhile.
 - **Order:** events may arrive out of order; use `createdAt` and the current state from the API.
 - **Success:** any 2xx answer within 5 seconds. Redirects are not followed, and the response body is ignored.
 - **Retries:** failures are retried after 1 min, 5 min, 30 min, 2 h, 6 h and 12 h (7 attempts, about 21 hours), then the delivery is marked failed.

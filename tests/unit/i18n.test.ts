@@ -40,7 +40,7 @@ describe('UI translations', () => {
       'items.show.all', 'items.show.mine', 'items.show.notes', 'items.show.assigned', 'items.show.unassigned', 'items.show.open', 'items.show.overdue', 'items.show.done',
       'items.status.todo', 'items.status.in_progress', 'items.status.done', 'assignments.show.open', 'assignments.show.done', 'assignments.show.all', 'assignments.none', 'assignments.noneDone',
       'account.assignmentEmails.instant', 'account.assignmentEmails.daily', 'account.assignmentEmails.off',
-      'webhooks.event.scope.created', 'webhooks.event.scope.updated', 'webhooks.event.scope.deleted', 'webhooks.event.scope.items_changed', 'webhooks.event.ping',
+      'webhooks.event.scope.created', 'webhooks.event.scope.updated', 'webhooks.event.scope.deleted', 'webhooks.event.scope.items_changed', 'webhooks.event.scope.items_annotated', 'webhooks.event.ping',
       'webhooks.result.delivered', 'webhooks.result.failed', 'webhooks.result.pending'];
     const missing = [...used, ...dynamic].filter((k) => !(k in en));
     expect(missing).toEqual([]);

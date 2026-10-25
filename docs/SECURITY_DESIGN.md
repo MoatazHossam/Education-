@@ -30,7 +30,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Admin surface discovery (A01) | `/api/admin/*` returns 404 to non-admins; admin requires MFA-verified session | `requirePlatformAdmin` | `authz-coverage.test.ts`, `admin-api-ops.test.ts` |
 | Insider access to customer data (A01) | No impersonation; customer-granted, time-boxed support access; every read audited in the customer's log | `src/admin/routes.ts` | `admin-api-ops.test.ts` |
 | Weak password storage (A02) | Argon2id (m=19 MiB, t=2, p=1); timing-equalised checks for unknown accounts | `src/auth/password.ts` | unit |
-| Secrets at rest (A02) | TOTP secrets AES-256-GCM with `DATA_ENCRYPTION_KEY`; sessions, tokens, API keys, invitations stored as SHA-256 hashes; recovery codes hashed | `src/lib/crypto.ts` | `auth.test.ts`, unit |
+| Secrets at rest (A02) | TOTP secrets and webhook signing secrets AES-256-GCM with `DATA_ENCRYPTION_KEY`; each value names its key by a short fingerprint, so the key can be rotated without downtime (`DATA_ENCRYPTION_KEYS_PREVIOUS` and the re-encryption tool, DEPLOYMENT_GUIDE §4); sessions, tokens, API keys, invitations stored as SHA-256 hashes; recovery codes hashed | `src/lib/crypto.ts` | `auth.test.ts`, unit |
 | Injection (A03) | Parameterised queries via Kysely; identifiers never interpolated (`sql.id` for role grants); LIKE patterns escaped | throughout | `tenancy.test.ts` (malformed ids) |
 | XSS (A03) | DOM built with text nodes only (no `innerHTML` in the SPA); CSP `script-src 'self'`, no inline scripts/styles; QR rendered as `img` data URL | `public/js/dom.js`, `src/app.ts` | header test; code search |
 | CSV/formula injection (A03) | Leading `= + - @ \t \r` prefixed with `'` on export (scopes, catalogue sheet) and removed again on import; catalogue imports are platform-admin only (MFA), size-limited (8 MB, 20,000 rows), validated row by row, previewed, applied all or nothing and audited | `src/lib/csv.ts`, `src/catalog/sheet.ts` | `unit/csv`, `unit/catalog-sheet`, `integration/catalog-sheet` |
@@ -58,7 +58,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Secret | Purpose | Rotation impact |
 | --- | --- | --- |
 | `SESSION_SECRET` | CSRF token HMAC | Rotating invalidates CSRF tokens; the SPA refetches automatically |
-| `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets and customer webhook signing secrets | **Not rotatable yet** without a re-encryption script (envelope has a `v1` prefix to allow one) |
+| `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets and customer webhook signing secrets | No downtime: the old key moves to `DATA_ENCRYPTION_KEYS_PREVIOUS`, `rotate-data-key` re-encrypts every value, then the old key is removed (DEPLOYMENT_GUIDE §4, "Rotating `DATA_ENCRYPTION_KEY`"). Keep the old key with backups made before the rotation |
 | Database passwords (owner/app/backup) | DB access | Standard role password rotation |
 | `PAYMOB_*`, `SANDBOX_WEBHOOK_SECRET` | Provider API and webhook verification | Rotate in provider dashboard + env |
 | SMTP credentials | Email | Provider dashboard |
@@ -84,7 +84,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `org.created/updated/deleted/ownership_transferred`, `member.role_changed/removed/left`,
 `invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
-`api_key.created/revoked`, `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled` (URLs and events, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
+`api_key.created/revoked`, `admin.data_key_rotated` (counts and the key id, never key material), `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled` (URLs and events, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`), which go to the school's
 own audit log with the username, never a password.
@@ -94,7 +94,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 
 1. **External penetration test** before onboarding paying customers.
 2. The global flood guard (600 API requests a minute per address) is per process: with N app instances (two in production) one address can make up to N × 600 a minute. Route-specific limits (login, two-factor codes, resets, the API quota) are shared. Put a provider- or CDN-level limit in front for volumetric attacks.
-3. `DATA_ENCRYPTION_KEY` rotation tooling is missing.
+3. `DATA_ENCRYPTION_KEY` can be rotated (DEPLOYMENT_GUIDE §4), but it still lives in the host's environment file next to the application. A secrets manager or KMS would keep it off the host.
 4. No WebAuthn/passkeys yet; TOTP only.
 5. No malware scanning needed today (no file uploads); revisit if uploads are added.
 6. Platform admins can see member names/emails of customer orgs (needed for support); document in the privacy policy.

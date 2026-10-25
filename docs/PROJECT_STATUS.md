@@ -198,6 +198,31 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - No customer-side delivery log export, and no per-endpoint IP allow-list for receivers to pin.
   - In production, an egress firewall is recommended as a second layer (SECURITY_DESIGN §6).
 
+### Encryption key rotation · COMPLETE
+- **Implemented:** `DATA_ENCRYPTION_KEY`, which encrypts two-factor secrets and customer webhook signing secrets, can now be replaced without downtime (DEPLOYMENT_GUIDE §4, "Rotating `DATA_ENCRYPTION_KEY`").
+  - **Values name their key:** new values record a short fingerprint of the key that encrypted them (the first 8 hex characters of its SHA-256). Values written before still read: each configured key is tried, and AES-GCM rejects a wrong one.
+  - **The old key keeps working during a rotation:** `DATA_ENCRYPTION_KEYS_PREVIOUS` (comma-separated, up to 5) lists old keys that still decrypt; new values always use the current key. The configuration refuses a previous key that is the current one, or that is not 32 bytes.
+  - **Re-encryption tool:** `rotate-data-key` (`npm run keys:check` / `npm run keys:rotate`; in production `node dist/cli/rotate-data-key.js [--check]`).
+    - It rewrites every encrypted value with the current key, in batches.
+    - It leaves alone a value that changed meanwhile (the app already wrote it with the current key), so running it twice changes nothing the second time.
+    - It prints counts per column and per key, and records `admin.data_key_rotated` with counts and the key id only.
+    - It exits with 1, naming them, when some values cannot be read with the configured keys.
+  - The runbook covers the order of steps, the seconds of the rolling restart, and keeping the old key with backups made before the rotation.
+  - Compose passes `DATA_ENCRYPTION_KEYS_PREVIOUS` through, and also `WEBHOOK_ALLOW_INSECURE_TARGETS`, which was missing for local Docker use.
+  - No database change.
+- **Files:** `src/lib/crypto.ts`, `src/config.ts`, `src/ops/data-keys.ts`, `src/cli/rotate-data-key.ts`, `src/auth/routes.ts`, `src/webhooks/{routes,service}.ts`, `src/db/seed-demo.ts`, `package.json`, `docker-compose.yml`, `.env.example`, `.env.docker.example`.
+- **Tests:**
+  - **Unit:** `unit/data-keys` (4): key ids; previous keys decrypting; old-format values; configuration rules.
+  - **Integration:** `integration/data-keys` (3), with three app instances on one database (old key; new key with the old as previous; new key only):
+    - two-factor sign-in and webhook signing work before re-encryption, after it, and with the new key alone;
+    - old-format values are re-encrypted;
+    - a second run changes nothing;
+    - a value no configured key reads is reported and left as it is;
+    - the command-line tool, run as a real process, checks, re-encrypts, records the audit entry without key material, and exits with 1 on an unreadable value.
+- **Limitations:**
+  - The key still lives in the environment file on the host; a secrets manager or KMS would keep it off the host.
+  - The other secrets (`SESSION_SECRET`, database passwords, provider keys) are rotated by hand as in SECURITY_DESIGN §3.
+
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
   - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
@@ -353,7 +378,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (247 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (254 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

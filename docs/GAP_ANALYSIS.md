@@ -11,7 +11,7 @@
 | 7 | Monetization | None | Plans, limits, payments, invoices | Plans/limits/lifecycle complete with sandbox | **Real payment provider account (Paymob) and sandbox verification**; tax invoices (ETA e-invoicing) | **Yes** |
 | 8 | Email | None | Transactional email | Outbox, worker, templates EN/AR; SMTP verified with Mailpit | Production SMTP provider, SPF/DKIM/DMARC | Yes (ops task) |
 | 9 | Administration | None | Platform + customer admin | Implemented | Reporting exports for finance | No |
-| 10 | Security | Static page | OWASP-aligned controls | See SECURITY_DESIGN.md; tests for BOLA, CSRF, brute force, webhook forgery/replay | External penetration test; secret rotation runbooks | Recommended before launch |
+| 10 | Security | Static page | OWASP-aligned controls | See SECURITY_DESIGN.md; tests for BOLA, CSRF, brute force, webhook forgery/replay | External penetration test; rotation runbooks for the other secrets (`DATA_ENCRYPTION_KEY` has one: DEPLOYMENT_GUIDE §4) | Recommended before launch |
 | 11 | Privacy / compliance | None | PDPL-aware handling | Data export, account & org deletion, retention jobs, minimal data | Legal review, privacy policy, terms, DPA template, PDPL licensing/registration check | **Yes (legal)** |
 | 12 | Localization | English UI | Arabic + English, RTL | Implemented | Professional review of Arabic copy | No |
 | 13 | Testing | None | Automated unit/integration/E2E | 44 unit, 115 integration, 14 E2E (12 journeys, 2 accessibility) — all passing | Load test on production-like hardware | No |

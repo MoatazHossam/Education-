@@ -45,4 +45,4 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | P2 | Card-on-file automatic renewals (Paymob subscriptions module) | 3–5 | Reduce involuntary churn |
 | P2 | SSO (Google Workspace / Microsoft) for school groups | 3–5 | Enterprise |
 | P3 | Other curricula (KSA, UAE, Jordan) as catalogue packs | per country: content-heavy | Market size (COMMERCIAL_FEASIBILITY.md) |
-| P3 | `DATA_ENCRYPTION_KEY` rotation tooling | 1 | Key management |
+| P3 | ~~`DATA_ENCRYPTION_KEY` rotation tooling~~ — done (PROJECT_STATUS: encryption key rotation) | — | Key management |

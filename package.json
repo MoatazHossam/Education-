@@ -20,6 +20,8 @@
     "db:seed:prod": "node dist/db/seed-cli.js --catalog-only",
     "admin:create": "tsx src/cli/create-platform-admin.ts",
     "paymob:check": "tsx src/cli/paymob-check.ts",
+    "keys:check": "tsx src/cli/rotate-data-key.ts --check",
+    "keys:rotate": "tsx src/cli/rotate-data-key.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/e2e/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",

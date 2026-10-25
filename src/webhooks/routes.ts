@@ -93,7 +93,7 @@ export function registerWebhookRoutes(app: FastifyInstance, ctx: AppContext): vo
       const { secret, prefix } = newSecret();
       const row = await trx
         .insertInto('webhook_endpoints')
-        .values({ org_id: orgId, url, description: body.description ?? null, events: body.events, secret_enc: encryptSecret(config.DATA_ENCRYPTION_KEY, secret), secret_prefix: prefix, created_by: user.id })
+        .values({ org_id: orgId, url, description: body.description ?? null, events: body.events, secret_enc: encryptSecret(config.dataKeys, secret), secret_prefix: prefix, created_by: user.id })
         .returning(ENDPOINT_COLUMNS)
         .executeTakeFirstOrThrow();
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'webhook.created', targetType: 'webhook_endpoint', targetId: row.id, metadata: { url, events: body.events } }, requestMeta(req));
@@ -149,7 +149,7 @@ export function registerWebhookRoutes(app: FastifyInstance, ctx: AppContext): vo
       const { secret, prefix } = newSecret();
       const row = await trx
         .updateTable('webhook_endpoints')
-        .set({ secret_enc: encryptSecret(config.DATA_ENCRYPTION_KEY, secret), secret_prefix: prefix })
+        .set({ secret_enc: encryptSecret(config.dataKeys, secret), secret_prefix: prefix })
         .where('id', '=', id)
         .returning(ENDPOINT_COLUMNS)
         .executeTakeFirstOrThrow();

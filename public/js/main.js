@@ -37,6 +37,7 @@ route('/mfa', { access: 'public', bare: true, view: auth.mfaView });
 route('/pricing', { access: 'public', bare: true, view: billing.pricingView });
 route('/billing/sandbox-checkout', { access: 'public', bare: true, view: billing.sandboxCheckoutView });
 route('/account', { access: 'user', view: account.accountView });
+route('/assignments', { access: 'user', view: assignments.allAssignmentsView });
 route('/org/:orgId', { access: 'user', org: true, view: picker.pickerView });
 route('/org/:orgId/scopes', { access: 'user', org: true, view: scopes.scopesView });
 route('/org/:orgId/scopes/:scopeId/carry', { access: 'user', org: true, view: carry.carryView });

@@ -74,6 +74,14 @@ counted across all app instances; the global limit is counted per app instance.
 ### Notifications
 `GET /api/notifications` · `POST /api/notifications/read` `{ids?}`
 
+### My assignments in all organizations
+`GET /api/assignments?show=open|done|all` (signed-in staff; students get `403 STAFF_ONLY`): the signed-in member's books in every organization they belong to, in one list.
+- **Response:** `{items, counts: {open, overdue, dueSoon}, organizations: [{id, name, open, overdue, dueSoon}], unavailable: [{id, name, reason}]}`.
+  - Each item is an item of `/api/orgs/:orgId/assignments` plus `orgId` and `orgName`.
+  - Order: done last, then by due date (none last), then organization, scope, grade and title. At most 2,000 items.
+- **How each organization is read:** in its own tenant context, through the same checks as its own page. A suspended organization (`ORG_SUSPENDED`), or one that requires two-factor sign-in for this member's role (`MFA_REQUIRED_BY_ORG`), is listed in `unavailable` and not read.
+- **Changing a status:** use the organization's own route, `PATCH /api/orgs/:orgId/scopes/:scopeId/items/:materialId`.
+
 ### Catalogue
 | Method | Path | Notes |
 | --- | --- | --- |

@@ -111,6 +111,10 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(page, 'notes and assignees (status, overdue, due soon)');
   const assignmentsPath = `/org/${orgId}/assignments`;
   await visit(page, assignmentsPath, 'my assignments');
+  // Also a member of a second organization (the journeys' Notes Academy): My assignments across both.
+  await ownerQuery(`INSERT INTO memberships (org_id, user_id, role) SELECT o.id, u.id, 'viewer' FROM organizations o, users u WHERE o.name = 'Notes Academy' AND u.email = $1`, [email]);
+  const allAssignmentsPath = '/assignments';
+  await visit(page, allAssignmentsPath, 'my assignments in all organizations');
 
 
   // the Students page and its dialogs, then the student sign-in and portal.
@@ -171,7 +175,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   for (const [path, where] of [
     [`/org/${orgId}/scopes`, 'scopes (Arabic)'], [`/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (Arabic)'],
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'],
-    [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'],
+    [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
   ] as const) await visit(page, path, where);
   await page.goto(`/org/${orgId}`);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
@@ -184,6 +188,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, comparePath, 'compare scopes (dark)');
   await visit(page, itemsPath, 'notes and assignees (dark)');
   await visit(page, assignmentsPath, 'my assignments (dark)');
+  await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
   // Phone.
   const phone = await newPage(browser, { viewport: { width: 390, height: 844 } });
@@ -193,6 +198,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(phone, comparePath, 'compare scopes (phone)');
   await visit(phone, itemsPath, 'notes and assignees (phone)');
   await visit(phone, assignmentsPath, 'my assignments (phone)');
+  await visit(phone, allAssignmentsPath, 'my assignments in all organizations (phone)');
 
   // Platform admin.
   const admin = await newPage(browser);

@@ -7,7 +7,7 @@ test.describe.configure({ mode: 'serial' });
 
 let ownerEmail = '';
 let orgAId = '';
-// The notes team (journey 14) is reused by journeys 15 to 17: sign-ups are limited to 10 an hour per address.
+// The notes team (journey 14) is reused by journeys 15 to 18: sign-ups are limited to 10 an hour per address.
 const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
@@ -682,4 +682,48 @@ test('daily summary: the assignee chooses one email each morning; a new assignme
   expect(mail).toContain(`Books assigned to you since your last summary:\n\nNotes Academy (1 book):\n“Grade 6 books”, assigned by E2E Owner:\n• ${title}`);
   expect(mail).toContain(`/org/${orgId}/assignments`);
   await ctx.close();
+});
+
+test('all organizations: a member of two organizations sees and updates all their books on one page', async ({ page }) => {
+  // Hana (journeys 14–17) creates her own organization next to Notes Academy and gives herself a book due tomorrow.
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  await login(page, notesTeam.editorEmail);
+  await page.goto('/account?new-org=1');
+  await page.getByLabel('Organization name').fill('Hana Study Group');
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page.getByRole('heading', { name: 'Create your first content scope' })).toBeVisible();
+  const ownOrgId = orgIdFromUrl(page);
+  await createScope(page, 'Reading list');
+  await expect(page.locator('.scopebar select')).toHaveValue(/.+/);
+  await page.getByRole('button', { name: 'Grade 6' }).click();
+  await page.locator('.mat').nth(0).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+  await page.getByRole('button', { name: /^Edit the note on / }).first().click();
+  await page.getByRole('dialog').getByLabel('Assigned to').selectOption({ label: 'Hana Editor' });
+  await page.getByRole('dialog').getByLabel('Due date').fill(tomorrow);
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // From Notes Academy's My assignments, the link opens the page for both organizations.
+  await page.goto(`/org/${notesTeam.orgId}/assignments`);
+  await page.getByRole('link', { name: 'See your books in all your organizations (2)' }).click();
+  await expect(page.getByRole('heading', { name: 'My assignments in all my organizations', level: 1 })).toBeVisible();
+  const rows = page.locator('table.items tbody tr');
+  // Notes Academy: four open books (journeys 14–17); Hana Study Group: one. The two due tomorrow come first.
+  await expect(rows).toHaveCount(5);
+  await expect(page.locator('.stat', { hasText: 'Not done yet' }).locator('.v')).toHaveText('5');
+  await expect(page.locator('.stat', { hasText: 'Due soon' }).locator('.v')).toHaveText('2');
+  await expect(rows.nth(0)).toContainText('Hana Study Group');
+  await expect(rows.nth(1)).toContainText('Notes Academy');
+  await expect(page.getByText('Not done yet, by organization:')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Hana Study Group' }).first()).toHaveAttribute('href', `/org/${ownOrgId}/assignments`);
+
+  // She marks her own organization's book done here; it moves to Done.
+  await rows.nth(0).getByRole('combobox').selectOption({ label: 'Done' });
+  await expect(page.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
+  await page.getByLabel('Show', { exact: true }).selectOption({ label: 'Done' });
+  await expect(page.locator('table.items tbody tr', { hasText: 'Hana Study Group' })).toHaveCount(1);
+  await page.getByLabel('Show', { exact: true }).selectOption({ label: 'Not done yet' });
+  await expect(page.locator('table.items tbody tr')).toHaveCount(4);
 });

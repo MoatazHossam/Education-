@@ -38,7 +38,8 @@ describe('UI translations', () => {
       'kind.moe', 'kind.lang', 'kind.ext', 'kind.prog', 'kind.exam', 'status.scored', 'status.pass', 'status.act', 'billing.stateName.trialing', 'billing.stateName.active',
       'billing.stateName.past_due', 'billing.stateName.free', 'invoice.kind.renewal', 'invoice.status.void', 'legend.prog', 'picker.subjects', 'plan.year', 'billing.yearly',
       'items.show.all', 'items.show.mine', 'items.show.notes', 'items.show.assigned', 'items.show.unassigned', 'items.show.open', 'items.show.overdue', 'items.show.done',
-      'items.status.todo', 'items.status.in_progress', 'items.status.done', 'assignments.show.open', 'assignments.show.done', 'assignments.show.all', 'assignments.none', 'assignments.noneDone'];
+      'items.status.todo', 'items.status.in_progress', 'items.status.done', 'assignments.show.open', 'assignments.show.done', 'assignments.show.all', 'assignments.none', 'assignments.noneDone',
+      'account.assignmentEmails.instant', 'account.assignmentEmails.daily', 'account.assignmentEmails.off'];
     const missing = [...used, ...dynamic].filter((k) => !(k in en));
     expect(missing).toEqual([]);
   });

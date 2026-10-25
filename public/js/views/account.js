@@ -23,11 +23,21 @@ export async function accountView(ctx) {
       { name: 'name', label: t('auth.name'), value: user.name, required: true },
       { name: 'locale', label: t('account.language'), type: 'select', value: user.locale, options: [{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }] },
       { name: 'catalogEmails', label: t('account.catalogEmails'), type: 'checkbox', value: user.catalogEmails },
-      { name: 'assignmentEmails', label: t('account.assignmentEmails'), type: 'checkbox', value: user.assignmentEmails },
+      {
+        name: 'assignmentEmailMode', label: t('account.assignmentEmails'), type: 'select', hint: t('account.assignmentEmails.hint'),
+        value: user.assignmentEmails ? user.assignmentEmailFrequency : 'off',
+        options: ['instant', 'daily', 'off'].map((k) => ({ value: k, label: t(`account.assignmentEmails.${k}`) })),
+      },
       { name: 'dueReminderEmails', label: t('account.dueReminderEmails'), type: 'checkbox', value: user.dueReminderEmails },
     ],
     submitLabel: t('common.save'),
-    onSubmit: async (v) => { await patch('/api/auth/profile', v); setLocale(v.locale); toast(t('common.saved')); await refresh(); },
+    onSubmit: async ({ assignmentEmailMode: mode, ...v }) => {
+      const assignment = mode === 'off' ? { assignmentEmails: false } : { assignmentEmails: true, assignmentEmailFrequency: mode };
+      await patch('/api/auth/profile', { ...v, ...assignment });
+      setLocale(v.locale);
+      toast(t('common.saved'));
+      await refresh();
+    },
   });
 
   const pw = form({

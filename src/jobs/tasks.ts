@@ -63,6 +63,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const alerts = await trx.deleteFrom('ops_alerts').where('status', '=', 'resolved').where('resolved_at', '<=', addDays(now, -90)).executeTakeFirst();
     // A reminder record is only needed while its due date is in the reminder window (scopes/reminders.ts).
     const reminders = await trx.deleteFrom('item_reminders').where('due_on', '<', addDays(now, -60).toISOString().slice(0, 10)).executeTakeFirst();
+    // Daily summaries take their rows each morning; anything older was never going to be sent.
+    const digestItems = await trx.deleteFrom('assignment_digest_items').where('assigned_at', '<=', addDays(now, -30)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -73,6 +75,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       rateLimits: Number(rateLimits.numDeletedRows),
       resolvedAlerts: Number(alerts.numDeletedRows),
       itemReminders: Number(reminders.numDeletedRows),
+      digestItems: Number(digestItems.numDeletedRows),
     };
   });
 }

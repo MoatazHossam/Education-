@@ -15,7 +15,7 @@ import { DUE_SOON_DAYS } from './notes.js';
 // address and the member's `due_reminder_emails` choice.
 
 export const OVERDUE_WINDOW_DAYS = 7;
-/** Reminders go out between these hours, Cairo time (a worker that was down catches up within the window). */
+/** Reminders and daily summaries go out between these hours, Cairo time (a worker that was down catches up within the window). */
 export const SEND_FROM_HOUR = 8;
 export const SEND_UNTIL_HOUR = 21;
 const MEMBERS_PER_RUN = 500;
@@ -94,7 +94,7 @@ export function reminderTitle(locale: Locale, overdue: number, soon: number): st
 }
 
 /** Cairo's date and hour at `now` (the database's time-zone rules, as for "overdue" in the app). */
-async function cairoClock(db: Database, now: Date): Promise<{ today: string; hour: number }> {
+export async function cairoClock(db: Database, now: Date): Promise<{ today: string; hour: number }> {
   const { rows } = await sql<{ today: string; hour: number }>`
     SELECT (${now}::timestamptz AT TIME ZONE 'Africa/Cairo')::date AS today,
            extract(hour FROM ${now}::timestamptz AT TIME ZONE 'Africa/Cairo')::int AS hour`.execute(db);

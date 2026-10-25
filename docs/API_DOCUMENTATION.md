@@ -59,7 +59,7 @@ counted across all app instances; the global limit is counted per app instance.
 | POST | `/logout` · `/logout-others` | — |
 | GET | `/me` | user (with `kind`: `staff` or `student`), organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA. For a student: `organizations: []` and `student {username, grade, school {id, name, code, locale}}` |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
-| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean, dueReminderEmails?: boolean}` (catalogue update emails; emails when books are assigned to you; reminder emails for your books due soon or overdue; in-app notifications are always created) |
+| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean, assignmentEmailFrequency?: 'instant' \| 'daily', dueReminderEmails?: boolean}` (catalogue update emails; emails when books are assigned to you, right away or in one summary each morning; reminder emails for your books due soon or overdue; in-app notifications are always created). Turning assignment emails off or back to `instant` drops the books waiting for the next summary |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
 | POST | `/mfa/setup` · `/mfa/enable` · `/mfa/disable` · `/mfa/recovery-codes` | setup returns `{secret, otpauthUrl, qrSvg}`; enable `{code}` → `{recoveryCodes}` |
 | GET | `/account/export` | personal data as JSON |

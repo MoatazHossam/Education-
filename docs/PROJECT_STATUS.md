@@ -76,7 +76,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   The CSV unit test was updated. E2E journey 15 (it reuses journey 14's school, since sign-ups are limited to 10 an hour per address): the owner makes Hana a viewer and assigns two books with a status and past due date in one go, then moves one date later. Overdue counts and filters follow. Hana's email lists the books; she opens My assignments (3) from the navigation, marks the overdue book done, filters to done, and turns the emails off. The accessibility audit adds 5 screens (the notes page with an overdue book, and My assignments in English, Arabic, dark and on a phone) with 0 findings. All pass.
 - **Limitations:**
   - ~~No reminder before a due date~~: added, see due-date reminders below.
-  - Assignment emails are sent once per assignment, not batched into a daily digest.
+  - ~~Assignment emails are sent once per assignment~~: members can now choose one summary a day, see below.
   - My assignments covers one organization at a time.
 
 ### Due-date reminders · COMPLETE
@@ -106,6 +106,35 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - The reminder window (2 days before, 7 days after) and the sending hours are fixed for every school.
   - Reminders go to the assignee only, not to whoever set the due date.
+
+### Daily summary of assignment emails · COMPLETE
+- **Implemented:** members choose how emails about books assigned to them arrive, in the account settings: **right away** (one email per assignment, the default, so nothing changes for anyone who does not choose), **one summary each morning**, or **none** (in-app notifications only).
+  - **The summary:** one email per member, across all their organizations. It lists the books assigned since the previous summary, grouped by organization, then by scope and who assigned them (up to 10 per group, then "and N more"), with a link to My assignments in each organization. It is in the member's language.
+  - **Once a day:** the worker sends it from 08:00 Cairo time to members with something assigned before that morning's 08:00. Anything assigned later waits for the next morning. A worker that was down catches up the same day, until 21:00.
+  - **Still current:** books unassigned or removed from the scope since, and suspended organizations, are left out. If nothing is left, no email goes. Members whose address is not verified, or who switched the summary off, get nothing, and what was waiting is dropped.
+  - **Not delayed:** the in-app notification still arrives at once.
+  - **Switching:** switching back to emails right away, or to none, drops what was waiting.
+  - **Storage:** waiting assignments are kept in `assignment_digest_items` (migration 0011), with forced row-level security. The organization sees its rows; a member can read and delete their own. Rows go with the book, the scope and the membership. The worker takes them with `DELETE … RETURNING` in the same transaction as the email, so two workers never send a summary twice. Anything older than 30 days is cleaned up.
+- **Files:** `src/db/migrations/0011_assignment_digest.ts`, `src/scopes/{digest,notes,reminders}.ts`, `src/worker.ts`, `src/jobs/tasks.ts`, `src/notifications/email.ts`, `src/auth/routes.ts`, `public/js/views/account.js`, `public/js/i18n.js`.
+- **Tests:** `assignment-digest.test.ts` (9):
+  - no email per assignment, only the in-app notice;
+  - one summary the next morning, then none;
+  - at most one a day (later assignments wait for the next morning);
+  - one email across two organizations, grouped by scope and assigner;
+  - unassigned and removed books, and suspended organizations, left out;
+  - switching back or off drops the queue, and the choice is validated;
+  - unverified addresses;
+  - Arabic and long lists;
+  - three concurrent passes sending one summary;
+  - row-level security for other organizations and other members;
+  - cleanup.
+
+  E2E journey 17: Hana chooses the morning summary. The owner selects a fourth book and assigns it to her, and no email goes. One pass of the summary job against the E2E database the next morning sends one summary listing the book, and a second pass none. Journeys 15 and 16 now use the new choice instead of the checkbox. The accessibility audit covers the account page with it (0 findings). Migration 0011 was applied, reverted and applied again on a scratch database.
+- **Fixed a test flake:** the reminder tests checked that a book's title was *not* in an email. The catalogue repeats titles (1,038 materials, 113 titles), so two randomly picked books could share one. Those tests now pick books with distinct titles. The failure was reproduced with a repeated title and the fix confirmed on the same data.
+- **Limitations:**
+  - The summary time (08:00 Cairo) is the same for everyone.
+  - Due-date reminders stay separate emails.
+  - My assignments still covers one organization at a time.
 
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
@@ -262,7 +291,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (219 unit/integration + 18 E2E passing: 16 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (228 unit/integration + 19 E2E passing: 17 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

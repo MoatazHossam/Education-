@@ -68,6 +68,8 @@ export interface UsersTable {
   catalog_emails: Generated<boolean>;
   assignment_emails: Generated<boolean>;
   due_reminder_emails: Generated<boolean>;
+  /** How assignment emails arrive: right away, or in one summary each morning. */
+  assignment_email_frequency: Generated<AssignmentEmailFrequency>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
@@ -214,6 +216,17 @@ export interface ScopeItemsTable {
 }
 
 export type ReminderKind = 'due_soon' | 'overdue';
+export type AssignmentEmailFrequency = 'instant' | 'daily';
+
+/** An assignment waiting for the member's morning summary. */
+export interface AssignmentDigestItemsTable {
+  org_id: string;
+  user_id: string;
+  scope_id: string;
+  material_id: string;
+  assigned_by: string | null;
+  assigned_at: Generated<Date>;
+}
 
 /** One reminder the worker sent for a book, its assignee and its due date (never repeated). */
 export interface ItemRemindersTable {
@@ -442,6 +455,7 @@ export interface DB {
   scopes: ScopesTable;
   scope_items: ScopeItemsTable;
   item_reminders: ItemRemindersTable;
+  assignment_digest_items: AssignmentDigestItemsTable;
   api_keys: ApiKeysTable;
   plans: PlansTable;
   subscriptions: SubscriptionsTable;

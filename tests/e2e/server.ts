@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import pg from 'pg';
 import { loadConfig } from '../../src/config.js';
 import { createDatabase } from '../../src/db/index.js';
+import { runAssignmentDigests } from '../../src/scopes/digest.js';
 import { runDueReminders } from '../../src/scopes/reminders.js';
 import { ADMIN_URL } from '../helpers/env.js';
 
@@ -108,6 +109,16 @@ export async function runReminderPass(now: Date) {
   const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
   try {
     return await runDueReminders(db, loadConfig(E2E_ENV), now);
+  } finally {
+    await db.destroy();
+  }
+}
+
+/** One pass of the worker's daily summaries against the E2E database. */
+export async function runDigestPass(now: Date) {
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  try {
+    return await runAssignmentDigests(db, loadConfig(E2E_ENV), now);
   } finally {
     await db.destroy();
   }

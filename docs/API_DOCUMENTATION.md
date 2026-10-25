@@ -30,7 +30,8 @@ application/json`); other content types are rejected with `415`.
 ### Rate limits
 Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+email; register
 10/h/IP; password-reset and resend-verification 5/h per IP+email; MFA verify 10/15 min; invitations
-30/h; checkout 20/h; public API 120/min/IP plus the plan's monthly request quota.
+30/h; checkout 20/h; public API 120/min/IP plus the plan's monthly request quota. Route limits are
+counted across all app instances; the global limit is counted per app instance.
 
 ## 2. Endpoints
 

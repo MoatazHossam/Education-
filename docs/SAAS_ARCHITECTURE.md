@@ -77,8 +77,9 @@ its own transaction; there is no tenant file storage.
 
 1. `onRequest`: resolve the caller — session cookie (`sid` / `__Host-sid`, SHA-256 hashed lookup,
    idle 7 d / absolute 30 d (12 h for platform admins)) or, for `/api/v1/*`, an API key.
-2. Rate limiting (global 600/min/IP when enabled; stricter per-route limits on auth, invitations,
-   billing; API v1 120/min).
+2. Rate limiting (global 600/min/IP when enabled, a per-process flood guard in memory; stricter
+   per-route limits on auth, invitations, billing and API v1 120/min, counted in PostgreSQL so they
+   hold across app instances: `src/http/rate-limit-store.ts`).
 3. `preHandler` CSRF defence: `Origin` must match `APP_URL`, `Sec-Fetch-Site: cross-site` rejected,
    and cookie-authenticated mutations must send `X-CSRF-Token = HMAC(SESSION_SECRET, session id)`.
    Only `application/json` bodies are parsed (HTML forms cannot send them).
@@ -138,8 +139,9 @@ a few thousand users, bursty interactive use) is well below that. Scaling path, 
 
 1. Vertical: bigger host, `DATABASE_POOL_MAX`.
 2. Managed PostgreSQL with automated backups/PITR.
-3. Several app containers behind Caddy — requires moving rate-limit counters to a shared store
-   (Redis) because the current limiter is in-memory per process.
+3. Several app containers behind Caddy. The route-specific rate limits are already shared in
+   PostgreSQL, sessions live in the database and the catalogue cache revalidates against
+   `updated_at`; remaining: run the containers and configure Caddy's load balancing.
 4. Read replica for the catalogue and admin analytics if ever needed.
 
 ## 8. Key decisions (ADR summary)

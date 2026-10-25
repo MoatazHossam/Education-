@@ -32,7 +32,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | CSV/formula injection (A03) | Leading `= + - @ \t \r` prefixed with `'` on export (scopes, catalogue sheet) and removed again on import; catalogue imports are platform-admin only (MFA), size-limited (8 MB, 20,000 rows), validated row by row, previewed, applied all or nothing and audited | `src/lib/csv.ts`, `src/catalog/sheet.ts` | `unit/csv`, `unit/catalog-sheet`, `integration/catalog-sheet` |
 | CSRF (A01/A05) | JSON-only bodies; `Origin` and `Sec-Fetch-Site` checks; per-session HMAC token header; `SameSite=Lax`, `HttpOnly`, `__Host-` cookie in production | `src/app.ts`, `src/auth/sessions.ts` | `auth.test.ts` |
 | Open redirect | `next` accepted only as same-origin path (`//` and `/\` rejected) | `public/js/views/auth.js` | regex check (manual) |
-| Credential stuffing / brute force (A07) | Per-account lockout (5 failures, 15 min) for passwords **and** TOTP; per-IP+email rate limits; generic errors | `src/auth/routes.ts` | `auth.test.ts`, `authz-coverage.test.ts` |
+| Credential stuffing / brute force (A07) | Per-account lockout (5 failures, 15 min) for passwords **and** TOTP; per-IP+email rate limits counted in PostgreSQL, so they hold across app instances and restarts (counters HMAC-keyed: no IPs or emails stored); generic errors | `src/auth/routes.ts`, `src/http/rate-limit-store.ts` | `auth.test.ts`, `authz-coverage.test.ts`, `rate-limit-store.test.ts` |
 | Account enumeration (A07) | Same response for existing/new emails on register, forgot, resend; equalised login timing | `src/auth/routes.ts` | `auth.test.ts` |
 | Session hijacking / fixation (A07) | 256-bit random tokens; rotation on login and MFA; idle (7 d) and absolute expiry (30 d; 12 h for platform admins); revoke on password change/reset, suspension; list/revoke sessions | `src/auth/sessions.ts` | `auth.test.ts` |
 | MFA bypass / replay | Pending-MFA sessions cannot call the API; TOTP step replay blocked; single-use recovery codes | `src/auth/mfa.ts` | `auth.test.ts` |
@@ -43,7 +43,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Logging & monitoring failures (A09) | Audit log of auth events, membership/role/billing/admin/support actions; JSON logs with secrets redacted (cookie, authorization, CSRF header) | `src/audit/audit.ts` | multiple |
 | SSRF (A10) | No user-supplied URLs are fetched; provider base URL from config only | — | — |
 | Data leakage in errors | Uniform error envelope; 500s return a request id only | `src/app.ts` | `admin-api-ops.test.ts` |
-| Abuse / DoS | 1 MB body limit; batch sizes capped (2,000 items); pagination limits; rate limits | various | — |
+| Abuse / DoS | 1 MB body limit; batch sizes capped (2,000 items); pagination limits; rate limits; a per-process flood guard (600 API requests/min per address) that does no database work, so a flood does not reach the shared database | various | `rate-limit-store.test.ts` |
 | Backup theft | Backups optionally GPG-encrypted; `umask 077`; backup role read-only | `scripts/backup.sh` | manual |
 
 ## 3. Secrets management
@@ -82,7 +82,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 ## 6. Residual risks and recommendations
 
 1. **External penetration test** before onboarding paying customers.
-2. Rate limiting is per process (in memory). With several app instances, move it to Redis.
+2. The global flood guard (600 API requests a minute per address) is per process: with N app instances one address can make up to N × 600 a minute. Route-specific limits (login, two-factor codes, resets, the API quota) are shared. Put a provider- or CDN-level limit in front for volumetric attacks.
 3. `DATA_ENCRYPTION_KEY` rotation tooling is missing.
 4. No WebAuthn/passkeys yet; TOTP only.
 5. No malware scanning needed today (no file uploads); revisit if uploads are added.

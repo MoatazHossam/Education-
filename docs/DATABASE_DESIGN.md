@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -65,6 +65,7 @@ erDiagram
 | `catalog_notices` | Organizations already told about an academic year's catalogue (dedupe) | PK `(org_id, kind, ref)`; ref = academic year | ✓ |
 | `email_outbox` | Transactional email queue | partial index on pending | — |
 | `worker_heartbeats` | Liveness of background workers | PK name | — |
+| `rate_limits` | Counters for route-specific rate limits, shared by app instances | PK `key` = HMAC of route and client key (no IPs or emails); UNLOGGED (counters restart after a crash) | — (no tenant data) |
 
 Verification columns on `catalog_subjects` and `catalog_materials`: `verification_status`
 (`unverified` / `verified` / `needs_review`), `verification_source`, `verification_url` (http/https),
@@ -134,6 +135,7 @@ are never created when `NODE_ENV=production`.
 | Sent/failed emails | 30 d; bodies redacted immediately after delivery | worker |
 | Read notifications | 180 d | worker |
 | Expired unaccepted invitations | 90 d after expiry | worker |
+| Rate-limit counters | until their window ends (≤ 1 h) | worker hourly |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |
 | Deleted organizations | Tenant rows removed immediately (cascade); the deletion audit entry is kept | API |

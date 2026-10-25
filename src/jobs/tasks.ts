@@ -65,6 +65,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const reminders = await trx.deleteFrom('item_reminders').where('due_on', '<', addDays(now, -60).toISOString().slice(0, 10)).executeTakeFirst();
     // Daily summaries take their rows each morning; anything older was never going to be sent.
     const digestItems = await trx.deleteFrom('assignment_digest_items').where('assigned_at', '<=', addDays(now, -30)).executeTakeFirst();
+    const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -30)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -76,6 +77,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       resolvedAlerts: Number(alerts.numDeletedRows),
       itemReminders: Number(reminders.numDeletedRows),
       digestItems: Number(digestItems.numDeletedRows),
+      webhookDeliveries: Number(webhookDeliveries.numDeletedRows),
     };
   });
 }

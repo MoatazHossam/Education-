@@ -55,6 +55,11 @@ const EnvSchema = z
       .default([]),
     ALERT_WEBHOOK_URL: z.url().regex(/^https?:\/\//, 'ALERT_WEBHOOK_URL must be an http(s) URL').optional(),
     ALERT_CHECK_INTERVAL_MS: z.coerce.number().int().min(10_000).default(60_000),
+
+    // Webhooks to customer systems normally reach only https URLs on public addresses
+    // (src/webhooks/net.ts). For local development and tests, this also allows http and
+    // private or loopback addresses. Refused in production.
+    WEBHOOK_ALLOW_INSECURE_TARGETS: bool.default(false),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {
@@ -69,6 +74,9 @@ const EnvSchema = z
       }
       if (env.ALERT_WEBHOOK_URL && !env.ALERT_WEBHOOK_URL.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['ALERT_WEBHOOK_URL'], message: 'ALERT_WEBHOOK_URL must use https in production' });
+      }
+      if (env.WEBHOOK_ALLOW_INSECURE_TARGETS) {
+        ctx.addIssue({ code: 'custom', path: ['WEBHOOK_ALLOW_INSECURE_TARGETS'], message: 'WEBHOOK_ALLOW_INSECURE_TARGETS cannot be used in production' });
       }
     }
     if (env.EMAIL_TRANSPORT === 'smtp' && !env.SMTP_URL) {

@@ -4,6 +4,7 @@ import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession } from '../state.js';
 import { pageHead, planLimitHint } from './shell.js';
+import { webhooksCard } from './webhooks.js';
 
 export async function settingsView(ctx) {
   const { orgId } = ctx.params;
@@ -98,10 +99,12 @@ export async function settingsView(ctx) {
       },
     }, t('settings.deleteOrg'))) : null;
 
+  const hooksCard = await webhooksCard(orgId, info, refresh);
+
   return h('div', {},
     pageHead(t('settings.title'), null),
     h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h2', {}, t('settings.profile')), profile.el), keysCard),
-    supportCard, dangerCard);
+    hooksCard, supportCard, dangerCard);
 }
 
 export async function auditView(ctx) {

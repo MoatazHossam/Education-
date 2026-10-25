@@ -58,6 +58,7 @@ Create `.env.production` from `.env.docker.example`:
 - `NODE_ENV=production`, `APP_URL=https://<domain>`, `DOMAIN=<domain>`, `ACME_EMAIL=<ops email>`
 - strong random `SESSION_SECRET` (`openssl rand -base64 48`), `DATA_ENCRYPTION_KEY` (`openssl rand -base64 32`), DB passwords
 - `EMAIL_TRANSPORT=smtp`, `SMTP_URL=smtps://user:pass@smtp.provider:465`, `EMAIL_FROM`
+- leave `WEBHOOK_ALLOW_INSECURE_TARGETS` unset: it lets customer webhooks reach http and private addresses, for development only, and the app refuses to start with it in production. The worker makes outbound HTTPS requests to customers' webhook URLs; if the host has an egress firewall, allow outbound 443 and block private ranges and `169.254.169.254` (SECURITY_DESIGN §6)
 - `BILLING_PROVIDER=paymob` + `PAYMOB_*` (or `disabled`)
 - `SALES_EMAIL` for the Enterprise "Contact sales" link
 

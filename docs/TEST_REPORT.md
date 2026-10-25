@@ -22,14 +22,14 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**31 files, 232 tests, 232 passed, 0 failed** (2026-10-25, after My assignments in all organizations). Integration tests ran against a real
+**33 files, 247 tests, 247 passed, 0 failed** (2026-10-25, after webhooks to customer systems). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
 | --- | --- | --- |
 | unit/catalog-fidelity | 3 | Pass — the seed equals the original artifact's 231 subjects / 1,038 materials item-for-item |
 | unit/billing-logic | 9 | Pass |
-| unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded) |
+| unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded), and production refusing `WEBHOOK_ALLOW_INSECURE_TARGETS` |
 | unit/i18n | 2 | Pass |
 | unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
@@ -37,6 +37,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
 | unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
 | unit/rate-limit-memory | 2 | Pass — fixed windows; memory bounded, oldest windows dropped first |
+| unit/webhook-net | 4 | Pass — public-address classifier (private, loopback, link-local, CGNAT, documentation, multicast, NAT64, 6to4, IPv4-mapped); URL rules (https only, no credentials, no private or local hosts, development setting); the socket's DNS lookup refusing a host that resolves to loopback; signature format |
 | unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
@@ -45,6 +46,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
 | integration/scope-notes | 21 | Pass — status and due dates (validation, the assignee-viewer rule, bulk changes), assignment emails (language, opt-out, none for yourself, long lists shortened), My assignments (order, filters, navigation counts), status and due date in duplicates, carry-forward and exports; notes and assignees: set and read; viewers refused; unselected books, long notes, empty requests; assignee must be a member (also enforced by the database); clearing; note text kept out of the audit log; notifications in the assignee's language, once, none for yourself; bulk assignment (all or nothing, notes kept); member removal clears assignments; scopes list counts; read-only scopes; deselection; duplicate; carry-forward (copy and move; preview counts lost notes); CSV/JSON/API exports; other organizations 404 |
 | integration/due-reminders | 10 | Pass — the worker's due-date reminders: one email per member and organization listing overdue and due-soon books, once (the next day only what changed); each member's language; done, unassigned and long-overdue books left out; only between 08:00 and 21:00 Cairo time; reminded again after a new due date or assignee, not after reopening; the email opt-out and unverified addresses keep the in-app notice; suspended accounts and organizations skipped until active; three concurrent passes send each reminder once; long lists shortened; records removed with the book, the member and 60 days after the due date, and invisible to other organizations; the navigation's due-soon count |
+| integration/webhooks | 11 | Pass — customer webhooks against a local receiver: management (secret once, stored encrypted; editors refused; validation; limit of 5; plan without API access 402); signed delivery of every event to subscribed endpoints only, payload and key order; merging of quick changes; duplicate and carry; retries with backoff and final failure; switch-off after 25 failures with notification and audit, switching back on; redirects not followed and timeouts; test, redelivery (same event id), secret rotation; events stop without API access; other organizations 404 and RLS; 30-day retention; with default settings, non-https and private URLs refused and nothing sent to a private address |
 | integration/all-assignments | 4 | Pass — My assignments across organizations: two organizations merged in one order with totals and per-organization counts, done/all filters, other members' books never shown; status update as a viewer through the book's organization; suspended and two-factor organizations listed as unavailable and not read; same books as the organization's own page; 401 signed out, 403 for students |
 | integration/assignment-digest | 9 | Pass — the daily summary: no email per assignment for members who chose it (in-app notice kept); one summary the next morning, then none; at most one a day (assignments after the morning's sending time wait); one email across two organizations grouped by scope and assigner; unassigned/removed books and suspended organizations left out; switching back or off drops the queue, choice validated; unverified addresses; Arabic and long lists; three concurrent passes send one summary; RLS for other organizations and members; cleanup after 30 days |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
@@ -61,7 +63,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 232</summary>
+<details><summary>Show all 247</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -286,6 +288,21 @@ Full test names (verbatim from the verbose reporter):
 - all-assignments › My assignments across all organizations › the member updates a book’s status through its own organization, even as a viewer there
 - all-assignments › My assignments across all organizations › suspended organizations, and ones asking this member for two-factor sign-in, are listed as unavailable and not read
 - all-assignments › My assignments across all organizations › a member of one organization gets the same books as on its own page; signed-out callers and students are refused
+- webhooks › webhook endpoints › admins add endpoints; the secret is shown once and stored encrypted; editors, viewers and plans without API access cannot
+- webhooks › webhook endpoints › scope changes are queued with the change and delivered signed by the worker, to subscribed endpoints only
+- webhooks › webhook endpoints › quick changes to one scope reach the endpoint as one event with the latest state
+- webhooks › webhook endpoints › carrying a scope forward and duplicating it are reported too
+- webhooks › webhook endpoints › failures are retried with backoff and fail for good after the last attempt
+- webhooks › webhook endpoints › an endpoint that keeps failing is switched off and the admins are told; switching it on again resumes delivery
+- webhooks › webhook endpoints › redirects are not followed and slow endpoints time out
+- webhooks › webhook endpoints › a test sends a ping at once; redelivery queues the same event again; a new secret signs from then on
+- webhooks › webhook endpoints › events stop when the plan no longer includes API access
+- webhooks › webhook endpoints › another organization cannot see or change them; old deliveries are cleaned up
+- webhooks › webhook targets with the default settings › only https URLs to public hosts are accepted, and nothing is sent to a private address
+- unit › webhook targets › only public unicast addresses are allowed
+- unit › webhook targets › URLs must be https, without credentials, to a public host
+- unit › webhook targets › the socket lookup refuses a host that resolves to a private address
+- unit › webhook targets › signs "<timestamp>.<body>" with HMAC-SHA256
 
 </details>
 
@@ -298,7 +315,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**20 tests, 20 passed** (3.8 min, 2026-10-25), Chromium, real server process on port 3100: 18 journeys,
+**21 tests, 21 passed** (4.0 min, 2026-10-25), Chromium, real server process on port 3100: 19 journeys,
 then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -321,6 +338,7 @@ then the accessibility project (2 tests), which reuses the journeys' data.
 | 16 | Due-date reminders (same school): the owner assigns Hana a third book due tomorrow and the notes page marks it "due soon"; one pass of the worker's reminder job (run directly against the E2E database at 10:30 Cairo time, since the E2E run starts no worker) sends one reminder and a second pass none; Hana's email lists the book as "due tomorrow" with a link to My assignments, although she turned assignment emails off (a separate choice); she sees Due soon 1 on My assignments and the reminder in her notifications, and turns reminder emails off | Pass |
 | 17 | Daily summary (same school): Hana switches assignment emails from none to one summary each morning; the owner selects a fourth book and assigns it to her (found with the Not assigned filter) and no assignment email goes; one pass of the worker's summary job for the next morning (run directly, as for journey 16) sends one summary listing the book under Notes Academy, “Grade 6 books”, assigned by E2E Owner, and a second pass none. Journeys 15 and 16 use the new three-way choice instead of the old checkbox | Pass |
 | 18 | All organizations: Hana creates her own organization (Hana Study Group), selects a book and gives it to herself due tomorrow; from Notes Academy's My assignments she follows "See your books in all your organizations (2)"; the page lists 5 books (both due tomorrow first, then by date), Not done yet 5 and Due soon 2, and links each organization; she marks her own organization's book Done there, finds it under Done, and 4 remain not done | Pass |
+| 19 | Webhooks: a local receiver stands in for the school's system (the E2E server allows local targets); the Notes Academy owner adds it in Settings → Webhooks without "Scope deleted", copies the secret shown once, and sees it Active with the three events; Send test → "Test delivered (200)" and the ping's signature checks with the secret; selecting one more book in Grade 6 books and one pass of the worker's webhook job (run directly) delivers `scope.items_changed` with 5 books, signed; the Deliveries dialog lists both, delivered (200) | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -330,8 +348,8 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 19 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 73 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone) | Pass — 0 findings |
-| 20 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 20 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 80 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries and edit dialogs | Pass — 0 findings |
+| 21 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 
 Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 

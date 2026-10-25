@@ -73,6 +73,22 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/billing`, 'billing'], [`/org/${orgId}/settings`, 'settings'], [`/org/${orgId}/audit`, 'audit log'], ['/account', 'account'],
   ] as const) await visit(page, path, where);
 
+  // A webhook endpoint (the E2E server allows a local address): the secret dialog, the list, deliveries and edit dialogs.
+  await page.goto(`/org/${orgId}/settings`);
+  await page.getByLabel('Endpoint URL').fill('http://127.0.0.1:9/hook');
+  await page.getByRole('button', { name: 'Add endpoint' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Copy this signing secret now');
+  await audit(page, 'webhook secret dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('#webhooks table')).toContainText('http://127.0.0.1:9/hook');
+  await audit(page, 'settings (webhook endpoint)');
+  await page.getByRole('button', { name: 'Deliveries to http://127.0.0.1:9/hook' }).click();
+  await audit(page, 'webhook deliveries dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Edit http://127.0.0.1:9/hook' }).click();
+  await audit(page, 'webhook edit dialog');
+  await page.keyboard.press('Escape');
+
   // A second scope on the newest catalogue: the comparison then matches books across catalogue years.
   await page.goto(`/org/${orgId}`);
   await createScope(page, 'This year plan');
@@ -174,7 +190,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(page, 'picker (Arabic)');
   for (const [path, where] of [
     [`/org/${orgId}/scopes`, 'scopes (Arabic)'], [`/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (Arabic)'],
-    [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'],
+    [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'], [`/org/${orgId}/settings`, 'settings (Arabic)'],
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
   ] as const) await visit(page, path, where);
   await page.goto(`/org/${orgId}`);
@@ -184,6 +200,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await page.emulateMedia({ colorScheme: 'dark' });
   await visit(page, `/org/${orgId}?scope=${scopeId}`, 'picker (dark)');
   await visit(page, `/org/${orgId}/billing`, 'billing (dark)');
+  await visit(page, `/org/${orgId}/settings`, 'settings (dark)');
   await visit(page, `/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (dark)');
   await visit(page, comparePath, 'compare scopes (dark)');
   await visit(page, itemsPath, 'notes and assignees (dark)');
@@ -198,6 +215,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(phone, comparePath, 'compare scopes (phone)');
   await visit(phone, itemsPath, 'notes and assignees (phone)');
   await visit(phone, assignmentsPath, 'my assignments (phone)');
+  await visit(phone, `/org/${orgId}/settings`, 'settings (phone)');
   await visit(phone, allAssignmentsPath, 'my assignments in all organizations (phone)');
 
   // Platform admin.

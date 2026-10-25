@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { createScope, login, orgIdFromUrl, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
+import { hashPassword } from '../../src/auth/password.js';
+import { createScope, login, orgIdFromUrl, PASSWORD, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
 import { ownerQuery } from './server.js';
 
 // Automated WCAG 2.2 A/AA audit (axe-core) of every screen and the main
@@ -82,7 +83,11 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('#webhooks table')).toContainText('http://127.0.0.1:9/hook');
   await audit(page, 'settings (webhook endpoint)');
+  // Nothing listens on port 9, so the test fails and the deliveries dialog has a row, its history note and the download.
+  await page.getByRole('button', { name: 'Send a test to http://127.0.0.1:9/hook' }).click();
+  await expect(page.locator('#toasts').getByText(/^Test failed/)).toBeVisible();
   await page.getByRole('button', { name: 'Deliveries to http://127.0.0.1:9/hook' }).click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Download history (CSV)' })).toBeVisible();
   await audit(page, 'webhook deliveries dialog');
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'Edit http://127.0.0.1:9/hook' }).click();
@@ -289,4 +294,67 @@ test('the picker and dialogs can be used with the keyboard alone', async ({ brow
   await page.keyboard.press('Space');
   await expect(focused).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.tray .count')).toHaveText(/Selected: 1 item/);
+});
+
+// What a screen reader gets that the axe rules do not check (docs/SCREEN_READER_REVIEW.md §4).
+test('screen readers get page titles, the unread count, each book\'s kind and field errors', async ({ browser }) => {
+  // A member created directly: the run has already used most of the 10 sign-ups an hour allowed from one address.
+  const email = `reader.${uid()}@e2e.test`;
+  await ownerQuery(`INSERT INTO users (email, name, password_hash, email_verified_at) VALUES ($1, 'Screen Reader', $2, now())`, [email, await hashPassword(PASSWORD)]);
+  const page = await newPage(browser);
+  await login(page, email);
+  // The page area is not a live region: pages are announced through the heading that takes focus.
+  await expect(page.locator('#app')).not.toHaveAttribute('aria-live');
+
+  // Field hints and errors describe their field; a corrected field loses its old error. Neither submission changes the password.
+  await page.goto('/account');
+  await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);
+  const current = page.getByLabel('Current password');
+  const fresh = page.getByLabel('New password');
+  const hint = 'At least 10 characters. A passphrase works well.';
+  await expect(fresh).toHaveAccessibleDescription(hint);
+  await current.fill(PASSWORD);
+  await fresh.fill('short');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(fresh).toHaveAttribute('aria-invalid', 'true');
+  const error = (await page.locator('.field .err:not([hidden])').innerText()).trim();
+  expect(error).not.toBe('');
+  await expect(fresh).toHaveAccessibleDescription(`${hint} ${error}`);
+  await current.fill('');
+  await fresh.fill('a-long-enough-new-password');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(current).toHaveAttribute('aria-invalid', 'true');
+  await expect(fresh).toHaveAccessibleDescription(hint);
+  await expect(fresh).not.toHaveAttribute('aria-invalid');
+
+  // Page titles follow the heading, in both languages; picker books say their kind.
+  await page.getByLabel('Organization name').fill('Reader School');
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await page.waitForURL(/\/org\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveTitle('Egypt Curriculum Picker · دليل المناهج · Curriculum Scope');
+  await expect(page.locator('.mat.moe').first()).toHaveAccessibleName(/\(Ministry\)/);
+  await expect(page.locator('.mat.ext').first()).toHaveAccessibleName(/\(External refs\)/);
+  for (const path of [`/org/${orgIdFromUrl(page)}/settings`, '/no-such-page']) {
+    await page.goto(path);
+    await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);
+  }
+  await page.goto('/account');
+  await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(page).toHaveTitle(/ · نطاق المناهج$/);
+  await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page).toHaveTitle(/ · Curriculum Scope$/);
+
+  // The unread count is part of the notifications button's name, until the list is opened.
+  await ownerQuery(
+    `INSERT INTO notifications (user_id, kind, title, body) SELECT id, 'test', 'Hello', 'One' FROM users WHERE email = $1 UNION ALL SELECT id, 'test', 'Hello again', 'Two' FROM users WHERE email = $1`,
+    [email],
+  );
+  await page.reload();
+  const bell = page.locator('.topbar button.iconbtn', { hasText: '🔔' });
+  await expect(bell).toHaveAccessibleName('Notifications, 2 unread');
+  await bell.click();
+  await expect(page.getByRole('dialog', { name: 'Notifications' })).toContainText('Hello again');
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await expect(bell).toHaveAccessibleName('Notifications');
+  await expect(bell).toBeFocused();
 });

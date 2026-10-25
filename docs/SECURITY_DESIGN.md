@@ -84,7 +84,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `org.created/updated/deleted/ownership_transferred`, `member.role_changed/removed/left`,
 `invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
-`api_key.created/revoked`, `admin.data_key_rotated` (counts and the key id, never key material), `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled` (URLs and events, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
+`api_key.created/revoked`, `admin.data_key_rotated` (counts and the key id, never key material), `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled/deliveries_exported` (URLs, events and row counts, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`), which go to the school's
 own audit log with the username, never a password.

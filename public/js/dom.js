@@ -135,7 +135,9 @@ export function form({ fields, submitLabel, onSubmit, extra }) {
       input = h('input', { id, name: f.name, type: f.type || 'text', value: f.value ?? null, required: f.required ? true : null, autocomplete: f.autocomplete, minlength: f.minlength, maxlength: f.maxlength, inputmode: f.inputmode, placeholder: f.placeholder });
     }
     inputs[f.name] = input;
-    return h('div', { class: 'field' }, h('label', { for: id }, f.label), input, f.hint ? h('span', { class: 'hint' }, f.hint) : null, h('span', { class: 'err', id: `${id}-err`, hidden: true }));
+    // Screen readers read the hint and any error with the field.
+    input.setAttribute('aria-describedby', f.hint ? `${id}-hint ${id}-err` : `${id}-err`);
+    return h('div', { class: 'field' }, h('label', { for: id }, f.label), input, f.hint ? h('span', { class: 'hint', id: `${id}-hint` }, f.hint) : null, h('span', { class: 'err', id: `${id}-err`, hidden: true }));
   });
   const button = h('button', { type: 'submit', class: 'btn' }, submitLabel);
   const el = h('form', { class: 'stack', novalidate: true }, errBox, rows, extra || null, h('div', {}, button));
@@ -145,7 +147,8 @@ export function form({ fields, submitLabel, onSubmit, extra }) {
     for (const inp of Object.values(inputs)) {
       inp.removeAttribute('aria-invalid');
       const errEl = document.getElementById(`${inp.id}-err`);
-      if (errEl) errEl.hidden = true;
+      // Emptied too: a hidden element still describes the field it is referenced from.
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
     }
     const values = Object.fromEntries(Object.entries(inputs).map(([k, inp]) => [k, inp.type === 'checkbox' ? inp.checked : inp.value]));
     button.disabled = true;

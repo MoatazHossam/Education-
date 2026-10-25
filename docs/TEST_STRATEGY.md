@@ -74,7 +74,7 @@ build with a production-guard smoke test.
 
 ## 6. Gaps
 
-- Accessibility is checked automatically (axe-core finds roughly a third to a half of WCAG issues) plus one keyboard journey; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet. No cross-browser E2E (Firefox/WebKit).
+- Accessibility is checked automatically (axe-core finds roughly a third to a half of WCAG issues) plus one keyboard journey and a check of what screen readers are given (accessible names and descriptions, page titles); no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet: SCREEN_READER_REVIEW.md is the checklist for it. No cross-browser E2E (Firefox/WebKit).
 - Paymob adapter tested against a simulator and an independent HMAC vector, not against Paymob; run `npm run paymob:check` with test-mode keys, then the staging checklist.
 - No load test on production-sized infrastructure; no chaos testing of PostgreSQL failover.
 - E2E runs Chromium only.

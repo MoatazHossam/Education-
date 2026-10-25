@@ -68,6 +68,7 @@ async function render() {
   const query = new URLSearchParams(location.search);
   if (!m) {
     clear(root).append(h('main', { id: 'main', class: 'wrap' }, h('div', { class: 'page-head' }, h('h1', {}, t('notfound.title')), h('p', {}, link('/', t('notfound.home'))))));
+    announcePage();
     return;
   }
   const { handler, params } = m;
@@ -93,8 +94,16 @@ async function render() {
   } else {
     await renderShell(root, ctx, handler, () => seq === renderSeq);
   }
-  document.getElementById('main')?.querySelector('h1')?.setAttribute('tabindex', '-1');
-  if (seq === renderSeq) document.getElementById('main')?.querySelector('h1')?.focus({ preventScroll: true });
+  if (seq === renderSeq) announcePage();
+}
+
+/** Moves focus to the page heading and titles the page after it; screen readers announce both. */
+function announcePage() {
+  const heading = document.getElementById('main')?.querySelector('h1');
+  heading?.setAttribute('tabindex', '-1');
+  heading?.focus({ preventScroll: true });
+  const name = heading?.textContent.trim();
+  document.title = name ? `${name} · ${t('app.name')}` : t('app.name');
 }
 
 setUnauthorizedHandler(() => {

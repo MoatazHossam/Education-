@@ -118,7 +118,8 @@ Tree shape:
 | PATCH / DELETE | `/:orgId/webhooks/:id` | admin | `{url?, description?, events?, enabled?}` (switching on resets the failure count) · delete |
 | POST | `/:orgId/webhooks/:id/rotate-secret` | admin | → `{webhook, secret}` (new secret shown once; requests are signed with it from then on) |
 | POST | `/:orgId/webhooks/:id/test` | admin | Sends a `ping` at once → `{delivery: {id, status, statusCode, error}}`; not retried; 10 a minute |
-| GET | `/:orgId/webhooks/:id/deliveries` | admin | Last 50: `{deliveries:[{id, eventId, eventType, status, attempts, statusCode, error, createdAt, deliveredAt, nextAttemptAt, payload}]}` |
+| GET | `/:orgId/webhooks/:id/deliveries` | admin | Last 50: `{deliveries:[{id, eventId, eventType, status, attempts, statusCode, error, createdAt, deliveredAt, nextAttemptAt, payload}], total, keptDays, exportMax}` (`total` counts every kept delivery) |
+| GET | `/:orgId/webhooks/:id/deliveries/export` | admin | Every kept delivery, newest first, at most 10,000, as CSV (`webhook-deliveries-<host>-<date>.csv`); see "Delivery history download" below. Audited (`webhook.deliveries_exported`); 10 per minute |
 | POST | `/:orgId/webhooks/:id/deliveries/:deliveryId/redeliver` | admin | Queues the same event again (same event id) → `202`; `409 DELIVERY_PENDING` while it is still being sent |
 | GET | `/:orgId/students` | admin | `{enabled, limit, used, schoolCode, grades, students[]}` |
 | POST | `/:orgId/students` | admin | `{username, name, grade, scopeId?}` → `201 {student, password}` (password shown once); 402 `STUDENTS_NOT_ENABLED` / `PLAN_LIMIT_REACHED` |
@@ -282,7 +283,17 @@ function verify(rawBody, header, secret, toleranceSeconds = 300) {
 - **Success:** any 2xx answer within 5 seconds. Redirects are not followed, and the response body is ignored.
 - **Retries:** failures are retried after 1 min, 5 min, 30 min, 2 h, 6 h and 12 h (7 attempts, about 21 hours), then the delivery is marked failed.
 - **Switching off:** an endpoint that fails 25 attempts in a row is switched off. Its organization's owners and admins get a notification, and it is audited as `webhook.disabled`. Switching it back on resumes the waiting deliveries.
-- **History:** deliveries are kept for 30 days.
+- **History:** finished deliveries are kept for 30 days.
+
+**Delivery history download** (`GET /:orgId/webhooks/:id/deliveries/export`): a UTF-8 CSV
+with a byte-order mark, one row per delivery, newest first, at most 10,000 rows. Columns:
+`created_at_utc, delivery_id, event_id, event, status, attempts, http_status, error,
+delivered_at_utc, next_attempt_at_utc, scope_id, scope_name, payload`. Times are ISO 8601 in
+UTC; `next_attempt_at_utc` is filled only while a delivery is pending; `payload` is the exact
+JSON body sent (a redelivery has the same `event_id`). Cells that a spreadsheet would run as a
+formula get a leading apostrophe. It is a delivery log, not a content export: it needs no plan
+feature and does not count against the monthly exports, so it stays available after a
+downgrade. The signing secret is never included.
 
 **Targets.**
 - Only `https://` URLs without credentials.

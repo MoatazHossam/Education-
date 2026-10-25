@@ -29,6 +29,7 @@ async function showNotifications(btn) {
     await post('/api/notifications/read', {});
     session.me.unreadNotifications = 0;
     btn.querySelector('.badge')?.remove();
+    btn.setAttribute('aria-label', t('notifications.title'));
   }
   await dialog({ title: t('notifications.title'), body: list, actions: [{ label: t('common.close'), value: true, kind: 'ghost' }] });
 }
@@ -74,7 +75,8 @@ export async function renderShell(root, ctx, handler, isCurrent) {
     h('option', { value: '__new' }, t('shell.newOrg')))
     : null;
 
-  const notifBtn = h('button', { type: 'button', class: 'iconbtn', 'aria-label': t('notifications.title') }, '🔔', me.unreadNotifications ? h('span', { class: 'badge' }, String(me.unreadNotifications)) : null);
+  // The name carries the unread count: an aria-label replaces the badge's text for screen readers.
+  const notifBtn = h('button', { type: 'button', class: 'iconbtn', 'aria-label': me.unreadNotifications ? t('notifications.titleUnread', { n: me.unreadNotifications }) : t('notifications.title') }, '🔔', me.unreadNotifications ? h('span', { class: 'badge' }, String(me.unreadNotifications)) : null);
   notifBtn.addEventListener('click', () => showNotifications(notifBtn).catch((e) => toast(errorMessage(e), 'error')));
 
   const role = info?.role;

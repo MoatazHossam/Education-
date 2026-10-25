@@ -23,6 +23,10 @@ const RETRY_MINUTES = [1, 5, 30, 120, 360, 720];
 export const MAX_ATTEMPTS = RETRY_MINUTES.length + 1;
 /** An endpoint failing this many attempts in a row is switched off and its organization's admins are told. */
 export const DISABLE_AFTER_FAILURES = 25;
+/** Finished deliveries are kept this long (jobs/tasks.ts cleanup), then deleted. */
+export const DELIVERY_RETENTION_DAYS = 30;
+/** The most rows the delivery history download holds (newest first). */
+export const EXPORT_MAX_DELIVERIES = 10_000;
 const BATCH = 20;
 const SYSTEM: AuditActor = { type: 'system', email: 'webhooks' };
 

@@ -8,6 +8,7 @@ import { sha256Hex } from '../lib/crypto.js';
 import { AppError, notFound, unauthorized } from '../lib/errors.js';
 import { parse } from '../lib/validation.js';
 import { selectedRows, toJson } from '../scopes/export.js';
+import { annotationsForExport } from '../scopes/notes.js';
 import { getScope, listScopes, scopeMaterialIds } from '../scopes/service.js';
 
 const KEY_RE = /^cs_live_[A-Za-z0-9_-]{43}$/;
@@ -58,7 +59,7 @@ export function registerApiV1Routes(app: FastifyInstance, ctx: AppContext): void
     return withApi(req, async (trx, orgId) => {
       const scope = await getScope(trx, orgId, scopeId);
       const tree = await loadCatalogTree(trx, scope.catalog_version_id, { allowUnpublished: true });
-      const rows = selectedRows(tree, new Set(await scopeMaterialIds(trx, scope.id)));
+      const rows = selectedRows(tree, new Set(await scopeMaterialIds(trx, scope.id)), await annotationsForExport(trx, scope.id));
       return toJson({ id: scope.id, name: scope.name, description: scope.description, updatedAt: scope.updated_at }, tree, rows);
     });
   });

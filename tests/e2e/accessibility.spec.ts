@@ -84,7 +84,18 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await page.getByLabel('Show only differences').uncheck();
   await audit(page, 'compare scopes (everything shown)');
 
-  // Student accounts (turned on for this school as a platform administrator would):
+  // Notes and assignees on the scope's selected books, and the note dialog.
+  const itemsPath = `/org/${orgId}/scopes/${scopeId}/items`;
+  await visit(page, itemsPath, 'notes and assignees');
+  await page.getByRole('button', { name: /^Edit the note on / }).first().click();
+  await audit(page, 'note and assignee dialog');
+  await page.getByRole('dialog').getByLabel('Note').fill('Waiting for the 2027 edition');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.locator('table.items input[type="checkbox"]').nth(1).check();
+  await audit(page, 'notes and assignees (a note, a book chosen)');
+
+
   // the Students page and its dialogs, then the student sign-in and portal.
   await ownerQuery(`UPDATE subscriptions SET limit_overrides = limit_overrides || '{"max_students": 10}'::jsonb WHERE org_id = $1`, [orgId]);
   await visit(page, `/org/${orgId}/students`, 'students (none yet)');
@@ -143,6 +154,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   for (const [path, where] of [
     [`/org/${orgId}/scopes`, 'scopes (Arabic)'], [`/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (Arabic)'],
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'],
+    [itemsPath, 'notes and assignees (Arabic)'],
   ] as const) await visit(page, path, where);
   await page.goto(`/org/${orgId}`);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
@@ -153,6 +165,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, `/org/${orgId}/billing`, 'billing (dark)');
   await visit(page, `/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (dark)');
   await visit(page, comparePath, 'compare scopes (dark)');
+  await visit(page, itemsPath, 'notes and assignees (dark)');
 
   // Phone.
   const phone = await newPage(browser, { viewport: { width: 390, height: 844 } });
@@ -160,6 +173,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(phone, `/org/${orgId}?scope=${scopeId}`, 'picker (phone)');
   await visit(phone, `/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (phone)');
   await visit(phone, comparePath, 'compare scopes (phone)');
+  await visit(phone, itemsPath, 'notes and assignees (phone)');
 
   // Platform admin.
   const admin = await newPage(browser);

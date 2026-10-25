@@ -7,15 +7,20 @@ import { assertScopeAvailable, assertScopeEditable, consumeUsage, getEntitlement
 import { loadCatalogTree } from '../catalog/service.js';
 import type { Executor } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
-import { AppError, badRequest, conflict } from '../lib/errors.js';
+import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { planCarryForward } from './carry.js';
 import { compareScopes, comparisonCsv } from './compare.js';
 import { selectedRows, toCsv, toJson, toText } from './export.js';
+import { annotationCounts, annotationsForExport, assertMember, notifyAssigned, scopeAnnotations } from './notes.js';
 import { getScope, listScopes, scopeMaterialIds } from './service.js';
 
 const MAX_BATCH = 2000;
 const ScopeParams = z.object({ orgId: z.string(), scopeId: z.string() });
+const ItemParams = ScopeParams.extend({ materialId: zUuid });
+const NoteBody = z
+  .object({ note: z.string().trim().max(500).nullable().optional(), assigneeId: zUuid.nullable().optional() })
+  .refine((b) => b.note !== undefined || b.assigneeId !== undefined, { message: 'Nothing to change', path: ['note'] });
 const ScopeBody = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).nullable().optional(),
@@ -64,12 +69,16 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
 
   app.get('/api/orgs/:orgId/scopes', async (req) => {
     const { orgId } = parse(z.object({ orgId: z.string() }), req.params);
-    return inOrg(ctx, req, orgId, 'viewer', async (trx) => {
+    return inOrg(ctx, req, orgId, 'viewer', async (trx, { user }) => {
       const ent = await getEntitlements(trx, orgId, grace);
       const scopes = await listScopes(trx, orgId);
+      const counts = await annotationCounts(trx, orgId, user.id);
       const max = ent.limits.max_scopes;
       // Oldest scopes stay editable when an org holds more than its plan allows.
-      return { scopes: scopes.map((s, i) => ({ ...s, readOnly: max !== null && i >= max })), limit: max };
+      return {
+        scopes: scopes.map((s, i) => ({ ...s, readOnly: max !== null && i >= max, ...(counts.get(s.id) ?? { notes: 0, assigned: 0, assignedToMe: 0 }) })),
+        limit: max,
+      };
     });
   });
 
@@ -131,6 +140,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       return {
         scope: { id: scope.id, name: scope.name, description: scope.description, catalogVersionId: scope.catalog_version_id, createdAt: scope.created_at, updatedAt: scope.updated_at },
         materialIds,
+        annotations: await scopeAnnotations(trx, scope.id),
       };
     });
   });
@@ -211,6 +221,70 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
     });
   });
 
+  // A note and/or the member responsible for one selected book. Editors and above.
+  app.patch('/api/orgs/:orgId/scopes/:scopeId/items/:materialId', async (req) => {
+    const { orgId, scopeId, materialId } = parse(ItemParams, req.params);
+    const body = parse(NoteBody, req.body);
+    return inOrg(ctx, req, orgId, 'editor', async (trx, { user }) => {
+      const scope = await getScope(trx, orgId, scopeId);
+      await assertScopeEditable(trx, orgId, scope.id, await getEntitlements(trx, orgId, grace));
+      const item = await trx.selectFrom('scope_items').select(['note', 'assignee_id']).where('scope_id', '=', scope.id).where('material_id', '=', materialId).executeTakeFirst();
+      if (!item) throw notFound('Item');
+      if (body.assigneeId) await assertMember(trx, orgId, body.assigneeId);
+      const note = body.note === undefined ? item.note : body.note || null;
+      const assigneeId = body.assigneeId === undefined ? item.assignee_id : body.assigneeId;
+      const annotated = note !== null || assigneeId !== null;
+      await trx
+        .updateTable('scope_items')
+        .set({ note, assignee_id: assigneeId, annotated_by: annotated ? user.id : null, annotated_at: annotated ? new Date() : null })
+        .where('scope_id', '=', scope.id)
+        .where('material_id', '=', materialId)
+        .execute();
+      await trx.updateTable('scopes').set({ updated_at: sql`now()` }).where('id', '=', scope.id).execute();
+      // The note's text stays out of the audit log; what changed is recorded.
+      const changes = { note: note === item.note ? 'unchanged' : note === null ? 'removed' : 'set', assigneeId: assigneeId === item.assignee_id ? 'unchanged' : assigneeId };
+      await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.item_annotated', targetType: 'scope', targetId: scope.id, metadata: { materialId, ...changes } }, requestMeta(req));
+      if (assigneeId && assigneeId !== item.assignee_id) await notifyAssigned(trx, { orgId, scope, assigneeId, byUserId: user.id, byName: user.name, count: 1 });
+      return { annotation: (await scopeAnnotations(trx, scope.id)).find((a) => a.materialId === materialId) ?? { materialId, note: null, assigneeId: null, assigneeName: null, annotatedAt: null, annotatedBy: null } };
+    });
+  });
+
+  // Assigns several selected books to one member at once (or clears their assignee). Notes are kept.
+  app.post('/api/orgs/:orgId/scopes/:scopeId/items/assign', async (req) => {
+    const { orgId, scopeId } = parse(ScopeParams, req.params);
+    const body = parse(z.object({ materialIds: z.array(zUuid).min(1).max(MAX_BATCH), assigneeId: zUuid.nullable() }), req.body);
+    return inOrg(ctx, req, orgId, 'editor', async (trx, { user }) => {
+      const scope = await getScope(trx, orgId, scopeId);
+      await assertScopeEditable(trx, orgId, scope.id, await getEntitlements(trx, orgId, grace));
+      if (body.assigneeId) await assertMember(trx, orgId, body.assigneeId);
+      const ids = [...new Set(body.materialIds)];
+      const present = await trx.selectFrom('scope_items').select(['material_id', 'assignee_id', 'note']).where('scope_id', '=', scope.id).where('material_id', 'in', ids).execute();
+      if (present.length !== ids.length) {
+        const ok = new Set(present.map((p) => p.material_id));
+        throw new AppError(400, 'INVALID_MATERIALS', 'Some books are not selected in this scope', { invalid: ids.filter((id) => !ok.has(id)) });
+      }
+      const changed = present.filter((p) => p.assignee_id !== body.assigneeId);
+      if (changed.length) {
+        const now = new Date();
+        await trx
+          .updateTable('scope_items')
+          .set({
+            assignee_id: body.assigneeId,
+            // A row left with neither a note nor an assignee carries no annotation stamp.
+            annotated_by: body.assigneeId ? user.id : sql<string | null>`CASE WHEN note IS NOT NULL THEN ${user.id}::uuid END`,
+            annotated_at: body.assigneeId ? now : sql<Date | null>`CASE WHEN note IS NOT NULL THEN ${now}::timestamptz END`,
+          })
+          .where('scope_id', '=', scope.id)
+          .where('material_id', 'in', changed.map((c) => c.material_id))
+          .execute();
+        await trx.updateTable('scopes').set({ updated_at: sql`now()` }).where('id', '=', scope.id).execute();
+        await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.items_assigned', targetType: 'scope', targetId: scope.id, metadata: { count: changed.length, assigneeId: body.assigneeId } }, requestMeta(req));
+        if (body.assigneeId) await notifyAssigned(trx, { orgId, scope, assigneeId: body.assigneeId, byUserId: user.id, byName: user.name, count: changed.length });
+      }
+      return { updated: changed.length };
+    });
+  });
+
   app.post('/api/orgs/:orgId/scopes/:scopeId/duplicate', async (req, reply) => {
     const { orgId, scopeId } = parse(ScopeParams, req.params);
     const { name } = parse(z.object({ name: z.string().trim().min(1).max(120) }), req.body);
@@ -227,8 +301,9 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
           throw isUniqueViolation(err) ? conflict('A scope with this name already exists', 'SCOPE_NAME_TAKEN') : err;
         });
       await sql`
-        INSERT INTO scope_items (scope_id, org_id, catalog_version_id, material_id, added_by)
-        SELECT ${copy.id}, org_id, catalog_version_id, material_id, ${user.id} FROM scope_items WHERE scope_id = ${source.id}`.execute(trx);
+        INSERT INTO scope_items (scope_id, org_id, catalog_version_id, material_id, added_by, note, assignee_id, annotated_by, annotated_at)
+        SELECT ${copy.id}, org_id, catalog_version_id, material_id, ${user.id}, note, assignee_id, annotated_by, annotated_at
+        FROM scope_items WHERE scope_id = ${source.id}`.execute(trx);
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.duplicated', targetType: 'scope', targetId: copy.id, metadata: { from: source.id, name } }, requestMeta(req));
       return copy;
     });
@@ -242,7 +317,12 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
     return inOrg(ctx, req, orgId, 'viewer', async (trx) => {
       const { scope, source, target, plan } = await carryPlanFor(trx, orgId, scopeId, to);
       const version = (t: typeof source) => ({ id: t.version.id, academicYear: t.version.academicYear, label: t.version.label });
-      return { scope: { id: scope.id, name: scope.name }, from: version(source), to: version(target), suggestedName: carriedName(scope.name, target.version.academicYear), plan };
+      // Notes and assignees follow carried books; those on books with no counterpart are not kept.
+      const annotated = new Set((await scopeAnnotations(trx, scope.id)).map((a) => a.materialId));
+      const missing = plan.subjects.flatMap((s) => s.missing.map((m) => m.fromId));
+      const notesCarried = plan.subjects.flatMap((s) => s.carried).filter((c) => annotated.has(c.fromId)).length;
+      const notesLost = missing.filter((id) => annotated.has(id)).length;
+      return { scope: { id: scope.id, name: scope.name }, from: version(source), to: version(target), suggestedName: carriedName(scope.name, target.version.academicYear), plan, notes: { carried: notesCarried, lost: notesLost } };
     });
   });
 
@@ -265,6 +345,10 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       const skip = new Set(body.skip);
       const carried = plan.subjects.flatMap((s) => s.carried.map((c) => c.toId)).filter((id) => !skip.has(id));
       const items = [...new Set([...carried, ...add])];
+      // Read before a move deletes the old items: notes and assignees follow their carried books.
+      const sourceNotes = new Map((await trx.selectFrom('scope_items').select(['material_id', 'note', 'assignee_id', 'annotated_by', 'annotated_at']).where('scope_id', '=', scope.id)
+        .where((eb) => eb.or([eb('note', 'is not', null), eb('assignee_id', 'is not', null)])).execute()).map((r) => [r.material_id, r]));
+      const noteFor = new Map(plan.subjects.flatMap((s) => s.carried).filter((c) => sourceNotes.has(c.fromId)).map((c) => [c.toId, sourceNotes.get(c.fromId)!]));
 
       let created: { id: string; name: string };
       if (body.mode === 'move') {
@@ -288,10 +372,13 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       if (items.length) {
         await trx
           .insertInto('scope_items')
-          .values(items.map((id) => ({ scope_id: created.id, org_id: orgId, catalog_version_id: target.version.id, material_id: id, added_by: user.id })))
+          .values(items.map((id) => {
+            const n = noteFor.get(id);
+            return { scope_id: created.id, org_id: orgId, catalog_version_id: target.version.id, material_id: id, added_by: user.id, note: n?.note ?? null, assignee_id: n?.assignee_id ?? null, annotated_by: n?.annotated_by ?? null, annotated_at: n?.annotated_at ?? null };
+          }))
           .execute();
       }
-      const summary = { mode: body.mode, from: scope.id, fromVersion: source.version.academicYear, toVersion: target.version.academicYear, carried: carried.length, added: add.length, skipped: skip.size, missing: plan.summary.missing };
+      const summary = { mode: body.mode, from: scope.id, fromVersion: source.version.academicYear, toVersion: target.version.academicYear, carried: carried.length, added: add.length, skipped: skip.size, missing: plan.summary.missing, notesCarried: items.filter((id) => noteFor.has(id)).length };
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.carried_forward', targetType: 'scope', targetId: created.id, metadata: summary }, requestMeta(req));
       return { scope: { id: created.id, name: created.name, catalogVersionId: target.version.id }, itemCount: items.length, ...summary };
     });
@@ -308,7 +395,7 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       if (format === 'json') requireFeature(ent, 'export_json', 'JSON export');
       await consumeUsage(trx, orgId, 'exports', ent.limits.exports_per_month, 'exports');
       const tree = await loadCatalogTree(trx, scope.catalog_version_id, { allowUnpublished: true });
-      const rows = selectedRows(tree, new Set(await scopeMaterialIds(trx, scope.id)));
+      const rows = selectedRows(tree, new Set(await scopeMaterialIds(trx, scope.id)), await annotationsForExport(trx, scope.id));
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.exported', targetType: 'scope', targetId: scope.id, metadata: { format, items: rows.length } }, requestMeta(req));
       return { scope, tree, rows };
     });

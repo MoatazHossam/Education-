@@ -105,7 +105,7 @@ describe('exports', () => {
     grade: 1, gradeEn: 'Primary 1', gradeAr: 'الصف الأول الابتدائي', track: 'moe', block: 'Block', subjectCode: 'ma', subjectEn: 'Mathematics',
     subjectAr: 'الرياضيات', subjectStatus: 'scored', materialId: 'id', materialKind: 'moe', materialTitle: 'Book',
     subjectVerification: 'unverified', subjectVerificationSource: null, subjectReviewedAt: null,
-    materialVerification: 'unverified', materialVerificationSource: null, materialReviewedAt: null, ...over,
+    materialVerification: 'unverified', materialVerificationSource: null, materialReviewedAt: null, note: null, assignee: null, ...over,
   });
   it('text export keeps the original "Copy list" layout', () => {
     expect(toText([row({}), row({ materialTitle: 'Workbook' })])).toBe('Primary 1 / الصف الأول الابتدائي\n  • Block — Mathematics\n      - Book\n      - Workbook');
@@ -120,8 +120,16 @@ describe('exports', () => {
   it('CSV carries verification columns, with the same formula guard on sources', () => {
     const csv = toCsv([row({ subjectVerification: 'verified', subjectVerificationSource: '=cmd|calc', subjectReviewedAt: '2026-10-23T10:00:00.000Z' })]);
     const [header, line] = csv.replace('﻿', '').split('\r\n');
-    expect(header!.split(',').slice(-6)).toEqual(['subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at']);
-    expect(line!.split(',').slice(-6)).toEqual(['verified', "'=cmd|calc", '2026-10-23T10:00:00.000Z', 'unverified', '', '']);
+    // Columns added later go at the end, so earlier positions never move.
+    expect(header!.split(',').slice(-8, -2)).toEqual(['subject_verification', 'subject_verification_source', 'subject_reviewed_at', 'material_verification', 'material_verification_source', 'material_reviewed_at']);
+    expect(line!.split(',').slice(-8, -2)).toEqual(['verified', "'=cmd|calc", '2026-10-23T10:00:00.000Z', 'unverified', '', '']);
+  });
+  it('CSV ends with the item note and assignee, formula-guarded', () => {
+    const csv = toCsv([row({ note: '=1+1 waiting for the 2027 edition', assignee: 'Mona Ali' }), row({})]);
+    const [header, line, empty] = csv.replace('\uFEFF', '').split('\r\n');
+    expect(header!.split(',').slice(-2)).toEqual(['note', 'assignee']);
+    expect(line!.split(',').slice(-2)).toEqual(["'=1+1 waiting for the 2027 edition", 'Mona Ali']);
+    expect(empty!.split(',').slice(-2)).toEqual(['', '']);
   });
 });
 

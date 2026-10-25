@@ -118,6 +118,15 @@ table.compare td{width:20%;font-size:15px}
 table.compare .yes{color:var(--scored);font-weight:700}
 table.compare tr.only-a th[scope="row"]{border-inline-start:3px solid var(--accent)}
 table.compare tr.only-b th[scope="row"]{border-inline-start:3px solid var(--scored)}
+/* Notes and assignees */
+.small{font-size:12px}
+table.compare.items td{width:auto;font-size:13.5px;vertical-align:top}
+table.compare.items th[scope="row"]{vertical-align:top}
+table.items td.note{white-space:pre-wrap;max-width:42ch}
+table.items .pick{width:2.75em}
+.items-bulk{align-items:center}
+.items-stats{margin-bottom:16px}
+.mnote{font-size:12px;color:var(--accent);font-weight:700}
 .pill{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:4px;background:var(--act-bg);color:var(--act)}
 .pill.ok{background:var(--scored-bg);color:var(--scored)}
 .pill.warn{background:var(--pass-bg);color:var(--pass)}

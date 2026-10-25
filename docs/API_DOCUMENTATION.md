@@ -22,7 +22,7 @@ application/json`); other content types are rejected with `415`.
 ```
 | Status | Typical codes |
 | --- | --- |
-| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH`, `IMPORT_INVALID` |
+| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `ASSIGNEE_NOT_MEMBER`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH`, `IMPORT_INVALID` |
 | 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `MFA_REQUIRED`, `MFA_INVALID` |
 | 402 | `PLAN_LIMIT_REACHED`, `FEATURE_NOT_IN_PLAN`, `STUDENTS_NOT_ENABLED` |
 | 403 | `FORBIDDEN`, `CSRF_TOKEN_INVALID`, `CSRF_ORIGIN_MISMATCH`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ORG_SUSPENDED`, `MFA_REQUIRED_BY_ORG`, `MFA_ENROLLMENT_REQUIRED`, `SUPPORT_ACCESS_REQUIRED`, `STAFF_ONLY`, `STUDENT_PORTAL_OFF` |
@@ -122,16 +122,18 @@ Tree shape:
 ### Scopes
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/orgs/:orgId/scopes` | viewer | `{scopes:[…, itemCount, readOnly], limit}` |
+| GET | `/api/orgs/:orgId/scopes` | viewer | `{scopes:[…, itemCount, readOnly, notes, assigned, assignedToMe], limit}` |
 | POST | `/api/orgs/:orgId/scopes` | editor | `{name, description?, catalogVersionId}` |
-| GET / PATCH / DELETE | `/api/orgs/:orgId/scopes/:scopeId` | viewer / editor / editor | GET returns `materialIds` |
+| GET / PATCH / DELETE | `/api/orgs/:orgId/scopes/:scopeId` | viewer / editor / editor | GET returns `materialIds` and `annotations:[{materialId, note, assigneeId, assigneeName, annotatedAt, annotatedBy}]` (selected books with a note or an assignee) |
+| PATCH | `/api/orgs/:orgId/scopes/:scopeId/items/:materialId` | editor | `{note?: string ≤500 \| null, assigneeId?: uuid \| null}` (at least one; `""` clears the note) → `{annotation}`. The book must be selected (`404`); the assignee must be a member of the organization (`400 ASSIGNEE_NOT_MEMBER`); read-only scopes `402`. A new assignee other than yourself gets an in-app notification. Audited as `scope.item_annotated` (which fields changed, not the note's text) |
+| POST | `/api/orgs/:orgId/scopes/:scopeId/items/assign` | editor | `{materialIds: uuid[1–2000], assigneeId: uuid \| null}` → `{updated}`; every book must be selected, or nothing changes (`400 INVALID_MATERIALS`); notes are kept; one notification with the count. Audited as `scope.items_assigned` |
 | POST | `/api/orgs/:orgId/scopes/:scopeId/items` | editor | `{add?: uuid[≤2000], remove?: uuid[≤2000]}` → `{itemCount}` |
 | DELETE | `/api/orgs/:orgId/scopes/:scopeId/items` | editor | clear |
-| POST | `/api/orgs/:orgId/scopes/:scopeId/duplicate` | editor | `{name}` |
+| POST | `/api/orgs/:orgId/scopes/:scopeId/duplicate` | editor | `{name}`; the copy keeps notes and assignees |
 | GET | `/api/orgs/:orgId/scopes/compare?a=<scopeId>&b=<scopeId>[&format=csv]` | viewer | Two scopes of the organization side by side: `{a, b, sameVersion, subjects:[{grade, track, block, code, nameEn, nameAr, onlyIn?, materials:[{title, kind, side: "a"\|"b"\|"both", aId, bId, titleInB?, notInOtherCatalog?}]}], summary:{onlyA, onlyB, both}}`; across catalogue versions books are matched by subject and title. `400` when `a` equals `b`; `404` for a scope of another organization. `format=csv` downloads it (needs CSV export: `402 FEATURE_NOT_IN_PLAN`; counted as an export; audited as `scope.comparison_exported`) |
-| GET | `/api/orgs/:orgId/scopes/:scopeId/carry-forward?to=<versionId>` | viewer | Preview of carrying the scope to another **published** version: `{scope, from, to, suggestedName, plan:{subjects:[{source, target\|null, changes:[{field, from, to}], carried:[{fromId, toId, title, kind, renamedFrom?}], missing:[{fromId, title, kind}], added:[{id, title, kind}]}], summary}}`; `400` for the scope's own or an unpublished version |
-| POST | `/api/orgs/:orgId/scopes/:scopeId/carry-forward` | editor | `{targetVersionId, mode?: "copy"\|"move", name?, add?: uuid[], skip?: uuid[]}`. `copy` (default) → `201`, new scope in the target version (`402 PLAN_LIMIT_REACHED` at the scope limit, `409 SCOPE_NAME_TAKEN`); `move` → `200`, the scope switches version and its items are replaced (refused for read-only scopes). `add` must be materials of the target version (`400 INVALID_MATERIALS`); `skip` leaves carried items out. Audited as `scope.carried_forward` |
-| GET | `/api/orgs/:orgId/scopes/:scopeId/export?format=txt\|csv\|json` | viewer | attachment; counts toward monthly exports; CSV/JSON need Starter+ |
+| GET | `/api/orgs/:orgId/scopes/:scopeId/carry-forward?to=<versionId>` | viewer | Preview of carrying the scope to another **published** version: `{scope, from, to, suggestedName, plan:{subjects:[{source, target\|null, changes:[{field, from, to}], carried:[{fromId, toId, title, kind, renamedFrom?}], missing:[{fromId, title, kind}], added:[{id, title, kind}]}], summary}}`; `400` for the scope's own or an unpublished version. `notes:{carried, lost}`: notes and assignees that follow their books, and those on books that cannot be carried |
+| POST | `/api/orgs/:orgId/scopes/:scopeId/carry-forward` | editor | `{targetVersionId, mode?: "copy"\|"move", name?, add?: uuid[], skip?: uuid[]}`. `copy` (default) → `201`, new scope in the target version (`402 PLAN_LIMIT_REACHED` at the scope limit, `409 SCOPE_NAME_TAKEN`); `move` → `200`, the scope switches version and its items are replaced (refused for read-only scopes). `add` must be materials of the target version (`400 INVALID_MATERIALS`); `skip` leaves carried items out. Notes and assignees follow carried books (`notesCarried` in the response). Audited as `scope.carried_forward` |
+| GET | `/api/orgs/:orgId/scopes/:scopeId/export?format=txt\|csv\|json` | viewer | attachment; counts toward monthly exports; CSV/JSON need Starter+. CSV ends with `note` and `assignee` columns, JSON items carry `note` and `assignee` (also in `GET /api/v1/scopes/:id`); TXT keeps the original layout |
 
 Example:
 ```bash

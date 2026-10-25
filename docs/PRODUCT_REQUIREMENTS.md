@@ -26,6 +26,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | FR-P5 | Scopes export as TXT (original "Copy list" layout), CSV (UTF-8 BOM, formula-injection safe) and JSON. | `integration/scopes`, `unit/security-primitives` |
 | FR-P6 | Materials that do not belong to the scope's catalogue version are rejected. | `integration/scopes` |
 | FR-P7 | A scope can be carried to another published catalogue version (usually the next academic year): the system matches the selection by natural key, shows what carries over, what has no counterpart (with the subject's new books as replacements), what changed in the covered subjects and what is new; editors then copy it into a new scope (within the plan's scope limit) or move it in place. Viewers can see the preview. The picker and the scopes list offer it when a newer catalogue exists. | `unit/carry-forward`, `integration/scope-carry-forward`, E2E journey 10 |
+| FR-P8 | Editors can add a short note (up to 500 characters) to any selected book of a scope and name the organization member responsible for it, one book at a time or several at once; everyone in the organization sees them; a new assignee is notified in the app in their language; removing a member clears their assignments; notes follow their books when a scope is duplicated or carried to another year and appear in CSV/JSON exports and the read API; deselecting a book asks first and drops its note. | `integration/scope-notes`, E2E journey 14 |
 
 ### Accounts and organizations
 | ID | Requirement | Verification |

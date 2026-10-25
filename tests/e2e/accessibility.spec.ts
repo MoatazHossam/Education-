@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { login, orgIdFromUrl, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
+import { createScope, login, orgIdFromUrl, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
 
 // Automated WCAG 2.2 A/AA audit (axe-core) of every screen and the main
 // dialogs, in English and Arabic, light and dark, desktop and phone. Runs after
@@ -72,29 +72,42 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/billing`, 'billing'], [`/org/${orgId}/settings`, 'settings'], [`/org/${orgId}/audit`, 'audit log'], ['/account', 'account'],
   ] as const) await visit(page, path, where);
 
-  // Arabic (right to left).
+  // A second scope on the newest catalogue: the comparison then matches books across catalogue years.
   await page.goto(`/org/${orgId}`);
+  await createScope(page, 'This year plan');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/This year plan/);
+  for (const i of [1, 2, 3]) await page.locator('.mat').nth(i).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  const comparePath = `/org/${orgId}/scopes/compare?a=${scopeId}&b=${await page.locator('.scopebar select').inputValue()}`;
+  await visit(page, comparePath, 'compare scopes (two catalogue years)');
+  await page.getByLabel('Show only differences').uncheck();
+  await audit(page, 'compare scopes (everything shown)');
+
+  // Arabic (right to left).
+  await page.goto(`/org/${orgId}?scope=${scopeId}`);
   await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await audit(page, 'picker (Arabic)');
   for (const [path, where] of [
     [`/org/${orgId}/scopes`, 'scopes (Arabic)'], [`/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (Arabic)'],
-    [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'],
+    [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'],
   ] as const) await visit(page, path, where);
   await page.goto(`/org/${orgId}`);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
 
   // Dark colour scheme.
   await page.emulateMedia({ colorScheme: 'dark' });
-  await visit(page, `/org/${orgId}`, 'picker (dark)');
+  await visit(page, `/org/${orgId}?scope=${scopeId}`, 'picker (dark)');
   await visit(page, `/org/${orgId}/billing`, 'billing (dark)');
   await visit(page, `/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (dark)');
+  await visit(page, comparePath, 'compare scopes (dark)');
 
   // Phone.
   const phone = await newPage(browser, { viewport: { width: 390, height: 844 } });
   await login(phone, email);
-  await visit(phone, `/org/${orgId}`, 'picker (phone)');
+  await visit(phone, `/org/${orgId}?scope=${scopeId}`, 'picker (phone)');
   await visit(phone, `/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (phone)');
+  await visit(phone, comparePath, 'compare scopes (phone)');
 
   // Platform admin.
   const admin = await newPage(browser);

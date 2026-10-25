@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**23 files, 154 tests, 154 passed, 0 failed** (2026-10-25). Integration tests ran against a real
+**25 files, 159 tests, 159 passed, 0 failed** (2026-10-25). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -31,6 +31,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/billing-logic | 9 | Pass |
 | unit/security-primitives | 11 | Pass |
 | unit/i18n | 2 | Pass |
+| unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
@@ -39,6 +40,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
 | integration/scopes | 10 | Pass |
+| integration/scope-compare | 3 | Pass — same catalogue with CSV (counted, audited); last year against this year; other organization 404, same scope 400, viewer allowed, CSV refused on Free |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
@@ -53,7 +55,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 154</summary>
+<details><summary>Show all 159</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -151,6 +153,11 @@ Full test names (verbatim from the verbose reporter):
 - catalog-verification › is admin-only and refuses archived versions
 - catalog-verification › copies marks into a draft of the same academic year only; content edits reset them, unchanged saves do not
 - catalog-verification › scope exports carry the marks
+- scope-compare › on one catalogue: only in each and in both; the CSV download is counted and audited
+- scope-compare › compares last year's scope with this year's: books matched by subject and title, renamed and missing ones marked
+- scope-compare › only within one organization; viewers can compare; the CSV needs CSV export on the plan
+- unit › comparing two scopes: on one catalogue version: only in A, only in B, in both; untouched subjects are left out
+- unit › comparing two scopes: across catalogue versions: matched by subject and title, with renamed and missing books and subjects marked
 - unit › carry forward: carries exact and loosely matching titles, and lists missing books with new candidates
 - unit › carry forward: follows a subject whose block was renamed when its code is unambiguous
 - unit › carry forward: reports removed subjects, ignores unselected ones, and summarises
@@ -208,8 +215,8 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**13 tests, 13 passed** (2.5 min, 2026-10-25, with the alert monitor running in the server), Chromium, real server
-process on port 3100: 11 journeys, then the accessibility project (2 tests), which reuses the journeys' data.
+**14 tests, 14 passed** (2.6 min, 2026-10-25), Chromium, real server process on port 3100: 12 journeys,
+then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
 | --- | --- | --- |
@@ -224,6 +231,7 @@ process on port 3100: 11 journeys, then the accessibility project (2 tests), whi
 | 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
 | 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope and the owner is notified; the notification opens the review page, which lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
 | 11 | Platform admin downloads the 2027/2028 sheet, marks three books verified, uploads it, sees the preview and applies it; coverage shows 3 verified materials | Pass |
+| 12 | Owner builds two scopes with one book in common, opens Compare scopes from the scopes list: 1 only in each, 1 in both; differences only by default, everything after clearing the filter; Swap; the downloaded CSV has the right yes/no columns | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -233,10 +241,10 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 12 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 41 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog | Pass — 0 findings (2.1 min) |
-| 13 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 13 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 46 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone) | Pass — 0 findings |
+| 14 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 
-Before the fixes (same tests, front end at the previous commit) test 12 reported 26 findings:
+Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 
 | Rule (impact) | Count | Where | Fix |
 | --- | --- | --- | --- |
@@ -246,7 +254,7 @@ Before the fixes (same tests, front end at the previous commit) test 12 reported
 | `scrollable-region-focusable` (serious) | 1 | admin audit table | all 11 table cards are labelled, focusable regions (`tableCard`) |
 | `aria-allowed-attr` (critical) | 1 | admin webhook filter links with `aria-pressed` | `aria-current="page"` |
 
-Test 13 failed on the old front end: following the skip link redrew the page (the router treated `#main`
+The keyboard test failed on the old front end: following the skip link redrew the page (the router treated `#main`
 as a navigation). With that fixed, it then failed because Escape removed the dialog before the browser
 could return focus; the dialog helper now cleans up on `close` and focuses the opener.
 

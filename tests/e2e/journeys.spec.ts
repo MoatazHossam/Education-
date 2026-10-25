@@ -293,3 +293,50 @@ test('platform admin records verification marks in bulk from an edited spreadshe
   await dlg.getByRole('button', { name: 'Apply 3 changes' }).click();
   await expect(page.getByText(/^Verified: 0\/231 subjects, 3\/\d+ materials/)).toBeVisible();
 });
+
+test('owner compares two scopes side by side and downloads the comparison', async ({ page }) => {
+  const email = `compare.${uid()}@e2e.test`;
+  await registerAndVerify(page, email, 'Twin Campus School');
+  await login(page, email);
+  const orgId = orgIdFromUrl(page);
+  const mats = page.locator('.mat');
+  // The title is the button's first text node (a verification badge may follow).
+  const titles: string[] = [];
+  for (let i = 0; i < 3; i++) titles.push(await mats.nth(i).evaluate((el) => (el.firstChild?.textContent ?? '').trim()));
+
+  await createScope(page, 'Campus North');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/Campus North/);
+  for (const i of [0, 1]) await mats.nth(i).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  await createScope(page, 'Campus South');
+  await expect(page.locator('.scopebar select option:checked')).toHaveText(/Campus South/);
+  for (const i of [1, 2]) await mats.nth(i).click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+
+  await page.goto(`/org/${orgId}/scopes`);
+  await page.getByRole('link', { name: 'Compare scopes' }).click();
+  await expect(page.getByRole('heading', { name: 'Compare scopes', level: 1 })).toBeVisible();
+  await expect(page.locator('.stat', { hasText: 'Only in Campus North' }).locator('.v')).toHaveText('1');
+  await expect(page.locator('.stat', { hasText: 'Only in Campus South' }).locator('.v')).toHaveText('1');
+  await expect(page.locator('.stat', { hasText: 'In both' }).locator('.v')).toHaveText('1');
+  // Differences only by default: the shared book is hidden until the filter is cleared.
+  const rows = page.locator('table.compare tbody tr:not(.group)');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText(titles[0]!);
+  await expect(rows.first().locator('td').first()).toHaveText('✓Included');
+  await expect(rows.first().locator('td').last()).toHaveText('—Not included');
+  await page.getByLabel('Show only differences').uncheck();
+  await expect(rows).toHaveCount(3);
+
+  // Swapping puts Campus South first.
+  await page.getByRole('button', { name: 'Swap' }).click();
+  await expect(page.getByLabel('First scope')).toHaveValue(/.+/);
+  await expect(page.locator('.stat').first()).toContainText('Only in Campus South');
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download comparison (CSV)' }).click()]);
+  expect(download.suggestedFilename()).toBe('compare-Campus-South-Campus-North.csv');
+  const csv = parseCsv(await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
+  expect(csv[0]![7]).toMatch(/^Campus South \(\d{4}\/\d{4}\)$/);
+  expect(csv[0]![8]).toMatch(/^Campus North \(\d{4}\/\d{4}\)$/);
+  expect(csv.slice(1).map((r) => [r[5], r[7], r[8]])).toEqual([[titles[0], 'no', 'yes'], [titles[1], 'yes', 'yes'], [titles[2], 'yes', 'no']]);
+});

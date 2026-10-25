@@ -39,6 +39,17 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
 - **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
 
+### Scope comparison · COMPLETE
+- **Implemented:** any two scopes of an organization side by side (Scopes → Compare scopes; any member, every plan). On the same catalogue version books are compared by id. Across catalogue years, for example last year's plan against this year's, they are matched by subject and title with the carry-forward rules. Those rules now live in a shared module, `src/scopes/match.ts`, and carry-forward behaviour is unchanged. A book renamed only in capitals or spacing counts as the same book and shows both titles; books and subjects missing from the other year's catalogue are marked. The page shows:
+  - counts only in the first, only in the second, and in both;
+  - a table per grade with an included/not-included mark for each scope (the words are read out by screen readers);
+  - "Show only differences" (the default), "Swap", and a choice of either scope.
+
+  "Download comparison (CSV)" gives one row per book with a yes/no column per scope and a note. It needs CSV export on the plan, and is counted and audited (`scope.comparison_exported`) like other exports.
+- **Files:** `src/scopes/compare.ts`, `src/scopes/match.ts`, `src/scopes/carry.ts`, `src/scopes/routes.ts`, `public/js/views/compare.js`, `public/js/views/scopes.js`, `public/app.css`, `public/js/i18n.js`.
+- **Tests:** `unit/scope-compare.test.ts` (2), `scope-compare.test.ts` (3), and E2E journey 12, which builds two scopes, compares them, filters, swaps and downloads the CSV. The accessibility audit now includes the comparison across two catalogue years, in five states: differences only, everything shown, Arabic, dark and phone; 0 findings. All pass; the carry-forward tests still pass on the shared matcher.
+- **Limitations:** two scopes at a time; books are matched by title, so a book retitled beyond capitals and spacing shows as one removed and one added; per-item notes and assignees are not built yet.
+
 ### Operational alerts · COMPLETE (verified locally; real channels not yet configured)
 - **Implemented:** every app instance runs a set of checks once a minute (`ALERT_CHECK_INTERVAL_MS`):
   - the background worker has stopped reporting;
@@ -84,7 +95,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:** counters restart from zero after a database crash or failover (UNLOGGED).
 
 ### Accessibility audit · COMPLETE
-- **Implemented:** an automated WCAG 2.2 A/AA check (axe-core 4.13 in Playwright) of 41 screens and dialogs: the signed-out pages, every organization page, the picker in four states, the new-scope, notifications and verification dialogs, and every platform-admin page, in English and Arabic, light and dark, desktop and a 390 px phone. It runs in the E2E suite after the journeys, so pages carry real data, and any finding fails it. The first run reported 26 findings, all fixed:
+- **Implemented:** an automated WCAG 2.2 A/AA check (axe-core 4.13 in Playwright) of 46 screens and dialogs: the signed-out pages, every organization page, the picker in four states, the scope comparison in five, the new-scope, notifications and verification dialogs, and every platform-admin page, in English and Arabic, light and dark, desktop and a 390 px phone. It runs in the E2E suite after the journeys, so pages carry real data, and any finding fails it. The first run reported 26 findings, all fixed:
   - colour contrast (13): the amber used for the trial banner, notices, "needs review" statuses and warnings measured 4.17:1 on its pale background; it is now 5.50:1 (light theme; dark already passed);
   - target size (8): source links in the picker and the verification badges were under 24 px tall;
   - unnamed meters (3): billing usage meters now have a name and a "used / limit" value;
@@ -92,7 +103,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - invalid ARIA (1): the admin webhook filter links used `aria-pressed`; they now mark the current filter with `aria-current`.
   A keyboard-only test found two more problems, also fixed: closing a dialog with Escape lost focus instead of returning it to the button that opened it, and following the skip link was handled by the router as a navigation and redrew the page; it now moves focus to the page heading.
 - **Files:** `tests/e2e/accessibility.spec.ts`, `tests/e2e/helpers.ts` (shared with the journeys), `playwright.config.ts`, `public/js/{dom,main}.js`, `public/app.css`, `public/js/views/{account,admin,billing,members,scopes,settings}.js`.
-- **Tests:** E2E 12 (audit of 41 screens) and 13 (keyboard) — pass. Against the front end before the fixes, 12 reports the 26 findings and 13 fails.
+- **Tests:** the E2E accessibility audit and keyboard test — pass. Against the front end before the fixes, the audit reports the 26 findings and the keyboard test fails.
 - **Limitations:** automated rules cover only part of WCAG; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet; Chromium only.
 
 ### Catalogue spreadsheet export and import · COMPLETE
@@ -168,7 +179,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (154 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (159 unit/integration + 14 E2E passing: 12 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

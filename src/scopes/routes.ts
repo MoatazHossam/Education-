@@ -2,17 +2,17 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
-import { hasRole, inOrg } from '../auth/guards.js';
+import { hasRole, inOrg, requireUser } from '../auth/guards.js';
 import { assertScopeAvailable, assertScopeEditable, consumeUsage, getEntitlements, lockOrg, requireFeature } from '../billing/entitlements.js';
 import { loadCatalogTree } from '../catalog/service.js';
-import type { Executor } from '../db/index.js';
+import { withUserContext, type Executor } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { planCarryForward } from './carry.js';
 import { compareScopes, comparisonCsv } from './compare.js';
 import { selectedRows, toCsv, toJson, toText } from './export.js';
-import { annotationCounts, annotationsForExport, assertMember, ITEM_STATUSES, myAssignments, notifyAssigned, scopeAnnotations, TRACKED_SQL } from './notes.js';
+import { annotationCounts, annotationsForExport, assertMember, assignmentCounts, ITEM_STATUSES, myAssignments, notifyAssigned, scopeAnnotations, TRACKED_SQL } from './notes.js';
 import { getScope, listScopes, scopeMaterialIds } from './service.js';
 
 const MAX_BATCH = 2000;
@@ -318,18 +318,72 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
     });
   });
 
+  const ShowQuery = z.object({ show: z.enum(['open', 'done', 'all']).default('open') });
+
+  /** The member's books in one organization; books in scopes over the plan limit are read-only. */
+  async function assignmentsIn(trx: Executor, orgId: string, userId: string, show: 'open' | 'done' | 'all') {
+    const ent = await getEntitlements(trx, orgId, grace);
+    const scopes = await listScopes(trx, orgId);
+    const max = ent.limits.max_scopes;
+    const readOnly = new Set(scopes.filter((_, i) => max !== null && i >= max).map((sc) => sc.id));
+    const items = await myAssignments(trx, orgId, userId, show);
+    return items.map((it) => ({ ...it, readOnly: readOnly.has(it.scopeId) }));
+  }
+
   // Books assigned to the signed-in member across the organization's scopes.
   app.get('/api/orgs/:orgId/assignments', async (req) => {
     const { orgId } = parse(z.object({ orgId: z.string() }), req.params);
-    const { show } = parse(z.object({ show: z.enum(['open', 'done', 'all']).default('open') }), req.query);
-    return inOrg(ctx, req, orgId, 'viewer', async (trx, { user, role }) => {
-      const ent = await getEntitlements(trx, orgId, grace);
-      const scopes = await listScopes(trx, orgId);
-      const max = ent.limits.max_scopes;
-      const readOnly = new Set(scopes.filter((_, i) => max !== null && i >= max).map((sc) => sc.id));
-      const items = await myAssignments(trx, orgId, user.id, show);
-      return { items: items.map((it) => ({ ...it, readOnly: readOnly.has(it.scopeId) })), canEditAll: hasRole(role, 'editor') };
-    });
+    const { show } = parse(ShowQuery, req.query);
+    return inOrg(ctx, req, orgId, 'viewer', async (trx, { user, role }) => ({
+      items: await assignmentsIn(trx, orgId, user.id, show),
+      canEditAll: hasRole(role, 'editor'),
+    }));
+  });
+
+  // The same across every organization the member belongs to. Each one is read
+  // in its own tenant context through the checks of its own page (inOrg), so a
+  // suspended organization, or one that asks this member for two-factor sign-in,
+  // is listed as unavailable instead of read.
+  app.get('/api/assignments', async (req) => {
+    const { user } = requireUser(req);
+    const { show } = parse(ShowQuery, req.query);
+    const memberships = await withUserContext(ctx.db, user.id, (trx) =>
+      trx.selectFrom('memberships as m').innerJoin('organizations as o', 'o.id', 'm.org_id').select(['o.id', 'o.name']).where('m.user_id', '=', user.id).orderBy('o.name').execute(),
+    );
+    const organizations: { id: string; name: string; open: number; overdue: number; dueSoon: number }[] = [];
+    const unavailable: { id: string; name: string; reason: string }[] = [];
+    const items = [];
+    for (const m of memberships) {
+      try {
+        const found = await inOrg(ctx, req, m.id, 'viewer', async (trx) => ({
+          items: await assignmentsIn(trx, m.id, user.id, show),
+          counts: await assignmentCounts(trx, m.id, user.id),
+        }));
+        organizations.push({ id: m.id, name: m.name, ...found.counts });
+        items.push(...found.items.map((it) => ({ orgId: m.id, orgName: m.name, ...it })));
+      } catch (err) {
+        if (!(err instanceof AppError) || (err.statusCode !== 403 && err.statusCode !== 404)) throw err;
+        // 404: the membership ended meanwhile.
+        if (err.statusCode === 403) unavailable.push({ id: m.id, name: m.name, reason: err.code });
+      }
+    }
+    // As on each organization's page: done last, then by due date (none last), then organization, scope, grade, title.
+    items.sort(
+      (a, b) =>
+        Number(a.status === 'done') - Number(b.status === 'done') ||
+        (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999') ||
+        a.orgName.localeCompare(b.orgName) ||
+        a.scopeName.localeCompare(b.scopeName) ||
+        a.grade - b.grade ||
+        a.title.localeCompare(b.title),
+    );
+    const counts = { open: 0, overdue: 0, dueSoon: 0 };
+    for (const o of organizations) {
+      counts.open += o.open;
+      counts.overdue += o.overdue;
+      counts.dueSoon += o.dueSoon;
+    }
+    return { items: items.slice(0, 2000), counts, organizations, unavailable };
   });
 
   app.post('/api/orgs/:orgId/scopes/:scopeId/duplicate', async (req, reply) => {

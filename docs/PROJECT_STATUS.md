@@ -77,7 +77,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - ~~No reminder before a due date~~: added, see due-date reminders below.
   - ~~Assignment emails are sent once per assignment~~: members can now choose one summary a day, see below.
-  - My assignments covers one organization at a time.
+  - ~~My assignments covers one organization at a time~~: see My assignments in all organizations below.
 
 ### Due-date reminders · COMPLETE
 - **Implemented:** the worker reminds the member a book is assigned to when its due date comes near and when it has passed.
@@ -134,7 +134,28 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - The summary time (08:00 Cairo) is the same for everyone.
   - Due-date reminders stay separate emails.
-  - My assignments still covers one organization at a time.
+  - ~~My assignments still covers one organization at a time~~: see below.
+
+### My assignments in all organizations · COMPLETE
+- **Implemented:** a member of several organizations sees all the books assigned to them on one page, `/assignments` (API `GET /api/assignments`).
+  - **One list:** overdue first, then by due date. Each row shows its organization and scope, with links to that organization's My assignments and to the scope's notes page.
+  - **Counts:** totals for not done, overdue and due soon, plus "not done yet" per organization.
+  - **Filters:** not done, done or all.
+  - **Status updates:** the member changes a book's status here, through that organization's own route and rules.
+  - **How to get there:** each organization's My assignments shows "See your books in all your organizations (n)" when the member has more than one.
+  - **No new cross-tenant read:** each organization is read in its own tenant context through `inOrg`, the same checks as its own page. A suspended organization, or one that requires two-factor sign-in for the member's role when this session has none, is not read. The page names it as not shown. Students are refused like every staff route.
+  - No database change.
+- **Files:** `src/scopes/routes.ts`, `public/js/views/assignments.js`, `public/js/main.js`, `public/js/i18n.js`. The route is added to the reviewed allow-list in `authz-coverage.test.ts`.
+- **Tests:** `all-assignments.test.ts` (4):
+  - two organizations merged in one order, with counts and the done/all filters; another member's books and organizations never appear;
+  - a viewer updating a status through the book's own organization;
+  - suspended and two-factor organizations listed as unavailable and not read;
+  - one organization giving the same books as its own page; signed-out callers 401, students 403.
+
+  The student suite also checks the new route refuses a student. E2E journey 18: Hana creates her own organization, picks a book and gives herself a due date. From Notes Academy's My assignments she opens the page for both organizations: 5 books, 2 due soon, the earliest due first. She marks her own organization's book done there and finds it under Done. The accessibility audit adds this page in English, Arabic, dark and on a phone (73 screens, 0 findings).
+- **Limitations:**
+  - The page fetches each organization in turn, so it slows with many memberships (each is a few small queries).
+  - The navigation count in each organization still counts that organization only.
 
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
@@ -291,7 +312,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (228 unit/integration + 19 E2E passing: 17 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (232 unit/integration + 20 E2E passing: 18 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

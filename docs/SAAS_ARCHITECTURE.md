@@ -71,7 +71,8 @@ modules, no bundler; fonts self-hosted from `@fontsource`.
    material from another catalogue year.
 
 Tenant boundaries in other subsystems: exports and API responses are produced inside the tenant
-context; caches hold only the global catalogue (not tenant data); the worker processes each org in
+context (the one cross-organization page, My assignments in all organizations, reads each of the
+member's organizations in its own tenant context through `inOrg`, never with `withSystemContext`); caches hold only the global catalogue (not tenant data); the worker processes each org in
 its own transaction; there is no tenant file storage.
 
 ## 3. Request lifecycle

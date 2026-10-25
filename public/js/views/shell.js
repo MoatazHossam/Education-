@@ -76,7 +76,7 @@ export async function renderShell(root, ctx, handler, isCurrent) {
     : null;
 
   // The name carries the unread count: an aria-label replaces the badge's text for screen readers.
-  const notifBtn = h('button', { type: 'button', class: 'iconbtn', 'aria-label': me.unreadNotifications ? t('notifications.titleUnread', { n: me.unreadNotifications }) : t('notifications.title') }, '🔔', me.unreadNotifications ? h('span', { class: 'badge' }, String(me.unreadNotifications)) : null);
+  const notifBtn = h('button', { type: 'button', class: 'iconbtn', 'aria-label': me.unreadNotifications ? t('notifications.titleUnread', { n: me.unreadNotifications }) : t('notifications.title') }, h('span', { 'aria-hidden': 'true' }, '🔔'), me.unreadNotifications ? h('span', { class: 'badge' }, String(me.unreadNotifications)) : null);
   notifBtn.addEventListener('click', () => showNotifications(notifBtn).catch((e) => toast(errorMessage(e), 'error')));
 
   const role = info?.role;

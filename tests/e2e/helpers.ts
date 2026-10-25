@@ -42,7 +42,8 @@ export async function payInSandbox(page: Page) {
   await expect(page.getByText('Payment received')).toBeVisible({ timeout: 20_000 });
 }
 
-export async function signInAsPlatformAdmin(page: Page) {
+/** `onCodePage` runs on the two-factor page, before the code is entered. */
+export async function signInAsPlatformAdmin(page: Page, onCodePage?: () => Promise<void>) {
   const email = `admin.${uid()}@e2e.test`;
   const secret = authenticator.generateSecret();
   await ownerQuery(
@@ -51,6 +52,7 @@ export async function signInAsPlatformAdmin(page: Page) {
   );
   await login(page, email);
   await expect(page.getByRole('heading', { name: 'Two-factor verification' })).toBeVisible();
+  await onCodePage?.();
   await page.getByLabel('Authentication code').fill(authenticator.generate(secret));
   await page.getByRole('button', { name: 'Verify' }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/mfa'));

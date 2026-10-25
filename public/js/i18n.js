@@ -2,7 +2,7 @@
 // comes from the API, which already carries English and Arabic subject names.
 const en = {
   'app.name': 'Curriculum Scope', 'app.tagline': 'Egypt K-12',
-  'common.cancel': 'Cancel', 'common.close': 'Close', 'common.confirm': 'Confirm', 'common.create': 'Create', 'common.delete': 'Delete', 'common.done': 'Done', 'common.edit': 'Edit', 'common.loading': 'Loading…', 'common.save': 'Save', 'common.saved': 'Saved',
+  'common.cancel': 'Cancel', 'common.none': 'None', 'common.actions': 'Details and actions', 'common.close': 'Close', 'common.confirm': 'Confirm', 'common.create': 'Create', 'common.delete': 'Delete', 'common.done': 'Done', 'common.edit': 'Edit', 'common.loading': 'Loading…', 'common.save': 'Save', 'common.saved': 'Saved',
   'nav.picker': 'Picker', 'nav.scopes': 'Scopes', 'nav.members': 'Members', 'nav.billing': 'Billing', 'nav.settings': 'Settings', 'nav.audit': 'Audit log', 'nav.admin': 'Platform admin',
   'shell.switchOrg': 'Switch organization', 'shell.chooseOrg': 'Choose organization…', 'shell.newOrg': 'New organization…', 'shell.nav': 'Main navigation', 'shell.logout': 'Sign out',
   'notfound.title': 'Page not found', 'notfound.home': 'Go to the start page',
@@ -27,7 +27,7 @@ const en = {
   'settings.dangerZone': 'Danger zone', 'settings.deleteOrg': 'Delete organization', 'settings.deleteOrgText': 'Permanently deletes this organization with all scopes, members, invitations, API keys and billing records. This cannot be undone.', 'settings.deleteOrgConfirm': 'Type “{name}” and your password to confirm.', 'settings.typeName': 'Organization name',
   'account.organizations': 'Organizations', 'account.noOrgs': 'You are not a member of any organization yet.', 'account.createOrg': 'Create organization',
   'picker.contentScope': 'Content scope', 'picker.academicYear': 'Academic year', 'picker.lede': "Every grade from Primary 1 to Secondary 3, with each subject's status, the Ministry books, language-school variants, common external references, and the international programmes that run alongside. Tick the materials you want the platform to cover — your selection is saved to the chosen scope for your whole team.",
-  'picker.filters': 'Filters', 'picker.scope': 'Scope', 'picker.noScopes': 'No scopes yet', 'picker.track': 'Track', 'picker.grade': 'Grade', 'picker.show': 'Show', 'picker.search': 'Search', 'picker.searchPlaceholder': 'Search subject, book, programme…',
+  'picker.filters': 'Filters', 'picker.legendLabel': 'Colour key', 'picker.scope': 'Scope', 'picker.noScopes': 'No scopes yet', 'picker.track': 'Track', 'picker.grade': 'Grade', 'picker.show': 'Show', 'picker.search': 'Search', 'picker.searchPlaceholder': 'Search subject, book, programme…',
   'picker.short.p': 'P', 'picker.short.prep': 'Prep', 'picker.short.sec': 'Sec', 'picker.stage.primary': 'Primary stage · المرحلة الابتدائية', 'picker.stage.prep': 'Preparatory stage · المرحلة الإعدادية', 'picker.stage.secondary': 'Secondary stage · المرحلة الثانوية',
   'picker.subject': '{n} subject', 'picker.subjects': '{n} subjects', 'picker.noMatch': 'Nothing matches these filters. Clear the search or pick another track.', 'picker.sources': 'Sources',
   'picker.selection': 'Selection', 'picker.selected': 'Selected:', 'picker.items': 'items', 'picker.selectAll': 'Select all shown', 'picker.clear': 'Clear', 'picker.viewList': 'View list', 'picker.hideList': 'Hide list', 'picker.copyList': 'Copy list', 'picker.download': 'Download…',
@@ -119,7 +119,7 @@ const en = {
   'items.stat.selected': 'Selected books', 'items.stat.notes': 'With a note', 'items.stat.assigned': 'Assigned', 'items.stat.mine': 'Assigned to you',
   'items.show.all': 'All selected books', 'items.show.mine': 'Assigned to me', 'items.show.notes': 'With a note', 'items.show.assigned': 'Assigned', 'items.show.unassigned': 'Not assigned',
   'items.allGrades': 'All grades', 'items.search': 'Book, subject, note or person…', 'items.note': 'Note', 'items.noteHint': 'Up to 500 characters. Everyone in the organization can read it.',
-  'items.assignee': 'Assigned to', 'items.nobody': 'Nobody', 'items.editTitle': 'Note and assignee', 'items.editFor': 'Edit the note on {title}', 'items.by': '{name}, {date}',
+  'items.assignee': 'Assigned to', 'items.nobody': 'Nobody', 'items.editTitle': 'Note and assignee', 'items.editFor': 'Edit the note on {title}', 'items.by': 'Last changed by {name}, {date}',
   'items.bulkTitle': 'Change several books', 'items.chosen': '{n} chosen', 'items.chooseFirst': 'Tick the books to assign first.',
   'items.choose': 'Choose {title}', 'items.chooseAll': 'Choose every book shown in {grade}', 'items.noneSelected': 'This scope has no selected books yet.', 'items.noMatch': 'No books match these filters.',
   'items.summary': '{notes} with notes · {assigned} assigned', 'items.mineCount': '{n} for you', 'items.markNote': 'has a note', 'items.markAssigned': 'assigned to {name}',
@@ -186,7 +186,7 @@ const en = {
 
 const ar = {
   'app.name': 'نطاق المناهج', 'app.tagline': 'مصر من الابتدائي للثانوي',
-  'common.cancel': 'إلغاء', 'common.close': 'إغلاق', 'common.confirm': 'تأكيد', 'common.create': 'إنشاء', 'common.delete': 'حذف', 'common.done': 'تم', 'common.edit': 'تعديل', 'common.loading': 'جارٍ التحميل…', 'common.save': 'حفظ', 'common.saved': 'تم الحفظ',
+  'common.cancel': 'إلغاء', 'common.none': 'لا يوجد', 'common.actions': 'التفاصيل والإجراءات', 'common.close': 'إغلاق', 'common.confirm': 'تأكيد', 'common.create': 'إنشاء', 'common.delete': 'حذف', 'common.done': 'تم', 'common.edit': 'تعديل', 'common.loading': 'جارٍ التحميل…', 'common.save': 'حفظ', 'common.saved': 'تم الحفظ',
   'nav.picker': 'دليل المناهج', 'nav.scopes': 'النطاقات', 'nav.members': 'الأعضاء', 'nav.billing': 'الفوترة', 'nav.settings': 'الإعدادات', 'nav.audit': 'سجل التدقيق', 'nav.admin': 'إدارة المنصة',
   'shell.switchOrg': 'تبديل المؤسسة', 'shell.chooseOrg': 'اختر مؤسسة…', 'shell.newOrg': 'مؤسسة جديدة…', 'shell.nav': 'التنقل الرئيسي', 'shell.logout': 'تسجيل الخروج',
   'notfound.title': 'الصفحة غير موجودة', 'notfound.home': 'العودة إلى البداية',
@@ -211,7 +211,7 @@ const ar = {
   'settings.dangerZone': 'منطقة الخطر', 'settings.deleteOrg': 'حذف المؤسسة', 'settings.deleteOrgText': 'يحذف هذه المؤسسة نهائيًا مع كل النطاقات والأعضاء والدعوات ومفاتيح API وسجلات الفوترة. لا يمكن التراجع عن ذلك.', 'settings.deleteOrgConfirm': 'اكتب «{name}» وكلمة المرور للتأكيد.', 'settings.typeName': 'اسم المؤسسة',
   'account.organizations': 'المؤسسات', 'account.noOrgs': 'لست عضوًا في أي مؤسسة بعد.', 'account.createOrg': 'إنشاء مؤسسة',
   'picker.contentScope': 'نطاق المحتوى', 'picker.academicYear': 'العام الدراسي', 'picker.lede': 'كل الصفوف من الأول الابتدائي حتى الثالث الثانوي، مع حالة كل مادة وكتب الوزارة ونسخ مدارس اللغات والمراجع الخارجية الشائعة والبرامج الدولية الموازية. اختر المواد التي تريد أن تغطيها منصتك، وسيُحفظ اختيارك في النطاق المحدد لفريقك كله.',
-  'picker.filters': 'عوامل التصفية', 'picker.scope': 'النطاق', 'picker.noScopes': 'لا توجد نطاقات بعد', 'picker.track': 'المسار', 'picker.grade': 'الصف', 'picker.show': 'عرض', 'picker.search': 'بحث', 'picker.searchPlaceholder': 'ابحث عن مادة أو كتاب أو برنامج…',
+  'picker.filters': 'عوامل التصفية', 'picker.legendLabel': 'مفتاح الألوان', 'picker.scope': 'النطاق', 'picker.noScopes': 'لا توجد نطاقات بعد', 'picker.track': 'المسار', 'picker.grade': 'الصف', 'picker.show': 'عرض', 'picker.search': 'بحث', 'picker.searchPlaceholder': 'ابحث عن مادة أو كتاب أو برنامج…',
   'picker.short.p': 'ب', 'picker.short.prep': 'ع', 'picker.short.sec': 'ث', 'picker.stage.primary': 'المرحلة الابتدائية · Primary stage', 'picker.stage.prep': 'المرحلة الإعدادية · Preparatory stage', 'picker.stage.secondary': 'المرحلة الثانوية · Secondary stage',
   'picker.subject': 'مادة واحدة', 'picker.subjects': 'عدد المواد: {n}', 'picker.noMatch': 'لا توجد نتائج لهذه الاختيارات. امسح البحث أو اختر مسارًا آخر.', 'picker.sources': 'المصادر',
   'picker.selection': 'الاختيار', 'picker.selected': 'المحدد:', 'picker.items': 'عنصر', 'picker.selectAll': 'تحديد كل المعروض', 'picker.clear': 'مسح', 'picker.viewList': 'عرض القائمة', 'picker.hideList': 'إخفاء القائمة', 'picker.copyList': 'نسخ القائمة', 'picker.download': 'تنزيل…',
@@ -310,7 +310,7 @@ const ar = {
   'items.stat.selected': 'الكتب المحددة', 'items.stat.notes': 'عليها ملاحظة', 'items.stat.assigned': 'لها مسؤول', 'items.stat.mine': 'مسندة إليك',
   'items.show.all': 'كل الكتب المحددة', 'items.show.mine': 'المسندة إليّ', 'items.show.notes': 'عليها ملاحظة', 'items.show.assigned': 'لها مسؤول', 'items.show.unassigned': 'بلا مسؤول',
   'items.allGrades': 'كل الصفوف', 'items.search': 'كتاب أو مادة أو ملاحظة أو شخص…', 'items.note': 'الملاحظة', 'items.noteHint': 'حتى 500 حرف. يقرؤها كل أعضاء المؤسسة.',
-  'items.assignee': 'المسؤول', 'items.nobody': 'لا أحد', 'items.editTitle': 'الملاحظة والمسؤول', 'items.editFor': 'تعديل الملاحظة على {title}', 'items.by': '{name}، {date}',
+  'items.assignee': 'المسؤول', 'items.nobody': 'لا أحد', 'items.editTitle': 'الملاحظة والمسؤول', 'items.editFor': 'تعديل الملاحظة على {title}', 'items.by': 'آخر تعديل: {name}، {date}',
   'items.bulkTitle': 'تعديل عدة كتب', 'items.chosen': 'المختار: {n}', 'items.chooseFirst': 'اختر الكتب المراد إسنادها أولًا.',
   'items.choose': 'اختيار {title}', 'items.chooseAll': 'اختيار كل الكتب المعروضة في {grade}', 'items.noneSelected': 'لا توجد كتب محددة في هذا النطاق بعد.', 'items.noMatch': 'لا توجد كتب تطابق عوامل التصفية.',
   'items.summary': 'ملاحظات: {notes} · بمسؤول: {assigned}', 'items.mineCount': 'لك: {n}', 'items.markNote': 'عليه ملاحظة', 'items.markAssigned': 'مسند إلى {name}',

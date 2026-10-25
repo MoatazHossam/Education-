@@ -27,7 +27,7 @@ async function changePassword() {
 }
 
 function book(m) {
-  return h('span', { class: `mat book ${m.kind}`, dir: 'auto' }, m.title, h('span', { class: 'sr-only' }, ` (${t(`kind.${m.kind}`)})`));
+  return h('span', { class: `mat book ${m.kind}`, dir: 'auto' }, m.title, h('span', { class: 'sr-only' }, ` (${t(`legend.${m.kind}`)})`));
 }
 
 function curriculum(data) {

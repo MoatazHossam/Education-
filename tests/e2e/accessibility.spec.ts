@@ -1,7 +1,9 @@
+import { writeFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { hashPassword } from '../../src/auth/password.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
+import { checkTranscript, heard, headingSkips, listen, readPage, saveTranscript, TRANSCRIPTS, unmarkedLanguage, type SrFinding } from './screen-reader.js';
 import { ownerQuery } from './server.js';
 
 // Automated WCAG 2.2 A/AA audit (axe-core) of every screen and the main
@@ -13,6 +15,8 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 interface Finding { where: string; rule: string; impact: string | null | undefined; help: string; nodes: string[] }
 const findings: Finding[] = [];
 const audited: string[] = [];
+// The same screens read by a simulated screen reader (screen-reader.ts): transcripts and what they reveal.
+const srFindings: SrFinding[] = [];
 
 async function audit(page: Page, where: string) {
   await page.waitForLoadState('networkidle');
@@ -20,6 +24,9 @@ async function audit(page: Page, where: string) {
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   audited.push(where);
   for (const v of violations) findings.push({ where, rule: v.id, impact: v.impact, help: v.help, nodes: v.nodes.slice(0, 4).map((n) => n.target.join(' ')) });
+  const { phrases, complete } = await readPage(page);
+  saveTranscript(audited.length, where, phrases, complete);
+  srFindings.push(...checkTranscript(where, phrases), ...headingSkips(where, phrases), ...(await unmarkedLanguage(page, where)));
 }
 
 async function visit(page: Page, path: string, where: string) {
@@ -29,8 +36,9 @@ async function visit(page: Page, path: string, where: string) {
 
 const report = () => findings.map((f) => `[${f.impact}] ${f.rule} — ${f.help}\n    at ${f.where}: ${f.nodes.join(' | ')}`).join('\n');
 
+// bypassCSP lets the simulated screen reader be loaded into the page; the journeys run under the real CSP.
 async function newPage(browser: Browser, opts: Parameters<Browser['newContext']>[0] = {}) {
-  return (await browser.newContext(opts)).newPage();
+  return (await browser.newContext({ bypassCSP: true, ...opts })).newPage();
 }
 
 test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, light and dark, desktop and phone)', async ({ browser }) => {
@@ -94,6 +102,12 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(page, 'webhook edit dialog');
   await page.keyboard.press('Escape');
 
+  // Two-factor setup on the account page: the QR code's description and the key as text.
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Set up two-factor authentication' }).click();
+  await expect(page.getByRole('img', { name: 'QR code for your authenticator app' })).toBeVisible();
+  await audit(page, 'account (two-factor setup)');
+
   // A second scope on the newest catalogue: the comparison then matches books across catalogue years.
   await page.goto(`/org/${orgId}`);
   await createScope(page, 'This year plan');
@@ -136,6 +150,10 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await ownerQuery(`INSERT INTO memberships (org_id, user_id, role) SELECT o.id, u.id, 'viewer' FROM organizations o, users u WHERE o.name = 'Notes Academy' AND u.email = $1`, [email]);
   const allAssignmentsPath = '/assignments';
   await visit(page, allAssignmentsPath, 'my assignments in all organizations');
+  // Notes Academy's picker as that viewer: every book is read-only.
+  const [notesAcademy] = await ownerQuery(`SELECT id FROM organizations WHERE name = 'Notes Academy'`);
+  await visit(page, `/org/${notesAcademy.id}`, 'picker (viewer, read-only)');
+  await expect(page.locator('.mat').first()).toHaveAttribute('aria-disabled', 'true');
 
 
   // the Students page and its dialogs, then the student sign-in and portal.
@@ -225,7 +243,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
 
   // Platform admin.
   const admin = await newPage(browser);
-  await signInAsPlatformAdmin(admin);
+  await signInAsPlatformAdmin(admin, () => audit(admin, 'two-factor sign-in'));
   for (const [path, where] of [
     ['/admin', 'admin overview'], ['/admin/orgs', 'admin organizations'], [`/admin/orgs/${orgId}`, 'admin organization detail'], ['/admin/users', 'admin users'],
     ['/admin/catalog', 'admin catalogue versions'], ['/admin/plans', 'admin plans'], ['/admin/audit', 'admin audit'], ['/admin/events', 'admin webhooks'],
@@ -241,7 +259,10 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(admin, 'admin catalogue editor (dark)');
 
   test.info().annotations.push({ type: 'audited screens', description: `${audited.length}: ${audited.join('; ')}` });
+  writeFileSync(`${TRANSCRIPTS}/findings.json`, JSON.stringify(srFindings, null, 2));
   expect(findings, `${findings.length} accessibility findings:\n${report()}`).toEqual([]);
+  // What the simulated screen reader found on the same screens (transcripts in test-results/screen-reader).
+  expect(srFindings, srFindings.map((f) => `${f.where}: ${f.problem}: ${f.phrase}`).join('\n')).toEqual([]);
 });
 
 test('the picker and dialogs can be used with the keyboard alone', async ({ browser }) => {
@@ -317,6 +338,8 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await fresh.fill('short');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(fresh).toHaveAttribute('aria-invalid', 'true');
+  // Field errors are not announced by themselves, so focus moves to the first field in error.
+  await expect(fresh).toBeFocused();
   const error = (await page.locator('.field .err:not([hidden])').innerText()).trim();
   expect(error).not.toBe('');
   await expect(fresh).toHaveAccessibleDescription(`${hint} ${error}`);
@@ -324,6 +347,7 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await fresh.fill('a-long-enough-new-password');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(current).toHaveAttribute('aria-invalid', 'true');
+  await expect(current).toBeFocused();
   await expect(fresh).toHaveAccessibleDescription(hint);
   await expect(fresh).not.toHaveAttribute('aria-invalid');
 
@@ -332,8 +356,8 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await page.getByRole('button', { name: 'Create organization' }).click();
   await page.waitForURL(/\/org\/[0-9a-f-]{36}$/);
   await expect(page).toHaveTitle('Egypt Curriculum Picker · دليل المناهج · Curriculum Scope');
-  await expect(page.locator('.mat.moe').first()).toHaveAccessibleName(/\(Ministry\)/);
-  await expect(page.locator('.mat.ext').first()).toHaveAccessibleName(/\(External refs\)/);
+  await expect(page.locator('.mat.moe').first()).toHaveAccessibleName(/\(Ministry material\)/);
+  await expect(page.locator('.mat.ext').first()).toHaveAccessibleName(/\(External reference\)/);
   for (const path of [`/org/${orgIdFromUrl(page)}/settings`, '/no-such-page']) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);
@@ -357,4 +381,52 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
   await expect(bell).toHaveAccessibleName('Notifications');
   await expect(bell).toBeFocused();
+});
+
+// What the simulated screen reader announces after an action (screen-reader.ts; docs/SCREEN_READER_PRECHECK.md).
+test('a simulated screen reader hears saving, dialogs and form errors', async ({ browser }) => {
+  const email = `listener.${uid()}@e2e.test`;
+  await ownerQuery(`INSERT INTO users (email, name, password_hash, email_verified_at) VALUES ($1, 'Listener', $2, now())`, [email, await hashPassword(PASSWORD)]);
+  const page = await newPage(browser);
+  await login(page, email);
+  await page.getByLabel('Organization name').fill('Listening School');
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await page.waitForURL(/\/org\/[0-9a-f-]{36}$/);
+  await createScope(page, 'Heard plan');
+  await expect(page.locator('.scopebar select')).toHaveValue(/.+/);
+
+  await listen(page);
+  await page.locator('.mat').first().click();
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+  // The book is named with its kind, and the save is announced politely.
+  const toggled = await heard(page);
+  expect(toggled[0]).toMatch(/^button, .+ \(Ministry material\)( \(.+\))?, (not )?pressed$/);
+  expect(toggled).toContain('polite: Saved');
+
+  await listen(page);
+  await page.getByRole('button', { name: 'New scope' }).first().click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // A dialog is announced by its title and focus lands on its first field.
+  const opened = await heard(page);
+  expect(opened).toEqual(expect.arrayContaining(['dialog, New scope', 'textbox, Name, required']));
+  await page.keyboard.press('Escape');
+
+  await page.goto('/account');
+  await listen(page);
+  await page.getByLabel('Current password').fill('not-the-password');
+  await page.getByLabel('New password').fill('a-long-enough-new-password');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(page.locator('.alert.error:not(:empty)')).toBeVisible();
+  // An error for the whole form is announced at once, and once.
+  const refused = await heard(page);
+  expect(refused.filter((p) => p === 'assertive: Current password is incorrect')).toHaveLength(1);
+
+  await listen(page);
+  await page.getByLabel('New password').fill('short');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(page.getByLabel('New password')).toBeFocused();
+  // A field error: the field takes focus and is read with its error; no form-level message is announced.
+  const invalid = await heard(page);
+  expect(invalid).toContain('New password, short, At least 10 characters. A passphrase works well. Password must be at least 10 characters');
+  expect(invalid.filter((p) => p.startsWith('assertive: ') && p !== 'assertive: ')).toEqual([]);
 });

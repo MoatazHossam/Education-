@@ -3,7 +3,7 @@
 // first and then by due date. The assignee can update each book's status here,
 // whatever their role.
 import { get, patch } from '../api.js';
-import { errorMessage, h, link, tableCard, toast } from '../dom.js';
+import { errorMessage, h, link, none, tableCard, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { invalidateOrg, session } from '../state.js';
@@ -52,7 +52,7 @@ function assignmentsTable(items, show, allSchools) {
           link(`/org/${it.orgId}/scopes/${it.scopeId}/items?show=mine`, auto(it.scopeName)), h('div', { class: 'muted small mono' }, it.academicYear)),
         h('td', { class: 'prog' }, progress(it)),
         h('td', {}, statusSel),
-        h('td', { class: 'note' }, it.note ? auto(it.note) : h('span', { class: 'muted' }, '—')));
+        h('td', { class: 'note' }, it.note ? auto(it.note) : none()));
     }))));
 }
 

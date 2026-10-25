@@ -3,7 +3,7 @@
 // search, blocks of subjects, selection tray, copy list). Selections are saved
 // to a server-side "content scope" instead of localStorage.
 import { ApiError, del, get, post } from '../api.js';
-import { confirmDialog, dialog, downloadText, errorMessage, h, link, toast } from '../dom.js';
+import { confirmDialog, dialog, downloadText, errorMessage, h, link, setText, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg } from '../state.js';
@@ -201,7 +201,7 @@ export async function pickerView(ctx) {
           const matWrap = h('div', { class: 'mats' });
           for (const m of mats) {
             shownIds.push(m.id);
-            const btn = mkBtn(`mat ${m.kind}`, [m.title, h('span', { class: 'sr-only' }, ` (${t(`kind.${m.kind}`)})`), materialMark(m), noteMark(m.id)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
+            const btn = mkBtn(`mat ${m.kind}`, [m.title, h('span', { class: 'sr-only' }, ` (${t(`legend.${m.kind}`)})`), materialMark(m), noteMark(m.id)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
             buttonsById.set(m.id, btn);
             matWrap.append(btn);
           }
@@ -228,7 +228,7 @@ export async function pickerView(ctx) {
   const viewBtn = h('button', { class: 'act ghost', type: 'button' }, t('picker.viewList'));
   function updTray() {
     cnt.textContent = String(sel.size);
-    if (!panel.hidden) listPre.textContent = listText(tree, sel);
+    if (!panel.hidden) setText(listPre, listText(tree, sel));
   }
 
   const selAll = h('button', {
@@ -268,7 +268,7 @@ export async function pickerView(ctx) {
       const text = listText(tree, sel);
       const fallback = () => {
         panel.hidden = false;
-        listPre.textContent = text;
+        setText(listPre, text);
         const r = document.createRange();
         r.selectNodeContents(listPre);
         const s = getSelection();
@@ -385,7 +385,7 @@ export async function pickerView(ctx) {
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.track')), tracksEl),
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.grade')), gradesEl),
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, t('picker.show')), kindsEl, search),
-      h('div', { class: 'legend' },
+      h('div', { class: 'legend', role: 'group', 'aria-label': t('picker.legendLabel') },
         ['scored', 'pass', 'act'].map((k) => h('span', {}, h('i', { class: `sw-${k}` }), t(`legend.${k}`))),
         KINDS.map((k) => h('span', {}, h('i', { class: `sw-${k}` }), t(`legend.${k}`))),
         h('span', {}, h('b', { class: 'mv ok', 'aria-hidden': 'true' }, '✓'), ' ', t('verify.legend')))),

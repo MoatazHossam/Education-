@@ -40,7 +40,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
+- **Next:** manual screen-reader review (`docs/SCREEN_READER_REVIEW.md`); Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
 
 ### Notes and assignees on selected books · COMPLETE
 - **Implemented:** a short note (up to 500 characters) on any selected book of a scope, and the organization member responsible for it, e.g. "waiting for the 2027 edition", assigned to whoever follows it up.
@@ -195,7 +195,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - ~~No events for notes, assignees, statuses or due dates~~: added, see below.
   - Deliveries already queued are still sent if the plan loses API access; new events stop.
-  - No customer-side delivery log export, and no per-endpoint IP allow-list for receivers to pin.
+  - ~~No customer-side delivery log export~~: added, see "Webhook delivery history download" below. Still no per-endpoint IP allow-list for receivers to pin.
   - In production, an egress firewall is recommended as a second layer (SECURITY_DESIGN §6).
 
 ### Webhook events for notes and assignments · COMPLETE
@@ -239,6 +239,36 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - The key still lives in the environment file on the host; a secrets manager or KMS would keep it off the host.
   - The other secrets (`SESSION_SECRET`, database passwords, provider keys) are rotated by hand as in SECURITY_DESIGN §3.
+
+### Webhook delivery history download · COMPLETE
+- **Implemented:** in Settings → Webhooks → Deliveries, "Download history (CSV)" downloads every delivery kept for the endpoint (30 days), newest first, up to 10,000.
+  - **Columns:** time, delivery and event ids, event, status, attempts, HTTP status, error, delivered and next-attempt times (UTC), the scope's id and name, and the exact JSON body sent. A redelivery shows the same event id.
+  - **Rules:** owners and admins only, like the rest of the webhook settings. Formula-like cells are guarded as in the other CSV exports. The signing secret is never included. Each download is audited (`webhook.deliveries_exported`, with the row count) and limited to 10 a minute.
+  - **Not a content export:** it needs no plan feature and does not count against the monthly exports, so the history stays available after a downgrade.
+  - The dialog now says how many deliveries exist ("Showing the newest 50 of …"), how long they are kept, and when the download is limited to the newest 10,000.
+  - The 30-day retention is now one constant shared by the cleanup job and the API.
+- **Files:** `src/webhooks/{routes,service}.ts`, `src/jobs/tasks.ts`, `public/js/views/webhooks.js`, `public/js/i18n.js`, `public/app.css`.
+- **Tests:**
+  - `integration/webhooks` gains two tests:
+    - the download (delivered, failed and pending rows, newest first, the formula guard, quoting, the exact body, no secret), editors refused, the audit entry, and the download still working after a downgrade;
+    - with 10,005 deliveries, the list reports 10,005 and the download holds the newest 10,000.
+  - E2E journey 19 downloads the history in the browser and checks the rows and the body against what the receiver got.
+  - The accessibility audit now opens the deliveries dialog with a delivery in it (a failed test). This found the "Payload" toggle under the 24 px target size, which is fixed.
+- **Limitations:** CSV only; one endpoint per file; no date filter (the 30 days kept are the whole history).
+
+### Screen-reader review preparation · CHECKLIST READY, REVIEW NOT STARTED
+- **Implemented:** `docs/SCREEN_READER_REVIEW.md`, a checklist for a manual review with NVDA, VoiceOver (macOS and iPhone) and TalkBack, in English and Arabic.
+  - It covers what to set up, the test data, 15 checks on every page, 22 tasks by role (owner, editor, viewer, student, platform administrator), the Arabic interface, phones, and a results table.
+  - Each item states what must be announced, using the interface's actual labels.
+- **Fixed while preparing it** (found by reading the markup; axe does not check these):
+  - The notifications button's unread count was not announced: its name replaced the badge. It is now "Notifications, 2 unread".
+  - The whole page area was a live region, so screen readers could read a whole page out after each change. It is not a live region any more: pages are announced through the heading that takes focus, and messages through the status area.
+  - Every page had the same title. Each page is now titled after its heading, followed by " · Curriculum Scope" (in Arabic, the Arabic name).
+  - In the picker, a book's kind (Ministry, language-school, external reference, programme, assessment) was shown by colour only. Each book button now also says it, as the student portal already did.
+  - Form hints and field errors were not linked to their fields. They are now the field's description, and a corrected field no longer carries its old error.
+- **Files:** `docs/SCREEN_READER_REVIEW.md`, `public/index.html`, `public/js/{main,dom}.js`, `public/js/views/{shell,picker}.js`, `public/js/i18n.js`.
+- **Tests:** a new E2E test checks, with the browser's accessibility tree, a field's description before and after an error, page titles in both languages, the picker's book names, the notifications button's name before and after reading, and that the page area is not a live region. Against the previous front end it reports 13 failures, one for each fixed problem (TEST_REPORT §3).
+- **Limitations:** the review itself has not been done: it needs a person who uses a screen reader daily, and a native Arabic reader for the Arabic pass. Until then, how the app sounds is unverified.
 
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
@@ -320,7 +350,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   A keyboard-only test found two more problems, also fixed: closing a dialog with Escape lost focus instead of returning it to the button that opened it, and following the skip link was handled by the router as a navigation and redrew the page; it now moves focus to the page heading.
 - **Files:** `tests/e2e/accessibility.spec.ts`, `tests/e2e/helpers.ts` (shared with the journeys), `playwright.config.ts`, `public/js/{dom,main}.js`, `public/app.css`, `public/js/views/{account,admin,billing,members,scopes,settings}.js`.
 - **Tests:** the E2E accessibility audit and keyboard test — pass. Against the front end before the fixes, the audit reports the 26 findings and the keyboard test fails.
-- **Limitations:** automated rules cover only part of WCAG; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet; Chromium only.
+- **Limitations:** automated rules cover only part of WCAG; no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet (the checklist is ready: `docs/SCREEN_READER_REVIEW.md`); Chromium only.
 
 ### Catalogue spreadsheet export and import · COMPLETE
 - **Implemented:** platform admins download any catalogue version as a CSV (UTF-8 with BOM, one row per subject and per material with ids, content and verification columns; subject columns repeat on material rows for filtering) and upload the edited file. Uploads show a preview first: every change by row, every error, and notes; nothing is written until the admin applies it, and applying re-checks the file inside the transaction and writes all of it or none of it. Verification marks can change on drafts and published versions; content corrections and new materials in existing subjects only on drafts; subjects are added and entries deleted only in the editor. A corrected entry loses its mark unless the same row updates the mark. Newly flagged entries notify customers as in the editor; imports are audited (`admin.catalog_imported`). Excel quirks handled: semicolon-separated files, CRLF, trailing blank rows, formula guard round trip; non-UTF-8 files are rejected with instructions.
@@ -371,7 +401,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
 - **Tests:** E2E 1–11, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
-- **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; accessibility checked automatically and by keyboard, not yet with a screen reader.
+- **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; accessibility checked automatically and by keyboard, not yet with a screen reader (checklist: `docs/SCREEN_READER_REVIEW.md`).
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
 | Deliverable | Status | Evidence |
@@ -395,7 +425,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (255 unit/integration + 21 E2E passing: 19 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (257 unit/integration + 22 E2E passing: 19 journeys, 3 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

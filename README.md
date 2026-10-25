@@ -75,6 +75,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
 [Test strategy](docs/TEST_STRATEGY.md) ·
 [Test report](docs/TEST_REPORT.md) ·
+[Screen-reader review](docs/SCREEN_READER_REVIEW.md) ·
 [Commercial feasibility](docs/COMMERCIAL_FEASIBILITY.md) ·
 [Roadmap](docs/IMPLEMENTATION_ROADMAP.md) ·
 [Project status](docs/PROJECT_STATUS.md)

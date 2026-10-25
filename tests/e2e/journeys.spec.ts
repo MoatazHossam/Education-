@@ -786,6 +786,13 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     await expect(rows.first()).toContainText('Books added or removed');
     await expect(rows.first()).toContainText('Delivered (200)');
     await expect(rows.nth(1)).toContainText('Test');
+    // The whole kept history downloads as a spreadsheet, newest first, with the exact bodies sent.
+    await expect(page.getByRole('dialog')).toContainText('Deliveries are kept for 30 days.');
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Download history (CSV)' }).click()]);
+    expect(download.suggestedFilename()).toMatch(/^webhook-deliveries-127\.0\.0\.1-\d{4}-\d{2}-\d{2}\.csv$/);
+    const history = parseCsv(await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
+    expect(history.slice(1).map((r) => [r[3], r[4], r[6], r[11]])).toEqual([['scope.items_changed', 'delivered', '200', 'Grade 6 books'], ['ping', 'delivered', '200', '']]);
+    expect(history[1]![12]).toBe(received[1]!.body);
     await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
 
     // A note on a book of Grade 6 books is sent as "notes, assignees, statuses or due dates changed", naming the book only.

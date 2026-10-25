@@ -1,7 +1,7 @@
 // Webhooks card on the organization's settings page (owners and admins): the
 // endpoints told about scope changes, their deliveries, tests and secrets.
-import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, form, h, toast } from '../dom.js';
+import { ApiError, del, get, patch, post } from '../api.js';
+import { confirmDialog, dialog, downloadText, errorMessage, fmtDate, fmtNum, form, h, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { planLimitHint } from './shell.js';
 
@@ -35,8 +35,18 @@ function eventFields(events, chosen) {
 }
 const chosenEvents = (events, v) => events.filter((_, i) => v[`ev${i}`]);
 
+/** Every kept delivery as CSV (the server names the file). */
+async function downloadHistory(orgId, w) {
+  try {
+    const res = await fetch(`/api/orgs/${orgId}/webhooks/${w.id}/deliveries/export`, { credentials: 'same-origin' });
+    if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'webhook-deliveries.csv';
+    downloadText(name, await res.text(), 'text/csv');
+  } catch (err) { toast(errorMessage(err), 'error'); }
+}
+
 async function showDeliveries(orgId, w) {
-  const { deliveries } = await get(`/api/orgs/${orgId}/webhooks/${w.id}/deliveries`);
+  const { deliveries, total, keptDays, exportMax } = await get(`/api/orgs/${orgId}/webhooks/${w.id}/deliveries`);
   const rows = deliveries.map((d) => h('tr', {},
     h('td', {}, fmtDate(d.createdAt, true)),
     h('td', {}, eventLabel(d.eventType), h('div', { class: 'muted small mono' }, d.eventType)),
@@ -45,7 +55,7 @@ async function showDeliveries(orgId, w) {
       d.nextAttemptAt ? h('div', { class: 'muted small' }, t('webhooks.nextAttempt', { date: fmtDate(d.nextAttemptAt, true) })) : null),
     h('td', {}, String(d.attempts)),
     h('td', {},
-      h('details', {}, h('summary', {}, t('webhooks.payload')), h('pre', { class: 'codes', tabindex: '0', dir: 'ltr' }, JSON.stringify(d.payload, null, 2))),
+      h('details', { class: 'payload' }, h('summary', {}, t('webhooks.payload')), h('pre', { class: 'codes', tabindex: '0', dir: 'ltr' }, JSON.stringify(d.payload, null, 2))),
       d.status !== 'pending' ? h('button', {
         type: 'button', class: 'btn small ghost', 'aria-label': t('webhooks.redeliverFor', { event: eventLabel(d.eventType), date: fmtDate(d.createdAt, true) }),
         onclick: async (e) => {
@@ -59,6 +69,12 @@ async function showDeliveries(orgId, w) {
   await dialog({
     title: t('webhooks.deliveriesTitle'),
     body: h('div', { class: 'stack' }, h('p', { class: 'muted' }, ltr(w.url)),
+      rows.length ? h('div', { class: 'row' },
+        h('p', { class: 'muted small' },
+          total > rows.length ? `${t('webhooks.showingNewest', { shown: fmtNum(rows.length), total: fmtNum(total) })} ` : '',
+          t('webhooks.kept', { days: fmtNum(keptDays) }),
+          total > exportMax ? ` ${t('webhooks.downloadMax', { max: fmtNum(exportMax) })}` : ''),
+        h('button', { type: 'button', class: 'btn small ghost', onclick: () => downloadHistory(orgId, w) }, t('webhooks.download'))) : null,
       rows.length
         ? h('div', { class: 'table-wrap' }, h('table', { class: 'data' },
           h('thead', {}, h('tr', {}, [t('webhooks.time'), t('webhooks.event'), t('webhooks.result'), t('webhooks.attempts'), ''].map((c) => h('th', { scope: 'col' }, c)))),

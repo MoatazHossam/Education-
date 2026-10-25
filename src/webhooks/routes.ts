@@ -1,17 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import { sql } from 'kysely';
+import { sql, type Selectable } from 'kysely';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { inOrg } from '../auth/guards.js';
 import { getEntitlements, requireFeature } from '../billing/entitlements.js';
 import type { Executor } from '../db/index.js';
+import type { WebhookDeliveriesTable } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { encryptSecret } from '../lib/crypto.js';
+import { toCsv } from '../lib/csv.js';
 import { AppError, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { validateWebhookUrl, WebhookTargetError } from './net.js';
-import { MAX_ENDPOINTS, newSecret, pingPayload, recordResult, sendDelivery, WEBHOOK_EVENTS } from './service.js';
+import { DELIVERY_RETENTION_DAYS, EXPORT_MAX_DELIVERIES, MAX_ENDPOINTS, newSecret, pingPayload, recordResult, sendDelivery, WEBHOOK_EVENTS } from './service.js';
 
 // Webhook endpoints of an organization (owners and admins; the plan must include
 // API access, like API keys). The signing secret is returned once, when the
@@ -51,6 +53,23 @@ const endpointView = (e: EndpointRow) => ({
 });
 
 const ENDPOINT_COLUMNS = ['id', 'url', 'description', 'events', 'secret_prefix', 'enabled', 'disabled_reason', 'consecutive_failures', 'created_at'] as const;
+
+const DELIVERY_COLUMNS = ['id', 'event_id', 'event_type', 'status', 'attempts', 'last_status_code', 'last_error', 'created_at', 'delivered_at', 'next_attempt_at', 'payload'] as const;
+type DeliveryRow = Pick<Selectable<WebhookDeliveriesTable>, (typeof DELIVERY_COLUMNS)[number]>;
+
+const iso = (d: Date | null) => (d ? d.toISOString() : '');
+
+/** One row per delivery, times in UTC, with the scope it was about and the exact body sent. */
+function deliveriesCsv(rows: DeliveryRow[]): string {
+  const scopeOf = (payload: Record<string, unknown>) => (payload.data as { scope?: { id?: string; name?: string } } | undefined)?.scope;
+  return toCsv([
+    ['created_at_utc', 'delivery_id', 'event_id', 'event', 'status', 'attempts', 'http_status', 'error', 'delivered_at_utc', 'next_attempt_at_utc', 'scope_id', 'scope_name', 'payload'],
+    ...rows.map((d) => [
+      iso(d.created_at), d.id, d.event_id, d.event_type, d.status, d.attempts, d.last_status_code, d.last_error,
+      iso(d.delivered_at), d.status === 'pending' ? iso(d.next_attempt_at) : '', scopeOf(d.payload)?.id, scopeOf(d.payload)?.name, JSON.stringify(d.payload),
+    ]),
+  ]);
+}
 
 export function registerWebhookRoutes(app: FastifyInstance, ctx: AppContext): void {
   const { config } = ctx;
@@ -183,21 +202,44 @@ export function registerWebhookRoutes(app: FastifyInstance, ctx: AppContext): vo
     const { orgId, id } = parse(EndpointParams, req.params);
     return inOrg(ctx, req, orgId, 'admin', async (trx) => {
       await getEndpoint(trx, orgId, id);
-      const rows = await trx
-        .selectFrom('webhook_deliveries')
-        .select(['id', 'event_id', 'event_type', 'status', 'attempts', 'last_status_code', 'last_error', 'created_at', 'delivered_at', 'next_attempt_at', 'payload'])
-        .where('endpoint_id', '=', id)
-        .orderBy('created_at', 'desc')
-        .limit(50)
-        .execute();
+      const rows = await trx.selectFrom('webhook_deliveries').select(DELIVERY_COLUMNS).where('endpoint_id', '=', id).orderBy('created_at', 'desc').limit(50).execute();
+      const total = await trx.selectFrom('webhook_deliveries').select((eb) => eb.fn.countAll<string>().as('n')).where('endpoint_id', '=', id).executeTakeFirstOrThrow();
       return {
         deliveries: rows.map((d) => ({
           id: d.id, eventId: d.event_id, eventType: d.event_type, status: d.status, attempts: d.attempts,
           statusCode: d.last_status_code, error: d.last_error, createdAt: d.created_at, deliveredAt: d.delivered_at,
           nextAttemptAt: d.status === 'pending' ? d.next_attempt_at : null, payload: d.payload,
         })),
+        total: Number(total.n),
+        keptDays: DELIVERY_RETENTION_DAYS,
+        exportMax: EXPORT_MAX_DELIVERIES,
       };
     });
+  });
+
+  // Every kept delivery of the endpoint, newest first, as CSV: for support cases and the
+  // school's own records. Like the list above it is a delivery log, not a content export,
+  // so it needs no plan feature and does not count against the monthly exports.
+  app.get('/api/orgs/:orgId/webhooks/:id/deliveries/export', rateLimited(10, '1 minute'), async (req, reply) => {
+    const { orgId, id } = parse(EndpointParams, req.params);
+    const { endpoint, rows } = await inOrg(ctx, req, orgId, 'admin', async (trx) => {
+      const endpoint = await getEndpoint(trx, orgId, id);
+      const rows = await trx
+        .selectFrom('webhook_deliveries')
+        .select(DELIVERY_COLUMNS)
+        .where('endpoint_id', '=', id)
+        .orderBy('created_at', 'desc')
+        .orderBy('id')
+        .limit(EXPORT_MAX_DELIVERIES)
+        .execute();
+      await recordAudit(trx, actorFromRequest(req), { orgId, action: 'webhook.deliveries_exported', targetType: 'webhook_endpoint', targetId: id, metadata: { rows: rows.length } }, requestMeta(req));
+      return { endpoint, rows };
+    });
+    const host = new URL(endpoint.url).hostname.replace(/[^a-z0-9.-]+/gi, '-');
+    return reply
+      .type('text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="webhook-deliveries-${host}-${new Date().toISOString().slice(0, 10)}.csv"`)
+      .send(deliveriesCsv(rows));
   });
 
   // Queues the same event again (same event id, so receivers can tell it is a repeat).

@@ -3,6 +3,7 @@ import type { AppConfig } from '../config.js';
 import { withSystemContext, type Database } from '../db/index.js';
 import type { Mailer } from '../notifications/mailer.js';
 import { addDays } from '../lib/time.js';
+import { DELIVERY_RETENTION_DAYS } from '../webhooks/service.js';
 
 const MAX_ATTEMPTS = 8;
 
@@ -65,7 +66,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const reminders = await trx.deleteFrom('item_reminders').where('due_on', '<', addDays(now, -60).toISOString().slice(0, 10)).executeTakeFirst();
     // Daily summaries take their rows each morning; anything older was never going to be sent.
     const digestItems = await trx.deleteFrom('assignment_digest_items').where('assigned_at', '<=', addDays(now, -30)).executeTakeFirst();
-    const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -30)).executeTakeFirst();
+    const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -DELIVERY_RETENTION_DAYS)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),

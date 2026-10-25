@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { withOrgContext, withSystemContext } from '../../src/db/index.js';
 import { runCleanup } from '../../src/jobs/tasks.js';
+import { parseCsv, UTF8_BOM } from '../../src/lib/csv.js';
 import { postWebhook } from '../../src/webhooks/net.js';
 import { DISABLE_AFTER_FAILURES, MAX_ATTEMPTS, processWebhookDeliveries } from '../../src/webhooks/service.js';
 import { addMember, createHarness, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
@@ -313,6 +314,67 @@ describe('webhook endpoints', () => {
     expect((await s.owner.client.post(`${s.base}/webhooks/${hook.webhook.id}/deliveries/${pending.id}/redeliver`)).json().error.code).toBe('DELIVERY_PENDING');
     const audit = (await s.owner.client.get(`${s.base}/audit-logs?action=webhook.`)).json().entries.map((e: { action: string }) => e.action);
     expect(audit).toEqual(expect.arrayContaining(['webhook.created', 'webhook.tested', 'webhook.redelivered', 'webhook.secret_rotated']));
+  });
+
+  it('the delivery history downloads as CSV with every kept delivery, newest first; only admins can; it is audited', async () => {
+    const s = await school();
+    const r = await newReceiver();
+    const hook = await s.addHook(r.url);
+    const scopeId = await s.newScope('=SUM(A1)');
+    await deliver();
+    r.reply(500);
+    expect((await s.owner.client.post(`${s.base}/webhooks/${hook.webhook.id}/test`)).json().delivery.status).toBe('failed');
+    expect((await s.owner.client.patch(`${s.base}/scopes/${scopeId}`, { name: 'Plan, "B"' })).statusCode).toBe(200); // waits for the worker
+
+    const list = (await s.owner.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries`)).json();
+    expect(list).toMatchObject({ total: 3, keptDays: 30, exportMax: 10_000 });
+    expect(list.deliveries).toHaveLength(3);
+
+    const res = await s.owner.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries/export`);
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
+    expect(res.headers['content-disposition']).toMatch(/^attachment; filename="webhook-deliveries-127\.0\.0\.1-\d{4}-\d{2}-\d{2}\.csv"$/);
+    expect(res.body.startsWith(UTF8_BOM)).toBe(true);
+    const [header, ...rows] = parseCsv(res.body);
+    expect(header).toEqual(['created_at_utc', 'delivery_id', 'event_id', 'event', 'status', 'attempts', 'http_status', 'error', 'delivered_at_utc', 'next_attempt_at_utc', 'scope_id', 'scope_name', 'payload']);
+    const byEvent = Object.fromEntries(rows.map((row) => [row[3], Object.fromEntries(header!.map((k, i) => [k, row[i]]))]));
+    expect(rows.map((row) => row[3])).toEqual(['scope.updated', 'ping', 'scope.created']);
+    expect(rows.map((row) => row[1])).toEqual(list.deliveries.map((d: { id: string }) => d.id));
+
+    expect(byEvent['scope.created']).toMatchObject({ status: 'delivered', attempts: '1', http_status: '200', error: '', next_attempt_at_utc: '', scope_id: scopeId, scope_name: "'=SUM(A1)" });
+    expect(new Date(byEvent['scope.created']!.delivered_at_utc!).getTime()).toBeGreaterThan(Date.now() - 60_000);
+    // The body column is exactly what was sent.
+    expect(byEvent['scope.created']!.payload).toBe(r.received[0]!.body);
+    expect(byEvent.ping).toMatchObject({ status: 'failed', http_status: '500', error: 'HTTP 500', scope_id: '', scope_name: '', delivered_at_utc: '' });
+    expect(JSON.parse(byEvent.ping!.payload!)).toMatchObject({ type: 'ping', data: { endpointId: hook.webhook.id } });
+    expect(byEvent['scope.updated']).toMatchObject({ status: 'pending', attempts: '0', scope_name: 'Plan, "B"', delivered_at_utc: '' });
+    expect(byEvent['scope.updated']!.next_attempt_at_utc).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(res.body).not.toContain(hook.secret);
+
+    const editor = await addMember(h, s.owner.client, s.owner.orgId, 'editor');
+    expect((await editor.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries/export`)).statusCode).toBe(403);
+    const audit = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('audit_logs').select(['target_id', 'metadata']).where('action', '=', 'webhook.deliveries_exported').execute());
+    expect(audit).toEqual([{ target_id: hook.webhook.id, metadata: { rows: 3 } }]);
+
+    // Downloading needs no API access on the plan: the history stays readable after a downgrade.
+    await withSystemContext(h.ownerDb, (trx) => sql`UPDATE subscriptions SET plan_id = 'free', status = 'active', trial_ends_at = NULL WHERE org_id = ${s.owner.orgId}`.execute(trx));
+    expect((await s.owner.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries/export`)).statusCode).toBe(200);
+  });
+
+  it('the download holds the newest 10,000 deliveries', async () => {
+    const s = await school();
+    const r = await newReceiver();
+    const hook = await s.addHook(r.url);
+    await withSystemContext(h.ownerDb, (trx) => sql`
+      INSERT INTO webhook_deliveries (org_id, endpoint_id, event_id, event_type, payload, status, attempts, created_at)
+      SELECT ${s.owner.orgId}, ${hook.webhook.id}, gen_random_uuid(), 'scope.updated', json_build_object('n', g), 'delivered', 1, now() - make_interval(secs => g)
+      FROM generate_series(1, 10_005) AS g`.execute(trx));
+    expect((await s.owner.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries`)).json().total).toBe(10_005);
+    const res = await s.owner.client.get(`${s.base}/webhooks/${hook.webhook.id}/deliveries/export`);
+    const [, ...rows] = parseCsv(res.body);
+    expect(rows).toHaveLength(10_000);
+    expect(JSON.parse(rows[0]![12]!)).toEqual({ n: 1 });
+    expect(JSON.parse(rows.at(-1)![12]!)).toEqual({ n: 10_000 });
   });
 
   it('events stop when the plan no longer includes API access', async () => {

@@ -201,7 +201,7 @@ export async function pickerView(ctx) {
           const matWrap = h('div', { class: 'mats' });
           for (const m of mats) {
             shownIds.push(m.id);
-            const btn = mkBtn(`mat ${m.kind}`, [m.title, materialMark(m), noteMark(m.id)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
+            const btn = mkBtn(`mat ${m.kind}`, [m.title, h('span', { class: 'sr-only' }, ` (${t(`kind.${m.kind}`)})`), materialMark(m), noteMark(m.id)], sel.has(m.id), () => toggle(m.id), { dir: 'auto', ...(readOnly ? { 'aria-disabled': 'true' } : {}) });
             buttonsById.set(m.id, btn);
             matWrap.append(btn);
           }

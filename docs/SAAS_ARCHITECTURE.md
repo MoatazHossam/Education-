@@ -9,8 +9,8 @@ flowchart LR
     P[Customer pipeline<br/>API key]
   end
   subgraph Host["Single host (Docker Compose)"]
-    C[Caddy<br/>TLS, compression]
-    A[App: Fastify<br/>src/server.ts]
+    C[Caddy<br/>TLS, compression,<br/>load balancing]
+    A[App × 2: Fastify<br/>app, app2 — src/server.ts]
     W[Worker<br/>src/worker.ts]
     DB[(PostgreSQL 16<br/>RLS)]
   end
@@ -28,11 +28,11 @@ flowchart LR
 
 | Component | Responsibility | Code |
 | --- | --- | --- |
-| Web app | REST API (`/api/*`), static SPA, health endpoints | `src/app.ts`, route modules |
+| Web app | REST API (`/api/*`), static SPA, health endpoints; two instances in production | `src/app.ts`, route modules |
 | Worker | Email outbox delivery, subscription lifecycle (trial end, renewals, grace), retention cleanup, heartbeat | `src/worker.ts`, `src/jobs/tasks.ts`, `src/billing/service.ts` |
 | PostgreSQL | All state; Row-Level Security for tenant tables | `src/db/migrations/` |
 | SPA | Picker and management UI; no build step; strict CSP | `public/` |
-| Caddy | Automatic TLS, compression, reverse proxy | `deploy/Caddyfile` |
+| Caddy | Automatic TLS, compression, load balancing across the two app instances (readiness checked every 2 s; failed connections tried on the other instance) | `deploy/Caddyfile` |
 
 **Technology choices** (kept close to the original vanilla-JS artifact, avoiding unnecessary
 frameworks): Node.js 22 + TypeScript (strict), Fastify 5, Kysely query builder over `pg`, Zod
@@ -139,9 +139,9 @@ a few thousand users, bursty interactive use) is well below that. Scaling path, 
 
 1. Vertical: bigger host, `DATABASE_POOL_MAX`.
 2. Managed PostgreSQL with automated backups/PITR.
-3. Several app containers behind Caddy. The route-specific rate limits are already shared in
-   PostgreSQL, sessions live in the database and the catalogue cache revalidates against
-   `updated_at`; remaining: run the containers and configure Caddy's load balancing.
+3. Several app containers behind Caddy — **done for two** (`app`, `app2`): sessions, rate limits
+   and the catalogue cache work across instances, restarts are rolling with a drain. A third is one
+   more service and upstream; each instance holds up to `DATABASE_POOL_MAX` database connections.
 4. Read replica for the catalogue and admin analytics if ever needed.
 
 ## 8. Key decisions (ADR summary)

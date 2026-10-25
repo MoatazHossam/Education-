@@ -44,6 +44,8 @@ const EnvSchema = z
 
     RATE_LIMIT_ENABLED: bool.default(true),
     WORKER_INTERVAL_MS: z.coerce.number().int().min(1000).default(15000),
+    // Behind a load balancer: how long /readyz reports "draining" after SIGTERM before the server closes.
+    SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).max(60_000).default(0),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {

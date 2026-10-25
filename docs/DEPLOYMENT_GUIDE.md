@@ -70,6 +70,11 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production ps
 curl -fsS https://<domain>/readyz
 ```
+Production runs two app instances (`app`, `app2`) behind Caddy, which balances requests between
+them, checks `/readyz` every 2 s and routes around an instance that is restarting or down. Each
+instance opens up to `DATABASE_POOL_MAX` (default 10) database connections: two instances and the
+worker need about 21, well within PostgreSQL's default of 100 (check a managed plan's limit).
+
 Caddy obtains TLS certificates automatically. With managed PostgreSQL, remove the `postgres`
 service and point `DATABASE_URL`/`MIGRATION_DATABASE_URL` at it (create the three roles with the
 SQL from `deploy/postgres-init/01-roles.sh`; on services without `BYPASSRLS` for customers, run
@@ -94,8 +99,13 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
 
 ## 4. Upgrades and rollback
 
-1. `git pull` (or deploy a tagged image), then `docker compose … up -d --build`. The `migrate`
-   service applies new migrations before `app`/`worker` start.
+1. Take a backup (`scripts/backup.sh`), `git pull` (or check out a tagged release), then
+   `scripts/rolling-restart.sh --build`. It rebuilds the image, applies new migrations with the
+   old release still serving, then replaces `app`, waits until it is ready, replaces `app2`, and
+   finally the worker. Each instance drains for 5 s before it stops, so the restart drops no
+   requests (TEST_REPORT §4).
+   Without `--build` it only restarts the instances, one at a time. If an instance does not
+   become ready, the script stops and the other keeps serving.
 2. Migrations must be backwards-compatible with the previous release (add columns/tables first,
    remove later) so a rollback only needs the old image.
 3. Rollback: redeploy the previous image tag. If a migration must be reverted, restore from the

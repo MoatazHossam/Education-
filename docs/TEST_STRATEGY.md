@@ -11,7 +11,7 @@
 | Accessibility | Playwright + axe-core | `tests/e2e/accessibility.spec.ts` (runs after the journeys) | the same server, with the journeys' data | WCAG 2.2 A/AA rules on every screen and the main dialogs in English and Arabic, light and dark, desktop and phone; keyboard-only use of the picker and dialogs |
 | Security (cross-cutting) | Vitest | `tenancy`, `authz-coverage`, `auth`, `billing` | | BOLA/IDOR, privilege escalation, CSRF, brute force, webhook forgery/replay, plan-limit bypass |
 | Performance smoke | `scripts/perf-smoke.mjs` | — | running server | Latency/throughput of key endpoints |
-| Operational | shell scripts | `scripts/*.sh`, Docker | real containers | Image build, compose health, backup → restore → verify |
+| Operational | shell scripts | `scripts/*.sh`, Docker | real containers | Image build, compose health, backup → restore → verify, two app instances behind Caddy under load (rolling restart, crash) |
 
 ### Why integration tests use a real database
 Tenant isolation relies on PostgreSQL Row-Level Security, composite foreign keys and transaction

@@ -82,7 +82,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 ## 6. Residual risks and recommendations
 
 1. **External penetration test** before onboarding paying customers.
-2. The global flood guard (600 API requests a minute per address) is per process: with N app instances one address can make up to N × 600 a minute. Route-specific limits (login, two-factor codes, resets, the API quota) are shared. Put a provider- or CDN-level limit in front for volumetric attacks.
+2. The global flood guard (600 API requests a minute per address) is per process: with N app instances (two in production) one address can make up to N × 600 a minute. Route-specific limits (login, two-factor codes, resets, the API quota) are shared. Put a provider- or CDN-level limit in front for volumetric attacks.
 3. `DATA_ENCRYPTION_KEY` rotation tooling is missing.
 4. No WebAuthn/passkeys yet; TOTP only.
 5. No malware scanning needed today (no file uploads); revisit if uploads are added.

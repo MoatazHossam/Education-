@@ -69,7 +69,7 @@ Assumptions that can be revised later are marked **(assumption)**.
 | --- | --- | --- | --- |
 | NFR-1 Security | OWASP ASVS-aligned controls (SECURITY_DESIGN.md); no cross-tenant access | 0 failing authz tests | Met (tests) |
 | NFR-2 Privacy | Minimal personal data; retention jobs; export/deletion | — | Met in code; legal review open |
-| NFR-3 Availability | Single-region, single-host launch **(assumption)**; restart-safe; health endpoints | 99.5% monthly **(assumption)** | Not yet measurable (not deployed) |
+| NFR-3 Availability | Single-region, single-host launch **(assumption)**; restart-safe; health endpoints; two app instances so restarts and an instance crash do not take the service down | 99.5% monthly **(assumption)** | Not yet measurable (not deployed); rolling restarts with 0 failed requests on a local production-settings stack |
 | NFR-4 Latency | p95 < 300 ms for API reads and writes at 20 concurrent users on 2 vCPU **(assumption)** | Measured on 4 vCPU dev sandbox: p95 53–152 ms (TEST_REPORT.md) | Met in sandbox; re-measure on production hardware |
 | NFR-5 Recoverability | RPO ≤ 24 h, RTO ≤ 4 h **(assumption)** | Daily dumps + verified restore procedure | Procedure verified locally |
 | NFR-6 Localization | Full EN/AR UI, RTL, Arabic emails | — | Met |

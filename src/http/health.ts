@@ -10,8 +10,9 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: AppContext): voi
   // so a database outage does not cause the orchestrator to restart-loop the app.
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({ status: 'ok', uptimeSeconds: Math.round((Date.now() - startedAt) / 1000) }));
 
-  // Readiness: safe to receive traffic (database reachable, schema current).
+  // Readiness: safe to receive traffic (database reachable, schema current, not shutting down).
   app.get('/readyz', { config: { rateLimit: false } }, async (_req, reply) => {
+    if (app.lifecycle.draining) return reply.status(503).send({ status: 'draining' });
     const db = await checkDatabase(ctx.db);
     const pending = db.ok ? await pendingMigrations(ctx.db) : [];
     const ready = db.ok && pending.length === 0;

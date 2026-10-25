@@ -14,8 +14,10 @@ import { applyImport, exportSheet, loadSheetState, planImport, UNVERIFIED } from
 import { checkDatabase, withSystemContext, type Trx } from '../db/index.js';
 import { pendingMigrations } from '../db/migrator.js';
 import type { AppContext } from '../http/context.js';
+import { rateLimited } from '../http/rate-limit.js';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
-import { addInterval } from '../lib/time.js';
+import { addDays, addInterval } from '../lib/time.js';
+import { alertChannels, notify } from '../ops/alerts.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { selectedRows } from '../scopes/export.js';
 import { getScope, listScopes, scopeMaterialIds } from '../scopes/service.js';
@@ -136,6 +138,27 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       process: { uptimeSeconds: Math.round(process.uptime()), rssMb: Math.round(mem.rss / 1_048_576), heapUsedMb: Math.round(mem.heapUsed / 1_048_576), node: process.version },
       billingProvider: ctx.payments?.name ?? 'disabled',
     };
+  });
+
+  // ------------------------------------------------------------ operational alerts
+  app.get('/api/admin/alerts', async (req) => {
+    requirePlatformAdmin(req);
+    const rows = await sys((trx) =>
+      trx.selectFrom('ops_alerts').selectAll()
+        .where((eb) => eb.or([eb('status', '=', 'firing'), eb('resolved_at', '>', addDays(new Date(), -30))]))
+        .orderBy('status', 'asc').orderBy('last_seen_at', 'desc').limit(30).execute());
+    return {
+      channels: { emails: config.ALERT_EMAILS.length, emailTransport: config.EMAIL_TRANSPORT, webhook: Boolean(config.ALERT_WEBHOOK_URL) },
+      alerts: rows.map((a) => ({ key: a.key, status: a.status, summary: a.summary, details: a.details, firstSeenAt: a.first_seen_at, lastSeenAt: a.last_seen_at, resolvedAt: a.resolved_at })),
+    };
+  });
+
+  // Sends a test message to every configured channel, so the setup can be checked before an incident.
+  app.post('/api/admin/alerts/test', rateLimited(5, '1 hour'), async (req) => {
+    const actor = adminActor(req);
+    const result = await notify(alertChannels(config, req.log), { kind: 'test', key: 'test', summary: 'Test alert from Platform admin', details: {} }, config, req.log);
+    await sys((trx) => recordAudit(trx, actor, { action: 'admin.alert_test', metadata: result }, requestMeta(req)));
+    return { result };
   });
 
   // ------------------------------------------------------------ organizations

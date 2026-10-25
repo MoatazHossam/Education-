@@ -137,10 +137,15 @@ test('service recovers after a server crash: sessions and saved selections survi
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
 });
 
-test('platform admin signs in with two-factor authentication and suspends then restores an organization', async ({ page, browser }) => {
+test('platform admin signs in with two-factor authentication, sends a test alert, and suspends then restores an organization', async ({ page, browser }) => {
   await signInAsPlatformAdmin(page);
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
+  // No alert channel is configured in the E2E environment, and the test alert says so.
+  await expect(page.getByRole('heading', { name: 'Alerts' })).toBeVisible();
+  await expect(page.getByText(/No alert channel is configured/)).toBeVisible();
+  await page.getByRole('button', { name: 'Send test alert' }).click();
+  await expect(page.getByText('Test alert: email not configured, webhook not configured')).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByRole('heading', { name: 'Nile Learning' })).toBeVisible();
   await expect(page.getByText('No active grant. Customer business data is not accessible.')).toBeVisible();

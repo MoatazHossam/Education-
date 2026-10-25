@@ -37,7 +37,33 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1).
+- **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
+
+### Operational alerts · COMPLETE (verified locally; real channels not yet configured)
+- **Implemented:** every app instance runs a set of checks once a minute (`ALERT_CHECK_INTERVAL_MS`):
+  - the background worker has stopped reporting;
+  - emails are failing to send, or waiting more than 15 minutes;
+  - 10 or more server errors in 5 minutes on an instance;
+  - payment provider notifications failed in the last hour;
+  - database migrations are pending;
+  - the database is unreachable.
+
+  A problem produces one message when it starts, a reminder every 6 hours while it lasts, and one message when it has been clear for 5 minutes. The `ops_alerts` table (migration 0006) makes sure only one instance sends each message; the database outage alert is kept in memory, because it cannot be stored. Alerts go straight to SMTP (`ALERT_EMAILS`) and/or a webhook (`ALERT_WEBHOOK_URL`: Slack, Discord, Mattermost or any JSON endpoint), not through the email outbox, so they arrive when the worker is down. They are also written to the logs. Messages carry counts and a "what to check" hint, never customer names, emails or error text. Platform admin → Overview shows current and recently resolved alerts, where alerts are sent, and a "Send test alert" button (audited as `admin.alert_test`, 5 per hour). The worker's container health check now uses the same "worker stopped" threshold. Resolved alerts are deleted after 90 days.
+- **Files:** `src/ops/alerts.ts`, `src/db/migrations/0006_ops_alerts.ts`, `src/server.ts`, `src/app.ts`, `src/admin/routes.ts`, `src/config.ts`, `public/js/views/admin.js`, `docker-compose.yml`, `.env*.example`.
+- **Tests:** `integration/alerts.test.ts` (6) and `unit/alerts.test.ts` (2), all pass. They cover:
+  - one alert across two instances, the reminder and the resolution;
+  - every check, with no customer data in any message;
+  - the database outage alert;
+  - channel failures;
+  - the 5xx counter;
+  - the admin API and its audit entries.
+
+  Two mutation checks fail as they should: when every instance notifies, and when alerts resolve without the clear period. E2E journey 7 sends a test alert from the admin console. During the E2E run, the monitor in the real server process raised "worker stopped", correctly, since no worker runs there. On the production-settings Docker stack with two app instances, stopping the worker produced one alert email over SMTP (Mailpit) after 120 s, and restarting it one "Resolved" email 5 minutes later (TEST_REPORT §4).
+- **Limitations:**
+  - Not yet delivered through a real email provider or chat webhook: SMTP was tested with Mailpit, the webhook with a local receiver.
+  - Nothing inside the host can report that the whole host or both app instances are down: an external uptime check on `/readyz` is still needed (DEPLOYMENT_GUIDE §6).
+  - Alert texts are in English.
+  - With two instances, a database outage produces one message per instance.
 
 ### Two app instances behind Caddy · COMPLETE (verified locally)
 - **Implemented:** production runs two app instances (`app`, `app2`) of the same image behind Caddy. Caddy balances requests round robin, checks each instance's `/readyz` every 2 s (database reachable, schema current, not draining) and routes around an instance it cannot reach. A request whose connection failed is tried on the other instance; one that failed after it was sent is retried only if it is a GET, so no write is applied twice. On SIGTERM an instance reports "draining" for 5 s (`SHUTDOWN_DRAIN_MS`), so Caddy stops sending it requests, then finishes the requests in flight and exits; a second signal exits at once. `scripts/rolling-restart.sh [--build]` restarts or upgrades `app`, then `app2`, then the worker, waiting for each instance to be ready. Sessions, rate limits and the catalogue cache already work across instances (see shared rate limits).
@@ -128,7 +154,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
 | CI workflow | PARTIALLY COMPLETE | GitHub Actions runs on `main` are refused (B-7). All workflow steps pass when run with `scripts/ci-local.sh` on a clean clone of `main` (2026-10-23) |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
-| Monitoring & alerting | **NOT STARTED** | Needs B-4 (health endpoints and admin health page exist) |
+| Monitoring & alerting | PARTIALLY COMPLETE | In-app alerts by email and webhook (operational alerts section); still needed: alert channels set to real addresses, an external uptime check on `/readyz` (B-4) |
 | Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 |
 | External penetration test | NOT STARTED | Recommended before launch |
 
@@ -142,7 +168,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (146 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (154 unit/integration + 13 E2E passing: 11 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -153,7 +179,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 | Admin interfaces operate correctly | ✓ |
 | Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
-| Monitoring and alerts configured | ✗ (B-4) |
+| Monitoring and alerts configured | ✓ built in and tested locally; ✗ real channels and external uptime check not configured (B-4) |
 | Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
 | Deployment reproducible | ✓ locally (Docker/compose) |
 | Documentation accurate | ✓ |

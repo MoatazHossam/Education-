@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**21 files, 146 tests, 146 passed, 0 failed** (2026-10-25). Integration tests ran against a real
+**23 files, 154 tests, 154 passed, 0 failed** (2026-10-25). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -34,6 +34,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors, encoding, semicolons |
+| unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
 | unit/rate-limit-memory | 2 | Pass — fixed windows; memory bounded, oldest windows dropped first |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 16 | Pass |
@@ -46,12 +47,13 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
+| integration/alerts | 6 | Pass — one alert across two instances, reminder after 6 h, one resolution after 5 min clear; every check; no customer data in messages; database outage from memory; a failing channel does not stop the other; 5xx counting; admin list and audited test alert |
 | integration/shutdown | 1 | Pass — the real server process reports draining on SIGTERM, keeps serving during the drain, exits cleanly |
 | integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 146</summary>
+<details><summary>Show all 154</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -188,6 +190,14 @@ Full test names (verbatim from the verbose reporter):
 - rate-limit-store › starts a new window when the old one ends; reading does not count; namespaces are separate
 - rate-limit-store › the worker deletes expired counters and keeps live ones
 - shutdown › reports draining on SIGTERM, keeps serving during the drain, then exits cleanly
+- alerts › sends one alert per problem across instances, a reminder after 6 hours, and one resolution once it clears
+- alerts › checks email delivery, server errors, payment notifications and migrations; messages carry counts, not addresses
+- alerts › alerts from memory when the database is unreachable, reminds after 6 hours, and resolves when it is back
+- alerts › a failing channel does not stop the other; failures are logged without the webhook URL
+- alerts › counts 5xx responses, except the health endpoints
+- alerts › platform admins see alerts and can send a test alert (audited); customers cannot
+- unit › alert helpers: counts server errors over the last minutes and forgets older ones
+- unit › alert helpers: considers the worker stopped after four intervals, at least two minutes
 - unit › in-memory flood guard windows: counts within a window and starts again when it ends
 - unit › in-memory flood guard windows: stays bounded, dropping the oldest windows first
 
@@ -198,7 +208,7 @@ flake (a published test catalogue leaking between files) was found and fixed in 
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**13 tests, 13 passed** (2.3 min, 2026-10-25, with the shared rate-limit store), Chromium, real server
+**13 tests, 13 passed** (2.5 min, 2026-10-25, with the alert monitor running in the server), Chromium, real server
 process on port 3100: 11 journeys, then the accessibility project (2 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -209,7 +219,7 @@ process on port 3100: 11 journeys, then the accessibility project (2 tests), whi
 | 4 | Owner subscribes, upgrades with proration, schedules a downgrade and cancels | Pass |
 | 5 | Plan limits are enforced in the UI (second organization starts on Free) | Pass |
 | 6 | Service recovers after a server crash: sessions and saved selections survive a restart | Pass |
-| 7 | Platform admin signs in with two-factor authentication and suspends then restores an organization | Pass |
+| 7 | Platform admin signs in with two-factor authentication, sends a test alert (the console reports that no channel is configured), and suspends then restores an organization | Pass |
 | 8 | Platform admin verifies a subject against a decree in the catalogue editor; the customer sees the badge, its source link and the coverage line | Pass |
 | 9 | Arabic interface switches to right-to-left, shows the Arabic verification label, and the picker fits a phone screen (390 px, no horizontal overflow) | Pass |
 | 10 | A newer catalogue (2027/2028) is published with one of the owner's books dropped; the picker offers to carry the scope and the owner is notified; the notification opens the review page, which lists the missing book; the new scope opens on 2027/2028 with the rest carried | Pass |
@@ -286,6 +296,17 @@ requests.
 
 The `--build` path of `scripts/rolling-restart.sh` (`docker compose build`) was not run here,
 because builds in this sandbox need the proxy settings; the migration step it runs was.
+
+### Operational alerts on the same stack (2026-10-25)
+
+Same production-settings stack, rebuilt with the alert code, with `ALERT_EMAILS=ops@example.test` and a
+10 s check interval. `ALERT_EMAILS` reached both app containers through `docker-compose.yml`.
+
+| Step | Result |
+| --- | --- |
+| `docker compose stop worker` at 05:17:06 | One email, after 120 s (05:19:06), over SMTP to Mailpit: "[localhost] ALERT: The background worker has not reported for 2 minutes", with the instance, the count and what to check; no customer data. Both app instances ran the checks; one sent it |
+| `docker compose start worker` at 05:19:18 | One email at 05:24:16: "[localhost] Resolved: …", after the condition had been clear for 5 minutes |
+| `ops_alerts` | `worker_stalled`, resolved, first seen 05:19:07, resolved 05:24:17 |
 
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
@@ -368,4 +389,4 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
 - Cross-browser E2E (Firefox, WebKit), manual screen-reader review, external penetration test.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
-- Production deployment, TLS issuance by Caddy, monitoring and alerting.
+- Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).

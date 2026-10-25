@@ -46,6 +46,15 @@ const EnvSchema = z
     WORKER_INTERVAL_MS: z.coerce.number().int().min(1000).default(15000),
     // Behind a load balancer: how long /readyz reports "draining" after SIGTERM before the server closes.
     SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).max(60_000).default(0),
+
+    // Operational alerts (src/ops/alerts.ts), sent straight from the app, not via the email outbox.
+    ALERT_EMAILS: z
+      .string()
+      .transform((v) => v.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean))
+      .pipe(z.array(z.email()).max(20))
+      .default([]),
+    ALERT_WEBHOOK_URL: z.url().regex(/^https?:\/\//, 'ALERT_WEBHOOK_URL must be an http(s) URL').optional(),
+    ALERT_CHECK_INTERVAL_MS: z.coerce.number().int().min(10_000).default(60_000),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {
@@ -57,6 +66,9 @@ const EnvSchema = z
       }
       if (!env.APP_URL.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'APP_URL must use https in production' });
+      }
+      if (env.ALERT_WEBHOOK_URL && !env.ALERT_WEBHOOK_URL.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['ALERT_WEBHOOK_URL'], message: 'ALERT_WEBHOOK_URL must use https in production' });
       }
     }
     if (env.EMAIL_TRANSPORT === 'smtp' && !env.SMTP_URL) {

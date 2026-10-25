@@ -134,17 +134,34 @@ restores into a scratch database, checks migrations, row counts, RLS and invaria
 
 Targets **(assumptions)**: RPO 24 h with daily dumps (minutes with managed PITR), RTO 4 h.
 
-## 6. Monitoring (to set up — not yet configured)
+## 6. Monitoring and alerts
 
-| Signal | How |
+**Built in (configure before launch).** Set `ALERT_EMAILS` (comma-separated) and/or `ALERT_WEBHOOK_URL` (a
+Slack, Discord or Mattermost incoming webhook, or any endpoint that accepts JSON) in `.env.production`, then use
+Platform admin → Overview → **Send test alert** to check delivery. Treat the webhook URL as a secret. Every app
+instance checks once a minute; one message is sent when a problem starts, a reminder every 6 hours while it
+lasts, and one when it has been clear for 5 minutes. Alerts are sent directly (not through the email queue),
+are also written to the logs (`"msg":"operational alert"`), and contain counts only.
+
+| Alert | Fires when | First thing to check |
+| --- | --- | --- |
+| Worker stopped | no worker heartbeat for 2 minutes (4 × `WORKER_INTERVAL_MS`) | `docker compose … ps worker`, `logs worker` |
+| Emails failing | an email gave up in the last hour, or 3+ are being retried | SMTP settings and the provider; worker logs |
+| Email backlog | an email has waited more than 15 minutes | whether the worker runs |
+| Server errors | 10+ responses with status 500–599 in 5 minutes on one instance | `docker compose … logs app app2` |
+| Payment notifications failing | a provider webhook failed to process in the last hour | Platform admin → Webhooks |
+| Migrations pending | the schema is behind the code | `docker compose … run --rm migrate` |
+| Database unreachable | two checks in a row cannot reach PostgreSQL (one message per instance) | `ps postgres` / the managed database status |
+
+**Outside the host (needed as well).** Nothing on the host can report that the host itself, Caddy or both app
+instances are down. Add an external uptime check of `https://<domain>/readyz` every minute, alerting after two
+failures (any uptime service, for example UptimeRobot or Better Stack); it also covers TLS certificate expiry.
+
+| Other signal | How |
 | --- | --- |
-| Uptime | External HTTP check of `https://<domain>/readyz` every minute; alert after 2 failures |
-| Worker | `/admin` health page; container health (heartbeat); alert if `worker` unhealthy |
-| Errors | JSON logs from `app`/`worker` (`docker compose logs`); ship to a log service and alert on `level>=50` |
-| Email | Outbox `failed` count on the admin overview |
-| Payments | Failed webhook count on the admin overview / `/admin/events` |
+| Logs | JSON logs from `app`, `app2`, `worker` (`docker compose logs`); ship them to a log service to search and keep them |
 | Disk / DB size | Host monitoring; PostgreSQL `pg_database_size` |
-| Certificates | Caddy renews automatically; uptime check covers expiry |
+| Backups | The backup cron's own failure email or the log service; restore drill (§5) |
 
 ## 7. Release checklist
 

@@ -65,6 +65,7 @@ export async function scopesView(ctx) {
     : h('div', { class: 'card' }, h('p', { class: 'empty' }, t('scopes.empty')), canEdit ? link(`/org/${orgId}`, t('scopes.createFirst'), { class: 'btn' }) : null);
 
   return h('div', {},
-    pageHead(t('scopes.title'), t('scopes.sub', { used: scopes.length, limit: limit === null ? '∞' : limit })),
+    pageHead(t('scopes.title'), t('scopes.sub', { used: scopes.length, limit: limit === null ? '∞' : limit }),
+      scopes.length >= 2 ? link(`/org/${orgId}/scopes/compare`, t('compare.action'), { class: 'btn ghost' }) : null),
     body);
 }

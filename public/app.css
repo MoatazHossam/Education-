@@ -107,6 +107,17 @@ table.data{width:100%;border-collapse:collapse;font-size:13.5px}
 table.data th,table.data td{text-align:start;padding:8px 10px;border-top:1px solid var(--rule);vertical-align:top}
 table.data th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-top:0}
 .table-wrap{overflow-x:auto}
+/* Scope comparison: row headers read like body text; a coloured edge marks books in only one scope. */
+.compare-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.compare-controls .field{flex:1 1 220px;margin:0}
+.compare-tools{justify-content:space-between;margin:14px 0}
+table.compare th[scope="row"],table.compare tr.group th{font-family:var(--f-body);font-size:13.5px;letter-spacing:0;text-transform:none;color:var(--ink);border-top:1px solid var(--rule)}
+table.compare th[scope="row"]{font-weight:400}
+table.compare tr.group th{font-weight:600;padding-top:14px}
+table.compare td{width:20%;font-size:15px}
+table.compare .yes{color:var(--scored);font-weight:700}
+table.compare tr.only-a th[scope="row"]{border-inline-start:3px solid var(--accent)}
+table.compare tr.only-b th[scope="row"]{border-inline-start:3px solid var(--scored)}
 .pill{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:4px;background:var(--act-bg);color:var(--act)}
 .pill.ok{background:var(--scored-bg);color:var(--scored)}
 .pill.warn{background:var(--pass-bg);color:var(--pass)}

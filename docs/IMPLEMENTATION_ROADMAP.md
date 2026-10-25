@@ -40,7 +40,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | P1 | ~~Shared rate-limit store and second app instance~~ — done (PROJECT_STATUS: shared rate limits; two app instances behind Caddy) | — | Availability |
 | P1 | ~~Automated accessibility audit (axe)~~ — done (PROJECT_STATUS: accessibility audit); still open: manual screen-reader review, Firefox/WebKit E2E | 1–2 | NFR-7/8 |
 | P2 | ~~Bulk catalogue import/export (CSV) for editors~~ — done (PROJECT_STATUS: catalogue spreadsheet export and import) | — | Editorial efficiency |
-| P2 | Scope comparison/diff and per-item notes/assignees | 4–6 | Team workflow |
+| P2 | ~~Scope comparison~~ — done (PROJECT_STATUS: scope comparison); still open: per-item notes and assignees | 2–3 | Team workflow |
 | P2 | Webhooks to customer systems on scope change | 2–3 | Integrations |
 | P2 | Card-on-file automatic renewals (Paymob subscriptions module) | 3–5 | Reduce involuntary churn |
 | P2 | SSO (Google Workspace / Microsoft) for school groups | 3–5 | Enterprise |

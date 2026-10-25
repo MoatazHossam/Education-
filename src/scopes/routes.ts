@@ -10,6 +10,7 @@ import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, conflict } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { planCarryForward } from './carry.js';
+import { compareScopes, comparisonCsv } from './compare.js';
 import { selectedRows, toCsv, toJson, toText } from './export.js';
 import { getScope, listScopes, scopeMaterialIds } from './service.js';
 
@@ -91,6 +92,35 @@ export function registerScopeRoutes(app: FastifyInstance, ctx: AppContext): void
       return created;
     });
     return reply.status(201).send({ scope: { id: scope.id, name: scope.name, description: scope.description, catalogVersionId: scope.catalog_version_id, itemCount: 0 } });
+  });
+
+  // Two scopes of the organization side by side. Across catalogue versions books are matched
+  // by subject and title (match.ts). `format=csv` downloads it: needs CSV export on the plan,
+  // and is counted and audited like other exports.
+  app.get('/api/orgs/:orgId/scopes/compare', async (req, reply) => {
+    const { orgId } = parse(z.object({ orgId: z.string() }), req.params);
+    const q = parse(z.object({ a: zUuid, b: zUuid, format: z.enum(['json', 'csv']).default('json') }), req.query);
+    if (q.a === q.b) throw badRequest('Choose two different scopes');
+    const out = await inOrg(ctx, req, orgId, 'viewer', async (trx) => {
+      const [a, b] = [await getScope(trx, orgId, q.a), await getScope(trx, orgId, q.b)];
+      const treeA = await loadCatalogTree(trx, a.catalog_version_id, { allowUnpublished: true });
+      const treeB = await loadCatalogTree(trx, b.catalog_version_id, { allowUnpublished: true });
+      const cmp = compareScopes(treeA, new Set(await scopeMaterialIds(trx, a.id)), treeB, new Set(await scopeMaterialIds(trx, b.id)));
+      if (q.format === 'csv') {
+        const ent = await getEntitlements(trx, orgId, grace);
+        requireFeature(ent, 'export_csv', 'CSV export');
+        await consumeUsage(trx, orgId, 'exports', ent.limits.exports_per_month, 'exports');
+        await recordAudit(trx, actorFromRequest(req), { orgId, action: 'scope.comparison_exported', targetType: 'scope', targetId: a.id, metadata: { with: b.id, ...cmp.summary } }, requestMeta(req));
+      }
+      const side = (s: typeof a, tree: typeof treeA) => ({ id: s.id, name: s.name, catalogVersionId: s.catalog_version_id, academicYear: tree.version.academicYear });
+      return { a: side(a, treeA), b: side(b, treeB), ...cmp };
+    });
+    if (q.format === 'csv') {
+      return reply.type('text/csv; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename="compare-${safeFilename(out.a.name)}-${safeFilename(out.b.name)}.csv"`)
+        .send(comparisonCsv(out, out.a, out.b));
+    }
+    return out;
   });
 
   app.get('/api/orgs/:orgId/scopes/:scopeId', async (req) => {

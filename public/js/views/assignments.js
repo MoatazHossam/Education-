@@ -61,11 +61,12 @@ export async function assignmentsView(ctx) {
   }
   draw();
 
-  const counts = info.myAssignments ?? { open: 0, overdue: 0 };
+  const counts = info.myAssignments ?? { open: 0, overdue: 0, dueSoon: 0 };
   return h('div', {},
     pageHead(t('assignments.title'), t('assignments.sub', { org: info.organization.name })),
     h('div', { class: 'stats items-stats' },
       h('div', { class: 'stat' }, h('div', { class: 'k' }, t('assignments.open')), h('div', { class: 'v' }, String(counts.open))),
-      h('div', { class: 'stat' }, h('div', { class: 'k' }, t('items.stat.overdue')), h('div', { class: 'v' }, String(counts.overdue)))),
+      h('div', { class: 'stat' }, h('div', { class: 'k' }, t('items.stat.overdue')), h('div', { class: 'v' }, String(counts.overdue))),
+      h('div', { class: 'stat' }, h('div', { class: 'k' }, t('items.stat.dueSoon')), h('div', { class: 'v' }, String(counts.dueSoon)))),
     filters, body);
 }

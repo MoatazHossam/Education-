@@ -59,7 +59,7 @@ counted across all app instances; the global limit is counted per app instance.
 | POST | `/logout` · `/logout-others` | — |
 | GET | `/me` | user (with `kind`: `staff` or `student`), organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA. For a student: `organizations: []` and `student {username, grade, school {id, name, code, locale}}` |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
-| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean}` (catalogue update emails; emails when books are assigned to you; in-app notifications are always created) |
+| PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean, dueReminderEmails?: boolean}` (catalogue update emails; emails when books are assigned to you; reminder emails for your books due soon or overdue; in-app notifications are always created) |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
 | POST | `/mfa/setup` · `/mfa/enable` · `/mfa/disable` · `/mfa/recovery-codes` | setup returns `{secret, otpauthUrl, qrSvg}`; enable `{code}` → `{recoveryCodes}` |
 | GET | `/account/export` | personal data as JSON |
@@ -97,7 +97,7 @@ Tree shape:
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/orgs` | user | `{name}` → new org (owner); trial only for a user's first org |
-| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage + `myAssignments {open, overdue}` · `{name?, locale?, requireMfaForAdmins?}` · `{password, confirmName}` |
+| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage + `myAssignments {open, overdue, dueSoon}` (not done; past due; due today or in the next 2 days, by Cairo's date) · `{name?, locale?, requireMfaForAdmins?}` · `{password, confirmName}` |
 | GET | `/:orgId/members` | viewer | |
 | PATCH / DELETE | `/:orgId/members/:userId` | admin | `{role}` · remove (members may remove themselves) |
 | POST | `/:orgId/transfer-ownership` | owner | `{userId, password}` |

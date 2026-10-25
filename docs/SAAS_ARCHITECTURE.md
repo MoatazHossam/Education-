@@ -29,7 +29,7 @@ flowchart LR
 | Component | Responsibility | Code |
 | --- | --- | --- |
 | Web app | REST API (`/api/*`), static SPA, health endpoints; two instances in production | `src/app.ts`, route modules |
-| Worker | Email outbox delivery, subscription lifecycle (trial end, renewals, grace), retention cleanup, heartbeat | `src/worker.ts`, `src/jobs/tasks.ts`, `src/billing/service.ts` |
+| Worker | Email outbox delivery, subscription lifecycle (trial end, renewals, grace), due-date reminders, retention cleanup, heartbeat | `src/worker.ts`, `src/jobs/tasks.ts`, `src/billing/service.ts`, `src/scopes/reminders.ts` |
 | PostgreSQL | All state; Row-Level Security for tenant tables | `src/db/migrations/` |
 | SPA | Picker and management UI; no build step; strict CSP | `public/` |
 | Alert monitor | In each app instance: checks the worker heartbeat, email delivery, server errors, payment webhooks, migrations and the database every minute; sends alerts by SMTP and webhook (one instance per message, via `ops_alerts`) | `src/ops/alerts.ts` |
@@ -56,7 +56,7 @@ modules, no bundler; fonts self-hosted from `@fontsource`.
    session's membership row.
 2. **Row-Level Security** — every tenant table (`scopes`, `scope_items`, `invitations`, `api_keys`,
    `subscriptions`, `invoices`, `payments`, `usage_counters`, `billing_notices`, `audit_logs`,
-   `support_access_grants`, and `memberships`) has `ENABLE` + `FORCE ROW LEVEL SECURITY` with
+   `support_access_grants`, `students`, `item_reminders`, and `memberships`) has `ENABLE` + `FORCE ROW LEVEL SECURITY` with
    policies keyed on transaction-local settings:
    - `withOrgContext()` sets `app.current_org` → only that tenant's rows are visible/writable;
    - `withUserContext()` sets `app.current_user` → a user sees only their own memberships;
@@ -127,6 +127,7 @@ readable only through an active support grant (see SECURITY_DESIGN.md).
 | --- | --- | --- |
 | Email outbox | every tick (default 15 s) | `FOR UPDATE SKIP LOCKED`; exponential backoff; 8 attempts; body redacted after delivery |
 | Billing lifecycle | every tick | Trial notices (once), trial expiry, renewal invoices (once per period), past-due, grace expiry, scheduled cancellation |
+| Due-date reminders | every 15 min; sends only from 08:00 to 21:00 Cairo time | Per member and organization, one in-app notice and (if allowed) one email listing books due today or in the next 2 days and books overdue by up to 7 days; done books, suspended accounts and suspended organizations are skipped. Each book is claimed in `item_reminders` (insert, skip on conflict) in the same transaction as the notice and email, so concurrent workers never repeat one |
 | Retention cleanup | hourly | Expired sessions/tokens, old emails/notifications/invitations, audit logs past `AUDIT_RETENTION_DAYS` |
 | Heartbeat | every tick | `worker_heartbeats`; container health check and admin health page |
 

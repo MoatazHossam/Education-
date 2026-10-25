@@ -11,21 +11,25 @@ const SHOW = ['all', 'mine', 'notes', 'assigned', 'unassigned', 'open', 'overdue
 export const STATUSES = ['todo', 'in_progress', 'done'];
 
 /** Today in the browser's time zone, as YYYY-MM-DD (due dates are calendar days). */
-export function today() {
+export function today(offsetDays = 0) {
   const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+/** Books due today or in the next two days; the same window as the reminder emails (src/scopes/notes.ts). */
+const DUE_SOON_DAYS = 2;
 export const isOverdue = (a) => Boolean(a?.dueOn && a.status !== 'done' && a.dueOn < today());
+export const isDueSoon = (a) => Boolean(a?.dueOn && a.status !== 'done' && a.dueOn >= today() && a.dueOn <= today(DUE_SOON_DAYS));
 /** A calendar day shown in the user's language (built at local midnight, so the day never shifts). */
 export const fmtDay = (day) => fmtDate(new Date(`${day}T00:00:00`));
 
-/** Status pill and due date of a book; "overdue" is said in words, not only by colour. */
+/** Status pill and due date of a book; "overdue" and "due soon" are said in words, not only by colour. */
 export function progress(a) {
   const parts = [];
   if (a?.status) parts.push(h('span', { class: `pill ${a.status === 'done' ? 'ok' : a.status === 'in_progress' ? 'warn' : ''}` }, t(`items.status.${a.status}`)));
   if (a?.dueOn) {
     parts.push(h('div', { class: 'small' }, t('items.due', { date: fmtDay(a.dueOn) }),
-      isOverdue(a) ? [' ', h('span', { class: 'pill bad' }, t('items.overdue'))] : null));
+      isOverdue(a) ? [' ', h('span', { class: 'pill bad' }, t('items.overdue'))] : isDueSoon(a) ? [' ', h('span', { class: 'pill warn' }, t('items.dueSoon'))] : null));
   }
   return parts.length ? parts : h('span', { class: 'muted' }, '—');
 }

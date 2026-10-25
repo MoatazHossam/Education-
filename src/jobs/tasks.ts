@@ -61,6 +61,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     // Database clock, as the counters' windows use it (rate-limit-store.ts).
     const rateLimits = await trx.deleteFrom('rate_limits').where('expires_at', '<=', sql<Date>`now()`).executeTakeFirst();
     const alerts = await trx.deleteFrom('ops_alerts').where('status', '=', 'resolved').where('resolved_at', '<=', addDays(now, -90)).executeTakeFirst();
+    // A reminder record is only needed while its due date is in the reminder window (scopes/reminders.ts).
+    const reminders = await trx.deleteFrom('item_reminders').where('due_on', '<', addDays(now, -60).toISOString().slice(0, 10)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -70,6 +72,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       auditLogs: Number(audit.numDeletedRows),
       rateLimits: Number(rateLimits.numDeletedRows),
       resolvedAlerts: Number(alerts.numDeletedRows),
+      itemReminders: Number(reminders.numDeletedRows),
     };
   });
 }

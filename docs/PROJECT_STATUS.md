@@ -75,9 +75,37 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
   The CSV unit test was updated. E2E journey 15 (it reuses journey 14's school, since sign-ups are limited to 10 an hour per address): the owner makes Hana a viewer and assigns two books with a status and past due date in one go, then moves one date later. Overdue counts and filters follow. Hana's email lists the books; she opens My assignments (3) from the navigation, marks the overdue book done, filters to done, and turns the emails off. The accessibility audit adds 5 screens (the notes page with an overdue book, and My assignments in English, Arabic, dark and on a phone) with 0 findings. All pass.
 - **Limitations:**
-  - No reminder before a due date (the overdue state shows on screen only).
+  - ~~No reminder before a due date~~: added, see due-date reminders below.
   - Assignment emails are sent once per assignment, not batched into a daily digest.
   - My assignments covers one organization at a time.
+
+### Due-date reminders · COMPLETE
+- **Implemented:** the worker reminds the member a book is assigned to when its due date comes near and when it has passed.
+  - **When:** a book is **due soon** from 2 days before its due date to the day itself, and **overdue** for the 7 days after it. Each book is reminded once as due soon and once as overdue, for that assignee and that due date. A new due date or a new assignee is reminded again; marking a book done and reopening it is not. Done books, and books overdue for more than a week, are never reminded.
+  - **How:** one in-app notice, and one email if allowed, per member and organization, listing the books (overdue first, then due soon, each with its scope and "due today", "due tomorrow" or the date; up to 20 per list, then "and N more"), in the member's language, with a link to My assignments and to the account settings.
+  - **Email choice:** "Email me a reminder when my books are due soon or overdue" in the account settings, on by default and separate from the assignment emails. The email also needs a verified address. The in-app notice is always created.
+  - **Timing:** the worker checks every 15 minutes and sends only between 08:00 and 21:00 Cairo time, so a worker that was down catches up the same day. Suspended accounts and organizations get nothing until they are active again.
+  - **Safe to repeat:** each reminded book is recorded in `item_reminders` (migration 0010) in the same transaction as the notice and the email, with insert-or-skip on its key, so several workers or passes never send one twice. Records go with the book, the scope and the member, and are deleted 60 days after the due date. The table has forced row-level security like other tenant tables.
+  - **On screen:** books due soon carry a "due soon" mark next to the due date (notes page and My assignments), and My assignments counts them.
+- **Files:** `src/db/migrations/0010_due_reminders.ts`, `src/scopes/{reminders,notes}.ts`, `src/worker.ts`, `src/jobs/tasks.ts`, `src/notifications/email.ts`, `src/auth/routes.ts`, `public/js/views/{items,assignments,account}.js`, `public/js/i18n.js`.
+- **Tests:** `due-reminders.test.ts` (10) and `unit/reminders.test.ts` (3):
+  - one email listing both kinds, and the next day only what changed;
+  - each member's language;
+  - what is left out;
+  - the sending hours;
+  - re-reminding after a new date or assignee;
+  - the email choice and unverified addresses;
+  - suspended accounts and organizations;
+  - three passes at once sending each reminder once;
+  - long lists;
+  - record removal and retention;
+  - other organizations;
+  - the due-soon count.
+
+  E2E journey 16: the owner gives Hana a book due tomorrow, and the notes page marks it due soon. One pass of the reminder job against the E2E database sends one reminder, and a second pass none. Hana's email arrives although she turned assignment emails off. She sees the count and the notice, and turns reminder emails off. The accessibility audit's notes page and My assignments screens now include a due-soon book, with 0 findings. Migration 0010 was applied, reverted and applied again on a scratch database. All pass.
+- **Limitations:**
+  - The reminder window (2 days before, 7 days after) and the sending hours are fixed for every school.
+  - Reminders go to the assignee only, not to whoever set the due date.
 
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
@@ -234,7 +262,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (206 unit/integration + 17 E2E passing: 15 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (219 unit/integration + 18 E2E passing: 16 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

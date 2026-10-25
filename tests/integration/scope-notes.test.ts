@@ -314,9 +314,9 @@ describe('status, due dates, assignment emails and my assignments', () => {
     const done = (await t.editor.client.get(`/api/orgs/${t.owner.orgId}/assignments?show=done`)).json().items;
     expect(done.map((i: { materialId: string }) => i.materialId)).toEqual([t.books[3]]);
     expect((await t.editor.client.get(`/api/orgs/${t.owner.orgId}/assignments?show=all`)).json().items).toHaveLength(5);
-    expect((await t.editor.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 4, overdue: 1 });
+    expect((await t.editor.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 4, overdue: 1, dueSoon: 0 });
     expect((await t.owner.client.get(`/api/orgs/${t.owner.orgId}/assignments`)).json().items).toEqual([]);
-    expect((await t.viewer.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 0, overdue: 0 });
+    expect((await t.viewer.client.get(`/api/orgs/${t.owner.orgId}`)).json().myAssignments).toEqual({ open: 0, overdue: 0, dueSoon: 0 });
   });
 
   it('status and due date travel with duplicates and carry-forward, and appear in exports', async () => {

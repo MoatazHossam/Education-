@@ -2,6 +2,9 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
+import { loadConfig } from '../../src/config.js';
+import { createDatabase } from '../../src/db/index.js';
+import { runDueReminders } from '../../src/scopes/reminders.js';
 import { ADMIN_URL } from '../helpers/env.js';
 
 export const E2E_PORT = 3100;
@@ -97,5 +100,15 @@ export async function ownerQuery(sql: string, params: unknown[] = []) {
     return (await client.query(sql, params)).rows;
   } finally {
     await client.end();
+  }
+}
+
+/** One pass of the worker's due-date reminders against the E2E database (the E2E run starts no worker). */
+export async function runReminderPass(now: Date) {
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  try {
+    return await runDueReminders(db, loadConfig(E2E_ENV), now);
+  } finally {
+    await db.destroy();
   }
 }

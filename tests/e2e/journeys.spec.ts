@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, startServer, stopServer } from './server.js';
+import { latestEmailText, ownerQuery, runReminderPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 
 let ownerEmail = '';
 let orgAId = '';
-// The notes team (journey 14) is reused by journey 15: sign-ups are limited to 10 an hour per address.
+// The notes team (journey 14) is reused by journeys 15 and 16: sign-ups are limited to 10 an hour per address.
 const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
@@ -587,4 +587,52 @@ test('status and due dates: the owner plans the work, the assignee gets an email
   await viewer.reload();
   await expect(viewer.getByLabel('Email me when books are assigned to me')).not.toBeChecked();
   await viewerCtx.close();
+});
+
+test('due-date reminders: a book due tomorrow is marked due soon and its assignee gets one reminder', async ({ page, browser }) => {
+  // Journey 15's school and scope. Hana turned assignment emails off there; reminders are a separate choice.
+  const orgId = notesTeam.orgId;
+  const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  await login(page, notesTeam.ownerEmail);
+  await page.goto(`/org/${orgId}`);
+  const option = page.locator('.scopebar select option', { hasText: 'Grade 6 books' });
+  await page.locator('.scopebar select').selectOption((await option.getAttribute('value'))!);
+  await page.locator('.scopebar').getByRole('link', { name: 'Notes and assignees' }).click();
+  await page.getByRole('button', { name: /^Edit the note on / }).nth(2).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('Assigned to').selectOption({ label: 'Hana Editor' });
+  await dlg.getByLabel('Due date').fill(day(1));
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(dlg).toHaveCount(0);
+  const row = page.locator('table.items tbody tr:not(.group)').nth(2);
+  await expect(row.locator('.pill')).toHaveText('due soon');
+
+  // The worker's reminder pass at 10:30 Cairo time: one reminder, and none the second time.
+  const morning = new Date();
+  morning.setUTCHours(8, 30, 0, 0);
+  expect(await runReminderPass(morning)).toMatchObject({ members: 1, reminded: 1, emails: 1 });
+  expect(await runReminderPass(morning)).toMatchObject({ members: 0, reminded: 0 });
+  const mail = await latestEmailText(notesTeam.editorEmail, 'items_due');
+  expect(mail).toContain('These books assigned to you in Notes Academy need attention:');
+  expect(mail).toMatch(/Due soon \(1\):\n• .+ — “Grade 6 books”, due tomorrow/);
+  expect(mail).toContain(`/org/${orgId}/assignments`);
+
+  // Hana sees the reminder, the book due soon on My assignments, and turns reminder emails off.
+  const ctx = await browser.newContext();
+  const hana = await ctx.newPage();
+  await login(hana, notesTeam.editorEmail);
+  await hana.goto(`/org/${orgId}/assignments`);
+  await expect(hana.locator('.stat', { hasText: 'Due soon' }).locator('.v')).toHaveText('1');
+  await expect(hana.locator('table.items tbody tr', { hasText: 'due soon' })).toHaveCount(1);
+  await hana.getByRole('button', { name: 'Notifications' }).click();
+  await expect(hana.getByRole('dialog').getByText('1 book is due soon')).toBeVisible();
+  await hana.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await hana.goto('/account');
+  await expect(hana.getByLabel('Email me when books are assigned to me')).not.toBeChecked();
+  await hana.getByLabel('Email me a reminder when my books are due soon or overdue').uncheck();
+  await hana.getByRole('button', { name: 'Save' }).first().click();
+  await expect(hana.locator('#toasts').getByText('Saved', { exact: true }).first()).toBeVisible();
+  await hana.reload();
+  await expect(hana.getByLabel('Email me a reminder when my books are due soon or overdue')).not.toBeChecked();
+  await ctx.close();
 });

@@ -69,6 +69,26 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
     en: (p) => ({ subject: `${p.by} assigned you ${p.count} ${p.count === '1' ? 'book' : 'books'} in “${p.scope}”`, text: `${p.by} assigned you ${p.count === '1' ? 'a book' : `${p.count} books`} to follow up in the scope “${p.scope}” (${p.orgName}):\n${p.items}\n\nSee your books, their notes and due dates:\n${p.link}\n\nYou receive this because books were assigned to you. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
     ar: (p) => ({ subject: `أسند إليك ${p.by} كتبًا في «${p.scope}» (${p.count})`, text: `أسند إليك ${p.by} كتبًا للمتابعة في النطاق «${p.scope}» (${p.orgName}):\n${p.items}\n\nاطّلع على كتبك وملاحظاتها ومواعيدها:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا أُسندت إليك. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
   },
+  items_due: {
+    en: (p) => ({
+      subject:
+        p.overdue !== '0' && p.soon !== '0'
+          ? `Reminder: ${p.overdue} overdue and ${p.soon} due soon in ${p.orgName}`
+          : p.overdue !== '0'
+            ? `Reminder: ${p.overdue} ${p.overdue === '1' ? 'book is' : 'books are'} overdue in ${p.orgName}`
+            : `Reminder: ${p.soon} ${p.soon === '1' ? 'book is' : 'books are'} due soon in ${p.orgName}`,
+      text: `Hello ${p.name},\n\nThese books assigned to you in ${p.orgName} need attention:\n\n${p.sections}\n\nUpdate their status or see all your books:\n${p.link}\n\nYou receive this because books with a due date are assigned to you. Each book is reminded once when it is due soon and once when it is overdue. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}`,
+    }),
+    ar: (p) => ({
+      subject:
+        p.overdue !== '0' && p.soon !== '0'
+          ? `تذكير: كتب متأخرة (${p.overdue}) وكتب يحين موعدها قريبًا (${p.soon}) في ${p.orgName}`
+          : p.overdue !== '0'
+            ? `تذكير: كتب متأخرة عن موعدها (${p.overdue}) في ${p.orgName}`
+            : `تذكير: كتب يحين موعدها قريبًا (${p.soon}) في ${p.orgName}`,
+      text: `مرحبًا ${p.name}،\n\nتحتاج هذه الكتب المسندة إليك في ${p.orgName} إلى متابعة:\n\n${p.sections}\n\nحدّث حالتها أو اطّلع على كل كتبك:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا لها مواعيد أُسندت إليك. يصلك تذكير واحد لكل كتاب عند اقتراب موعده وآخر عند تأخره. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}`,
+    }),
+  },
   catalog_review: {
     en: (p) => ({ subject: `${p.count} ${p.count === '1' ? 'item' : 'items'} in your scopes ${p.count === '1' ? 'is' : 'are'} under review`, text: `Our curriculum team flagged ${p.count} catalogue items that ${p.orgName} has selected:\n${p.items}\n\nNote: ${p.note}\n\nAffected scopes:\n${p.scopes}\n\nOpen: ${p.link}\n\nTurn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
     ar: (p) => ({ subject: `${p.count} من العناصر في نطاقاتك قيد المراجعة`, text: `أشار فريق المناهج إلى ${p.count} من عناصر الدليل التي اختارتها ${p.orgName}:\n${p.items}\n\nالملاحظة: ${p.note}\n\nالنطاقات المتأثرة:\n${p.scopes}\n\nفتح: ${p.link}\n\nيمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),

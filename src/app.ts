@@ -24,6 +24,7 @@ import { safeEqual } from './lib/crypto.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOrgRoutes } from './orgs/routes.js';
 import { registerScopeRoutes } from './scopes/routes.js';
+import { registerStudentRoutes } from './students/routes.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -154,6 +155,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   registerOrgRoutes(app, ctx);
   registerCatalogRoutes(app, ctx);
   registerScopeRoutes(app, ctx);
+  registerStudentRoutes(app, ctx);
   await registerBillingRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
   registerApiV1Routes(app, ctx);

@@ -1,6 +1,6 @@
 import type { FastifyRequest } from 'fastify';
 import { withOrgContext, type Trx } from '../db/index.js';
-import type { Organization, Role, Session, User } from '../db/types.js';
+import type { Organization, Role, Session, StaffUser, User } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, forbidden, notFound, unauthorized } from '../lib/errors.js';
 
@@ -10,14 +10,41 @@ export function hasRole(role: Role, min: Role): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[min];
 }
 
-export function requireUser(req: FastifyRequest): { user: User; session: Session } {
+export function isStaff(user: User): user is StaffUser {
+  return user.kind === 'staff' && user.email !== null;
+}
+
+/** Narrows a users row known to be staff (memberships hold staff only, enforced by a trigger). */
+export function asStaff(user: User): StaffUser {
+  if (!isStaff(user)) throw new Error(`Expected a staff account: ${user.id}`);
+  return user;
+}
+
+function requireSession(req: FastifyRequest): { user: User; session: Session } {
   const auth = req.auth;
   if (auth?.kind !== 'session') throw unauthorized();
   if (auth.session.state !== 'active') throw new AppError(401, 'MFA_REQUIRED', 'Two-factor verification is required');
   return { user: auth.user, session: auth.session };
 }
 
-export function requirePlatformAdmin(req: FastifyRequest): { user: User; session: Session } {
+/**
+ * A signed-in staff account. Every route outside the student portal uses this
+ * (directly or through inOrg), so student accounts cannot reach them.
+ */
+export function requireUser(req: FastifyRequest): { user: StaffUser; session: Session } {
+  const { user, session } = requireSession(req);
+  if (!isStaff(user)) throw forbidden('Student accounts can only use the student portal', 'STAFF_ONLY');
+  return { user, session };
+}
+
+/** A signed-in student account (the student portal routes). */
+export function requireStudentSession(req: FastifyRequest): { user: User; session: Session } {
+  const { user, session } = requireSession(req);
+  if (user.kind !== 'student') throw notFound();
+  return { user, session };
+}
+
+export function requirePlatformAdmin(req: FastifyRequest): { user: StaffUser; session: Session } {
   const { user, session } = requireUser(req);
   // Do not reveal the admin surface to ordinary users.
   if (!user.is_platform_admin) throw notFound();
@@ -31,7 +58,7 @@ export function requirePlatformAdmin(req: FastifyRequest): { user: User; session
 export interface OrgAccess {
   org: Organization;
   role: Role;
-  user: User;
+  user: StaffUser;
   session: Session;
 }
 

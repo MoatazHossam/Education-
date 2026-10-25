@@ -9,6 +9,10 @@ application/json`); other content types are rejected with `415`.
 - **Web app (session):** `POST /api/auth/login` sets an `HttpOnly` cookie (`sid`, or `__Host-sid`
   over HTTPS). `GET /api/auth/me` returns `csrfToken`; send it as `X-CSRF-Token` on every
   `POST/PATCH/PUT/DELETE`. Requests with a foreign `Origin` are rejected.
+- **Student accounts** (created by a school, `docs/STUDENT_ACCOUNTS.md`) sign in with
+  `POST /api/auth/student-login` and get the same kind of session. They may call only the student
+  portal routes, `GET /api/auth/me` and `POST /api/auth/logout`; every other route answers
+  403 `STAFF_ONLY`.
 - **Public API (`/api/v1`):** `Authorization: Bearer cs_live_…` (created in Organization settings
   → API keys; Professional plan and above). Read-only.
 
@@ -18,17 +22,19 @@ application/json`); other content types are rejected with `415`.
 ```
 | Status | Typical codes |
 | --- | --- |
-| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH` |
+| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH`, `IMPORT_INVALID` |
 | 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `MFA_REQUIRED`, `MFA_INVALID` |
-| 402 | `PLAN_LIMIT_REACHED`, `FEATURE_NOT_IN_PLAN` |
-| 403 | `FORBIDDEN`, `CSRF_TOKEN_INVALID`, `CSRF_ORIGIN_MISMATCH`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ORG_SUSPENDED`, `MFA_REQUIRED_BY_ORG`, `MFA_ENROLLMENT_REQUIRED`, `SUPPORT_ACCESS_REQUIRED` |
+| 402 | `PLAN_LIMIT_REACHED`, `FEATURE_NOT_IN_PLAN`, `STUDENTS_NOT_ENABLED` |
+| 403 | `FORBIDDEN`, `CSRF_TOKEN_INVALID`, `CSRF_ORIGIN_MISMATCH`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ORG_SUSPENDED`, `MFA_REQUIRED_BY_ORG`, `MFA_ENROLLMENT_REQUIRED`, `SUPPORT_ACCESS_REQUIRED`, `STAFF_ONLY`, `STUDENT_PORTAL_OFF` |
 | 404 | `NOT_FOUND` — also returned for resources of other organizations |
-| 409 | `CONFLICT`, `SCOPE_NAME_TAKEN`, `ALREADY_MEMBER`, `PAYMENT_REQUIRED`, `USE_SCHEDULED_CHANGE`, `ALREADY_ON_PLAN`, `OWNS_ORGANIZATIONS` |
+| 409 | `CONFLICT`, `SCOPE_NAME_TAKEN`, `ALREADY_MEMBER`, `PAYMENT_REQUIRED`, `USE_SCHEDULED_CHANGE`, `ALREADY_ON_PLAN`, `OWNS_ORGANIZATIONS`, `USERNAME_TAKEN` |
 | 429 | `RATE_LIMITED` |
 | 500 | `INTERNAL_ERROR` (with `requestId`) |
 
 ### Rate limits
-Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+email; register
+Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+email; student
+sign-in 10/15 min per IP+school+username; student creation and password resets 120/h; roster
+imports 30/h; register
 10/h/IP; password-reset and resend-verification 5/h per IP+email; MFA verify 10/15 min; invitations
 30/h; checkout 20/h; public API 120/min/IP plus the plan's monthly request quota. Route limits are
 counted across all app instances; the global limit is counted per app instance.
@@ -47,10 +53,11 @@ counted across all app instances; the global limit is counted per app instance.
 | POST | `/register` | `{name, email, password, organizationName, locale?}` → `201 {status:"verification_sent"}`; or `{name, email, password, inviteToken}` → `201 {status:"joined", orgId}` (signed in) |
 | POST | `/verify-email` | `{token}` |
 | POST | `/resend-verification` | `{email}` → `202` always |
-| POST | `/login` | `{email, password}` → `{mfaRequired, user}` + cookie |
+| POST | `/login` | `{email, password}` → `{mfaRequired, user}` + cookie (staff accounts) |
+| POST | `/student-login` | `{school, username, password}` → `{mfaRequired:false, user}` + cookie (student accounts; `school` is the organization slug). 403 `STUDENT_PORTAL_OFF` when the school has no student accounts on its plan |
 | POST | `/mfa/verify` | `{code}` or `{recoveryCode}` (pending-MFA session) |
 | POST | `/logout` · `/logout-others` | — |
-| GET | `/me` | user, organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA |
+| GET | `/me` | user (with `kind`: `staff` or `student`), organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA. For a student: `organizations: []` and `student {username, grade, school {id, name, code, locale}}` |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
 | PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean}` (catalogue update emails; in-app notifications are always created) |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
@@ -99,6 +106,18 @@ Tree shape:
 | GET | `/:orgId/audit-logs?action=&before=&limit=` | admin | cursor pagination by `before` |
 | GET / POST / DELETE | `/:orgId/support-access[/:id]` | owner | `{reason, hours 1–72}` |
 | GET / POST / DELETE | `/:orgId/api-keys[/:id]` | admin | POST returns the key once |
+| GET | `/:orgId/students` | admin | `{enabled, limit, used, schoolCode, grades, students[]}` |
+| POST | `/:orgId/students` | admin | `{username, name, grade, scopeId?}` → `201 {student, password}` (password shown once); 402 `STUDENTS_NOT_ENABLED` / `PLAN_LIMIT_REACHED` |
+| POST | `/:orgId/students/import` | admin | `{csv, apply}`: preview `{rows, errors, limit, used}`; apply (all or nothing) → `{created[] with passwords, schoolCode}` |
+| PATCH / DELETE | `/:orgId/students/:userId` | admin | `{name?, grade?, scopeId? (null clears)}` · delete the account |
+| POST | `/:orgId/students/:userId/reset-password` | admin | → `{password}`; ends the student's sessions and lifts a lockout |
+
+### Student portal (`/api/student`) — student session only; 404 for staff
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/curriculum` | `{school {name}, scope {id, name, academicYear} \| null, grade {grade, nameEn, nameAr}, subjects[{id, track, block, nameEn, nameAr, status, materials[{id, kind, title}]}]}`: the student's grade, only the books selected in the assigned scope |
+| PATCH | `/profile` | `{locale}` |
+| POST | `/password` | `{currentPassword, newPassword}`; ends the student's other sessions |
 
 ### Scopes
 | Method | Path | Role | Notes |

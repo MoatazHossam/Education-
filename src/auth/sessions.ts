@@ -6,6 +6,8 @@ import { hmacHex, randomToken, sha256Hex } from '../lib/crypto.js';
 
 const ABSOLUTE_TTL_MS = 30 * 86_400_000;
 const ADMIN_ABSOLUTE_TTL_MS = 12 * 3_600_000;
+// Students often use shared school computers: their sessions end the same day.
+const STUDENT_ABSOLUTE_TTL_MS = 12 * 3_600_000;
 const MFA_PENDING_TTL_MS = 10 * 60_000;
 export const IDLE_TIMEOUT_MS = 7 * 86_400_000;
 const TOUCH_INTERVAL_MS = 5 * 60_000;
@@ -19,14 +21,15 @@ export function csrfTokenFor(config: AppConfig, sessionId: string): string {
   return hmacHex(config.SESSION_SECRET, `csrf:${sessionId}`);
 }
 
-function ttlFor(user: Pick<User, 'is_platform_admin'>, state: Session['state']): number {
+function ttlFor(user: Pick<User, 'is_platform_admin' | 'kind'>, state: Session['state']): number {
   if (state === 'mfa_pending') return MFA_PENDING_TTL_MS;
+  if (user.kind === 'student') return STUDENT_ABSOLUTE_TTL_MS;
   return user.is_platform_admin ? ADMIN_ABSOLUTE_TTL_MS : ABSOLUTE_TTL_MS;
 }
 
 export async function createSession(
   exec: Executor,
-  user: Pick<User, 'id' | 'is_platform_admin'>,
+  user: Pick<User, 'id' | 'is_platform_admin' | 'kind'>,
   opts: { state: Session['state']; mfaVerified: boolean; ip: string | null; userAgent: string | null },
 ): Promise<{ token: string; session: Session }> {
   const token = randomToken(32);

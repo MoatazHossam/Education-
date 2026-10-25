@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-24. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-25. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -19,6 +19,9 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
 | B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
+| B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
+| B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7) | No school should use student accounts with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
+| B-10 | No AI provider chosen | The Wise EduAgent features (assistant etc.) cannot be built | Owner: provider and model, who holds the key and pays for usage |
 
 ## 2. Deliverables
 
@@ -29,7 +32,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:** the artifact was only available as a rendered page; no earlier project history exists.
 
 ### Phase 1 — Foundation · COMPLETE
-- **Implemented:** TypeScript/Fastify app, Zod config with production guards, PostgreSQL schema (25 tables) with RLS and composite keys, Kysely migrator, role split (owner/app/backup), seed, health/readiness.
+- **Implemented:** TypeScript/Fastify app, Zod config with production guards, PostgreSQL schema (25 tables at the time; 30 with later migrations) with RLS and composite keys, Kysely migrator, role split (owner/app/backup), seed, health/readiness.
 - **Files:** `src/app.ts`, `src/config.ts`, `src/db/*`, `src/http/*`, `package.json`, `tsconfig*.json`, `eslint.config.js`.
 - **Tests:** RLS proofs in `tenancy.test.ts`; config tests; health tests — pass.
 
@@ -38,6 +41,21 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
 - **Next:** manual screen-reader review; Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
+
+### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
+- **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
+  - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
+  - Owners and admins: add a student, import a roster CSV (preview, all or nothing, Arabic headers and Excel files handled, up to 300 per file), set name, grade and curriculum, issue a new password (shown once, also as a download), remove. Editors and viewers have no access.
+  - The student portal: My curriculum in English and Arabic, password change, sign-out. Staff pages send a student back to the portal.
+  - Off by default: new plan limit `max_students` = 0 on every plan (prices unchanged); a platform administrator enables it per school with a limit override, which, like other overrides, applies only on a paid or trial plan. Platform administrators see only the number of student accounts; the platform user list excludes students.
+  - Deleting a student, or the school, deletes the accounts with their sessions.
+- **Files:** `src/db/migrations/0007_students.ts`, `src/students/*`, `src/auth/{guards,routes,sessions}.ts`, `src/billing/{plans,entitlements}.ts`, `src/admin/routes.ts`, `public/js/views/{student,students,auth,admin,shell}.js`, `public/js/main.js`, `public/js/i18n.js`, `public/app.css`. Staff-only code paths now use a `StaffUser` type (email always present).
+- **Tests:** `students.test.ts` (25), which includes calling every route of the application with a student session. E2E journey 13 runs the whole flow through the UI: a platform admin enables accounts, the owner adds a student and imports one, the student signs in and sees exactly the scope's books, staff pages are closed to the student, Arabic works, and a reset signs the student out. The accessibility audit adds 12 screens (the Students page and dialogs; student sign-in; the portal in English, Arabic, dark and on a phone) with 0 findings. All pass, and the existing suites pass unchanged.
+- **Limitations:**
+  - Not for real students until the legal assessment (B-9).
+  - No price yet for student accounts.
+  - Import error messages are in English.
+  - No classes, assignments, progress or AI: Wise EduAgent could not be inspected (B-8) and no AI provider is chosen (B-10).
 
 ### Scope comparison · COMPLETE
 - **Implemented:** any two scopes of an organization side by side (Scopes → Compare scopes; any member, every plan). On the same catalogue version books are compared by id. Across catalogue years, for example last year's plan against this year's, they are matched by subject and title with the carry-forward rules. Those rules now live in a shared module, `src/scopes/match.ts`, and carry-forward behaviour is unchanged. A book renamed only in capitals or spacing counts as the same book and shows both titles; books and subjects missing from the other year's catalogue are marked. The page shows:
@@ -179,7 +197,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (159 unit/integration + 14 E2E passing: 12 journeys, 2 accessibility) |
+| Core workflows function correctly | ✓ (184 unit/integration + 15 E2E passing: 13 journeys, 2 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -202,3 +220,11 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 2. Catalogue verification (B-6): a curriculum specialist reviews entries against decrees and publishers and records marks in Platform admin → Catalogue.
 3. Production host + monitoring + backup job (B-4), then a restore drill.
 4. Legal review (B-5), pilot with 3–5 design partners.
+
+**Resume point (2026-10-25).** After PR #10 (scope comparison, merged at `b298586`) work switched to the
+Wise EduAgent student-portal integration (`docs/wise-integration/`). Wise itself could not be inspected
+(B-8); on the owner's decision, student accounts created by schools were built as the portal's
+foundation (above). Waiting on the owner: access to Wise (B-8) and an AI provider (B-10); legal
+assessment before real student use (B-9). Still **not started**, agreed in principle: per-item notes and
+assignees on scopes (Roadmap P2, about 2–3 days): a short note on any selected book (e.g. "waiting for
+the 2027 edition") and the member responsible for it.

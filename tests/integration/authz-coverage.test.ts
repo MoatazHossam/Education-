@@ -1,6 +1,6 @@
 import { authenticator } from 'otplib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { Client, createHarness, PASSWORD, resetData, signUp, totp, type Harness } from '../helpers/harness.js';
+import { Client, createHarness, PASSWORD, resetData, signUp, STUDENT_ROUTES, totp, type Harness } from '../helpers/harness.js';
 
 let h: Harness;
 beforeAll(async () => {
@@ -23,6 +23,7 @@ const PUBLIC_OR_SELF: string[] = [
   'POST /api/auth/mfa/disable', 'POST /api/auth/mfa/recovery-codes', 'GET /api/invitations/:token', 'POST /api/invitations/accept',
   'GET /api/notifications', 'POST /api/notifications/read', 'POST /api/orgs', 'GET /api/catalog/versions', 'GET /api/catalog/versions/:id',
   'GET /api/billing/plans', 'POST /api/billing/webhooks/:provider', 'GET /api/billing/sandbox/checkout', 'POST /api/billing/sandbox/complete',
+  ...STUDENT_ROUTES,
 ];
 
 describe('authorization coverage (all registered routes)', () => {

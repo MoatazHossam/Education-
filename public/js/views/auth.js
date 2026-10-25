@@ -55,7 +55,35 @@ export function loginView(ctx) {
     },
   });
   return page(ctx, t('auth.signInTitle'), t('auth.signInSub'), notVerified, f.el,
-    h('div', { class: 'auth-foot' }, link('/forgot-password', t('auth.forgot')), link('/register', t('auth.noAccount')), link('/pricing', t('pricing.title'))));
+    h('div', { class: 'auth-foot' }, link('/forgot-password', t('auth.forgot')), link('/register', t('auth.noAccount')), link('/pricing', t('pricing.title'))),
+    h('p', { class: 'auth-foot' }, link('/student-login', t('student.signInLink'))));
+}
+
+/** Students sign in with the school code, the username their school gave them and their password. */
+export function studentLoginView(ctx) {
+  const f = form({
+    fields: [
+      { name: 'school', label: t('student.schoolCode'), required: true, autocomplete: 'organization', value: ctx.query.get('school') || '', maxlength: 64, hint: t('student.schoolCodeHint') },
+      { name: 'username', label: t('student.username'), required: true, autocomplete: 'username', maxlength: 40 },
+      { name: 'password', label: t('auth.password'), type: 'password', required: true, autocomplete: 'current-password' },
+    ],
+    submitLabel: t('auth.signIn'),
+    onSubmit: async (v) => {
+      try {
+        await post('/api/auth/student-login', v);
+      } catch (err) {
+        // Same server code as staff sign-in; the translation names the student fields.
+        if (err.code === 'INVALID_CREDENTIALS') err.code = 'STUDENT_INVALID_CREDENTIALS';
+        throw err;
+      }
+      await loadSession();
+      if (session.me?.user?.locale) setLocale(session.me.user.locale);
+      navigate('/student');
+    },
+  });
+  for (const k of ['school', 'username']) f.inputs[k].setAttribute('autocapitalize', 'none');
+  return page(ctx, t('student.signInTitle'), t('student.signInSub'), f.el,
+    h('div', { class: 'auth-foot' }, link('/login', t('student.staffSignIn'))));
 }
 
 export function registerView(ctx) {

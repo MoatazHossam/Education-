@@ -29,6 +29,7 @@ const LimitsSchema = z.object({
   exports_per_month: nullableCount,
   api_requests_per_month: nullableCount,
   audit_log_days: z.number().int().min(1).max(3650),
+  max_students: nullableCount,
 });
 const FeaturesSchema = z.object({
   export_csv: z.boolean(),
@@ -93,7 +94,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       const now = new Date();
       const [orgs, users, subs, plans, revenue, outbox, failedEvents, signups] = await Promise.all([
         trx.selectFrom('organizations').select(['status', (eb) => eb.fn.countAll<string>().as('n')]).groupBy('status').execute(),
-        trx.selectFrom('users').select([(eb) => eb.fn.countAll<string>().as('total'), sql<string>`count(*) FILTER (WHERE email_verified_at IS NOT NULL)`.as('verified'), sql<string>`count(*) FILTER (WHERE status = 'suspended')`.as('suspended')]).executeTakeFirstOrThrow(),
+        trx.selectFrom('users').select([(eb) => eb.fn.countAll<string>().as('total'), sql<string>`count(*) FILTER (WHERE email_verified_at IS NOT NULL)`.as('verified'), sql<string>`count(*) FILTER (WHERE status = 'suspended')`.as('suspended'), sql<string>`count(*) FILTER (WHERE kind = 'student')`.as('students')]).executeTakeFirstOrThrow(),
         trx.selectFrom('subscriptions').selectAll().execute(),
         trx.selectFrom('plans').selectAll().execute(),
         trx.selectFrom('invoices').select([sql<string>`coalesce(sum(amount_cents), 0)`.as('cents'), (eb) => eb.fn.countAll<string>().as('n')]).where('status', '=', 'paid').where('paid_at', '>=', new Date(now.getTime() - 30 * 86_400_000)).executeTakeFirstOrThrow(),
@@ -116,7 +117,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       }
       return {
         organizations: Object.fromEntries(orgs.map((o) => [o.status, Number(o.n)])),
-        users: { total: Number(users.total), verified: Number(users.verified), suspended: Number(users.suspended) },
+        users: { total: Number(users.total) - Number(users.students), verified: Number(users.verified), suspended: Number(users.suspended), students: Number(users.students) },
         subscriptions: { byPlan, byState },
         revenue: { mrrCents, last30DaysCents: Number(revenue.cents), paidInvoicesLast30Days: Number(revenue.n), currency: config.BILLING_CURRENCY },
         operations: { outbox: Object.fromEntries(outbox.map((o) => [o.status, Number(o.n)])), failedWebhooksLast7Days: Number(failedEvents.n) },
@@ -196,12 +197,14 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     return sys(async (trx) => {
       const org = await trx.selectFrom('organizations').selectAll().where('id', '=', orgId).executeTakeFirst();
       if (!org) throw notFound('Organization');
-      const [sub, members, invoices, grants, scopeCount] = await Promise.all([
+      const [sub, members, invoices, grants, scopeCount, studentCount] = await Promise.all([
         trx.selectFrom('subscriptions').selectAll().where('org_id', '=', orgId).executeTakeFirst(),
         trx.selectFrom('memberships as m').innerJoin('users as u', 'u.id', 'm.user_id').select(['u.id', 'u.name', 'u.email', 'u.status', 'u.mfa_enabled', 'm.role']).where('m.org_id', '=', orgId).execute(),
         trx.selectFrom('invoices').selectAll().where('org_id', '=', orgId).orderBy('created_at', 'desc').limit(20).execute(),
         trx.selectFrom('support_access_grants').selectAll().where('org_id', '=', orgId).where('revoked_at', 'is', null).where('expires_at', '>', new Date()).execute(),
         trx.selectFrom('scopes').select((eb) => eb.fn.countAll<string>().as('n')).where('org_id', '=', orgId).executeTakeFirstOrThrow(),
+        // A count only: the platform does not see who the school's students are.
+        trx.selectFrom('students').select((eb) => eb.fn.countAll<string>().as('n')).where('org_id', '=', orgId).executeTakeFirstOrThrow(),
       ]);
       const eff = effectivePlan(sub ?? null, new Date(), config.GRACE_DAYS);
       return {
@@ -210,6 +213,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
         members: members.map((m) => ({ userId: m.id, name: m.name, email: m.email, status: m.status, mfaEnabled: m.mfa_enabled, role: m.role })),
         invoices: invoices.map((i) => ({ id: i.id, number: i.number, kind: i.kind, planId: i.plan_id, amountCents: i.amount_cents, currency: i.currency, status: i.status, createdAt: i.created_at, paidAt: i.paid_at })),
         scopeCount: Number(scopeCount.n),
+        studentCount: Number(studentCount.n),
         activeSupportGrants: grants.map((g) => ({ id: g.id, reason: g.reason, expiresAt: g.expires_at })),
       };
     });
@@ -322,6 +326,8 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       let query = trx
         .selectFrom('users')
         .select(['id', 'email', 'name', 'status', 'is_platform_admin', 'email_verified_at', 'mfa_enabled', 'last_login_at', 'locked_until', 'created_at'])
+        // Student accounts belong to their school and are managed there, not by the platform.
+        .where('kind', '=', 'staff')
         .orderBy('created_at', 'desc')
         .limit(q.limit)
         .offset(q.offset);
@@ -341,7 +347,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       const body = parse(z.object({ reason: z.string().trim().max(500).optional() }), req.body);
       if (id === actor.userId) throw forbidden('You cannot change your own account status');
       return sys(async (trx) => {
-        const res = await trx.updateTable('users').set({ status: action === 'suspend' ? 'suspended' : 'active' }).where('id', '=', id).executeTakeFirst();
+        const res = await trx.updateTable('users').set({ status: action === 'suspend' ? 'suspended' : 'active' }).where('id', '=', id).where('kind', '=', 'staff').executeTakeFirst();
         if (!Number(res.numUpdatedRows)) throw notFound('User');
         if (action === 'suspend') await revokeUserSessions(trx, id);
         await recordAudit(trx, actor, { action: `admin.user_${action}ed`, targetType: 'user', targetId: id, metadata: { reason: body.reason ?? null } }, requestMeta(req));
@@ -354,7 +360,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     const actor = adminActor(req);
     const { id } = parse(z.object({ id: zUuid }), req.params);
     return sys(async (trx) => {
-      const res = await trx.updateTable('users').set({ locked_until: null, failed_login_count: 0 }).where('id', '=', id).executeTakeFirst();
+      const res = await trx.updateTable('users').set({ locked_until: null, failed_login_count: 0 }).where('id', '=', id).where('kind', '=', 'staff').executeTakeFirst();
       if (!Number(res.numUpdatedRows)) throw notFound('User');
       await recordAudit(trx, actor, { action: 'admin.user_unlocked', targetType: 'user', targetId: id }, requestMeta(req));
       return { status: 'unlocked' };

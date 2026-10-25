@@ -19,9 +19,13 @@ an assumption to revisit, since the pound has ranged roughly 46.6–54.8 in 2026
 | Audit-log window | 7 days | 30 days | 365 days | 730 days |
 | Enforce 2FA for admins | — | ✓ | ✓ | ✓ |
 | Priority support | — | — | — | ✓ |
+| Student accounts (`max_students`) | — | — | — | —** |
 | Purchase | — | Self-serve | Self-serve | Sales (`SALES_EMAIL`), manual invoice |
 
 \* Defaults; per-organization overrides via `PATCH /api/admin/orgs/:id/subscription {limitOverrides}`.
+\*\* Student accounts (`docs/STUDENT_ACCOUNTS.md`) are not priced yet: 0 on every plan, enabled for a
+school only by a platform administrator's `max_students` override (which, like other overrides, has
+no effect while the school is on Free). Pricing them is an open commercial decision.
 
 Every plan includes the full catalogue, the picker, "Copy list" and the Arabic interface — the
 original free functionality is never paywalled. Pricing rationale: COMMERCIAL_FEASIBILITY.md.
@@ -40,6 +44,7 @@ original free functionality is never paywalled. Pricing rationale: COMMERCIAL_FE
 | Scopes | create/duplicate (`assertScopeAvailable`) | `402`; when already over (after a downgrade) the **oldest N scopes stay editable**, newer ones are read-only, nothing is deleted |
 | Exports / API requests | atomic conditional upsert on `usage_counters` (UTC month) | `402` until next month or upgrade |
 | Features (CSV/JSON, API, MFA policy) | `requireFeature` | `402 FEATURE_NOT_IN_PLAN` |
+| Student accounts | add or import (`assertStudentCapacity`, org row lock; an import counts as a whole) | 0: `402 STUDENTS_NOT_ENABLED` and students cannot sign in; at the limit: `402 PLAN_LIMIT_REACHED`, existing students keep access |
 
 The effective plan is computed on every request from the subscription row and the clock
 (`effectivePlan`), so expiry is enforced even if the worker is late.

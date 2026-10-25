@@ -29,6 +29,8 @@ export interface PlanLimits {
   exports_per_month: number | null;
   api_requests_per_month: number | null;
   audit_log_days: number;
+  /** Student accounts the school can create; 0 keeps the student portal off. */
+  max_students: number | null;
 }
 
 export interface PlanFeatures {
@@ -39,9 +41,13 @@ export interface PlanFeatures {
   priority_support: boolean;
 }
 
+export type UserKind = 'staff' | 'student';
+
 export interface UsersTable {
   id: Generated<string>;
-  email: string;
+  kind: Generated<UserKind>;
+  /** Always set for staff; always null for students (database constraint users_kind_identity). */
+  email: string | null;
   name: string;
   password_hash: string;
   locale: Generated<Locale>;
@@ -104,6 +110,17 @@ export interface UserTokensTable {
   expires_at: Timestamp;
   used_at: NullableTimestamp;
   created_at: Generated<Date>;
+}
+
+export interface StudentsTable {
+  user_id: string;
+  org_id: string;
+  username: string;
+  grade: number;
+  scope_id: string | null;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 export interface InvitationsTable {
@@ -390,6 +407,7 @@ export interface DB {
   organizations: OrganizationsTable;
   memberships: MembershipsTable;
   sessions: SessionsTable;
+  students: StudentsTable;
   user_tokens: UserTokensTable;
   invitations: InvitationsTable;
   catalog_versions: CatalogVersionsTable;
@@ -418,6 +436,9 @@ export interface DB {
 }
 
 export type User = Selectable<UsersTable>;
+/** A staff account: signs in with an email address and may hold memberships. */
+export type StaffUser = User & { kind: 'staff'; email: string };
+export type Student = Selectable<StudentsTable>;
 export type Organization = Selectable<OrganizationsTable>;
 export type Session = Selectable<SessionsTable>;
 export type Plan = Selectable<PlansTable>;

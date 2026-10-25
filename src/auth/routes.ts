@@ -2,8 +2,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { recordAudit, recordPlatformAudit, requestMeta } from '../audit/audit.js';
-import { setOrgContext, withSystemContext, withUserContext, type Executor } from '../db/index.js';
-import type { Locale, User } from '../db/types.js';
+import { getEntitlements } from '../billing/entitlements.js';
+import { setOrgContext, withOrgContext, withSystemContext, withUserContext, type Executor } from '../db/index.js';
+import { studentsEnabled } from '../students/service.js';
+import type { Locale, StaffUser, User } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { decryptSecret, encryptSecret, randomToken, sha256Hex } from '../lib/crypto.js';
@@ -11,7 +13,7 @@ import { AppError, badRequest, forbidden, notFound, unauthorized } from '../lib/
 import { parse, zEmail, zLocale, zName, zPassword } from '../lib/validation.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
 import { createOrganization } from '../orgs/service.js';
-import { requireUser } from './guards.js';
+import { asStaff, requireUser } from './guards.js';
 import { enrollmentPayload, generateRecoveryCodes, generateTotpSecret, normalizeRecoveryCode, verifyTotp } from './mfa.js';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password.js';
 import {
@@ -31,6 +33,7 @@ const RESET_TTL_MS = 3_600_000;
 export function publicUser(u: User) {
   return {
     id: u.id,
+    kind: u.kind,
     email: u.email,
     name: u.name,
     locale: u.locale,
@@ -66,6 +69,12 @@ async function consumeUserToken(exec: Executor, token: string, purpose: 'verify_
 
 function link(ctx: AppContext, path: string): string {
   return `${ctx.config.APP_URL}${path}`;
+}
+
+/** The staff account with this email. Student accounts have no email, so they never match. */
+async function staffByEmail(exec: Executor, email: string): Promise<StaffUser | undefined> {
+  const user = await exec.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
+  return user ? asStaff(user) : undefined;
 }
 
 async function startSession(ctx: AppContext, req: FastifyRequest, reply: FastifyReply, user: User, opts: { mfaPending: boolean; mfaVerified: boolean }) {
@@ -139,17 +148,19 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     if (!body.organizationName) throw badRequest('Organization name is required', [{ path: 'organizationName', message: 'Required' }]);
 
     await db.transaction().execute(async (trx) => {
-      const existing = await trx.selectFrom('users').selectAll().where('email', '=', body.email).executeTakeFirst();
+      const existing = await staffByEmail(trx, body.email);
       if (existing) {
         // Do not disclose that the email is registered; tell the owner instead.
         await enqueueEmail(trx, existing.email, 'account_exists', existing.locale, { loginLink: link(ctx, '/login'), resetLink: link(ctx, '/forgot-password') });
         return;
       }
-      const user = await trx
-        .insertInto('users')
-        .values({ email: body.email, name: body.name, password_hash: passwordHash, locale: body.locale })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+      const user = asStaff(
+        await trx
+          .insertInto('users')
+          .values({ email: body.email, name: body.name, password_hash: passwordHash, locale: body.locale })
+          .returningAll()
+          .executeTakeFirstOrThrow(),
+      );
       const token = await issueUserToken(trx, user.id, 'verify_email', VERIFY_TTL_MS);
       await enqueueEmail(trx, user.email, 'verify_email', user.locale, { name: user.name, link: link(ctx, `/verify-email?token=${token}`) });
       const { org } = await createOrganization(trx, config, { name: body.organizationName!, owner: user, locale: body.locale }, meta);
@@ -173,7 +184,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
   app.post('/api/auth/resend-verification', rateLimited(5, '1 hour', emailKey), async (req, reply) => {
     const { email } = parse(z.object({ email: zEmail }), req.body);
     await db.transaction().execute(async (trx) => {
-      const user = await trx.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
+      const user = await staffByEmail(trx, email);
       if (!user || user.email_verified_at || user.status !== 'active') return;
       const token = await issueUserToken(trx, user.id, 'verify_email', VERIFY_TTL_MS);
       await enqueueEmail(trx, user.email, 'verify_email', user.locale, { name: user.name, link: link(ctx, `/verify-email?token=${token}`) });
@@ -186,7 +197,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const { email, password } = parse(z.object({ email: zEmail, password: z.string().min(1).max(256) }), req.body);
     const meta = requestMeta(req);
     const invalid = new AppError(401, 'INVALID_CREDENTIALS', 'Incorrect email or password, or the account is temporarily locked');
-    const user = await db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
+    const user = await staffByEmail(db, email);
     if (!user) {
       await burnPasswordCheck(password);
       throw invalid;
@@ -220,6 +231,62 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     await startSession(ctx, req, reply, user, { mfaPending: user.mfa_enabled, mfaVerified: false });
     await recordPlatformAudit(db, { type: user.is_platform_admin ? 'platform_admin' : 'user', userId: user.id, email: user.email }, { action: user.mfa_enabled ? 'auth.password_ok_mfa_pending' : 'auth.login', targetType: 'user', targetId: user.id }, meta);
     return { mfaRequired: user.mfa_enabled, user: user.mfa_enabled ? null : publicUser(user) };
+  });
+
+  // Student accounts sign in with their school's code (the organization slug),
+  // the username the school gave them and their password. Same sessions,
+  // lockout and audit as staff sign-in; the audit entries go to the school.
+  const studentKey = (req: FastifyRequest) => {
+    const b = (req.body ?? {}) as { school?: unknown; username?: unknown };
+    const s = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
+    return `${req.ip}|${s(b.school)}|${s(b.username)}`;
+  };
+  app.post('/api/auth/student-login', rateLimited(10, '15 minutes', studentKey), async (req, reply) => {
+    const body = parse(
+      z.object({ school: z.string().trim().toLowerCase().min(1).max(64), username: z.string().trim().toLowerCase().min(1).max(40), password: z.string().min(1).max(256) }),
+      req.body,
+    );
+    const meta = requestMeta(req);
+    const invalid = new AppError(401, 'INVALID_CREDENTIALS', 'Incorrect school code, username or password, or the account is temporarily locked');
+    const org = await db.selectFrom('organizations').select(['id', 'status']).where('slug', '=', body.school).executeTakeFirst();
+    const found = org
+      ? await withOrgContext(db, { orgId: org.id }, (trx) =>
+          trx.selectFrom('students as s').innerJoin('users as u', 'u.id', 's.user_id').selectAll('u').where('s.org_id', '=', org.id).where('s.username', '=', body.username).executeTakeFirst(),
+        )
+      : undefined;
+    if (!org || !found) {
+      await burnPasswordCheck(body.password);
+      throw invalid;
+    }
+    const user: User = found;
+    const audit = (action: string) =>
+      withOrgContext(db, { orgId: org.id }, (trx) => recordAudit(trx, { type: 'user', userId: user.id }, { orgId: org.id, action, targetType: 'student', targetId: user.id, metadata: { username: body.username } }, meta));
+    if (user.locked_until && user.locked_until > new Date()) {
+      await burnPasswordCheck(body.password);
+      await audit('auth.student_login_blocked_locked');
+      throw invalid;
+    }
+    if (!(await verifyPassword(user.password_hash, body.password))) {
+      const failures = user.failed_login_count + 1;
+      const lock = failures >= MAX_FAILED_LOGINS;
+      await db
+        .updateTable('users')
+        .set({ failed_login_count: lock ? 0 : failures, locked_until: lock ? new Date(Date.now() + LOCKOUT_MS) : user.locked_until })
+        .where('id', '=', user.id)
+        .execute();
+      await audit(lock ? 'auth.student_locked' : 'auth.student_login_failed');
+      throw invalid;
+    }
+    if (user.status !== 'active') throw forbidden('This account is suspended. Ask your school.', 'ACCOUNT_SUSPENDED');
+    if (org.status !== 'active') throw forbidden('Your school’s account is suspended. Ask your school.', 'ORG_SUSPENDED');
+    const enabled = await withOrgContext(db, { orgId: org.id }, async (trx) => studentsEnabled(await getEntitlements(trx, org.id, config.GRACE_DAYS)));
+    if (!enabled) throw forbidden('Your school has not turned on the student portal. Ask your school.', 'STUDENT_PORTAL_OFF');
+
+    await db.updateTable('users').set({ failed_login_count: 0, locked_until: null, last_login_at: new Date() }).where('id', '=', user.id).execute();
+    if (req.auth?.kind === 'session') await revokeSession(db, req.auth.session.id);
+    await startSession(ctx, req, reply, user, { mfaPending: false, mfaVerified: false });
+    await audit('auth.student_login');
+    return { mfaRequired: false, user: publicUser(user) };
   });
 
   app.post('/api/auth/mfa/verify', rateLimited(10, '15 minutes'), async (req, reply) => {
@@ -288,6 +355,25 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const auth = req.auth;
     if (auth?.kind !== 'session') throw unauthorized();
     if (auth.session.state === 'mfa_pending') return { mfaPending: true, csrfToken: csrfTokenFor(config, auth.session.id) };
+    if (auth.user.kind === 'student') {
+      const student = await withUserContext(db, auth.user.id, (trx) =>
+        trx
+          .selectFrom('students as s')
+          .innerJoin('organizations as o', 'o.id', 's.org_id')
+          .select(['s.username', 's.grade', 'o.id as orgId', 'o.name as orgName', 'o.slug as orgSlug', 'o.locale as orgLocale'])
+          .where('s.user_id', '=', auth.user.id)
+          .executeTakeFirstOrThrow(),
+      );
+      return {
+        mfaPending: false,
+        user: publicUser(auth.user),
+        student: { username: student.username, grade: student.grade, school: { id: student.orgId, name: student.orgName, code: student.orgSlug, locale: student.orgLocale } },
+        session: { mfaVerified: false, expiresAt: auth.session.expires_at },
+        csrfToken: csrfTokenFor(config, auth.session.id),
+        organizations: [],
+        unreadNotifications: 0,
+      };
+    }
     const memberships = await withUserContext(db, auth.user.id, (trx) =>
       trx
         .selectFrom('memberships as m')
@@ -317,7 +403,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
   app.post('/api/auth/password/forgot', rateLimited(5, '1 hour', emailKey), async (req, reply) => {
     const { email } = parse(z.object({ email: zEmail }), req.body);
     await db.transaction().execute(async (trx) => {
-      const user = await trx.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
+      const user = await staffByEmail(trx, email);
       if (!user || user.status !== 'active') return;
       const token = await issueUserToken(trx, user.id, 'reset_password', RESET_TTL_MS);
       await enqueueEmail(trx, user.email, 'reset_password', user.locale, { name: user.name, link: link(ctx, `/reset-password?token=${token}`) });
@@ -343,7 +429,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         })
         .where('id', '=', userId)
         .returningAll()
-        .executeTakeFirstOrThrow();
+        .executeTakeFirstOrThrow()
+        .then(asStaff);
       await revokeUserSessions(trx, userId);
       await enqueueEmail(trx, u.email, 'password_changed', u.locale, { name: u.name, resetLink: link(ctx, '/forgot-password') });
       return u;

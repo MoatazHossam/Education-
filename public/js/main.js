@@ -13,15 +13,19 @@ import * as members from './views/members.js';
 import * as picker from './views/picker.js';
 import * as scopes from './views/scopes.js';
 import * as settings from './views/settings.js';
+import * as student from './views/student.js';
+import * as students from './views/students.js';
 import { renderShell } from './views/shell.js';
 
-// access: guest (signed-out only), public, user (signed in), admin (platform admin)
+// access: guest (signed-out only), public, user (signed-in staff), admin (platform admin), student (student account)
 route('/', { access: 'user', view: async () => {
   const first = session.me.organizations[0];
   navigate(first ? `/org/${first.id}` : '/account?new-org=1', { replace: true });
   return null;
 } });
 route('/login', { access: 'guest', bare: true, view: auth.loginView });
+route('/student-login', { access: 'guest', bare: true, view: auth.studentLoginView });
+route('/student', { access: 'student', bare: true, view: student.portalView });
 route('/register', { access: 'guest', bare: true, view: auth.registerView });
 route('/verify-email', { access: 'public', bare: true, view: auth.verifyEmailView });
 route('/forgot-password', { access: 'public', bare: true, view: auth.forgotView });
@@ -36,6 +40,7 @@ route('/org/:orgId/scopes', { access: 'user', org: true, view: scopes.scopesView
 route('/org/:orgId/scopes/:scopeId/carry', { access: 'user', org: true, view: carry.carryView });
 route('/org/:orgId/scopes/compare', { access: 'user', org: true, view: compare.compareView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
+route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });
 route('/org/:orgId/settings', { access: 'user', org: true, view: settings.settingsView });
 route('/org/:orgId/audit', { access: 'user', org: true, view: settings.auditView });
@@ -65,9 +70,14 @@ async function render() {
     const next = query.get('next');
     return navigate(next && /^\/(?![/\\])/.test(next) ? next : '/', { replace: true });
   }
+  if (handler.access === 'student' && !session.me) return navigate('/student-login', { replace: true });
   if ((handler.access === 'user' || handler.access === 'admin') && !session.me) {
     return navigate(session.mfaPending ? '/mfa' : `/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
   }
+  // A student account only has the student portal; staff accounts never see it.
+  const isStudent = session.me?.user?.kind === 'student';
+  if (isStudent && (handler.access === 'user' || handler.access === 'admin')) return navigate('/student', { replace: true });
+  if (handler.access === 'student' && !isStudent) return navigate('/', { replace: true });
   if (handler.access === 'admin' && !session.me.user.isPlatformAdmin) return navigate('/', { replace: true });
 
   const ctx = { params, query, render };
@@ -84,8 +94,9 @@ async function render() {
 
 setUnauthorizedHandler(() => {
   if (session.me) {
+    const wasStudent = session.me.user?.kind === 'student';
     session.me = null;
-    navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true });
+    navigate(wasStudent ? '/student-login' : `/login?next=${encodeURIComponent(location.pathname)}`, { replace: true });
   }
 });
 

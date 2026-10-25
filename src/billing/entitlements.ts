@@ -39,11 +39,14 @@ export async function getEntitlements(exec: Executor, orgId: string, graceDays: 
   const { planId, state } = effectivePlan(sub, now, graceDays);
   const plan = await exec.selectFrom('plans').selectAll().where('id', '=', planId).executeTakeFirstOrThrow();
   const overrides = state === 'free' ? {} : (sub?.limit_overrides ?? {});
+  const limits = { ...plan.limits, ...overrides };
+  // A plan row saved without max_students keeps the student portal off.
+  if (limits.max_students === undefined) limits.max_students = 0;
   return {
     planId,
     planName: plan.name,
     state,
-    limits: { ...plan.limits, ...overrides },
+    limits,
     features: plan.features,
     subscription: sub,
   };

@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { inOrg, requireStudentSession } from '../auth/guards.js';
@@ -6,14 +6,14 @@ import { hashPassword, verifyPassword } from '../auth/password.js';
 import { revokeUserSessions } from '../auth/sessions.js';
 import { getEntitlements, lockOrg } from '../billing/entitlements.js';
 import { gradeList } from '../catalog/service.js';
-import { withOrgContext, withUserContext, type Trx } from '../db/index.js';
-import type { Organization, Student, User } from '../db/types.js';
+import type { Trx } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { CsvError, parseCsv } from '../lib/csv.js';
-import { AppError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { AppError, badRequest, notFound } from '../lib/errors.js';
 import { parse, zLocale, zPassword, zUuid } from '../lib/validation.js';
 import { getScope } from '../scopes/service.js';
+import { asStudent } from './context.js';
 import {
   assertStudentCapacity,
   countStudents,
@@ -30,24 +30,6 @@ import {
 
 const OrgParams = z.object({ orgId: z.string() });
 const StudentParams = z.object({ orgId: z.string(), userId: zUuid });
-
-/**
- * Runs `fn` in the student's school context. The school comes from the
- * student's own record, never from the request.
- */
-async function asStudent<T>(ctx: AppContext, req: FastifyRequest, fn: (trx: Trx, s: { user: User; student: Student; org: Organization }) => Promise<T>): Promise<T> {
-  const { user } = requireStudentSession(req);
-  const student = await withUserContext(ctx.db, user.id, (trx) => trx.selectFrom('students').selectAll().where('user_id', '=', user.id).executeTakeFirst());
-  if (!student) throw notFound();
-  return withOrgContext(ctx.db, { orgId: student.org_id, userId: user.id }, async (trx) => {
-    const org = await trx.selectFrom('organizations').selectAll().where('id', '=', student.org_id).executeTakeFirstOrThrow();
-    if (org.status !== 'active') throw forbidden('Your school’s account is suspended. Ask your school.', 'ORG_SUSPENDED');
-    if (!studentsEnabled(await getEntitlements(trx, org.id, ctx.config.GRACE_DAYS))) {
-      throw forbidden('Your school has not turned on the student portal. Ask your school.', 'STUDENT_PORTAL_OFF');
-    }
-    return fn(trx, { user, student, org });
-  });
-}
 
 async function scopeOrNull(trx: Trx, orgId: string, scopeId: string | null | undefined): Promise<string | null> {
   if (!scopeId) return null;

@@ -8,7 +8,9 @@ import * as account from './views/account.js';
 import * as admin from './views/admin.js';
 import * as billing from './views/billing.js';
 import * as carry from './views/carry.js';
+import * as classes from './views/classes.js';
 import * as compare from './views/compare.js';
+import * as grades from './views/grades.js';
 import * as items from './views/items.js';
 import * as assignments from './views/assignments.js';
 import * as members from './views/members.js';
@@ -17,6 +19,8 @@ import * as scopes from './views/scopes.js';
 import * as settings from './views/settings.js';
 import * as student from './views/student.js';
 import * as students from './views/students.js';
+import * as studentTests from './views/student-tests.js';
+import * as tests from './views/tests.js';
 import { renderShell } from './views/shell.js';
 
 // access: guest (signed-out only), public, user (signed-in staff), admin (platform admin), student (student account)
@@ -28,6 +32,14 @@ route('/', { access: 'user', view: async () => {
 route('/login', { access: 'guest', bare: true, view: auth.loginView });
 route('/student-login', { access: 'guest', bare: true, view: auth.studentLoginView });
 route('/student', { access: 'student', bare: true, view: student.portalView });
+route('/student/homework', { access: 'student', bare: true, view: student.homeworkListView });
+route('/student/homework/:homeworkId', { access: 'student', bare: true, view: student.homeworkDetailView });
+route('/student/books', { access: 'student', bare: true, view: student.booksView });
+route('/student/grades', { access: 'student', bare: true, view: grades.myGradesView });
+route('/student/tests', { access: 'student', bare: true, view: studentTests.testsListView });
+route('/student/tests/:testId', { access: 'student', bare: true, view: studentTests.testIntroView });
+route('/student/attempts/:attemptId', { access: 'student', bare: true, view: studentTests.takeView });
+route('/student/attempts/:attemptId/result', { access: 'student', bare: true, view: studentTests.resultView });
 route('/register', { access: 'guest', bare: true, view: auth.registerView });
 route('/verify-email', { access: 'public', bare: true, view: auth.verifyEmailView });
 route('/forgot-password', { access: 'public', bare: true, view: auth.forgotView });
@@ -46,6 +58,14 @@ route('/org/:orgId/scopes/:scopeId/items', { access: 'user', org: true, view: it
 route('/org/:orgId/assignments', { access: 'user', org: true, view: assignments.assignmentsView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });
+route('/org/:orgId/classes', { access: 'user', org: true, view: classes.classesView });
+route('/org/:orgId/classes/:classId', { access: 'user', org: true, view: classes.classView });
+route('/org/:orgId/classes/:classId/gradebook', { access: 'user', org: true, view: grades.gradebookView });
+route('/org/:orgId/homework/:homeworkId', { access: 'user', org: true, view: classes.homeworkView });
+route('/org/:orgId/tests/:testId', { access: 'user', org: true, view: tests.testView });
+route('/org/:orgId/tests/:testId/monitor', { access: 'user', org: true, view: tests.monitorView });
+route('/org/:orgId/tests/:testId/results', { access: 'user', org: true, view: tests.resultsView });
+route('/org/:orgId/tests/:testId/attempts/:attemptId', { access: 'user', org: true, view: tests.attemptView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });
 route('/org/:orgId/settings', { access: 'user', org: true, view: settings.settingsView });
 route('/org/:orgId/audit', { access: 'user', org: true, view: settings.auditView });

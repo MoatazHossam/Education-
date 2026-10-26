@@ -133,6 +133,41 @@ Tree shape:
 | GET | `/curriculum` | `{school {name}, scope {id, name, academicYear} \| null, grade {grade, nameEn, nameAr}, subjects[{id, track, block, nameEn, nameAr, status, materials[{id, kind, title}]}]}`: the student's grade, only the books selected in the assigned scope |
 | PATCH | `/profile` | `{locale}` |
 | POST | `/password` | `{currentPassword, newPassword}`; ends the student's other sessions |
+| GET | `/home` | Today: `{school, student, classes, todo, missed, returned}` (docs/CLASSROOM.md) |
+| GET | `/homework?show=todo\|done\|all` · `/homework/:homeworkId` | Homework of the student's classes, with their own work; a mark only once returned |
+| PUT · POST · POST | `/homework/:id/submission` · `/homework/:id/hand-in` · `/homework/:id/take-back` | `{body}` draft · hand in (`late` if after the due time) · back to a draft until returned |
+| POST · DELETE | `/homework/:id/files` · `/homework/:id/files/:fileId` | Raw photo or PDF body, name in `X-File-Name`; type checked from the bytes; 5 MB, 5 files |
+| GET | `/files/:fileId` | A file the student may see (sandboxed; PDFs download) |
+| GET · POST | `/notifications` · `/notifications/read` | The portal's notifications (new and returned homework, new tests, released results) |
+| GET | `/tests` · `/tests/:testId` | Published tests of the student's classes with attempts used and allowed; a score only when the results setting allows (docs/ONLINE_TESTS.md) |
+| POST | `/tests/:testId/start` | `{code?}`: starts an attempt or resumes the open one; `WRONG_START_CODE`, `NO_ATTEMPTS_LEFT`, `TEST_NOT_OPEN`, `OTHER_DEVICE` |
+| GET · PUT | `/attempts/:attemptId` · `/attempts/:attemptId/answers/:questionId` | The attempt (questions in its order, saved answers, deadline, server time; never keys) · save `{answer}` (`null` clears); `TIME_UP` after the deadline |
+| POST | `/attempts/:attemptId/heartbeat` · `/events` · `/submit` | Keeps the teacher's monitor current · `{kind: left_page\|returned\|paste\|offline\|online, seconds?, length?}` · submit |
+| GET | `/attempts/:attemptId/result` | The review once results are visible; correct answers only when the teacher shows them and the test is over |
+| GET | `/grades` | My grades: per class and subject, the student's own homework marks (once returned) and test scores (once shown), average and missing count (docs/CLASSROOM.md §10) |
+
+### Classes and homework (`/api/orgs/:orgId/…`) — teachers are members added to a class; others get 404
+Full list and rules in docs/CLASSROOM.md §7. In short: `classes` (list: admins all, teachers their own;
+create, edit, archive, delete: admin), `classes/:classId/students` (PUT the list: admin),
+`classes/:classId/teachers` (admin), `classes/:classId/homework` (POST: the subject's teacher or an admin),
+`homework/:homeworkId` (GET with the roster; PATCH, DELETE), `homework/:homeworkId/files`,
+`homework/:homeworkId/submissions/:studentId` (GET the work; PATCH `{points?, feedback?, return?}`),
+`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId`.
+
+### Online tests and exams (`/api/orgs/:orgId/…`) — same class rules; keys only to those who can change the test
+Full list and rules in docs/ONLINE_TESTS.md §8. In short: `classes/:classId/tests` (POST: the subject's
+teacher or an admin), `tests/:testId` (GET, PATCH, DELETE), `tests/:testId/questions` (POST; PATCH,
+DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `unpublish`,
+`tests/:testId/monitor`, `tests/:testId/attempts/:attemptId/events`,
+`tests/:testId/students/:studentId/extra-time` (`{minutes}`) · `extra-attempt`,
+`tests/:testId/attempts/:attemptId/submit` · `allow-device`, `tests/:testId/close` · `new-code`,
+`tests/:testId/results`, `tests/:testId/attempts/:attemptId` (GET; PATCH `answers/:questionId`
+`{points?, feedback?}`), `tests/:testId/release`.
+
+### Gradebook (`/api/orgs/:orgId/classes/:classId/gradebook`) — any teacher of the class and admins
+`?subject=<English subject name>&format=json|csv`: the class's homework with marks and published tests as
+columns, one row per student with each cell's status and points, average and missing count; `format=csv`
+downloads it in the member's language (formula-guarded) and is audited (`class.gradebook_exported`).
 
 ### Scopes
 | Method | Path | Role | Notes |

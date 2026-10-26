@@ -6,6 +6,8 @@ type Template = (p: Params) => { subject: string; text: string };
 
 const SIGN_EN = '\n\n— Curriculum Scope';
 const SIGN_AR = '\n\n— منصة نطاق المناهج';
+/** Role names as the Arabic interface shows them (the English email keeps the role's own name). */
+const ROLE_AR: Record<string, string> = { owner: 'المالك', admin: 'مسؤول', editor: 'محرر', viewer: 'مشاهد' };
 
 // Plain-text bodies only: no HTML rendering, so no template-injection surface.
 const TEMPLATES: Record<string, Record<Locale, Template>> = {
@@ -27,7 +29,7 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
   },
   invitation: {
     en: (p) => ({ subject: `You are invited to ${p.orgName}`, text: `${p.inviterName} invited you to join ${p.orgName} as ${p.role}.\n\nAccept the invitation:\n${p.link}\n\nThe invitation expires in 7 days.${SIGN_EN}` }),
-    ar: (p) => ({ subject: `دعوة للانضمام إلى ${p.orgName}`, text: `دعاك ${p.inviterName} للانضمام إلى ${p.orgName} بدور ${p.role}.\n\nلقبول الدعوة:\n${p.link}\n\nتنتهي صلاحية الدعوة خلال 7 أيام.${SIGN_AR}` }),
+    ar: (p) => ({ subject: `دعوة للانضمام إلى ${p.orgName}`, text: `دعاك ${p.inviterName} للانضمام إلى ${p.orgName} بدور ${ROLE_AR[p.role!] ?? p.role}.\n\nلقبول الدعوة:\n${p.link}\n\nتنتهي صلاحية الدعوة خلال 7 أيام.${SIGN_AR}` }),
   },
   ownership_transferred: {
     en: (p) => ({ subject: `You now own ${p.orgName}`, text: `Ownership of ${p.orgName} was transferred to you by ${p.fromName}. You are now responsible for billing and organization settings.${SIGN_EN}` }),
@@ -67,7 +69,7 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
   },
   items_assigned: {
     en: (p) => ({ subject: `${p.by} assigned you ${p.count} ${p.count === '1' ? 'book' : 'books'} in “${p.scope}”`, text: `${p.by} assigned you ${p.count === '1' ? 'a book' : `${p.count} books`} to follow up in the scope “${p.scope}” (${p.orgName}):\n${p.items}\n\nSee your books, their notes and due dates:\n${p.link}\n\nYou receive this because books were assigned to you. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
-    ar: (p) => ({ subject: `أسند إليك ${p.by} كتبًا في «${p.scope}» (${p.count})`, text: `أسند إليك ${p.by} كتبًا للمتابعة في النطاق «${p.scope}» (${p.orgName}):\n${p.items}\n\nاطّلع على كتبك وملاحظاتها ومواعيدها:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا أُسندت إليك. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
+    ar: (p) => ({ subject: `أسند إليك ${p.by} ${p.count === '1' ? 'كتابًا' : 'كتبًا'} في «${p.scope}» (${p.count})`, text: `أسند إليك ${p.by} ${p.count === '1' ? 'كتابًا' : 'كتبًا'} للمتابعة في النطاق «${p.scope}» (${p.orgName}):\n${p.items}\n\nاطّلع على كتبك وملاحظاتها ومواعيدها:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا أُسندت إليك. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
   },
   items_assigned_daily: {
     en: (p) => ({

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Captures the screenshots of docs/USER_GUIDE.md: `npm run docs:screenshots`.
+// Captures the screenshots of docs/USER_GUIDE.md: `npm run docs:screenshots` (Arabic guide: playwright.guide-ar.config.ts).
 // Same server and fresh database as the end-to-end tests; not part of `npm run test:e2e`.
 export default defineConfig({
   testDir: 'tests/e2e',

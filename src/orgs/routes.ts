@@ -6,6 +6,7 @@ import { withSystemContext } from '../db/index.js';
 import { hasRole, inOrg, requireUser } from '../auth/guards.js';
 import { verifyPassword } from '../auth/password.js';
 import { assertSeatAvailable, countScopes, countSeats, getEntitlements, lockOrg, requireFeature, usageFor } from '../billing/entitlements.js';
+import { classroomNav } from '../classroom/service.js';
 import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { randomToken, sha256Hex } from '../lib/crypto.js';
@@ -54,6 +55,8 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
         usage: { members: seats.members, pendingInvites: seats.pendingInvites, scopes, ...usage },
         // Books assigned to the signed-in member that are not done yet (for the navigation).
         myAssignments: await assignmentCounts(trx, org.id, user.id),
+        // Classes and homework (docs/CLASSROOM.md): whether to show them, and work waiting for this member's mark.
+        classroom: await classroomNav(trx, { org, role, user }, ent),
       };
     });
   });

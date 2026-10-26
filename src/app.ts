@@ -25,6 +25,11 @@ import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOrgRoutes } from './orgs/routes.js';
 import { registerScopeRoutes } from './scopes/routes.js';
 import { registerStudentRoutes } from './students/routes.js';
+import { registerGradebookRoutes } from './classroom/gradebook-routes.js';
+import { registerClassroomRoutes } from './classroom/routes.js';
+import { registerStudentClassroomRoutes } from './classroom/student-routes.js';
+import { registerTestRoutes } from './classroom/tests-routes.js';
+import { registerStudentTestRoutes } from './classroom/tests-student-routes.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -158,6 +163,11 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   registerScopeRoutes(app, ctx);
   registerWebhookRoutes(app, ctx);
   registerStudentRoutes(app, ctx);
+  await registerClassroomRoutes(app, ctx);
+  await registerStudentClassroomRoutes(app, ctx);
+  registerTestRoutes(app, ctx);
+  registerStudentTestRoutes(app, ctx);
+  registerGradebookRoutes(app, ctx);
   await registerBillingRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
   registerApiV1Routes(app, ctx);

@@ -8,6 +8,11 @@ Teams pick Ministry books, language-school variants, external references and int
 programmes for grades 1–12 in the original picker interface; selections are saved as shared,
 versioned **content scopes**, exported (TXT/CSV/JSON) or read by API. Around it: accounts with
 2FA, organizations and roles, plans and billing, an audit log, and a platform admin console.
+Schools can also create student accounts, organize **classes** with their teachers, and set
+**homework** that students hand in online (text, photos, PDFs) and teachers mark and return. Teachers
+give **online tests and exams** with a server-kept clock, watch them live (more time, retakes, closing
+early), mark written answers and release results. A **gradebook** gathers each class's marks by
+subject (with a CSV download), and students see their own under **Grades**.
 English and Arabic (RTL).
 
 > **Status: not production ready.** Functionally complete and tested locally; blocked on
@@ -39,7 +44,7 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run lint` / `npm run typecheck` | Static checks |
 | `npm test` | Unit + integration tests (needs `TEST_PG_ADMIN_URL`, a PostgreSQL superuser URL) |
 | `npm run test:e2e` | Playwright end-to-end journeys |
-| `npm run docs:screenshots` | Retake the screenshots of `docs/USER_GUIDE.md` from a demo school on a fresh test database |
+| `npm run docs:screenshots` / `npm run docs:screenshots:ar` | Retake the screenshots of `docs/USER_GUIDE.md` / `docs/USER_GUIDE.ar.md` (Arabic interface) from a demo school on a fresh test database |
 | `npm run keys:check` / `npm run keys:rotate` | Report, then re-encrypt, the secrets kept encrypted at rest after changing `DATA_ENCRYPTION_KEY` (DEPLOYMENT_GUIDE §4) |
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
@@ -62,6 +67,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 ## Documentation
 
 [User guide](docs/USER_GUIDE.md) ·
+[دليل الاستخدام (عربي)](docs/USER_GUIDE.ar.md) ·
 [Product overview](docs/PRODUCT_OVERVIEW.md) ·
 [Current state](docs/CURRENT_STATE_ASSESSMENT.md) ·
 [Feature inventory](docs/FEATURE_INVENTORY.md) ·
@@ -73,6 +79,8 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [API](docs/API_DOCUMENTATION.md) ·
 [Subscriptions](docs/SUBSCRIPTION_MODEL.md) ·
 [Student accounts](docs/STUDENT_ACCOUNTS.md) ·
+[Classes, homework and gradebook](docs/CLASSROOM.md) ·
+[Online tests and exams](docs/ONLINE_TESTS.md) ·
 [Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
 [Test strategy](docs/TEST_STRATEGY.md) ·

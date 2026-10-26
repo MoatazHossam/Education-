@@ -30,6 +30,7 @@ const LimitsSchema = z.object({
   api_requests_per_month: nullableCount,
   audit_log_days: z.number().int().min(1).max(3650),
   max_students: nullableCount,
+  max_storage_mb: nullableCount.optional(),
 });
 const FeaturesSchema = z.object({
   export_csv: z.boolean(),

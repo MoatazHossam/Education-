@@ -5,6 +5,9 @@ import { featureUnavailable, limitReached } from '../lib/errors.js';
 import { addDays, periodKey } from '../lib/time.js';
 import { FREE_PLAN_ID } from './plans.js';
 
+/** Classroom file storage per school when neither the plan nor an override sets max_storage_mb. */
+export const DEFAULT_STORAGE_MB = 1024;
+
 export interface Entitlements {
   planId: string;
   planName: string;
@@ -42,6 +45,7 @@ export async function getEntitlements(exec: Executor, orgId: string, graceDays: 
   const limits = { ...plan.limits, ...overrides };
   // A plan row saved without max_students keeps the student portal off.
   if (limits.max_students === undefined) limits.max_students = 0;
+  if (limits.max_storage_mb === undefined) limits.max_storage_mb = DEFAULT_STORAGE_MB;
   return {
     planId,
     planName: plan.name,

@@ -13,7 +13,7 @@ provider (`docs/wise-integration/13_PROJECT_STATUS.md`).
 | Platform administrator | Turn student accounts on for a school and set how many (`max_students` limit override on the subscription). Sees only the number of student accounts per school |
 | School owner and admins | Add a student, import a roster (CSV), set name, grade and curriculum (one of the school's scopes), issue a new password, remove a student. Page: **Students** (`/org/:orgId/students`) |
 | School editors and viewers | Nothing (403) |
-| Student | Sign in at `/student-login` with the school code, username and password; see **My curriculum** (`/student`): the books of their grade in the assigned scope; switch English/Arabic; change their password; sign out |
+| Student | Sign in at `/student-login` with the school code, username and password; **Today** (`/student`), **Homework** (classes and homework, `docs/CLASSROOM.md`) **Tests** (online tests and exams, `docs/ONLINE_TESTS.md`) and **Grades** (their own marks, `docs/CLASSROOM.md` §10); **My books** (`/student/books`, "My curriculum"): the books of their grade in the assigned scope; notifications; switch English/Arabic; change their password; sign out |
 
 A student sees no other student, no staff page, no organization settings and no other school.
 
@@ -62,8 +62,10 @@ A student sees no other student, no staff page, no organization settings and no 
 | `scope_id` | The scope whose books the student sees; must belong to the same school (composite foreign key); deleting the scope leaves the student without a curriculum |
 | `created_by`, `created_at`, `updated_at` | |
 
-The student's display name and locale are on `users`. Nothing else is stored: no email, birth date,
-phone, guardian, class, attendance or marks.
+The student's display name and locale are on `users`. No email, birth date, phone, guardian or
+attendance is stored. Since 2026-10-26 a school that uses classes also keeps each student's classes,
+homework work (text and files) and marks (`docs/CLASSROOM.md` §6, §9), and their test attempts,
+answers, marks and monitoring events (`docs/ONLINE_TESTS.md` §7, §9); deleting the student deletes them.
 
 Deleting a `students` row deletes the account (trigger `students_delete_account`): its sessions and
 notifications go with it. Deleting the school deletes all of its students the same way.
@@ -137,9 +139,12 @@ field names), `student.password_reset`, `student.removed`, `student.password_cha
 3. Server validation messages in the import preview are in English (as in the catalogue sheet import);
    the rest of the student pages are translated.
 4. Many students behind one school address share the per-process flood guard (600 API requests a
-   minute per address and instance); a class of 30 loading the portal uses well under that.
+   minute per address and instance); a class of 30 loading the portal uses well under that. A class of
+   30 taking an online test (a heartbeat every 20 seconds plus saves) makes roughly 200 requests a
+   minute, also under it; for larger groups on one address, raise the guard or add instances.
 5. Students have no self-service data export or account deletion: the school, expected to be the
    controller, sees every stored field on the Students page and removes accounts. Confirm this with
    the legal assessment.
 6. Wise EduAgent features (assistant, practice, progress…) are not built: Wise could not be inspected
-   and no AI provider is chosen.
+   and no AI provider is chosen. Classes, homework and online tests (not from Wise) are built:
+   `docs/CLASSROOM.md`, `docs/ONLINE_TESTS.md`.

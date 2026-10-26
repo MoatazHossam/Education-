@@ -193,6 +193,14 @@ describe('invitations', () => {
     expect(me.organizations.map((o: { id: string }) => o.id)).toContain(owner.orgId);
   });
 
+  it('an account created from an invitation is signed in, which counts as its first sign-in', async () => {
+    const owner = await signUp(h);
+    const member = await addMember(h, owner.client, owner.orgId, 'editor');
+    const row = await h.ownerDb.selectFrom('users').select(['last_login_at', 'email_verified_at']).where('id', '=', member.userId).executeTakeFirstOrThrow();
+    expect(row.email_verified_at).not.toBeNull();
+    expect(row.last_login_at).not.toBeNull();
+  });
+
   it('revoked invitations cannot be used and duplicate members are refused', async () => {
     const owner = await signUp(h);
     const member = await addMember(h, owner.client, owner.orgId, 'viewer');

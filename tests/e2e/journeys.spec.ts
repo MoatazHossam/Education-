@@ -91,6 +91,9 @@ test('owner subscribes, upgrades with proration, schedules a downgrade and cance
   await page.goto(`/org/${orgAId}/billing`);
   const plan = (name: string) => page.locator('.plan', { has: page.getByRole('heading', { name }) });
 
+  // During the trial, the trialled plan is current and can still be subscribed to.
+  await expect(plan('Professional')).toContainText('Current plan');
+  await expect(plan('Professional').getByRole('button', { name: 'Subscribe' })).toBeVisible();
   await plan('Starter').getByRole('button', { name: 'Subscribe' }).click();
   await payInSandbox(page);
   await expect(page.locator('.card').first()).toContainText('Starter');

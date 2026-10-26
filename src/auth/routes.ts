@@ -135,7 +135,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         if (exists) throw new AppError(409, 'ACCOUNT_EXISTS', 'An account with this email already exists. Sign in to accept the invitation.');
         const user = await trx
           .insertInto('users')
-          .values({ email: body.email, name: body.name, password_hash: passwordHash, locale: body.locale, email_verified_at: new Date() })
+          // Signed in straight away (below), which counts as the first sign-in.
+          .values({ email: body.email, name: body.name, password_hash: passwordHash, locale: body.locale, email_verified_at: new Date(), last_login_at: new Date() })
           .returningAll()
           .executeTakeFirstOrThrow();
         await setOrgContext(trx, invite.org_id, user.id);

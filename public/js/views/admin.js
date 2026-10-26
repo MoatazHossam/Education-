@@ -108,6 +108,7 @@ export async function orgDetailView(ctx) {
       { name: 'periodEnd', label: t('admin.periodEnd'), type: 'datetime-local', hint: t('admin.periodEndHint') },
       { name: 'maxMembers', label: t('admin.overrideMembers'), type: 'number', value: s?.limitOverrides?.max_members ?? '' },
       { name: 'maxStudents', label: t('admin.overrideStudents'), type: 'number', value: s?.limitOverrides?.max_students ?? '', hint: t('admin.overrideStudentsHint') },
+      { name: 'maxStorage', label: t('admin.overrideStorage'), type: 'number', value: s?.limitOverrides?.max_storage_mb ?? '', hint: t('admin.overrideStorageHint') },
     ],
     submitLabel: t('admin.applyPlan'),
     onSubmit: async (v) => {
@@ -115,7 +116,7 @@ export async function orgDetailView(ctx) {
       if (v.status === 'trialing') body.trialEndsAt = new Date(v.periodEnd || Date.now() + 14 * 86_400_000).toISOString();
       // Overrides replace the stored set: keep the ones this form does not show; an empty field removes one.
       const overrides = { ...(s?.limitOverrides ?? {}) };
-      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students']]) {
+      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students'], ['maxStorage', 'max_storage_mb']]) {
         if (v[field] === '') delete overrides[key];
         else overrides[key] = Number(v[field]);
       }

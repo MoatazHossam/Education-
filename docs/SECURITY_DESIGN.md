@@ -26,6 +26,8 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | Cross-tenant data access / BOLA (A01) | Membership check per request (`inOrg`); 404 for non-members; RLS on every tenant table with fail-closed default; composite FKs | `src/auth/guards.ts`, migration | `tenancy.test.ts`, `authz-coverage.test.ts` (enumerates every route), E2E journey 3 |
 | Privilege escalation within an org (A01) | Role ranks; admins cannot grant admin/owner; single-owner index; ownership transfer needs password; a viewer may change only the status of a book assigned to them (no other field, no other book) | `src/orgs/routes.ts` | `tenancy.test.ts` |
 | Student accounts reaching staff features (A01) | Students are `users.kind = 'student'` with no email and no membership. `requireUser` (used by every staff route and by `inOrg`) refuses them with 403 `STAFF_ONLY`; the portal's own routes use `requireStudentSession` and take the school from the student's record, never from the request. Database triggers forbid a membership for a student and any change of `users.kind`; a check constraint forbids a student with an email, platform-admin flag or MFA | `src/auth/guards.ts`, `src/students/routes.ts`, migration `0007` | `students.test.ts` (enumerates every route with a student session), `authz-coverage.test.ts` |
+| Students reaching other students' work, or teachers reaching classes they do not teach (A01) | Classroom routes check class access server side: admins every class, other members only classes they teach (404 otherwise), and only their own subjects for changes and marks. Student requests run with `app.current_student` set, and row-level security limits classes, homework (published only), submissions and files to that student whatever the query; drafts are never shown to staff | `src/classroom/*.ts`, `src/students/context.ts`, migration `0013` | `classroom.test.ts` (unfiltered queries in a student context), `authz-coverage.test.ts`, `students.test.ts` |
+| Malicious uploads (A04, A05) | Only JPEG, PNG, WebP and PDF, decided from the file's first bytes; 5 MB per file, 5 per item, a per-school storage limit checked under a row lock; names stripped of paths and control characters. Files are served after the same access checks, with `Content-Security-Policy: … sandbox`, `nosniff` and `no-store`; PDFs download instead of opening in the app's origin. No virus scanning (residual risk §6) | `src/classroom/files.ts` | `classroom.test.ts` |
 | Cross-school access to students (A01) | Staff routes for students are org routes (`inOrg`, admins and owner only); `students` has forced RLS; a student's scope must belong to the same school (composite foreign key) | `src/students/routes.ts`, migration `0007` | `students.test.ts`, `tenancy.test.ts` (RLS on every `org_id` table) |
 | Admin surface discovery (A01) | `/api/admin/*` returns 404 to non-admins; admin requires MFA-verified session | `requirePlatformAdmin` | `authz-coverage.test.ts`, `admin-api-ops.test.ts` |
 | Insider access to customer data (A01) | No impersonation; customer-granted, time-boxed support access; every read audited in the customer's log | `src/admin/routes.ts` | `admin-api-ops.test.ts` |
@@ -96,7 +98,7 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 2. The global flood guard (600 API requests a minute per address) is per process: with N app instances (two in production) one address can make up to N × 600 a minute. Route-specific limits (login, two-factor codes, resets, the API quota) are shared. Put a provider- or CDN-level limit in front for volumetric attacks.
 3. `DATA_ENCRYPTION_KEY` can be rotated (DEPLOYMENT_GUIDE §4), but it still lives in the host's environment file next to the application. A secrets manager or KMS would keep it off the host.
 4. No WebAuthn/passkeys yet; TOTP only.
-5. No malware scanning needed today (no file uploads); revisit if uploads are added.
+5. Homework files (photos and PDFs, `docs/CLASSROOM.md` §5) are not scanned for malware. They are limited to four types checked from their bytes, served sandboxed with `nosniff`, and PDFs download instead of opening; add scanning (for example ClamAV in the worker) before large-scale use.
 6. Platform admins can see member names/emails of customer orgs (needed for support); document in the privacy policy.
 7. The Paymob adapter's webhook verification is contract-tested against a simulator and matches an independent implementation's HMAC vector, but has not been exercised against Paymob's servers.
 8. Student accounts are a new category of personal data (minors). Their use with real students is
@@ -113,8 +115,8 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
   **Action:** obtain legal advice on licensing/registration, the lawful basis for processing,
   hosting location (cross-border transfer if hosted outside Egypt), breach notification, and the
   privacy notice. The product already supports access (export), erasure (account/org deletion),
-  data minimisation (no card data; for students only name, username, grade and curriculum) and
-  retention.
+  data minimisation (no card data; for students only name, username, grade and curriculum, plus their
+  classes, homework work and marks once the school uses classes) and retention.
 - **Payments:** card data never touches the application (hosted checkout), keeping PCI DSS scope
   to SAQ-A-type obligations — confirm with the chosen provider.
 - **VAT:** 14% VAT applies to digital services supplied in Egypt; non-resident sellers use the
@@ -132,3 +134,9 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
   controller/processor agreement with schools, retention after a student leaves, and the privacy
   notice shown to students and parents. Platform administrators see only the number of student
   accounts per school, never the students.
+- **Classes, homework and marks (2026-10-26):** at the owner's request schools can now keep classes,
+  homework students hand in (text, photos, PDFs) and the marks and comments teachers give
+  (`docs/CLASSROOM.md`). This is more sensitive than the account data above: school work and marks of
+  minors. It is under the same switch as student accounts, and the same legal advice is needed **before
+  real students' work and marks are entered**, including how long work and marks are kept (nothing is
+  deleted automatically yet). Marks are given only by teachers; no AI marks or changes them.

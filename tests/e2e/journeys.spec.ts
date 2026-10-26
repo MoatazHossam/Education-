@@ -12,6 +12,8 @@ let ownerEmail = '';
 let orgAId = '';
 // The notes team (journey 14) is reused by journeys 15 to 19: sign-ups are limited to 10 an hour per address.
 const notesTeam = { ownerEmail: '', orgId: '', editorEmail: '' };
+// The school of journey 13 (students) is reused by journey 20 (classes and homework), for the same reason.
+const delta = { ownerEmail: '', orgId: '', schoolCode: '', subject: '', firstBook: '', lailaPassword: '' };
 
 test('owner registers, verifies email, signs in and builds a content scope that persists', async ({ page }) => {
   ownerEmail = `owner.${uid()}@e2e.test`;
@@ -362,6 +364,7 @@ test('a platform admin turns on student accounts; the school adds students; a st
     titles.push(await page.locator('.mat').nth(i).evaluate((el) => (el.firstChild?.textContent ?? '').trim()));
     await page.locator('.mat').nth(i).click();
   }
+  Object.assign(delta, { ownerEmail: email, orgId, subject: (await page.locator('.subj').first().locator('.sname b').textContent())!.trim(), firstBook: titles[0] });
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
 
   // Off until the platform turns it on for this school.
@@ -424,6 +427,9 @@ test('a platform admin turns on student accounts; the school adds students; a st
   await student.getByLabel('Password').fill(password);
   await student.getByRole('button', { name: 'Sign in' }).click();
   await student.waitForURL(/\/student$/);
+  await expect(student.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
+  await expect(student.getByText('You are not in a class yet.')).toBeVisible();
+  await student.locator('.topbar').getByRole('link', { name: 'My books' }).click();
   await expect(student.getByRole('heading', { name: 'My curriculum', level: 1 })).toBeVisible();
   await expect(student.getByText('Hello Laila Hassan.')).toBeVisible();
   const books = student.locator('.subj .mat.book');
@@ -434,12 +440,16 @@ test('a platform admin turns on student accounts; the school adds students; a st
   await student.waitForURL(/\/student$/);
   await student.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
   await expect(student.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(student.getByRole('heading', { name: 'اليوم', level: 1 })).toBeVisible();
+  await student.locator('.topbar').getByRole('link', { name: 'كتبي' }).click();
   await expect(student.getByRole('heading', { name: 'منهجي', level: 1 })).toBeVisible();
+  await student.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
 
   // A staff password reset signs the student out.
   await page.getByRole('button', { name: 'New password for Laila Hassan' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'New password' }).click();
   await expect(page.getByRole('dialog', { name: 'Student passwords' }).locator('.cred')).not.toHaveText(password);
+  Object.assign(delta, { schoolCode, lailaPassword: (await page.getByRole('dialog', { name: 'Student passwords' }).locator('.cred').textContent())!.trim() });
   await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
   await student.reload();
   await student.waitForURL(/\/student-login$/);
@@ -817,4 +827,102 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     server.closeAllConnections();
     server.close();
   }
+});
+
+// A 1×1 PNG: the server keeps a file only when its first bytes are an image or a PDF.
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+
+test('classes and homework: the school sets up a class, a student hands in work with a photo, the teacher marks and returns it', async ({ page, browser }) => {
+  // Journey 13's school, which already has student accounts (Laila and Omar, Grade 7) and the "Prep 1 books" scope.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}`);
+  await page.locator('.topbar').getByRole('link', { name: 'Classes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Classes', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'New class' }).click();
+  let dlg = page.getByRole('dialog', { name: 'New class' });
+  await dlg.getByLabel('Class name').fill('7A');
+  await dlg.getByLabel('Grade', { exact: true }).selectOption('7');
+  await dlg.getByLabel('Curriculum').selectOption({ label: (await dlg.getByLabel('Curriculum').locator('option', { hasText: 'Prep 1 books' }).textContent())! });
+  await dlg.getByRole('button', { name: 'Create class' }).click();
+  await expect(page.getByRole('heading', { name: '7A', level: 1 })).toBeVisible();
+  await expect(page.getByText('Curriculum: Prep 1 books')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Choose students' }).click();
+  dlg = page.getByRole('dialog', { name: 'Students of 7A' });
+  await dlg.getByLabel('Laila Hassan').check();
+  await dlg.getByLabel('Omar Adel').check();
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Students (2)' })).toBeVisible();
+
+  // The owner teaches the subject of the scope's first books.
+  await page.getByRole('button', { name: 'Add teacher' }).click();
+  dlg = page.getByRole('dialog', { name: 'Add a teacher to 7A' });
+  await dlg.getByLabel('Teacher').selectOption({ label: 'E2E Owner (Owner)' });
+  await dlg.getByLabel('Subject', { exact: true }).selectOption({ label: delta.subject });
+  await dlg.getByRole('button', { name: 'Add teacher' }).click();
+  await expect(page.locator('#te-h').locator('..').locator('..')).toContainText(`E2E Owner · ${delta.subject}`);
+
+  await page.getByRole('button', { name: 'Set homework' }).click();
+  dlg = page.getByRole('dialog', { name: 'Homework for 7A' });
+  await dlg.getByLabel('Subject', { exact: true }).selectOption({ label: delta.subject });
+  await dlg.getByLabel('Title').fill('Read chapter 1');
+  await dlg.getByLabel('Instructions').fill('Read pages 4 to 9 and answer the three questions at the end.');
+  await dlg.getByLabel(delta.firstBook).check();
+  await dlg.getByLabel('Marks').fill('10');
+  await dlg.getByRole('button', { name: 'Set homework' }).click();
+  await expect(page.getByText('Homework set. The class’s students were told.')).toBeVisible();
+  const row = page.locator('table.data tbody tr', { hasText: 'Read chapter 1' });
+  await expect(row).toContainText('0 of 2');
+
+  // Laila sees it on her Today page and in a notification, writes an answer, attaches a photo and hands it in.
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto(`/student-login?school=${delta.schoolCode}`);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill(delta.lailaPassword);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await student.waitForURL(/\/student$/);
+  await expect(student.getByRole('heading', { name: 'To do (1)' })).toBeVisible();
+  await expect(student.locator('.topbar').getByRole('button', { name: 'Notifications, 1 unread' })).toBeVisible();
+  await student.getByRole('link', { name: 'Read chapter 1' }).click();
+  await expect(student.getByRole('heading', { name: 'Read chapter 1', level: 1 })).toBeVisible();
+  await expect(student.locator('.mats')).toContainText(delta.firstBook);
+  await student.getByLabel('Your answer').fill('1) The Nile. 2) Upper Egypt. 3) Aswan.');
+  await student.getByLabel('Attach photos or a PDF').setInputFiles({ name: 'notebook.jpg', mimeType: 'image/jpeg', buffer: PNG });
+  // The server keeps the real type: a PNG, whatever the name says.
+  await expect(student.locator('.files')).toContainText('notebook.png');
+  await expect(student.getByLabel('Your answer')).toHaveValue('1) The Nile. 2) Upper Egypt. 3) Aswan.');
+  await student.getByRole('button', { name: 'Hand in' }).click();
+  await expect(student.getByText(/You handed this in/)).toBeVisible();
+
+  // The teacher sees one piece of work waiting, marks it and returns it.
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await expect(page.locator('.topbar').getByRole('link', { name: 'Classes (1 to mark)' })).toBeVisible();
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('link', { name: 'Read chapter 1' }).click();
+  await expect(page.getByText('1 of 2 handed in · 0 returned')).toBeVisible();
+  const laila = page.locator('table.data tbody tr', { hasText: 'Laila Hassan' });
+  await expect(laila).toContainText('Handed in');
+  await expect(page.locator('table.data tbody tr', { hasText: 'Omar Adel' })).toContainText('Not handed in');
+  await laila.getByRole('button', { name: 'Open the work of Laila Hassan' }).click();
+  dlg = page.getByRole('dialog', { name: 'Work of Laila Hassan' });
+  await expect(dlg.locator('.answer')).toHaveText('1) The Nile. 2) Upper Egypt. 3) Aswan.');
+  await expect(dlg.locator('.file img')).toBeVisible();
+  expect(await dlg.locator('.file img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  await dlg.getByLabel('Mark (out of 10)').fill('9');
+  await dlg.getByLabel('Comments for the student').fill('Very good. Question 3: Aswan is right, add why.');
+  await dlg.getByRole('button', { name: 'Return to student' }).click();
+  await expect(page.getByText('Returned to Laila Hassan.')).toBeVisible();
+  await expect(page.locator('table.data tbody tr', { hasText: 'Laila Hassan' })).toContainText('9 / 10');
+
+  // Laila sees her mark and the comment; the work can no longer change.
+  await student.reload();
+  await expect(student.getByRole('heading', { name: 'Your mark' })).toBeVisible();
+  await expect(student.locator('.mark-big')).toHaveText('9 / 10');
+  await expect(student.getByText('Very good. Question 3: Aswan is right, add why.')).toBeVisible();
+  await expect(student.getByRole('button', { name: 'Hand in' })).toHaveCount(0);
+  await student.locator('.topbar').getByRole('link', { name: 'Today' }).click();
+  await expect(student.getByRole('heading', { name: 'Returned this week' })).toBeVisible();
+  await expect(student.getByText('Nothing to hand in. Well done!')).toBeVisible();
+  await studentCtx.close();
 });

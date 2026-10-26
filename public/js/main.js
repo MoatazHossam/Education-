@@ -8,6 +8,7 @@ import * as account from './views/account.js';
 import * as admin from './views/admin.js';
 import * as billing from './views/billing.js';
 import * as carry from './views/carry.js';
+import * as classes from './views/classes.js';
 import * as compare from './views/compare.js';
 import * as items from './views/items.js';
 import * as assignments from './views/assignments.js';
@@ -28,6 +29,9 @@ route('/', { access: 'user', view: async () => {
 route('/login', { access: 'guest', bare: true, view: auth.loginView });
 route('/student-login', { access: 'guest', bare: true, view: auth.studentLoginView });
 route('/student', { access: 'student', bare: true, view: student.portalView });
+route('/student/homework', { access: 'student', bare: true, view: student.homeworkListView });
+route('/student/homework/:homeworkId', { access: 'student', bare: true, view: student.homeworkDetailView });
+route('/student/books', { access: 'student', bare: true, view: student.booksView });
 route('/register', { access: 'guest', bare: true, view: auth.registerView });
 route('/verify-email', { access: 'public', bare: true, view: auth.verifyEmailView });
 route('/forgot-password', { access: 'public', bare: true, view: auth.forgotView });
@@ -46,6 +50,9 @@ route('/org/:orgId/scopes/:scopeId/items', { access: 'user', org: true, view: it
 route('/org/:orgId/assignments', { access: 'user', org: true, view: assignments.assignmentsView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });
+route('/org/:orgId/classes', { access: 'user', org: true, view: classes.classesView });
+route('/org/:orgId/classes/:classId', { access: 'user', org: true, view: classes.classView });
+route('/org/:orgId/homework/:homeworkId', { access: 'user', org: true, view: classes.homeworkView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });
 route('/org/:orgId/settings', { access: 'user', org: true, view: settings.settingsView });
 route('/org/:orgId/audit', { access: 'user', org: true, view: settings.auditView });

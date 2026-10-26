@@ -294,3 +294,28 @@ ul.legend{list-style:none;padding:0;margin:12px 0 0}
   .controls{position:static}
 }
 @media (prefers-reduced-motion:no-preference){.mat,.chipbtn,.gbtn{transition:background .12s,border-color .12s}}
+
+/* Classes and homework (docs/CLASSROOM.md) */
+.crumbs{margin:0 0 4px;font-size:13.5px;color:var(--muted)}
+.page-actions{margin-bottom:16px}
+.row.spread{justify-content:space-between;margin-bottom:8px}
+.row.spread h2{margin:0}
+ul.plain{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+ul.plain.cols{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.checklist fieldset{border:1px solid var(--rule);border-radius:8px;padding:8px 12px;display:grid;gap:6px}
+.checklist legend{font-weight:600;padding:0 4px}
+.answer{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;margin:10px 0}
+.files{list-style:none;margin:6px 0;padding:0;display:grid;gap:8px}
+.file{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.file img{display:block;width:72px;height:72px;object-fit:cover;border:1px solid var(--rule);border-radius:6px;background:var(--paper)}
+.hw-list{list-style:none;margin:0;padding:0}
+.hw-list.card{padding-block:4px}
+.hw-item{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;padding:10px 0;border-top:1px solid var(--rule)}
+.hw-item:first-child{border-top:0}
+.hw-item>div{min-width:0}
+.hw-title{font-weight:600}
+.hw-side{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.due{font-size:13.5px;color:var(--muted)}
+.due.overdue{color:var(--danger)}
+.mark-big{font-family:var(--f-mono);font-size:26px;font-weight:600;margin:4px 0 8px}
+.filters{margin-bottom:14px}

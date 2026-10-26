@@ -133,6 +133,20 @@ Tree shape:
 | GET | `/curriculum` | `{school {name}, scope {id, name, academicYear} \| null, grade {grade, nameEn, nameAr}, subjects[{id, track, block, nameEn, nameAr, status, materials[{id, kind, title}]}]}`: the student's grade, only the books selected in the assigned scope |
 | PATCH | `/profile` | `{locale}` |
 | POST | `/password` | `{currentPassword, newPassword}`; ends the student's other sessions |
+| GET | `/home` | Today: `{school, student, classes, todo, missed, returned}` (docs/CLASSROOM.md) |
+| GET | `/homework?show=todo\|done\|all` · `/homework/:homeworkId` | Homework of the student's classes, with their own work; a mark only once returned |
+| PUT · POST · POST | `/homework/:id/submission` · `/homework/:id/hand-in` · `/homework/:id/take-back` | `{body}` draft · hand in (`late` if after the due time) · back to a draft until returned |
+| POST · DELETE | `/homework/:id/files` · `/homework/:id/files/:fileId` | Raw photo or PDF body, name in `X-File-Name`; type checked from the bytes; 5 MB, 5 files |
+| GET | `/files/:fileId` | A file the student may see (sandboxed; PDFs download) |
+| GET · POST | `/notifications` · `/notifications/read` | The portal's notifications (new and returned homework) |
+
+### Classes and homework (`/api/orgs/:orgId/…`) — teachers are members added to a class; others get 404
+Full list and rules in docs/CLASSROOM.md §7. In short: `classes` (list: admins all, teachers their own;
+create, edit, archive, delete: admin), `classes/:classId/students` (PUT the list: admin),
+`classes/:classId/teachers` (admin), `classes/:classId/homework` (POST: the subject's teacher or an admin),
+`homework/:homeworkId` (GET with the roster; PATCH, DELETE), `homework/:homeworkId/files`,
+`homework/:homeworkId/submissions/:studentId` (GET the work; PATCH `{points?, feedback?, return?}`),
+`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId`.
 
 ### Scopes
 | Method | Path | Role | Notes |

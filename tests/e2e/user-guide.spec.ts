@@ -497,6 +497,8 @@ test('user guide screenshots', async ({ browser }) => {
   await shot(student, 'student-sign-in', card(student), { pad: 32 });
   await student.getByRole('button', { name: L('auth.signIn') }).click();
   await student.waitForURL(/\/student$/);
+  // The portal opens on Today (homework); the curriculum is under My books.
+  await student.locator('.topbar').getByRole('link', { name: L('portal.books') }).click();
   await expect(student.locator('.subj .mat.book').first()).toBeVisible();
   await shot(student, 'student-portal');
   await student.locator('.topbar').getByRole('button', { name: switchLabel(OTHER), exact: true }).click();

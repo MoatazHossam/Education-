@@ -32,7 +32,8 @@ const OTHER_LANGUAGE = {
   en: { lang: 'ar', dir: 'rtl', any: new RegExp(`[${ARABIC}]`), runs: new RegExp(`[${ARABIC}]+(?:[\\s\\d\u060C\u061B\u061F.,:()\u2013\u2014-]*[${ARABIC}]+)*`, 'g') },
   // In the Arabic interface: Latin text up to the next Arabic word, so an email address, a URL or a code
   // ("scope.items_changed") stays one piece; it ends on a letter, digit, "/" or "…", or on a bracket it opened.
-  ar: { lang: 'en', dir: 'ltr', any: /[A-Za-z]/, runs: new RegExp(`[A-Za-z](?:[^${ARABIC}]*[A-Za-z0-9/\u2026])?\\)?`, 'g') },
+  // Digits written against its first letter belong to it, so a class called "7A" is not shown as "A7".
+  ar: { lang: 'en', dir: 'ltr', any: /[A-Za-z]/, runs: new RegExp(`[0-9]*[A-Za-z](?:[^${ARABIC}]*[A-Za-z0-9/\u2026])?\\)?`, 'g') },
 };
 
 function textNodes(text) {

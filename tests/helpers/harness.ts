@@ -216,7 +216,13 @@ export function totp(secret: string): string {
  * student account may use). Reviewed list: the student tests check that every
  * other route rejects a student session.
  */
-export const STUDENT_ROUTES = ['POST /api/auth/student-login', 'GET /api/student/curriculum', 'PATCH /api/student/profile', 'POST /api/student/password'];
+export const STUDENT_ROUTES = [
+  'POST /api/auth/student-login', 'GET /api/student/curriculum', 'PATCH /api/student/profile', 'POST /api/student/password',
+  // Homework (docs/CLASSROOM.md)
+  'GET /api/student/home', 'GET /api/student/homework', 'GET /api/student/homework/:homeworkId', 'PUT /api/student/homework/:homeworkId/submission',
+  'POST /api/student/homework/:homeworkId/hand-in', 'POST /api/student/homework/:homeworkId/take-back', 'POST /api/student/homework/:homeworkId/files',
+  'DELETE /api/student/homework/:homeworkId/files/:fileId', 'GET /api/student/files/:fileId', 'GET /api/student/notifications', 'POST /api/student/notifications/read',
+];
 
 /**
  * Enables student accounts for the organization (the platform-admin override)

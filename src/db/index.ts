@@ -41,6 +41,18 @@ export async function withOrgContext<T>(
   });
 }
 
+/**
+ * Runs `fn` in the tenant context of a student's school with app.current_student
+ * set: the classroom policies then expose only that student's classes, published
+ * homework and own work (migration 0013), even to a query that forgets to filter.
+ */
+export async function withStudentContext<T>(db: Database, ctx: { orgId: string; studentId: string }, fn: (trx: Trx) => Promise<T>): Promise<T> {
+  return db.transaction().execute(async (trx) => {
+    await sql`SELECT set_config('app.current_org', ${ctx.orgId}, true), set_config('app.current_user', ${ctx.studentId}, true), set_config('app.current_student', ${ctx.studentId}, true)`.execute(trx);
+    return fn(trx);
+  });
+}
+
 /** Sets tenant context inside an already-open transaction (e.g. right after creating the org). */
 export async function setOrgContext(trx: Trx, orgId: string, userId?: string | null): Promise<void> {
   await sql`SELECT set_config('app.current_org', ${orgId}, true), set_config('app.current_user', ${userId ?? ''}, true)`.execute(trx);

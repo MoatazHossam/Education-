@@ -32,6 +32,8 @@ export interface PlanLimits {
   audit_log_days: number;
   /** Student accounts the school can create; 0 keeps the student portal off. */
   max_students: number | null;
+  /** Classroom files (homework and submissions) per school, in MB. Not set on a plan: 1024. */
+  max_storage_mb?: number | null;
 }
 
 export interface PlanFeatures {
@@ -475,12 +477,112 @@ export interface OpsAlertsTable {
   resolved_at: NullableTimestamp;
 }
 
+// ---------------------------------------------------------------- classes and homework (docs/CLASSROOM.md)
+/** numeric columns arrive as strings (exact decimals); write numbers or strings. */
+type NullableDecimal = ColumnType<string | null, number | string | null | undefined, number | string | null>;
+
+export interface ClassesTable {
+  id: Generated<string>;
+  org_id: string;
+  name: string;
+  grade: number;
+  scope_id: string | null;
+  archived_at: NullableTimestamp;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface ClassStudentsTable {
+  class_id: string;
+  org_id: string;
+  student_id: string;
+  added_at: Generated<Date>;
+}
+
+export interface ClassTeachersTable {
+  id: Generated<string>;
+  class_id: string;
+  org_id: string;
+  user_id: string;
+  subject_en: string;
+  subject_ar: string;
+  created_at: Generated<Date>;
+}
+
+export interface HomeworkMaterial {
+  id: string;
+  kind: MaterialKind;
+  title: string;
+}
+
+export interface HomeworkTable {
+  id: Generated<string>;
+  org_id: string;
+  class_id: string;
+  subject_en: string;
+  subject_ar: string;
+  title: string;
+  instructions: Generated<string>;
+  materials: Json<HomeworkMaterial[]>;
+  publish_at: Timestamp;
+  due_at: Timestamp;
+  max_points: NullableDecimal;
+  allow_late: Generated<boolean>;
+  notified_at: NullableTimestamp;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export type SubmissionStatus = 'draft' | 'submitted' | 'returned';
+
+export interface HomeworkSubmissionsTable {
+  id: Generated<string>;
+  org_id: string;
+  homework_id: string;
+  student_id: string;
+  body: Generated<string>;
+  status: Generated<SubmissionStatus>;
+  submitted_at: NullableTimestamp;
+  late: Generated<boolean>;
+  points: NullableDecimal;
+  feedback: string | null;
+  graded_by: string | null;
+  graded_at: NullableTimestamp;
+  returned_at: NullableTimestamp;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export type ClassroomFileType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
+
+export interface ClassroomFilesTable {
+  id: Generated<string>;
+  org_id: string;
+  homework_id: string | null;
+  submission_id: string | null;
+  name: string;
+  content_type: ClassroomFileType;
+  size_bytes: number;
+  sha256: string;
+  data: Buffer;
+  uploaded_by: string | null;
+  created_at: Generated<Date>;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
   memberships: MembershipsTable;
   sessions: SessionsTable;
   students: StudentsTable;
+  classes: ClassesTable;
+  class_students: ClassStudentsTable;
+  class_teachers: ClassTeachersTable;
+  homework: HomeworkTable;
+  homework_submissions: HomeworkSubmissionsTable;
+  classroom_files: ClassroomFilesTable;
   user_tokens: UserTokensTable;
   invitations: InvitationsTable;
   catalog_versions: CatalogVersionsTable;
@@ -516,6 +618,9 @@ export type User = Selectable<UsersTable>;
 /** A staff account: signs in with an email address and may hold memberships. */
 export type StaffUser = User & { kind: 'staff'; email: string };
 export type Student = Selectable<StudentsTable>;
+export type SchoolClass = Selectable<ClassesTable>;
+export type Homework = Selectable<HomeworkTable>;
+export type HomeworkSubmission = Selectable<HomeworkSubmissionsTable>;
 export type Organization = Selectable<OrganizationsTable>;
 export type Session = Selectable<SessionsTable>;
 export type Plan = Selectable<PlansTable>;

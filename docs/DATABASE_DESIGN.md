@@ -52,6 +52,12 @@ erDiagram
 | `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
 | `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org**; staff accounts only (trigger) | org **or** own user rows |
 | `students` | School-created student accounts (`docs/STUDENT_ACCOUNTS.md`) | PK `user_id` (a `kind = 'student'` user: trigger); unique `(org_id, username)`; username pattern; grade 1–12; `(scope_id, org_id)` references `scopes(id, org_id)` with `ON DELETE SET NULL (scope_id)`; deleting the row deletes the account (trigger) | org **or** own user row |
+| `classes` | A school's classes (`docs/CLASSROOM.md`) | name 1–60, unique per school among active classes (`lower(name)`); grade 1–12; optional curriculum `(scope_id, org_id)` → scopes (cleared if the scope is deleted); `archived_at` | ✓ (students: only their classes) |
+| `class_students` | Class ↔ student | PK `(class_id, student_id)`; composite FKs keep class and student in the same school (`students_user_org_key`) | ✓ (students: own rows) |
+| `class_teachers` | Class ↔ member teaching a subject | unique `(class_id, user_id, subject_en)`; FK `(org_id, user_id)` → memberships `ON DELETE CASCADE` | ✓ (students: their classes) |
+| `homework` | Homework set for a class | title 1–200, instructions ≤ 5,000, `materials` JSONB copy (≤ 10 books), `publish_at` < `due_at`, `max_points` > 0 or null, `allow_late`, `notified_at` | ✓ (students: their classes, once published) |
+| `homework_submissions` | A student's work on one homework | unique `(homework_id, student_id)`; `status` draft/submitted/returned; body ≤ 10,000; `points` ≥ 0; feedback ≤ 3,000; who marked and when; `returned_at` | ✓ (students: own rows) |
+| `classroom_files` | Photos and PDFs on homework or submissions | exactly one of `homework_id`, `submission_id` (both composite FKs, cascade); type JPEG/PNG/WebP/PDF; 1 B–5 MB; SHA-256; `data bytea` | ✓ (students: files of visible homework and own work) |
 | `sessions` | Server-side sessions | id = SHA-256(token), 64 hex; state `active/mfa_pending`; `expires_at` | — |
 | `user_tokens` | Email verification / password reset | `token_hash` unique; single use (`used_at`); expiry | — |
 | `invitations` | Pending invites | `token_hash` unique; **one open invite per (org, email)**; role ≠ owner | ✓ |
@@ -109,6 +115,12 @@ CREATE POLICY scopes_isolation ON scopes
   WITH CHECK (app_rls_bypass() OR org_id = app_current_org());
 -- memberships and students: USING also allows user_id = app_current_user()
 ```
+
+Student requests (the student portal) also set `app.current_student` (`withStudentContext`,
+`app_current_student()`, migration `0013`). The classroom tables then return only that student's
+classes, published homework of those classes, their own submissions and the files of both, and refuse
+their writes except to their own submissions and files; `students` returns only their own row. Staff
+requests leave it empty and see the whole school, as before.
 
 Settings are applied with `set_config(..., true)` (transaction-local), which is safe with
 connection pooling. Tests prove: no rows without context; another tenant's context sees nothing;

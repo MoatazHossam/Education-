@@ -368,6 +368,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
           .where('s.user_id', '=', auth.user.id)
           .executeTakeFirstOrThrow(),
       );
+      // Homework notices (docs/CLASSROOM.md): the portal's bell shows the unread count.
+      const unread = await db.selectFrom('notifications').select((eb) => eb.fn.countAll<string>().as('n')).where('user_id', '=', auth.user.id).where('read_at', 'is', null).executeTakeFirstOrThrow();
       return {
         mfaPending: false,
         user: publicUser(auth.user),
@@ -375,7 +377,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         session: { mfaVerified: false, expiresAt: auth.session.expires_at },
         csrfToken: csrfTokenFor(config, auth.session.id),
         organizations: [],
-        unreadNotifications: 0,
+        unreadNotifications: Number(unread.n),
       };
     }
     const memberships = await withUserContext(db, auth.user.id, (trx) =>

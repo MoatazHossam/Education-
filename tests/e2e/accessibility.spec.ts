@@ -11,6 +11,9 @@ import { ownerQuery } from './server.js';
 // the journeys so pages show real data. Findings are collected and reported
 // together. Automated checks cover only part of WCAG; see TEST_REPORT.md.
 
+// A 1×1 PNG, for a student's photo of their work.
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 interface Finding { where: string; rule: string; impact: string | null | undefined; help: string; nodes: string[] }
 const findings: Finding[] = [];
@@ -190,6 +193,8 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await studentPage.getByLabel('Password').fill(studentPassword);
   await studentPage.getByRole('button', { name: 'Sign in' }).click();
   await studentPage.waitForURL(/\/student$/);
+  await audit(studentPage, 'student today (no class yet)');
+  await studentPage.locator('.topbar').getByRole('link', { name: 'My books' }).click();
   await expect(studentPage.locator('.subj .mat.book').first()).toBeVisible();
   await audit(studentPage, 'student portal');
   await studentPage.locator('.topbar').getByRole('button', { name: 'Change password' }).click();
@@ -208,7 +213,71 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await studentPhone.getByLabel('Password').fill(studentPassword);
   await studentPhone.getByRole('button', { name: 'Sign in' }).click();
   await studentPhone.waitForURL(/\/student$/);
-  await audit(studentPhone, 'student portal (phone)');
+  await audit(studentPhone, 'student today (phone)');
+
+  // Classes and homework (docs/CLASSROOM.md): the owner sets up a class for the student and sets homework,
+  // the student hands in an answer with a photo, the owner marks it and returns it.
+  await visit(page, `/org/${orgId}/classes`, 'classes (none yet)');
+  await page.getByRole('button', { name: 'New class' }).click();
+  await audit(page, 'new class dialog');
+  let cd = page.getByRole('dialog', { name: 'New class' });
+  await cd.getByLabel('Class name').fill('1A');
+  await cd.getByLabel('Curriculum').selectOption(lastYearScope!);
+  await cd.getByRole('button', { name: 'Create class' }).click();
+  await expect(page.getByRole('heading', { name: '1A', level: 1 })).toBeVisible();
+  const classPath = new URL(page.url()).pathname;
+  await page.getByRole('button', { name: 'Choose students' }).click();
+  await audit(page, 'choose students dialog');
+  await page.getByRole('dialog').getByLabel('Ally Student').check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Students (1)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add teacher' }).click();
+  await audit(page, 'add teacher dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Add teacher' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Set homework' }).click();
+  await audit(page, 'set homework dialog');
+  cd = page.getByRole('dialog');
+  await cd.getByLabel('Title').fill('Practise the letters');
+  await cd.getByLabel('Instructions').fill('Write each letter five times in your notebook.');
+  await cd.getByRole('button', { name: 'Set homework' }).click();
+  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+  await audit(page, 'class (with homework)');
+  await studentPage.emulateMedia({ colorScheme: 'light' });
+  await visit(studentPage, '/student', 'student today (homework due)');
+  await studentPage.getByRole('link', { name: 'Practise the letters' }).click();
+  await audit(studentPage, 'student homework');
+  const studentHomeworkPath = new URL(studentPage.url()).pathname;
+  await studentPage.getByLabel('Your answer').fill('a a a a a');
+  await studentPage.getByLabel('Attach photos or a PDF').setInputFiles({ name: 'letters.png', mimeType: 'image/png', buffer: PNG });
+  await expect(studentPage.locator('.files')).toContainText('letters.png');
+  await audit(studentPage, 'student homework (draft with a photo)');
+  await studentPage.getByRole('button', { name: 'Hand in' }).click();
+  await expect(studentPage.getByText(/You handed this in/)).toBeVisible();
+  await audit(studentPage, 'student homework (handed in)');
+  await visit(studentPage, '/student/homework?show=all', 'student homework list');
+  await page.getByRole('link', { name: 'Practise the letters' }).click();
+  await expect(page.getByText('1 of 1 handed in · 0 returned')).toBeVisible();
+  await audit(page, 'homework (work handed in)');
+  const homeworkPath = new URL(page.url()).pathname;
+  await page.getByRole('button', { name: 'Open the work of Ally Student' }).click();
+  await audit(page, 'mark work dialog');
+  await page.getByRole('dialog').getByLabel('Mark (out of 10)').fill('8');
+  await page.getByRole('dialog').getByLabel('Comments for the student').fill('Neat work.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Return to student' }).click();
+  await expect(page.locator('table.data tbody tr')).toContainText('8 / 10');
+  await audit(page, 'homework (returned)');
+  await visit(page, `/org/${orgId}/classes`, 'classes');
+  await visit(studentPage, studentHomeworkPath, 'student homework (returned with a mark)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(studentPage.locator('html')).toHaveAttribute('dir', 'rtl');
+  await audit(studentPage, 'student homework (Arabic)');
+  await visit(studentPage, '/student', 'student today (Arabic)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await visit(studentPhone, studentHomeworkPath, 'student homework (phone)');
+  await visit(studentPhone, '/student/homework?show=all', 'student homework list (phone)');
+  await studentPage.emulateMedia({ colorScheme: 'dark' });
+  await visit(studentPage, studentHomeworkPath, 'student homework (dark)');
 
   // Arabic (right to left).
   await page.goto(`/org/${orgId}?scope=${scopeId}`);
@@ -219,6 +288,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/scopes`, 'scopes (Arabic)'], [`/org/${orgId}/scopes/${scopeId}/carry`, 'carry forward review (Arabic)'],
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'], [`/org/${orgId}/settings`, 'settings (Arabic)'],
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
+    [`/org/${orgId}/classes`, 'classes (Arabic)'], [classPath, 'class (Arabic)'], [homeworkPath, 'homework (Arabic)'],
   ] as const) await visit(page, path, where);
   // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
   // (not "e2e.test@a11y…"), and a book title keeps the bracket it closes.
@@ -238,6 +308,8 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, comparePath, 'compare scopes (dark)');
   await visit(page, itemsPath, 'notes and assignees (dark)');
   await visit(page, assignmentsPath, 'my assignments (dark)');
+  await visit(page, classPath, 'class (dark)');
+  await visit(page, homeworkPath, 'homework (dark)');
   await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
   // Phone.

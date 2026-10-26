@@ -17,9 +17,14 @@ export class ApiError extends Error {
 
 async function raw(method, path, body) {
   const headers = { accept: 'application/json' };
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  // A File is sent as its raw bytes (uploads); anything else as JSON.
+  const isFile = typeof globalThis.File === 'function' && body instanceof globalThis.File;
+  if (isFile) {
+    headers['content-type'] = 'application/octet-stream';
+    headers['x-file-name'] = encodeURIComponent(body.name);
+  } else if (body !== undefined) headers['content-type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['x-csrf-token'] = csrfToken;
-  const res = await fetch(path, { method, headers, credentials: 'same-origin', body: body !== undefined ? JSON.stringify(body) : undefined });
+  const res = await fetch(path, { method, headers, credentials: 'same-origin', body: isFile ? body : body !== undefined ? JSON.stringify(body) : undefined });
   let data = null;
   if (res.status !== 204) { try { data = await res.json(); } catch { data = null; } }
   return { res, data };
@@ -43,3 +48,6 @@ export const get = (p) => api('GET', p);
 export const post = (p, b = {}) => api('POST', p, b);
 export const patch = (p, b = {}) => api('PATCH', p, b);
 export const del = (p, b) => api('DELETE', p, b);
+export const put = (p, b = {}) => api('PUT', p, b);
+/** Uploads a photo or PDF (raw bytes); the server checks the type from the file itself. */
+export const upload = (p, file) => api('POST', p, file);

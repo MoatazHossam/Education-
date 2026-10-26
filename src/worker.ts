@@ -1,5 +1,6 @@
 import pino from 'pino';
 import { runBillingLifecycle } from './billing/service.js';
+import { runHomeworkAnnouncements } from './classroom/service.js';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/index.js';
 import { heartbeat, processOutbox, runCleanup } from './jobs/tasks.js';
@@ -33,6 +34,7 @@ async function main() {
       if (mailer) tick.outbox = await processOutbox(db, mailer);
       tick.webhooks = await processWebhookDeliveries(db, config);
       tick.billing = await runBillingLifecycle(db, config);
+      tick.homework = await runHomeworkAnnouncements(db);
       if (Date.now() - lastReminders > REMINDERS_EVERY_MS) {
         const reminders = await runDueReminders(db, config);
         if (reminders.failed) log.warn({ reminders }, 'some due-date reminders failed; they are retried on the next pass');

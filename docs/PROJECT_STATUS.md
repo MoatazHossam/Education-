@@ -286,6 +286,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** E2E 23/23 (the audit with the simulated reader's checks on 83 screens, and the new announcements test).
 - **Limitations:** a simulation has no voices, no language switching and none of a real screen reader's modes or verbosity; the manual review in `docs/SCREEN_READER_REVIEW.md` is still needed. The sandbox checkout page is not covered.
 
+### Classes and homework (teacher and student portal, part 1 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
+
+- **Asked:** "a complete portal for teachers and students for daily assignments, monitoring and controlling exams and online tests … in English and Arabic". Built in three parts: (1) classes and daily homework, here; (2) online tests and exams with live monitoring; (3) a gradebook and the user guides.
+- **Implemented** (`docs/CLASSROOM.md`):
+  - **Classes:** owners and admins create classes (name, grade, a scope as curriculum), choose the students and add teachers per subject. A teacher is any member added to a class; they see only **My classes**. Archive or delete.
+  - **Homework:** a subject's teacher (or an admin) sets homework with instructions, books from the class's curriculum, worksheet files, a due time, an optional later start, a full mark and whether late work is accepted. The class's students are notified in their language (scheduled homework by the worker when it appears).
+  - **Students:** the portal opens on **Today** (to do, missed, returned this week), with **Homework** and **My books** (the curriculum, as before) and a notifications bell. A student writes an answer, attaches photos or PDFs, saves a draft, hands in, and can take work back until it is marked.
+  - **Marking:** the roster shows who handed in, late and missing work; the teacher opens each piece with its photos, gives a mark and comments, and returns one or all marked work. Work done on paper can be marked too. Students see marks only once returned.
+  - **Files:** JPEG, PNG, WebP and PDF, type decided from the bytes, 5 MB each, 5 per item, a per-school storage limit (`max_storage_mb`, 1 GB unless overridden), served sandboxed.
+  - **Security:** classroom tables have forced row-level security; student requests set `app.current_student`, so a student's queries return only their classes, published homework and own work whatever they ask for. The same switch as student accounts turns it on; no plan or price changed.
+  - **Arabic:** every page, dialog, status and error in both languages. Reviewing the screens fixed two display problems in Arabic: a mark "9 / 10" read as "10 / 9" (now "9 من 10") and a class "7A" shown as "A7" in mixed text (digits written against a Latin word now stay with it).
+- **Not done (next parts):** online tests and exams, the gradebook, the user guides' new sections; no email or SMS to students or parents; no virus scanning of uploads; no retention rule for old work.
+- **Before real use:** legal advice on children's work and marks under the PDPL (SECURITY_DESIGN §7).
+- **Files:** `src/db/migrations/0013_classroom.ts`, `src/classroom/{service,files,routes,student-routes}.ts`, `src/students/context.ts`, `src/db/index.ts` (`withStudentContext`), `src/worker.ts`, `src/orgs/routes.ts`, `public/js/views/{classes,student,shell}.js`, `public/js/{api,dom,i18n}.js`, `public/app.css`.
+- **Tests:** `tests/integration/classroom.test.ts` (7), the route coverage tests, journey 20, and 27 more screens in the accessibility audit.
+
 ### Arabic user guide, and the Arabic interface fixes it led to · COMPLETE
 - **Implemented:** `docs/USER_GUIDE.ar.md`, the user guide in Arabic, with 62 screenshots of the Arabic interface (`docs/user-guide/images-ar/`). The demo school and its people have Arabic names, and the guide names every button as the interface shows it.
   - **How it is made:** `npm run docs:screenshots:ar` (`playwright.guide-ar.config.ts`). The screenshot script (`tests/e2e/user-guide.spec.ts`) now runs in either language. It takes every label from the interface's own dictionaries, so the same steps drive both languages, and the English run still produces the English guide's 62 screenshots.
@@ -479,7 +495,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (261 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (268 unit/integration + 24 E2E passing: 20 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

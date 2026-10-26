@@ -319,3 +319,34 @@ ul.plain.cols{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .due.overdue{color:var(--danger)}
 .mark-big{font-family:var(--f-mono);font-size:26px;font-weight:600;margin:4px 0 8px}
 .filters{margin-bottom:14px}
+
+/* Online tests and exams (docs/ONLINE_TESTS.md) */
+.tabs{margin:0 0 16px}
+.grid2.tight{gap:0 16px}
+ol.questions{list-style:none;margin:0;padding:0;counter-reset:q}
+ol.questions.card{padding:4px 18px}
+ol.questions>li{counter-increment:q}
+.question{border-top:1px solid var(--rule);padding:12px 0;min-width:0}
+ol.questions>li:first-child .question,ol.questions>li.question:first-child{border-top:0}
+fieldset.question{border:1px solid var(--rule);border-radius:10px;padding:12px 16px;margin:0 0 14px;background:var(--sheet)}
+fieldset.question legend{font-weight:600;padding:0 6px}
+.prompt{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 10px;font-size:15.5px}
+.opts{margin:4px 0 0;padding-inline-start:20px}
+.opts li.right{font-weight:600}
+.opt-row{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.opt-letter{font-weight:600;white-space:nowrap}
+.choices .check{align-items:flex-start}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:6px;vertical-align:middle}
+.dot.on{background:var(--ok)}
+.dot.off{background:var(--rule-strong)}
+.testbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid var(--rule);border-radius:10px;padding:10px 14px;margin:0 0 12px;font-weight:600}
+.testbar.urgent{background:var(--danger-bg);color:var(--danger)}
+.clock{font-family:var(--f-mono);font-size:18px}
+.code-input{font-family:var(--f-mono);font-size:18px;letter-spacing:.15em;max-width:12em;text-transform:uppercase}
+.mark-row{display:grid;grid-template-columns:minmax(0,14em) minmax(0,1fr);gap:8px 16px;align-items:start;margin-top:8px}
+@media (max-width:640px){.mark-row{grid-template-columns:minmax(0,1fr)}.opt-row{grid-template-columns:auto minmax(0,1fr) auto}.opt-row .opt-letter{display:none}}
+.mark-row .row{grid-column:1/-1}
+.events{margin:0;padding-inline-start:20px;display:grid;gap:4px}
+.summary{font-weight:600;margin:0 0 6px}
+.submit-row{margin:8px 0 24px}
+.answer-inline{white-space:pre-wrap;overflow-wrap:anywhere}

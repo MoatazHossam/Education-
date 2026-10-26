@@ -571,6 +571,126 @@ export interface ClassroomFilesTable {
   created_at: Generated<Date>;
 }
 
+// ---------------------------------------------------------------- online tests and exams (docs/ONLINE_TESTS.md)
+export type QuestionType = 'single' | 'multiple' | 'true_false' | 'short' | 'essay';
+export type ResultsMode = 'after_submit' | 'after_close' | 'manual';
+export interface QuestionOption {
+  id: string;
+  text: string;
+}
+/** single: ["a"]; multiple: ["a","c"]; true_false: boolean; short: accepted answers; essay: a marking guide. */
+export type AnswerKey = string[] | boolean | { guide: string | null };
+/** single: "a"; multiple: ["a","c"]; true_false: boolean; short and essay: text. */
+export type GivenAnswer = string | string[] | boolean;
+
+export interface TestsTable {
+  id: Generated<string>;
+  org_id: string;
+  class_id: string;
+  subject_en: string;
+  subject_ar: string;
+  title: string;
+  instructions: Generated<string>;
+  kind: Generated<'quiz' | 'exam'>;
+  status: Generated<'draft' | 'published'>;
+  opens_at: Timestamp;
+  closes_at: Timestamp;
+  duration_minutes: number | null;
+  max_attempts: Generated<number>;
+  shuffle_questions: Generated<boolean>;
+  shuffle_options: Generated<boolean>;
+  results: Generated<ResultsMode>;
+  show_answers: Generated<boolean>;
+  results_released_at: NullableTimestamp;
+  access_code: string | null;
+  one_device: Generated<boolean>;
+  closed_early_at: NullableTimestamp;
+  max_extra_minutes: Generated<number>;
+  published_at: NullableTimestamp;
+  notified_at: NullableTimestamp;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface TestQuestionsTable {
+  id: Generated<string>;
+  org_id: string;
+  test_id: string;
+  position: number;
+  type: QuestionType;
+  prompt: string;
+  options: Json<QuestionOption[]>;
+  points: ColumnType<string, number | string, number | string>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface TestQuestionKeysTable {
+  question_id: string;
+  org_id: string;
+  test_id: string;
+  key: Json<AnswerKey>;
+}
+
+export interface TestStudentOverridesTable {
+  test_id: string;
+  org_id: string;
+  student_id: string;
+  extra_minutes: Generated<number>;
+  extra_attempts: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export interface TestAttemptsTable {
+  id: Generated<string>;
+  org_id: string;
+  test_id: string;
+  student_id: string;
+  number: number;
+  status: Generated<'in_progress' | 'submitted'>;
+  started_at: Generated<Date>;
+  deadline_at: Timestamp;
+  extra_minutes: Generated<number>;
+  submitted_at: NullableTimestamp;
+  submit_reason: 'student' | 'time' | 'teacher' | 'closed' | null;
+  session_id: string | null;
+  question_order: Json<string[]>;
+  option_order: Json<Record<string, string[]>>;
+  last_seen_at: Generated<Date>;
+  max_points: ColumnType<string, number | string, number | string>;
+  auto_points: NullableDecimal;
+  manual_points: NullableDecimal;
+  score: NullableDecimal;
+  needs_marking: Generated<boolean>;
+  marked_at: NullableTimestamp;
+  events_count: Generated<number>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface TestAnswersTable {
+  attempt_id: string;
+  org_id: string;
+  question_id: string;
+  answer: Json<GivenAnswer>;
+  saved_at: Generated<Date>;
+  auto_points: NullableDecimal;
+  manual_points: NullableDecimal;
+  feedback: string | null;
+}
+
+export type TestEventKind = 'started' | 'resumed' | 'left_page' | 'returned' | 'paste' | 'offline' | 'online' | 'other_device' | 'device_allowed' | 'extra_time' | 'forced_submit' | 'time_up' | 'closed' | 'submitted';
+
+export interface TestEventsTable {
+  id: Generated<string>;
+  org_id: string;
+  attempt_id: string;
+  kind: TestEventKind;
+  at: Generated<Date>;
+  detail: Json<Record<string, unknown>>;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
@@ -583,6 +703,13 @@ export interface DB {
   homework: HomeworkTable;
   homework_submissions: HomeworkSubmissionsTable;
   classroom_files: ClassroomFilesTable;
+  tests: TestsTable;
+  test_questions: TestQuestionsTable;
+  test_question_keys: TestQuestionKeysTable;
+  test_student_overrides: TestStudentOverridesTable;
+  test_attempts: TestAttemptsTable;
+  test_answers: TestAnswersTable;
+  test_events: TestEventsTable;
   user_tokens: UserTokensTable;
   invitations: InvitationsTable;
   catalog_versions: CatalogVersionsTable;
@@ -621,6 +748,9 @@ export type Student = Selectable<StudentsTable>;
 export type SchoolClass = Selectable<ClassesTable>;
 export type Homework = Selectable<HomeworkTable>;
 export type HomeworkSubmission = Selectable<HomeworkSubmissionsTable>;
+export type Test = Selectable<TestsTable>;
+export type TestQuestion = Selectable<TestQuestionsTable>;
+export type TestAttempt = Selectable<TestAttemptsTable>;
 export type Organization = Selectable<OrganizationsTable>;
 export type Session = Selectable<SessionsTable>;
 export type Plan = Selectable<PlansTable>;

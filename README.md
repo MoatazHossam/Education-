@@ -9,7 +9,9 @@ programmes for grades 1–12 in the original picker interface; selections are sa
 versioned **content scopes**, exported (TXT/CSV/JSON) or read by API. Around it: accounts with
 2FA, organizations and roles, plans and billing, an audit log, and a platform admin console.
 Schools can also create student accounts, organize **classes** with their teachers, and set
-**homework** that students hand in online (text, photos, PDFs) and teachers mark and return.
+**homework** that students hand in online (text, photos, PDFs) and teachers mark and return. Teachers
+give **online tests and exams** with a server-kept clock, watch them live (more time, retakes, closing
+early), mark written answers and release results.
 English and Arabic (RTL).
 
 > **Status: not production ready.** Functionally complete and tested locally; blocked on
@@ -77,6 +79,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [Subscriptions](docs/SUBSCRIPTION_MODEL.md) ·
 [Student accounts](docs/STUDENT_ACCOUNTS.md) ·
 [Classes and homework](docs/CLASSROOM.md) ·
+[Online tests and exams](docs/ONLINE_TESTS.md) ·
 [Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
 [Test strategy](docs/TEST_STRATEGY.md) ·

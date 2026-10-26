@@ -11,6 +11,7 @@ import { parse, zUuid } from '../lib/validation.js';
 import { asStudent } from '../students/context.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
 import { homeworkJson, num, studentHomework } from './service.js';
+import { myTests } from './tests-student-routes.js';
 
 // The student portal's homework (docs/CLASSROOM.md §4). Every handler runs in
 // asStudent, whose row-level security context limits queries to this student's
@@ -45,10 +46,16 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
       const done = await studentHomework(trx, user.id, 'done');
       const weekAgo = new Date(Date.now() - 7 * 86_400_000);
       const classes = await trx.selectFrom('classes').select(['id', 'name', 'grade']).where('archived_at', 'is', null).orderBy('name').execute();
+      const tests = await myTests(trx, user.id);
+      const usable = (t: (typeof tests)[number]) => t.inProgressAttemptId !== null || t.attemptsUsed < t.attemptsAllowed;
       return {
         school: { name: org.name },
         student: { name: user.name, grade: student.grade },
         classes,
+        tests: {
+          open: tests.filter((t) => t.phase === 'open' && usable(t)),
+          upcoming: tests.filter((t) => t.phase === 'upcoming').reverse(),
+        },
         todo: todo.filter((h) => !h.closed),
         missed: todo.filter((h) => h.closed),
         returned: done.filter((h) => h.status === 'returned' && h.returnedAt && h.returnedAt > weekAgo),

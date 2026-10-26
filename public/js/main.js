@@ -18,6 +18,8 @@ import * as scopes from './views/scopes.js';
 import * as settings from './views/settings.js';
 import * as student from './views/student.js';
 import * as students from './views/students.js';
+import * as studentTests from './views/student-tests.js';
+import * as tests from './views/tests.js';
 import { renderShell } from './views/shell.js';
 
 // access: guest (signed-out only), public, user (signed-in staff), admin (platform admin), student (student account)
@@ -32,6 +34,10 @@ route('/student', { access: 'student', bare: true, view: student.portalView });
 route('/student/homework', { access: 'student', bare: true, view: student.homeworkListView });
 route('/student/homework/:homeworkId', { access: 'student', bare: true, view: student.homeworkDetailView });
 route('/student/books', { access: 'student', bare: true, view: student.booksView });
+route('/student/tests', { access: 'student', bare: true, view: studentTests.testsListView });
+route('/student/tests/:testId', { access: 'student', bare: true, view: studentTests.testIntroView });
+route('/student/attempts/:attemptId', { access: 'student', bare: true, view: studentTests.takeView });
+route('/student/attempts/:attemptId/result', { access: 'student', bare: true, view: studentTests.resultView });
 route('/register', { access: 'guest', bare: true, view: auth.registerView });
 route('/verify-email', { access: 'public', bare: true, view: auth.verifyEmailView });
 route('/forgot-password', { access: 'public', bare: true, view: auth.forgotView });
@@ -53,6 +59,10 @@ route('/org/:orgId/students', { access: 'user', org: true, view: students.studen
 route('/org/:orgId/classes', { access: 'user', org: true, view: classes.classesView });
 route('/org/:orgId/classes/:classId', { access: 'user', org: true, view: classes.classView });
 route('/org/:orgId/homework/:homeworkId', { access: 'user', org: true, view: classes.homeworkView });
+route('/org/:orgId/tests/:testId', { access: 'user', org: true, view: tests.testView });
+route('/org/:orgId/tests/:testId/monitor', { access: 'user', org: true, view: tests.monitorView });
+route('/org/:orgId/tests/:testId/results', { access: 'user', org: true, view: tests.resultsView });
+route('/org/:orgId/tests/:testId/attempts/:attemptId', { access: 'user', org: true, view: tests.attemptView });
 route('/org/:orgId/billing', { access: 'user', org: true, view: billing.billingView });
 route('/org/:orgId/settings', { access: 'user', org: true, view: settings.settingsView });
 route('/org/:orgId/audit', { access: 'user', org: true, view: settings.auditView });

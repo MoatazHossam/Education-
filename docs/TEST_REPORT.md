@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**37 files, 268 tests, 268 passed, 0 failed** (2026-10-26, with classes and homework). Integration tests ran against a real
+**39 files, 281 tests, 281 passed, 0 failed** (2026-10-26, with online tests and exams). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -41,6 +41,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/data-keys | 4 | Pass — key ids in new values; previous keys decrypt and an unconfigured key is named; old-format values read with whichever key opens them; `DATA_ENCRYPTION_KEYS_PREVIOUS` rules |
 | unit/webhook-net | 4 | Pass — public-address classifier (private, loopback, link-local, CGNAT, documentation, multicast, NAT64, 6to4, IPv4-mapped); URL rules (https only, no credentials, no private or local hosts, development setting); the socket's DNS lookup refusing a host that resolves to loopback; signature format |
 | unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
+| unit/test-marking | 5 | Pass — online test rules (`docs/ONLINE_TESTS.md` §4): typed answers normalised as a teacher would accept them (Arabic diacritics, tatweel, alef forms, ى/ي, ة/ه, Arabic-Indic digits, case, spaces, edge punctuation); marks for every type, partial credit for several choices never below 0, written answers left to the teacher; question and answer checks; the attempt deadline (time limit or the test's end, plus extra time); shuffles and start codes |
 | integration/auth | 13 | Pass |
 | integration/tenancy | 17 | Pass |
 | integration/scopes | 10 | Pass |
@@ -64,163 +65,174 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/shutdown | 1 | Pass — the real server process reports draining on SIGTERM, keeps serving during the drain, exits cleanly |
 | integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 | integration/classroom | 7 | Pass — classes and homework (`docs/CLASSROOM.md`): off until student accounts are on; who sees which class; the whole homework cycle (curriculum books and subject teachers only, notifications in each student's language, private drafts, file type from the bytes, hand-in, download headers, mark limits, return one and several, paper work, audit); late, closed and taken-back work; scheduled homework announced once by the worker; row-level security with unfiltered queries in a student context; file count, storage limit, deleting a class |
+| integration/online-tests | 8 | Pass — online tests and exams (`docs/ONLINE_TESTS.md`): drafts hidden from students (also directly in the database), publishing notifies the class in each student's language; students get questions without answer keys, answers are checked and saved, submission marks them, the teacher marks the written answer, and a teacher of another subject sees no keys and cannot mark; start code, attempts and a retake; the server keeps the time (late saves refused, the worker submits the rest); a new closing time moves running attempts, and results and answers wait for a classmate's extra time; the live monitor (left the page, pasting, another device), one device, submitting for a student, closing early and reopening; settings locked after a start and manual release; row-level security for another student with unfiltered queries |
 
-Full test names (verbatim from the verbose reporter):
+Full test names (file › group › test, from `npx vitest list`):
 
-<details><summary>Show all 268</summary>
+<details><summary>Show all 281</summary>
 
-- tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
-- tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
-- tenancy › cross-tenant isolation over the API › rejects malformed org ids without leaking errors
-- tenancy › Row-Level Security › every table with an org_id column has forced RLS, apart from the documented exceptions
-- tenancy › Row-Level Security › returns no tenant rows without a tenant context, even for an unscoped query
-- tenancy › Row-Level Security › only exposes the current tenant’s rows inside a tenant context
-- tenancy › Row-Level Security › blocks writing rows for another tenant (WITH CHECK)
-- tenancy › Row-Level Security › the application role cannot bypass RLS or rewrite audit history
-- tenancy › Row-Level Security › composite keys stop items pointing at another tenant’s scope or another catalogue version
-- tenancy › roles and permissions › enforces the permission matrix server-side
-- tenancy › roles and permissions › transfers ownership with password confirmation and keeps a single owner
-- tenancy › roles and permissions › member removal rules: owner cannot be removed, members can leave, removed users lose access
-- tenancy › invitations › existing users accept with their own account; email must match
-- tenancy › invitations › an account created from an invitation is signed in, which counts as its first sign-in
-- tenancy › invitations › revoked invitations cannot be used and duplicate members are refused
-- tenancy › data deletion and export › owner deletes an organization: its data is gone, other tenants untouched, audit retained
-- tenancy › data deletion and export › a user can export their data and delete their account unless they own an organization
-- auth › registers an owner with an organization on a 14-day trial and requires verification before login
-- auth › does not reveal whether an email is already registered
-- auth › rejects weak passwords and invalid input with field details
-- auth › locks the account after 5 failed attempts and uses a generic error
-- auth › rate-limits repeated login attempts per client and account
-- auth › logout invalidates the session
-- auth › rejects state-changing requests without the session CSRF token
-- auth › rejects cross-origin requests and non-JSON bodies
-- auth › resets the password with a single-use token and revokes existing sessions
-- auth › changing the password requires the current one and signs out other sessions
-- auth › requires a TOTP code at login once enabled, and rejects replayed codes
-- auth › disabling MFA requires password and a valid code
-- auth › lists and revokes own sessions only
-- admin-api-ops › is invisible to ordinary users and requires MFA for admins
-- admin-api-ops › sees customer metadata but not scope contents without a support grant
-- admin-api-ops › suspends and restores organizations and users
-- admin-api-ops › assigns an enterprise plan manually with custom limits
-- admin-api-ops › manages catalogue versions: clone to draft, edit, publish; published is read-only
-- admin-api-ops › updates plan prices and limits with audit
-- admin-api-ops › requires a plan with API access, authenticates by key, meters usage and honours revocation
-- admin-api-ops › health and readiness endpoints
-- admin-api-ops › sets security headers and a strict CSP
-- admin-api-ops › never leaks internals in error responses
-- admin-api-ops › worker delivers queued email, retries failures with backoff, and redacts bodies after sending
-- admin-api-ops › cleanup applies retention and heartbeat is visible to admins
-- billing › lists public plans without authentication
-- billing › trial → paid Starter via hosted checkout and signed webhook
-- billing › trial → paid on the plan being trialled (Professional) ends the trial
-- billing › a failed payment leaves the invoice open and notifies the owner; retry succeeds
-- billing › refuses non-self-serve plans and billing actions from non-owners
-- billing › rejects bad signatures, stale timestamps and unknown providers
-- billing › processes each event once (replay is a no-op)
-- billing › does not activate a plan when the paid amount does not match the invoice
-- billing › upgrades mid-period with a prorated charge and keeps the period
-- billing › schedules a downgrade; the renewal invoice bills the new plan and applies it when paid
-- billing › cancel keeps access until period end, then moves to Free; resume undoes it
-- billing › unpaid renewal: past due with grace period, then Free
-- billing › sends one trial-ending notice, then moves to Free when the trial ends
-- billing › a user gets one trial; additional organizations start on Free
-- scopes › serves the published 2026/2027 catalogue with ETag caching
-- scopes › requires authentication
-- scopes › creates a scope, toggles materials in batches, and persists across sessions
-- scopes › rejects materials from another catalogue version or unknown ids
-- scopes › enforces unique names per organization and draft-version restrictions
-- scopes › duplicates a scope with its items
-- scopes › exports text in the original list format, CSV and JSON during the trial
-- scopes › Free plan: text export only, monthly export quota, one scope
-- scopes › after a downgrade, scopes beyond the limit become read-only but are not deleted
-- scopes › member limit counts pending invitations and is enforced under concurrency
-- authz-coverage › every route is either admin-only, org-scoped, API-key-only, or explicitly allow-listed
-- authz-coverage › admin routes: 401 when anonymous, 404 for ordinary users (surface not disclosed)
-- authz-coverage › org routes: 401 when anonymous, 404 for members of another organization
-- authz-coverage › public API routes require an API key
-- authz-coverage › locks the account after repeated wrong codes and ends the pending session
-- unit › passwords: hashes with argon2id and verifies
-- unit › secret encryption: round-trips and detects tampering
-- unit › TOTP: accepts a current code once and rejects replay of the same step
-- unit › TOTP: generates unique recovery codes and normalizes input
-- unit › webhook signatures: sandbox verifies signed payloads, rejects tampering and stale timestamps
-- unit › webhook signatures: paymob HMAC-SHA512 over the documented field order
-- unit › webhook signatures: paymob matches the signature vector of an independent implementation (Odoo)
-- paymob-contract › creates an intention as documented and sends the customer to Unified Checkout
-- paymob-contract › turns a Paymob API rejection into a 502 without exposing provider details; retry works
-- paymob-contract › turns an unreachable Paymob API into a 502 as well
-- paymob-contract › a successful payment marks the invoice paid and activates the plan; retried callbacks are deduplicated
-- paymob-contract › a declined payment is recorded and the invoice stays open; a new checkout attempt can then be paid
-- paymob-contract › applies a payment made on an earlier checkout attempt of the same invoice
-- paymob-contract › rejects callbacks with a missing or wrong HMAC, a tampered body or an unsupported type
-- paymob-contract › binds the payment to the signed Paymob order, not to the unsigned merchant_order_id
-- paymob-contract › the browser redirect is signed over the same fields (what `npm run paymob:check` verifies)
-- paymob-contract › ignores signed callbacks for orders this app did not create
-- paymob-contract › does not apply pending, refunded or wrong-amount transactions
-- unit › exports: text export keeps the original "Copy list" layout
-- unit › exports: CSV neutralises spreadsheet formulas and quotes properly
-- unit › exports: CSV carries verification columns, with the same formula guard on sources
-- catalog-verification › marks entries of the published catalogue; customers see the mark and coverage, not the reviewer
-- catalog-verification › records entries that need review with a public note, and resets marks to unverified
-- catalog-verification › validates the request and the targets
-- catalog-verification › is admin-only and refuses archived versions
-- catalog-verification › copies marks into a draft of the same academic year only; content edits reset them, unchanged saves do not
-- catalog-verification › scope exports carry the marks
-- scope-compare › on one catalogue: only in each and in both; the CSV download is counted and audited
-- scope-compare › compares last year's scope with this year's: books matched by subject and title, renamed and missing ones marked
-- scope-compare › only within one organization; viewers can compare; the CSV needs CSV export on the plan
-- unit › comparing two scopes: on one catalogue version: only in A, only in B, in both; untouched subjects are left out
-- unit › comparing two scopes: across catalogue versions: matched by subject and title, with renamed and missing books and subjects marked
-- unit › carry forward: carries exact and loosely matching titles, and lists missing books with new candidates
-- unit › carry forward: follows a subject whose block was renamed when its code is unambiguous
-- unit › carry forward: reports removed subjects, ignores unselected ones, and summarises
-- unit › carry forward: does not guess when the loose subject key is ambiguous
-- scope-carry-forward › previews what carries over, what is missing, what changed and what is new
-- scope-carry-forward › copies into a new scope for the new year, with chosen replacements; the old scope is untouched
-- scope-carry-forward › moves a scope in place, which also works at the Free plan scope limit
-- scope-carry-forward › validates the target and the materials, and requires an editor to apply
-- catalog-notifications › a newer catalogue notifies owners, admins and editors of organizations behind it, in their language, once per year
-- catalog-notifications › organizations already on a year hear about its correction only when the version they use is archived
-- catalog-notifications › entries newly flagged for review notify organizations that selected them; repeats and other marks do not
-- catalog-notifications › users can turn catalogue emails off and on in their profile
-- unit › CSV: round-trips quotes, delimiters, line breaks, Arabic text and guarded formulas
-- unit › CSV: reads files saved by Excel: semicolons, CRLF, trailing blank lines, no BOM
-- unit › CSV: rejects an unterminated quote and leaves ordinary apostrophes alone
-- unit › catalogue spreadsheet: exports every subject followed by its materials, and an untouched sheet changes nothing
-- unit › catalogue spreadsheet: applies marks on a published version and rejects incomplete ones
-- unit › catalogue spreadsheet: allows content changes and new materials only in drafts; content changes clear marks left untouched
-- unit › catalogue spreadsheet: round-trips a formula-looking title without reporting a change
-- unit › catalogue spreadsheet: reports unknown ids, duplicates, moves, title clashes, bad values, encoding and missing columns
-- unit › catalogue spreadsheet: reads a semicolon-separated sheet saved by Excel in some locales
-- catalog-sheet › exports the whole catalogue with ids and marks
-- catalog-sheet › previews then applies verification marks on the published catalogue, notifying customers of new flags
-- catalog-sheet › refuses content changes on a published version as a whole: nothing is written
-- catalog-sheet › applies corrections and new materials to a draft; a correction clears a mark left untouched
-- catalog-sheet › is admin-only, refuses archived versions and explains encoding problems
-- unit › configuration: refuses unsafe production settings
-- unit › catalogue fidelity: same 231 subject rows and 1,038 selectable materials
-- unit › catalogue fidelity: every subject and material in order, except the documented intl kind correction
-- unit › catalogue fidelity: legacy selection keys unique
-- unit › effective plan (4 tests), proration (2), time helpers (3)
-- unit › translations: Arabic covers every English key and placeholders match; every referenced key exists
-- rate-limit-store › two app instances enforce one login limit, and a restarted instance still enforces it
-- rate-limit-store › stores keyed hashes only: no IP address or email
-- rate-limit-store › the global flood guard stays per process: it limits at 600 a minute and writes nothing to the database
-- rate-limit-store › counts concurrent requests from several instances exactly
-- rate-limit-store › starts a new window when the old one ends; reading does not count; namespaces are separate
-- rate-limit-store › the worker deletes expired counters and keeps live ones
-- shutdown › reports draining on SIGTERM, keeps serving during the drain, then exits cleanly
-- alerts › sends one alert per problem across instances, a reminder after 6 hours, and one resolution once it clears
-- alerts › checks email delivery, server errors, payment notifications and migrations; messages carry counts, not addresses
-- alerts › alerts from memory when the database is unreachable, reminds after 6 hours, and resolves when it is back
-- alerts › a failing channel does not stop the other; failures are logged without the webhook URL
-- alerts › counts 5xx responses, except the health endpoints
-- alerts › platform admins see alerts and can send a test alert (audited); customers cannot
-- unit › alert helpers: counts server errors over the last minutes and forgets older ones
-- unit › alert helpers: considers the worker stopped after four intervals, at least two minutes
-- unit › in-memory flood guard windows: counts within a window and starts again when it ends
-- unit › in-memory flood guard windows: stays bounded, dropping the oldest windows first
+- admin-api-ops › platform administration › is invisible to ordinary users and requires MFA for admins
+- admin-api-ops › platform administration › sees customer metadata but not scope contents without a support grant
+- admin-api-ops › platform administration › suspends and restores organizations and users
+- admin-api-ops › platform administration › assigns an enterprise plan manually with custom limits
+- admin-api-ops › platform administration › manages catalogue versions: clone to draft, edit, publish; published is read-only
+- admin-api-ops › platform administration › updates plan prices and limits with audit
+- admin-api-ops › public API (API keys) › requires a plan with API access, authenticates by key, meters usage and honours revocation
+- admin-api-ops › operations › health and readiness endpoints
+- admin-api-ops › operations › sets security headers and a strict CSP
+- admin-api-ops › operations › never leaks internals in error responses
+- admin-api-ops › operations › worker delivers queued email, retries failures with backoff, and redacts bodies after sending
+- admin-api-ops › operations › cleanup applies retention and heartbeat is visible to admins
+- alerts › operational alerts › sends one alert per problem across instances, a reminder after 6 hours, and one resolution once it clears
+- alerts › operational alerts › checks email delivery, server errors, payment notifications and migrations; messages carry counts, not addresses
+- alerts › operational alerts › alerts from memory when the database is unreachable, reminds after 6 hours, and resolves when it is back
+- alerts › operational alerts › a failing channel does not stop the other; failures are logged without the webhook URL
+- alerts › operational alerts › counts 5xx responses, except the health endpoints
+- alerts › operational alerts › platform admins see alerts and can send a test alert (audited); customers cannot
+- all-assignments › My assignments across all organizations › lists the member’s books from every organization in one order, with counts per organization and in total
+- all-assignments › My assignments across all organizations › the member updates a book’s status through its own organization, even as a viewer there
+- all-assignments › My assignments across all organizations › suspended organizations, and ones asking this member for two-factor sign-in, are listed as unavailable and not read
+- all-assignments › My assignments across all organizations › a member of one organization gets the same books as on its own page; signed-out callers and students are refused
+- assignment-digest › daily summary of assignment emails › members who chose it get no email per assignment, only the in-app notice; the books wait for the morning summary
+- assignment-digest › daily summary of assignment emails › sends at most one summary a day: what is assigned after the morning sending time waits for the next morning
+- assignment-digest › daily summary of assignment emails › one email covers every organization, grouped by scope and by who assigned the books
+- assignment-digest › daily summary of assignment emails › leaves out books unassigned or removed since, and suspended organizations; nothing left means no email
+- assignment-digest › daily summary of assignment emails › switching back to emails right away, or off, drops what was waiting; the choice is validated
+- assignment-digest › daily summary of assignment emails › an unverified address gets no summary; the waiting books are dropped
+- assignment-digest › daily summary of assignment emails › writes in the member’s language and shortens long lists
+- assignment-digest › daily summary of assignment emails › two workers running at once send one summary
+- assignment-digest › daily summary of assignment emails › waiting rows stay inside the organization and the member; old ones are cleaned up
+- auth › registration and email verification › registers an owner with an organization on a 14-day trial and requires verification before login
+- auth › registration and email verification › does not reveal whether an email is already registered
+- auth › registration and email verification › rejects weak passwords and invalid input with field details
+- auth › login protection › locks the account after 5 failed attempts and uses a generic error
+- auth › login protection › rate-limits repeated login attempts per client and account
+- auth › login protection › logout invalidates the session
+- auth › CSRF protection › rejects state-changing requests without the session CSRF token
+- auth › CSRF protection › rejects cross-origin requests and non-JSON bodies
+- auth › password reset › resets the password with a single-use token and revokes existing sessions
+- auth › password reset › changing the password requires the current one and signs out other sessions
+- auth › two-factor authentication › requires a TOTP code at login once enabled, and rejects replayed codes
+- auth › two-factor authentication › disabling MFA requires password and a valid code
+- auth › sessions › lists and revokes own sessions only
+- authz-coverage › authorization coverage (all registered routes) › every route is either admin-only, org-scoped, API-key-only, or explicitly allow-listed
+- authz-coverage › authorization coverage (all registered routes) › admin routes: 401 when anonymous, 404 for ordinary users (surface not disclosed)
+- authz-coverage › authorization coverage (all registered routes) › org routes: 401 when anonymous, 404 for members of another organization
+- authz-coverage › authorization coverage (all registered routes) › public API routes require an API key
+- authz-coverage › second-factor brute force › locks the account after repeated wrong codes and ends the pending session
+- billing › subscribing › lists public plans without authentication
+- billing › subscribing › trial → paid Starter via hosted checkout and signed webhook
+- billing › subscribing › trial → paid on the plan being trialled (Professional) ends the trial
+- billing › subscribing › a failed payment leaves the invoice open and notifies the owner; retry succeeds
+- billing › subscribing › refuses non-self-serve plans and billing actions from non-owners
+- billing › webhook security › rejects bad signatures, stale timestamps and unknown providers
+- billing › webhook security › processes each event once (replay is a no-op)
+- billing › webhook security › does not activate a plan when the paid amount does not match the invoice
+- billing › plan changes › upgrades mid-period with a prorated charge and keeps the period
+- billing › plan changes › schedules a downgrade; the renewal invoice bills the new plan and applies it when paid
+- billing › plan changes › cancel keeps access until period end, then moves to Free; resume undoes it
+- billing › plan changes › unpaid renewal: past due with grace period, then Free
+- billing › trial lifecycle › sends one trial-ending notice, then moves to Free when the trial ends
+- billing › trial lifecycle › a user gets one trial; additional organizations start on Free
+- catalog-notifications › catalogue change notifications › a newer catalogue notifies owners, admins and editors of organizations behind it, in their language, once per year
+- catalog-notifications › catalogue change notifications › organizations already on a year hear about its correction only when the version they use is archived
+- catalog-notifications › catalogue change notifications › entries newly flagged for review notify organizations that selected them; repeats and other marks do not
+- catalog-notifications › catalogue change notifications › users can turn catalogue emails off and on in their profile
+- catalog-sheet › catalogue spreadsheet export and import › exports the whole catalogue with ids and marks
+- catalog-sheet › catalogue spreadsheet export and import › previews then applies verification marks on the published catalogue, notifying customers of new flags
+- catalog-sheet › catalogue spreadsheet export and import › refuses content changes on a published version as a whole: nothing is written
+- catalog-sheet › catalogue spreadsheet export and import › applies corrections and new materials to a draft; a correction clears a mark left untouched
+- catalog-sheet › catalogue spreadsheet export and import › is admin-only, refuses archived versions and explains encoding problems
+- catalog-verification › catalogue verification marks › marks entries of the published catalogue; customers see the mark and coverage, not the reviewer
+- catalog-verification › catalogue verification marks › records entries that need review with a public note, and resets marks to unverified
+- catalog-verification › catalogue verification marks › validates the request and the targets
+- catalog-verification › catalogue verification marks › is admin-only and refuses archived versions
+- catalog-verification › catalogue verification marks › copies marks into a draft of the same academic year only; content edits reset them, unchanged saves do not
+- catalog-verification › catalogue verification marks › scope exports carry the marks
+- classroom › classes are off until student accounts are on › refuses to create a class and says so
+- classroom › classes and teachers › admins manage classes; a teacher sees only the classes they teach, other members none
+- classroom › homework › a teacher sets homework; students are told in their language, hand in text and a photo, and get it back marked
+- classroom › homework › late work, closed homework, and taking work back
+- classroom › homework › scheduled homework stays hidden until its time, then the worker tells the class once
+- classroom › homework › row-level security keeps each student to their own classes and work, whatever the query
+- classroom › homework › school storage limit, file count and deleting a class
+- data-keys › rotating DATA_ENCRYPTION_KEY › old values keep working during the rotation, are re-encrypted, and then work with the new key alone
+- data-keys › rotating DATA_ENCRYPTION_KEY › a value no configured key can read is reported and left as it is
+- data-keys › rotating DATA_ENCRYPTION_KEY › the command-line tool checks, re-encrypts, records an audit entry, and fails on unreadable values
+- due-reminders › due-date reminders › reminds the assignee once about books due soon and overdue, in one email listing both
+- due-reminders › due-date reminders › writes to each member in their language, one email per member
+- due-reminders › due-date reminders › leaves out done books, unassigned books and books overdue for more than a week; sends only between 8:00 and 21:00 Cairo time
+- due-reminders › due-date reminders › a new due date or a new assignee is reminded again; reopening a book is not
+- due-reminders › due-date reminders › turning reminder emails off keeps the in-app notice; unverified addresses get the notice only
+- due-reminders › due-date reminders › suspended accounts and organizations get nothing until they are active again
+- due-reminders › due-date reminders › two workers running at once send each reminder once
+- due-reminders › due-date reminders › a long list is shortened in the email
+- due-reminders › due-date reminders › records go with the book, the member and old due dates, and stay inside the organization
+- due-reminders › due-date reminders › the navigation counts books due soon
+- online-tests › writing and publishing a test › checks questions, keeps drafts from students, and tells the class when it is published
+- online-tests › taking a test › students get questions without answer keys, answers are checked and saved, and submission marks them
+- online-tests › taking a test › a start code, the number of attempts and retakes the teacher allows
+- online-tests › time › the server keeps the time: late answers are refused, the attempt is submitted, and the worker catches the rest
+- online-tests › time for everyone and extra time › a new closing time moves students already working; results and answers wait for anyone with extra time
+- online-tests › monitoring and control › the teacher sees who is working, leaving the page, pasting or using another device, and acts on one student
+- online-tests › monitoring and control › questions and timing are locked once a student starts; results released by hand reach the students
+- online-tests › monitoring and control › a student never reaches another student’s attempt, answers or events
+- paymob-contract › Paymob checkout (Intention API + Unified Checkout) › creates an intention as documented and sends the customer to Unified Checkout
+- paymob-contract › Paymob checkout (Intention API + Unified Checkout) › turns a Paymob API rejection into a 502 without exposing provider details; retry works
+- paymob-contract › Paymob checkout (Intention API + Unified Checkout) › turns an unreachable Paymob API into a 502 as well
+- paymob-contract › Paymob transaction callbacks › a successful payment marks the invoice paid and activates the plan; retried callbacks are deduplicated
+- paymob-contract › Paymob transaction callbacks › a declined payment is recorded and the invoice stays open; a new checkout attempt can then be paid
+- paymob-contract › Paymob transaction callbacks › applies a payment made on an earlier checkout attempt of the same invoice
+- paymob-contract › Paymob transaction callbacks › rejects callbacks with a missing or wrong HMAC, a tampered body or an unsupported type
+- paymob-contract › Paymob transaction callbacks › binds the payment to the signed Paymob order, not to the unsigned merchant_order_id
+- paymob-contract › Paymob transaction callbacks › the browser redirect is signed over the same fields (what `npm run paymob:check` verifies)
+- paymob-contract › Paymob transaction callbacks › ignores signed callbacks for orders this app did not create
+- paymob-contract › Paymob transaction callbacks › does not apply pending, refunded or wrong-amount transactions
+- rate-limit-store › shared rate limits (PostgreSQL) › two app instances enforce one login limit, and a restarted instance still enforces it
+- rate-limit-store › shared rate limits (PostgreSQL) › stores keyed hashes only: no IP address or email
+- rate-limit-store › shared rate limits (PostgreSQL) › the global flood guard stays per process: it limits at 600 a minute and writes nothing to the database
+- rate-limit-store › shared rate limits (PostgreSQL) › counts concurrent requests from several instances exactly
+- rate-limit-store › shared rate limits (PostgreSQL) › starts a new window when the old one ends; reading does not count; namespaces are separate
+- rate-limit-store › shared rate limits (PostgreSQL) › the worker deletes expired counters and keeps live ones
+- scope-carry-forward › carrying a scope to the next academic year › previews what carries over, what is missing, what changed and what is new
+- scope-carry-forward › carrying a scope to the next academic year › copies into a new scope for the new year, with chosen replacements; the old scope is untouched
+- scope-carry-forward › carrying a scope to the next academic year › moves a scope in place, which also works at the Free plan scope limit
+- scope-carry-forward › carrying a scope to the next academic year › validates the target and the materials, and requires an editor to apply
+- scope-compare › comparing scopes › on one catalogue: only in each and in both; the CSV download is counted and audited
+- scope-compare › comparing scopes › compares last year's scope with this year's: books matched by subject and title, renamed and missing ones marked
+- scope-compare › comparing scopes › only within one organization; viewers can compare; the CSV needs CSV export on the plan
+- scope-notes › notes and assignees on selected books › an editor sets a note and an assignee; everyone in the organization sees them
+- scope-notes › notes and assignees on selected books › viewers cannot change them; books that are not selected, long notes and empty requests are refused
+- scope-notes › notes and assignees on selected books › the assignee must be a member of the organization
+- scope-notes › notes and assignees on selected books › clearing both note and assignee clears the item; the note text never reaches the audit log
+- scope-notes › notes and assignees on selected books › a new assignee is told in their own language, once; assigning yourself sends nothing
+- scope-notes › notes and assignees on selected books › assigns several books at once: one notice with the count, notes kept, unknown books refuse the whole request
+- scope-notes › notes and assignees on selected books › removing a member clears their assignments and keeps the notes
+- scope-notes › notes and assignees on selected books › the scopes list counts notes, assignments and what is assigned to me
+- scope-notes › notes and assignees on selected books › a read-only scope (over the plan limit) cannot be annotated
+- scope-notes › notes and assignees on selected books › deselecting a book drops its note with it
+- scope-notes › notes travel with the scope › a duplicate keeps notes and assignees
+- scope-notes › notes travel with the scope › carrying forward keeps notes on carried books and reports those on books that cannot be carried
+- scope-notes › notes travel with the scope › CSV and JSON exports and the read API carry note and assignee; the text export stays the original layout
+- scope-notes › notes travel with the scope › another organization cannot read or change them
+- scope-notes › status, due dates, assignment emails and my assignments › an editor sets a status and a due date; bad values are refused
+- scope-notes › status, due dates, assignment emails and my assignments › the member a book is assigned to can update its status, even as a viewer, and nothing else
+- scope-notes › status, due dates, assignment emails and my assignments › updates status and due date of several books at once, keeping notes and assignees
+- scope-notes › status, due dates, assignment emails and my assignments › emails the new assignee the list of books, in their language, unless they turned it off
+- scope-notes › status, due dates, assignment emails and my assignments › a long list is shortened in the email
+- scope-notes › status, due dates, assignment emails and my assignments › my assignments: across scopes, overdue first, then by due date; done ones apart; counts for the navigation
+- scope-notes › status, due dates, assignment emails and my assignments › status and due date travel with duplicates and carry-forward, and appear in exports
+- scopes › catalogue API › serves the published 2026/2027 catalogue with ETag caching
+- scopes › catalogue API › requires authentication
+- scopes › content scopes (persisted selections) › creates a scope, toggles materials in batches, and persists across sessions
+- scopes › content scopes (persisted selections) › rejects materials from another catalogue version or unknown ids
+- scopes › content scopes (persisted selections) › enforces unique names per organization and draft-version restrictions
+- scopes › content scopes (persisted selections) › duplicates a scope with its items
+- scopes › exports and plan gating › exports text in the original list format, CSV and JSON during the trial
+- scopes › exports and plan gating › Free plan: text export only, monthly export quota, one scope
+- scopes › exports and plan gating › after a downgrade, scopes beyond the limit become read-only but are not deleted
+- scopes › exports and plan gating › member limit counts pending invitations and is enforced under concurrency
+- shutdown › graceful shutdown › reports draining on SIGTERM, keeps serving during the drain, then exits cleanly
 - students › student accounts are off until enabled › no plan includes them; the staff page says so and creation is refused
 - students › student accounts are off until enabled › a platform administrator turns them on per school with a limit override, and the limit holds
 - students › student accounts are off until enabled › a school back on the Free plan loses the override: no sign-in, and open sessions stop working
@@ -246,54 +258,23 @@ Full test names (verbatim from the verbose reporter):
 - students › the student portal › a student can switch the interface language
 - students › the student portal › a suspended school blocks its students
 - students › generated passwords › use an unambiguous alphabet and do not repeat
-- scope-notes › notes and assignees on selected books › an editor sets a note and an assignee; everyone in the organization sees them
-- scope-notes › notes and assignees on selected books › viewers cannot change them; books that are not selected, long notes and empty requests are refused
-- scope-notes › notes and assignees on selected books › the assignee must be a member of the organization
-- scope-notes › notes and assignees on selected books › clearing both note and assignee clears the item; the note text never reaches the audit log
-- scope-notes › notes and assignees on selected books › a new assignee is told in their own language, once; assigning yourself sends nothing
-- scope-notes › notes and assignees on selected books › assigns several books at once: one notice with the count, notes kept, unknown books refuse the whole request
-- scope-notes › notes and assignees on selected books › removing a member clears their assignments and keeps the notes
-- scope-notes › notes and assignees on selected books › the scopes list counts notes, assignments and what is assigned to me
-- scope-notes › notes and assignees on selected books › a read-only scope (over the plan limit) cannot be annotated
-- scope-notes › notes and assignees on selected books › deselecting a book drops its note with it
-- scope-notes › notes travel with the scope › a duplicate keeps notes and assignees
-- scope-notes › notes travel with the scope › carrying forward keeps notes on carried books and reports those on books that cannot be carried
-- scope-notes › notes travel with the scope › CSV and JSON exports and the read API carry note and assignee; the text export stays the original layout
-- scope-notes › notes travel with the scope › another organization cannot read or change them
-- scope-notes › status, due dates, assignment emails and my assignments › an editor sets a status and a due date; bad values are refused
-- scope-notes › status, due dates, assignment emails and my assignments › the member a book is assigned to can update its status, even as a viewer, and nothing else
-- scope-notes › status, due dates, assignment emails and my assignments › updates status and due date of several books at once, keeping notes and assignees
-- scope-notes › status, due dates, assignment emails and my assignments › emails the new assignee the list of books, in their language, unless they turned it off
-- scope-notes › status, due dates, assignment emails and my assignments › a long list is shortened in the email
-- scope-notes › status, due dates, assignment emails and my assignments › my assignments: across scopes, overdue first, then by due date; done ones apart; counts for the navigation
-- scope-notes › status, due dates, assignment emails and my assignments › status and due date travel with duplicates and carry-forward, and appear in exports
-- unit › exports › CSV ends with the item note, assignee, status and due date, formula-guarded
-- due-reminders › due-date reminders › reminds the assignee once about books due soon and overdue, in one email listing both
-- due-reminders › due-date reminders › writes to each member in their language, one email per member
-- due-reminders › due-date reminders › leaves out done books, unassigned books and books overdue for more than a week; sends only between 8:00 and 21:00 Cairo time
-- due-reminders › due-date reminders › a new due date or a new assignee is reminded again; reopening a book is not
-- due-reminders › due-date reminders › turning reminder emails off keeps the in-app notice; unverified addresses get the notice only
-- due-reminders › due-date reminders › suspended accounts and organizations get nothing until they are active again
-- due-reminders › due-date reminders › two workers running at once send each reminder once
-- due-reminders › due-date reminders › a long list is shortened in the email
-- due-reminders › due-date reminders › records go with the book, the member and old due dates, and stay inside the organization
-- due-reminders › due-date reminders › the navigation counts books due soon
-- unit › due-date reminder wording › says today, tomorrow, or the date, across month and year ends
-- unit › due-date reminder wording › lists overdue books first, each section by due date, and shortens long lists
-- unit › due-date reminder wording › titles the in-app notice by what is due
-- assignment-digest › daily summary of assignment emails › members who chose it get no email per assignment, only the in-app notice; the books wait for the morning summary
-- assignment-digest › daily summary of assignment emails › sends at most one summary a day: what is assigned after the morning sending time waits for the next morning
-- assignment-digest › daily summary of assignment emails › one email covers every organization, grouped by scope and by who assigned the books
-- assignment-digest › daily summary of assignment emails › leaves out books unassigned or removed since, and suspended organizations; nothing left means no email
-- assignment-digest › daily summary of assignment emails › switching back to emails right away, or off, drops what was waiting; the choice is validated
-- assignment-digest › daily summary of assignment emails › an unverified address gets no summary; the waiting books are dropped
-- assignment-digest › daily summary of assignment emails › writes in the member’s language and shortens long lists
-- assignment-digest › daily summary of assignment emails › two workers running at once send one summary
-- assignment-digest › daily summary of assignment emails › waiting rows stay inside the organization and the member; old ones are cleaned up
-- all-assignments › My assignments across all organizations › lists the member’s books from every organization in one order, with counts per organization and in total
-- all-assignments › My assignments across all organizations › the member updates a book’s status through its own organization, even as a viewer there
-- all-assignments › My assignments across all organizations › suspended organizations, and ones asking this member for two-factor sign-in, are listed as unavailable and not read
-- all-assignments › My assignments across all organizations › a member of one organization gets the same books as on its own page; signed-out callers and students are refused
+- tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
+- tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
+- tenancy › cross-tenant isolation over the API › rejects malformed org ids without leaking errors
+- tenancy › Row-Level Security (database layer) › every table with an org_id column has forced RLS, apart from the documented exceptions
+- tenancy › Row-Level Security (database layer) › returns no tenant rows without a tenant context, even for an unscoped query
+- tenancy › Row-Level Security (database layer) › only exposes the current tenant’s rows inside a tenant context
+- tenancy › Row-Level Security (database layer) › blocks writing rows for another tenant (WITH CHECK)
+- tenancy › Row-Level Security (database layer) › the application role cannot bypass RLS or rewrite audit history
+- tenancy › Row-Level Security (database layer) › composite keys stop items pointing at another tenant’s scope or another catalogue version
+- tenancy › roles and permissions › enforces the permission matrix server-side
+- tenancy › roles and permissions › transfers ownership with password confirmation and keeps a single owner
+- tenancy › roles and permissions › member removal rules: owner cannot be removed, members can leave, removed users lose access
+- tenancy › invitations › existing users accept with their own account; email must match
+- tenancy › invitations › an account created from an invitation is signed in, which counts as its first sign-in
+- tenancy › invitations › revoked invitations cannot be used and duplicate members are refused
+- tenancy › data deletion and export › owner deletes an organization: its data is gone, other tenants untouched, audit retained
+- tenancy › data deletion and export › a user can export their data and delete their account unless they own an organization
 - webhooks › webhook endpoints › admins add endpoints; the secret is shown once and stored encrypted; editors, viewers and plans without API access cannot
 - webhooks › webhook endpoints › scope changes are queued with the change and delivered signed by the worker, to subscribed endpoints only
 - webhooks › webhook endpoints › quick changes to one scope reach the endpoint as one event with the latest state
@@ -308,26 +289,69 @@ Full test names (verbatim from the verbose reporter):
 - webhooks › webhook endpoints › events stop when the plan no longer includes API access
 - webhooks › webhook endpoints › another organization cannot see or change them; old deliveries are cleaned up
 - webhooks › webhook targets with the default settings › only https URLs to public hosts are accepted, and nothing is sent to a private address
-- unit › webhook targets › only public unicast addresses are allowed
-- unit › webhook targets › URLs must be https, without credentials, to a public host
-- unit › webhook targets › the socket lookup refuses a host that resolves to a private address
-- unit › webhook targets › signs "<timestamp>.<body>" with HMAC-SHA256
-- data-keys › rotating DATA_ENCRYPTION_KEY › old values keep working during the rotation, are re-encrypted, and then work with the new key alone
-- data-keys › rotating DATA_ENCRYPTION_KEY › a value no configured key can read is reported and left as it is
-- data-keys › rotating DATA_ENCRYPTION_KEY › the command-line tool checks, re-encrypts, records an audit entry, and fails on unreadable values
-- unit › encryption keys › new values name their key; the key id is a short fingerprint
-- unit › encryption keys › previous keys still decrypt; a key that is not configured is named in the error
-- unit › encryption keys › envelopes from before key ids were recorded are read with whichever configured key opens them
-- unit › encryption keys › DATA_ENCRYPTION_KEYS_PREVIOUS takes up to five other 32-byte keys
-- unit › Arabic emails › name the invited role as the Arabic interface does
-- unit › Arabic emails › say "a book" for one assigned book and "books" for more
-- classroom › classes are off until student accounts are on › refuses to create a class and says so
-- classroom › classes and teachers › admins manage classes; a teacher sees only the classes they teach, other members none
-- classroom › homework › a teacher sets homework; students are told in their language, hand in text and a photo, and get it back marked
-- classroom › homework › late work, closed homework, and taking work back
-- classroom › homework › scheduled homework stays hidden until its time, then the worker tells the class once
-- classroom › homework › row-level security keeps each student to their own classes and work, whatever the query
-- classroom › homework › school storage limit, file count and deleting a class
+- alerts › alert helpers › counts server errors over the last minutes and forgets older ones
+- alerts › alert helpers › considers the worker stopped after four intervals, at least two minutes
+- billing-logic › effective plan › free when no subscription or free plan
+- billing-logic › effective plan › trial grants the plan until it ends, even if the worker has not run
+- billing-logic › effective plan › active period, then grace, then free
+- billing-logic › effective plan › open-ended manual subscriptions stay active
+- billing-logic › proration › charges the price difference for the remaining fraction, rounded up
+- billing-logic › proration › never charges for a cheaper plan
+- billing-logic › time helpers › clamps month ends
+- billing-logic › time helpers › formats usage periods in UTC
+- billing-logic › time helpers › formats EGP amounts
+- carry-forward › carry forward: matching a scope to another catalogue version › carries exact and loosely matching titles, and lists missing books with new candidates
+- carry-forward › carry forward: matching a scope to another catalogue version › follows a subject whose block was renamed when its code is unambiguous
+- carry-forward › carry forward: matching a scope to another catalogue version › reports removed subjects, ignores unselected ones, and summarises
+- carry-forward › carry forward: matching a scope to another catalogue version › does not guess when the loose subject key is ambiguous
+- catalog-fidelity › legacy catalogue fidelity › has the same 231 subject rows and 1,038 selectable materials
+- catalog-fidelity › legacy catalogue fidelity › matches every subject and material in order, except the documented intl kind correction
+- catalog-fidelity › legacy catalogue fidelity › keeps the legacy selection keys unique (grade|track|block|sid|title)
+- catalog-sheet › catalogue spreadsheet › exports every subject followed by its materials, and an untouched sheet changes nothing
+- catalog-sheet › catalogue spreadsheet › applies marks on a published version and rejects incomplete ones
+- catalog-sheet › catalogue spreadsheet › allows content changes and new materials only in drafts; content changes clear marks left untouched
+- catalog-sheet › catalogue spreadsheet › round-trips a formula-looking title without reporting a change
+- catalog-sheet › catalogue spreadsheet › reports unknown ids, duplicates, moves, title clashes, bad values, encoding and missing columns
+- catalog-sheet › catalogue spreadsheet › reads a semicolon-separated sheet saved by Excel in some locales
+- csv › CSV for spreadsheet round trips › round-trips quotes, delimiters, line breaks, Arabic text and guarded formulas
+- csv › CSV for spreadsheet round trips › reads files saved by Excel: semicolons, CRLF, trailing blank lines, no BOM
+- csv › CSV for spreadsheet round trips › rejects an unterminated quote and leaves ordinary apostrophes alone
+- data-keys › encryption keys › new values name their key; the key id is a short fingerprint
+- data-keys › encryption keys › previous keys still decrypt; a key that is not configured is named in the error
+- data-keys › encryption keys › envelopes from before key ids were recorded are read with whichever configured key opens them
+- data-keys › encryption keys › DATA_ENCRYPTION_KEYS_PREVIOUS takes up to five other 32-byte keys
+- email-templates › Arabic emails › name the invited role as the Arabic interface does
+- email-templates › Arabic emails › say \"a book\" for one assigned book and \"books\" for more
+- i18n › UI translations › Arabic covers every English key and placeholders match
+- i18n › UI translations › every statically referenced key exists
+- rate-limit-memory › in-memory flood guard windows › counts within a window and starts again when it ends
+- rate-limit-memory › in-memory flood guard windows › stays bounded, dropping the oldest windows first
+- reminders › due-date reminder wording › says today, tomorrow, or the date, across month and year ends
+- reminders › due-date reminder wording › lists overdue books first, each section by due date, and shortens long lists
+- reminders › due-date reminder wording › titles the in-app notice by what is due
+- scope-compare › comparing two scopes › on one catalogue version: only in A, only in B, in both; untouched subjects are left out
+- scope-compare › comparing two scopes › across catalogue versions: matched by subject and title, with renamed and missing books and subjects marked
+- security-primitives › passwords › hashes with argon2id and verifies
+- security-primitives › secret encryption › round-trips and detects tampering
+- security-primitives › TOTP › accepts a current code once and rejects replay of the same step
+- security-primitives › TOTP › generates unique recovery codes and normalizes input
+- security-primitives › webhook signatures › sandbox: verifies signed payloads, rejects tampering and stale timestamps
+- security-primitives › webhook signatures › paymob: HMAC-SHA512 over the documented field order
+- security-primitives › webhook signatures › paymob: matches the signature vector of an independent implementation (Odoo)
+- security-primitives › exports › text export keeps the original \"Copy list\" layout
+- security-primitives › exports › CSV neutralises spreadsheet formulas and quotes properly
+- security-primitives › exports › CSV carries verification columns, with the same formula guard on sources
+- security-primitives › exports › CSV ends with the item note, assignee, status and due date, formula-guarded
+- security-primitives › configuration › refuses unsafe production settings
+- test-marking › online test marking › normalises typed answers the way a teacher would accept them, in Arabic and English
+- test-marking › online test marking › marks each question type; multiple choice gives partial credit, never below zero
+- test-marking › online test marking › checks questions and answers before they are saved
+- test-marking › online test marking › ends an attempt at the time limit or the test’s end, whichever comes first, plus extra time
+- test-marking › online test marking › shuffles without losing items and makes readable start codes
+- webhook-net › webhook targets › only public unicast addresses are allowed
+- webhook-net › webhook targets › URLs must be https, without credentials, to a public host
+- webhook-net › webhook targets › the socket lookup refuses a host that resolves to a private address
+- webhook-net › webhook targets › signs \"<timestamp>.<body>\" with HMAC-SHA256
 
 </details>
 
@@ -340,7 +364,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**24 tests, 24 passed** (6.1 min, 2026-10-26), Chromium, real server process on port 3100: 20 journeys,
+**25 tests, 25 passed** (6.0 min, 2026-10-26), Chromium, real server process on port 3100: 21 journeys,
 then the accessibility project (4 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -365,6 +389,7 @@ then the accessibility project (4 tests), which reuses the journeys' data.
 | 18 | All organizations: Hana creates her own organization (Hana Study Group), selects a book and gives it to herself due tomorrow; from Notes Academy's My assignments she follows "See your books in all your organizations (2)"; the page lists 5 books (both due tomorrow first, then by date), Not done yet 5 and Due soon 2, and links each organization; she marks her own organization's book Done there, finds it under Done, and 4 remain not done | Pass |
 | 19 | Webhooks: a local receiver stands in for the school's system (the E2E server allows local targets); the Notes Academy owner adds it in Settings → Webhooks without "Scope deleted", copies the secret shown once, and sees it Active with the three events; Send test → "Test delivered (200)" and the ping's signature checks with the secret; selecting one more book in Grade 6 books and one pass of the worker's webhook job (run directly) delivers `scope.items_changed` with 5 books, signed; the Deliveries dialog lists both, delivered (200), says deliveries are kept for 30 days, and "Download history (CSV)" downloads both rows newest first with the exact body the receiver got; a note written on a book is delivered as `scope.items_annotated` naming that one book, signed, without the note's text | Pass |
 | 20 | Classes and homework (journey 13's school): the owner creates class 7A with the "Prep 1 books" curriculum, chooses Laila and Omar, adds themselves as teacher of a subject and sets homework with one of the curriculum's books and 10 marks; Laila sees it on Today with a notification, writes an answer, attaches a photo named .jpg (kept as notebook.png from its bytes) and hands in; the owner sees "Classes (1 to mark)", 1 of 2 handed in, opens the work with the photo, gives 9/10 with a comment and returns it; Laila sees her mark and the comment, can no longer change the work, and Today lists it under "Returned this week". Journey 13 now also checks that the portal opens on Today and the curriculum is under My books | Pass |
+| 21 | Online test (journey 20's class 7A): the owner writes "Chapter 1 quiz" with a 20-minute limit and a start code, adds three questions (one correct choice, a short answer accepting "Aswan" or "أسوان", a written answer; 6 points) and publishes it; Laila starts from Today ("Tests open now"), first with a wrong code (refused), then the right one in lower case; the clock shows the time left; she answers (the short answer in Arabic), leaves the page once and pastes once, and the page shows "Saved"; on the live monitor she is "Working", "3 of 3 answered", "Left the page 1×", "Pasted 1×", Omar "Not started"; the owner gives her 10 minutes more; she submits and is told the results come later; the owner closes the test, opens Results ("To mark"), sees 2 / 2 and 1 / 1 marked automatically, marks the written answer 2.5 of 3 with a comment ("Saved. Total: 5.5 / 6"); Laila's past tests show 5.5 / 6 and her review shows the comment | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -374,10 +399,10 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 21 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 110 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text) and checked that no open dialog's content is wider than the dialog. The 110 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page; classes (none yet, with a class, Arabic), the new-class, choose-students, add-teacher and set-homework dialogs, a class with homework (also Arabic, dark), a homework with work handed in and returned (also Arabic, dark) and the mark dialog; the student's Today (no class, homework due, Arabic, phone), homework list (also phone) and homework as new, a draft with a photo, handed in, returned with a mark, Arabic, dark and phone | Pass — 0 findings (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed). Also checks that in Arabic an email address and a mixed English title (with brackets and "&") are each one left-to-right run with `lang="en"`, so they are not shown reversed |
-| 22 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
-| 23 | What screen readers are given, read from the browser's accessibility tree (docs/SCREEN_READER_REVIEW.md §4): on the account page's password form, the new-password field's description is its hint, then its hint and error after a failed submission, then the hint alone once corrected; the page area is not a live region; page titles follow the heading on the picker, account, settings and not-found pages and switch to the Arabic name in Arabic; picker book buttons include their kind ("(Ministry material)", "(External reference)"); after a failed submission focus is on the first field in error; the notifications button is "Notifications, 2 unread" with two unread, "Notifications" after opening the list, and focus returns to it | Pass |
-| 24 | A simulated screen reader listens while the member acts: selecting a book is heard as the book with its kind and then "polite: Saved"; opening the new-scope dialog announces "dialog, New scope" and focus lands on its Name field; a wrong current password is announced once; a too-short new password moves focus to that field, which is read with its error, and no other message is announced | Pass |
+| 22 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 134 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text) and checked that no open dialog's content is wider than the dialog. The 134 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page; classes (none yet, with a class, Arabic), the new-class, choose-students, add-teacher and set-homework dialogs, a class with homework (also Arabic, dark), a homework with work handed in and returned (also Arabic, dark) and the mark dialog; the student's Today (no class, homework due, Arabic, phone), homework list (also phone) and homework as new, a draft with a photo, handed in, returned with a mark, Arabic, dark and phone; online tests: the new-test and add-question dialogs (choices, written answer), a draft test with questions (also Arabic, dark), the student's Today with a test open, the tests list, the start page and start dialog, taking a test (also Arabic, phone), the live monitor (also Arabic, dark) and its extra-time dialog, the submit dialog, submitted, the results (also Arabic), marking an attempt, and the student's result (also phone) | Pass — 0 findings (the Arabic test screens first showed an English question's final "?" read on its own, and "null" read where an empty part of the page was drawn; fixed) (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed). Also checks that in Arabic an email address and a mixed English title (with brackets and "&") are each one left-to-right run with `lang="en"`, so they are not shown reversed |
+| 23 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
+| 24 | What screen readers are given, read from the browser's accessibility tree (docs/SCREEN_READER_REVIEW.md §4): on the account page's password form, the new-password field's description is its hint, then its hint and error after a failed submission, then the hint alone once corrected; the page area is not a live region; page titles follow the heading on the picker, account, settings and not-found pages and switch to the Arabic name in Arabic; picker book buttons include their kind ("(Ministry material)", "(External reference)"); after a failed submission focus is on the first field in error; the notifications button is "Notifications, 2 unread" with two unread, "Notifications" after opening the list, and focus returns to it | Pass |
+| 25 | A simulated screen reader listens while the member acts: selecting a book is heard as the book with its kind and then "polite: Saved"; opening the new-scope dialog announces "dialog, New scope" and focus lands on its Name field; a wrong current password is announced once; a too-short new password moves focus to that field, which is read with its error, and no other message is announced | Pass |
 
 Before the fixes (same tests, front end at the previous commit) the audit reported 26 findings:
 

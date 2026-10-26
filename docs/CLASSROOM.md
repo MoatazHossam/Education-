@@ -186,8 +186,8 @@ and the privacy notice. Marks are set only by teachers; nothing is marked by AI.
 
 ## 10. Not done yet
 
-- **Online tests and exams** (next): question types with automatic marking, time windows and timers
-  enforced by the server, attempts, and live monitoring and control for the teacher.
+- **Online tests and exams** are built: see docs/ONLINE_TESTS.md (tests appear on the class page and
+  on the student's Today and Tests pages).
 - **Gradebook**: marks per class and subject, CSV export, a "My grades" page for students.
 - The user guides (English and Arabic) get these pages with the gradebook.
 - No email or SMS to students or parents; no parent accounts.

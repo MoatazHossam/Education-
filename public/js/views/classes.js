@@ -7,23 +7,16 @@ import { confirmDialog, dialog, errorMessage, fmtDate, fmtNum, form, h, link, no
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { invalidateOrg } from '../state.js';
+import { act, localInput, settableSubjects, subjectName } from './classroom-common.js';
 import { pageHead } from './shell.js';
+import { testsCard } from './tests.js';
 
 let gradeNames = [];
 const gradeLabel = (g) => {
   const n = gradeNames.find((x) => x.grade === g);
   return n ? (locale() === 'ar' ? n.nameAr : n.nameEn) : `${t('picker.grade')} ${g}`;
 };
-const subjectName = (x) => (locale() === 'ar' ? x.subjectAr : x.subjectEn);
-const act = async (fn) => { try { await fn(); } catch (err) { toast(errorMessage(err), 'error'); } };
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
-
-/** "datetime-local" value for a date, in the browser's time zone. */
-function localInput(d) {
-  const x = new Date(d);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}T${pad(x.getHours())}:${pad(x.getMinutes())}`;
-}
 
 export function fmtSize(bytes) {
   return bytes >= 1048576 ? t('hw.sizeMB', { n: fmtNum(Number((bytes / 1048576).toFixed(1))) }) : t('hw.sizeKB', { n: fmtNum(Math.max(1, Math.round(bytes / 1024))) });
@@ -245,17 +238,6 @@ async function homeworkDialog(orgId, cls, subjects, initial = null) {
   return saved;
 }
 
-/** Subjects this member may set homework for: their own; for admins every subject of the class. */
-function settableSubjects(data) {
-  const fromCatalogue = (en) => data.subjects.find((s) => s.nameEn === en);
-  const own = data.teaching.map((x) => ({ nameEn: x.subjectEn, nameAr: x.subjectAr, materials: fromCatalogue(x.subjectEn)?.materials ?? [] }));
-  if (!data.admin) return own;
-  const all = [...own];
-  for (const x of data.teachers) if (!all.some((s) => s.nameEn === x.subjectEn)) all.push({ nameEn: x.subjectEn, nameAr: x.subjectAr, materials: fromCatalogue(x.subjectEn)?.materials ?? [] });
-  for (const s of data.subjects) if (!all.some((a) => a.nameEn === s.nameEn)) all.push(s);
-  return all;
-}
-
 export function dueLabel(hw) {
   return fmtDate(hw.dueAt, true);
 }
@@ -341,6 +323,7 @@ export async function classView(ctx) {
     h('p', { class: 'crumbs' }, link(`/org/${orgId}/classes`, data.admin ? t('classes.title') : t('classes.myTitle'))),
     pageHead(cls.name, sub, cls.archived ? h('p', { class: 'notice' }, t('classes.archivedNote')) : null, adminActions),
     homeworkCard,
+    testsCard(orgId, data, subjects),
     h('div', { class: 'grid2' }, studentsCard, teachersCard));
 }
 

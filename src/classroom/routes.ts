@@ -11,6 +11,7 @@ import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { getScope } from '../scopes/service.js';
 import { zGrade } from '../students/service.js';
+import { classTests } from './tests-service.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
 import {
   assertClassroomEnabled,
@@ -99,6 +100,7 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
         .orderBy('t.subject_en')
         .execute();
       const homework = (await classHomework(trx, classId)).map((h) => ({ ...h, mine: teachesSubject(acc, h.subjectEn) }));
+      const tests = (await classTests(trx, classId)).map((x) => ({ ...x, mine: teachesSubject(acc, x.subjectEn) }));
       return {
         class: { id: acc.cls.id, name: acc.cls.name, grade: acc.cls.grade, scopeId: acc.cls.scope_id, scopeName: scope?.name ?? null, archived: acc.cls.archived_at !== null },
         grade: gradeList().find((g) => g.grade === acc.cls.grade) ?? null,
@@ -108,6 +110,7 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
         students: await classStudents(trx, classId),
         ...(await classSubjects(trx, acc.cls)),
         homework,
+        tests,
       };
     });
   });

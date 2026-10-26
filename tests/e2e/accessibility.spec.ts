@@ -278,6 +278,90 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(studentPhone, '/student/homework?show=all', 'student homework list (phone)');
   await studentPage.emulateMedia({ colorScheme: 'dark' });
   await visit(studentPage, studentHomeworkPath, 'student homework (dark)');
+  await studentPage.emulateMedia({ colorScheme: 'light' });
+
+  // Online tests (docs/ONLINE_TESTS.md): the owner writes a test with a start code and publishes it; the student
+  // takes it while the owner watches the monitor; then results and marking.
+  await page.goto(classPath);
+  await page.getByRole('button', { name: 'New test' }).click();
+  await audit(page, 'new test dialog');
+  let td = page.getByRole('dialog');
+  await td.getByLabel('Title').fill('Letters quiz');
+  await td.getByLabel('Students need a start code that I give in the room').check();
+  await td.getByRole('button', { name: 'Create test' }).click();
+  await expect(page.getByRole('heading', { name: 'Letters quiz', level: 1 })).toBeVisible();
+  const testPath = new URL(page.url()).pathname;
+  const testCode = (await page.locator('.code-big').textContent())!.trim();
+  await page.getByRole('button', { name: 'Add question' }).click();
+  await audit(page, 'add question dialog (choices)');
+  td = page.getByRole('dialog');
+  await td.getByLabel('Question', { exact: true }).fill('Which letter comes first?');
+  await td.getByLabel('Choice A', { exact: true }).fill('A');
+  await td.getByLabel('Choice B', { exact: true }).fill('B');
+  await td.getByLabel('Choice C', { exact: true }).fill('C');
+  await td.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Add question' }).click();
+  td = page.getByRole('dialog');
+  await td.getByLabel('Question type').selectOption('essay');
+  await audit(page, 'add question dialog (written answer)');
+  await td.getByLabel('Question', { exact: true }).fill('Write a word that starts with B.');
+  await td.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
+  await audit(page, 'test (draft with questions)');
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();
+  await visit(studentPage, '/student', 'student today (test open)');
+  await visit(studentPage, '/student/tests', 'student tests');
+  await studentPage.getByRole('link', { name: 'Start Letters quiz' }).click();
+  await audit(studentPage, 'student test start page');
+  await studentPage.getByLabel('Start code').fill(testCode);
+  await studentPage.getByRole('button', { name: 'Start' }).click();
+  await audit(studentPage, 'start test dialog');
+  await studentPage.getByRole('dialog').getByRole('button', { name: 'Start' }).click();
+  await expect(studentPage.getByRole('timer')).toBeVisible();
+  await audit(studentPage, 'taking a test');
+  const attemptPath = new URL(studentPage.url()).pathname;
+  await studentPage.getByLabel('A', { exact: true }).check();
+  await studentPage.getByLabel('Your answer').fill('Ball');
+  await expect(studentPage.getByText(/^Saved /)).toBeVisible();
+  await page.getByRole('link', { name: 'Live monitor' }).click();
+  await expect(page.locator('table.data tbody tr', { hasText: 'Ally Student' })).toContainText('2 of 2 answered');
+  await audit(page, 'test live monitor');
+  const monitorPath = new URL(page.url()).pathname;
+  await page.getByRole('button', { name: 'Extra time for Ally Student' }).click();
+  await audit(page, 'extra time dialog');
+  await page.keyboard.press('Escape');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(studentPage.getByRole('timer')).toBeVisible();
+  await audit(studentPage, 'taking a test (Arabic)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await visit(studentPhone, attemptPath, 'taking a test (phone)');
+  await studentPage.goto(attemptPath);
+  await studentPage.getByRole('button', { name: 'Submit' }).click();
+  await audit(studentPage, 'submit test dialog');
+  await studentPage.getByRole('dialog').getByRole('button', { name: 'Submit' }).click();
+  await expect(studentPage.getByText('Your answers are saved. Your teacher will show the results later.')).toBeVisible();
+  await audit(studentPage, 'test submitted (results later)');
+  await page.goto(monitorPath);
+  await page.getByRole('button', { name: 'Close the test now' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close the test now' }).click();
+  await expect(page.locator('.page-head .pill')).toHaveText('Closed');
+  await page.getByRole('link', { name: 'Results' }).click();
+  await audit(page, 'test results');
+  const resultsPath = new URL(page.url()).pathname;
+  await page.getByRole('link', { name: 'Attempt 1 of Ally Student' }).click();
+  await audit(page, 'test attempt marking');
+  await page.getByLabel('Mark (out of 1)').fill('1');
+  await page.getByRole('button', { name: 'Save the mark for question 2' }).click();
+  await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
+  await studentPage.goto('/student/tests');
+  await studentPage.getByRole('link', { name: 'Letters quiz' }).click();
+  await studentPage.getByRole('link', { name: 'See your answers of attempt 1' }).click();
+  await expect(studentPage.locator('.mark-big')).toBeVisible();
+  await audit(studentPage, 'student test result');
+  const studentResultPath = new URL(studentPage.url()).pathname;
+  await visit(studentPhone, studentResultPath, 'student test result (phone)');
 
   // Arabic (right to left).
   await page.goto(`/org/${orgId}?scope=${scopeId}`);
@@ -289,6 +373,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'], [`/org/${orgId}/settings`, 'settings (Arabic)'],
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
     [`/org/${orgId}/classes`, 'classes (Arabic)'], [classPath, 'class (Arabic)'], [homeworkPath, 'homework (Arabic)'],
+    [testPath, 'test (Arabic)'], [monitorPath, 'test live monitor (Arabic)'], [resultsPath, 'test results (Arabic)'],
   ] as const) await visit(page, path, where);
   // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
   // (not "e2e.test@a11y…"), and a book title keeps the bracket it closes.
@@ -310,6 +395,8 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, assignmentsPath, 'my assignments (dark)');
   await visit(page, classPath, 'class (dark)');
   await visit(page, homeworkPath, 'homework (dark)');
+  await visit(page, testPath, 'test (dark)');
+  await visit(page, monitorPath, 'test live monitor (dark)');
   await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
   // Phone.

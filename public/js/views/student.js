@@ -9,6 +9,7 @@ import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
 import { fileItem, fileUploader } from './classes.js';
 import { pageHead } from './shell.js';
+import { testItem } from './student-tests.js';
 
 const KINDS = ['moe', 'lang', 'ext', 'prog', 'exam'];
 const subjectName = (x) => (locale() === 'ar' ? x.subjectAr : x.subjectEn);
@@ -51,7 +52,7 @@ function navLink(href, label) {
 }
 
 /** The portal's header and page frame around a student page. */
-function frame(ctx, ...content) {
+export function frame(ctx, ...content) {
   const me = session.me;
   const school = me.student.school;
   const unread = me.unreadNotifications || 0;
@@ -63,6 +64,7 @@ function frame(ctx, ...content) {
     h('nav', { class: 'nav', 'aria-label': t('shell.nav') },
       navLink('/student', t('portal.today')),
       navLink('/student/homework', t('portal.homework')),
+      navLink('/student/tests', t('portal.tests')),
       navLink('/student/books', t('portal.books'))),
     h('div', { class: 'tools' },
       bell,
@@ -121,6 +123,9 @@ export async function portalView(ctx) {
   const body = error
     ? h('div', { class: 'alert error', role: 'alert' }, errorMessage(error))
     : [
+      data.tests.open.length ? h('section', { class: 'card', 'aria-labelledby': 'open-tests-h' },
+        h('h2', { id: 'open-tests-h' }, t('portal.testsOpen')),
+        h('ul', { class: 'hw-list' }, data.tests.open.map(testItem))) : null,
       h('section', { class: 'card', 'aria-labelledby': 'todo-h' },
         h('h2', { id: 'todo-h' }, t('portal.toDo', { n: data.todo.length })),
         data.todo.length ? h('ul', { class: 'hw-list' }, data.todo.map(homeworkItem)) : h('p', { class: 'empty' }, data.classes.length ? t('portal.nothingDue') : t('portal.noClasses'))),
@@ -131,7 +136,10 @@ export async function portalView(ctx) {
         h('h2', { id: 'miss-h' }, t('portal.missed')),
         h('p', { class: 'muted' }, t('portal.missedHelp')),
         h('ul', { class: 'hw-list' }, data.missed.map(homeworkItem))) : null,
-      h('p', {}, link('/student/homework?show=all', t('portal.allHomework')), ' · ', link('/student/books', t('portal.books'))),
+      data.tests.upcoming.length ? h('section', { class: 'card', 'aria-labelledby': 'up-tests-h' },
+        h('h2', { id: 'up-tests-h' }, t('portal.testsUpcoming')),
+        h('ul', { class: 'hw-list' }, data.tests.upcoming.map(testItem))) : null,
+      h('p', {}, link('/student/homework?show=all', t('portal.allHomework')), ' · ', link('/student/tests', t('portal.tests')), ' · ', link('/student/books', t('portal.books'))),
     ];
   return frame(ctx,
     pageHead(t('portal.todayTitle'), t('portal.hello', { name: me.user.name, school: me.student.school.name })),

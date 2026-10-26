@@ -222,6 +222,10 @@ export const STUDENT_ROUTES = [
   'GET /api/student/home', 'GET /api/student/homework', 'GET /api/student/homework/:homeworkId', 'PUT /api/student/homework/:homeworkId/submission',
   'POST /api/student/homework/:homeworkId/hand-in', 'POST /api/student/homework/:homeworkId/take-back', 'POST /api/student/homework/:homeworkId/files',
   'DELETE /api/student/homework/:homeworkId/files/:fileId', 'GET /api/student/files/:fileId', 'GET /api/student/notifications', 'POST /api/student/notifications/read',
+  // Online tests (docs/ONLINE_TESTS.md)
+  'GET /api/student/tests', 'GET /api/student/tests/:testId', 'POST /api/student/tests/:testId/start', 'GET /api/student/attempts/:attemptId',
+  'PUT /api/student/attempts/:attemptId/answers/:questionId', 'POST /api/student/attempts/:attemptId/heartbeat', 'POST /api/student/attempts/:attemptId/events',
+  'POST /api/student/attempts/:attemptId/submit', 'GET /api/student/attempts/:attemptId/result',
 ];
 
 /**

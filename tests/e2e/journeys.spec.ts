@@ -926,3 +926,122 @@ test('classes and homework: the school sets up a class, a student hands in work 
   await expect(student.getByText('Nothing to hand in. Well done!')).toBeVisible();
   await studentCtx.close();
 });
+
+test('online test: the teacher writes and publishes it, watches it live, the student takes it with a start code, and gets the mark', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  // Journey 20's class 7A (Laila and Omar), where the owner teaches delta.subject.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('button', { name: 'New test' }).click();
+  let dlg = page.getByRole('dialog', { name: 'New test for 7A' });
+  await dlg.getByLabel('Title').fill('Chapter 1 quiz');
+  await dlg.getByLabel('Time limit (minutes)').fill('20');
+  await dlg.getByLabel('Students need a start code that I give in the room').check();
+  await dlg.getByRole('button', { name: 'Create test' }).click();
+  await expect(page.getByRole('heading', { name: 'Chapter 1 quiz', level: 1 })).toBeVisible();
+  const code = (await page.locator('.code-big').textContent())!.trim();
+
+  // Three questions: one correct choice, a short answer, a written answer.
+  await page.getByRole('button', { name: 'Add question' }).click();
+  dlg = page.getByRole('dialog', { name: 'Add question' });
+  await dlg.getByLabel('Question', { exact: true }).fill('Which river flows through Cairo?');
+  await dlg.getByLabel('Choice A', { exact: true }).fill('The Euphrates');
+  await dlg.getByLabel('Choice B', { exact: true }).fill('The Nile');
+  await dlg.getByLabel('Choice C', { exact: true }).fill('The Jordan');
+  await dlg.getByLabel('Choice B is correct').check();
+  await dlg.getByLabel('Points').fill('2');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Add question' }).click();
+  dlg = page.getByRole('dialog', { name: 'Add question' });
+  await dlg.getByLabel('Question type').selectOption('short');
+  await dlg.getByLabel('Question', { exact: true }).fill('In which city is the High Dam?');
+  await dlg.getByLabel('Accepted answers, one per line').fill('Aswan\nأسوان');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Add question' }).click();
+  dlg = page.getByRole('dialog', { name: 'Add question' });
+  await dlg.getByLabel('Question type').selectOption('essay');
+  await dlg.getByLabel('Question', { exact: true }).fill('Why does the Nile matter to farmers?');
+  await dlg.getByLabel('Points').fill('3');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Questions (3, 6 points)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('dialog', { name: 'Publish the test' }).getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();
+
+  // Laila starts from Today with the code, answers, leaves the page once and pastes once.
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto(`/student-login?school=${delta.schoolCode}`);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill(delta.lailaPassword);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await expect(student.getByRole('heading', { name: 'Tests open now' })).toBeVisible();
+  await student.getByRole('link', { name: 'Start Chapter 1 quiz' }).click();
+  await student.getByLabel('Start code').fill('WRONG1');
+  await student.getByRole('button', { name: 'Start' }).click();
+  await student.getByRole('dialog', { name: 'Start the test' }).getByRole('button', { name: 'Start' }).click();
+  await expect(student.getByText('Enter the start code your teacher gives you')).toBeVisible();
+  await student.getByLabel('Start code').fill(code.toLowerCase());
+  await student.getByRole('button', { name: 'Start' }).click();
+  await student.getByRole('dialog', { name: 'Start the test' }).getByRole('button', { name: 'Start' }).click();
+  await expect(student.getByRole('timer')).toContainText(/1[89]:[0-5]\d|20:00/);
+  await student.getByLabel('The Nile').check();
+  await student.getByLabel('Your answer').first().fill('أسوان');
+  await student.getByLabel('Your answer').nth(1).fill('It waters the fields and its silt makes the soil rich.');
+  await student.evaluate(async () => {
+    const set = (v: string) => Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    set('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 1500));
+    set('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    const data = new DataTransfer();
+    data.setData('text/plain', 'copied text');
+    document.querySelectorAll('textarea')[0]!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+  });
+  await expect(student.getByText(/^Saved /)).toBeVisible();
+
+  // The teacher's live monitor: Laila working, what was noticed; extra time for her.
+  await page.getByRole('link', { name: 'Live monitor' }).click();
+  const laila = page.locator('table.data tbody tr', { hasText: 'Laila Hassan' });
+  await expect(laila).toContainText('Working');
+  await expect(laila).toContainText('3 of 3 answered');
+  await expect(laila).toContainText('Left the page 1×');
+  await expect(laila).toContainText('Pasted 1×');
+  await expect(page.locator('table.data tbody tr', { hasText: 'Omar Adel' })).toContainText('Not started');
+  await laila.getByRole('button', { name: 'Extra time for Laila Hassan' }).click();
+  await page.getByRole('dialog', { name: 'Extra time for Laila Hassan' }).getByLabel('Extra time').selectOption('10');
+  await page.getByRole('dialog', { name: 'Extra time for Laila Hassan' }).getByRole('button', { name: 'Give time' }).click();
+  await expect(page.getByText('Extra time given to Laila Hassan.')).toBeVisible();
+
+  // Laila submits; results come when the test closes.
+  await student.getByRole('button', { name: 'Submit' }).click();
+  await student.getByRole('dialog', { name: 'Submit your answers' }).getByRole('button', { name: 'Submit' }).click();
+  await expect(student.getByText('Your answers are saved. Your teacher will show the results later.')).toBeVisible();
+
+  // The teacher closes the test and marks the written answer.
+  await expect(laila).toContainText('Submitted', { timeout: 10_000 });
+  await page.getByRole('button', { name: 'Close the test now' }).click();
+  await page.getByRole('dialog', { name: 'Close the test now' }).getByRole('button', { name: 'Close the test now' }).click();
+  await expect(page.locator('.page-head .pill')).toHaveText('Closed');
+  await page.getByRole('link', { name: 'Results' }).click();
+  await expect(page.locator('table.data tbody tr', { hasText: 'Laila Hassan' })).toContainText('To mark');
+  await page.getByRole('link', { name: 'Attempt 1 of Laila Hassan' }).click();
+  await expect(page.locator('.question').first()).toContainText('2 / 2');
+  await expect(page.locator('.question').nth(1)).toContainText('1 / 1');
+  await page.getByLabel('Mark (out of 3)').fill('2.5');
+  await page.getByLabel('Comments for the student').nth(2).fill('Good. Mention the annual flood too.');
+  await page.getByRole('button', { name: 'Save the mark for question 3' }).click();
+  await expect(page.getByText('Saved. Total: 5.5 / 6')).toBeVisible();
+
+  // Laila sees her mark and the comment.
+  await student.goto('/student/tests');
+  await expect(student.getByRole('heading', { name: 'Past tests' })).toBeVisible();
+  await expect(student.locator('.hw-item', { hasText: 'Chapter 1 quiz' })).toContainText('5.5 / 6');
+  await student.getByRole('link', { name: 'Chapter 1 quiz' }).click();
+  await student.getByRole('link', { name: 'See your answers of attempt 1' }).click();
+  await expect(student.locator('.mark-big')).toHaveText('5.5 / 6');
+  await expect(student.getByText('Good. Mention the annual flood too.')).toBeVisible();
+  await studentCtx.close();
+});

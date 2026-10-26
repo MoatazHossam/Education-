@@ -302,6 +302,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `src/db/migrations/0013_classroom.ts`, `src/classroom/{service,files,routes,student-routes}.ts`, `src/students/context.ts`, `src/db/index.ts` (`withStudentContext`), `src/worker.ts`, `src/orgs/routes.ts`, `public/js/views/{classes,student,shell}.js`, `public/js/{api,dom,i18n}.js`, `public/app.css`.
 - **Tests:** `tests/integration/classroom.test.ts` (7), the route coverage tests, journey 20, and 27 more screens in the accessibility audit.
 
+### Online tests and exams with live monitoring (teacher and student portal, part 2 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
+
+- **Asked:** "monitoring and controlling exams and online tests", in English and Arabic (part 2 of the portal above).
+- **Implemented** (`docs/ONLINE_TESTS.md`):
+  - **Writing:** a subject's teacher (or an admin) writes a quiz or exam for a class: one or several correct choices, true/false, short answer (several accepted answers), written answer. Opening and closing times, an optional time limit, 1–10 attempts, shuffled questions or choices, a start code read out in the room, one device per attempt, when results show (on submitting, when the test closes, or when released) and whether answers are shown. Questions and timing are fixed once a student starts.
+  - **Taking:** students see open and upcoming tests on **Today** and **Tests**, start (with the code), answer with saving as they go, and submit. **The server keeps the time**: late answers are refused and the attempt is submitted; the worker submits attempts nobody returns to. The page says what the teacher can see.
+  - **Live monitor:** every student's state (not started, working and online, submitted), time left, answers given, and what the page noticed (left the page and for how long, pasting with its length only, offline, another device). Per student: more time, submit now, allow another device, another attempt, the event list. For the test: close now, new start code.
+  - **Marking and results:** automatic marks for every type but written answers (fixed rules; Arabic spelling variants accepted in short answers; partial credit for several choices, never below 0); the teacher marks written answers, can override any mark, comments per answer, and releases results. Students see their score and, when shown, the correct answers once the test is over for everyone (a classmate's extra time included). **No AI marks.**
+  - **Security:** forced row-level security: in a student's requests, questions only after starting, answer keys only after the test is over and answers are shown, only their own attempts. Read-only teachers of the class see no keys. No camera, microphone, screen or keystroke capture.
+  - **Arabic:** every page, dialog, status and error message in both languages. The screen-reader check on the Arabic screens found English questions read in pieces (the final "?" on its own); text with no Arabic in it is now marked as English in one piece.
+  - **Found in review and fixed before commit:** results "when the test closes" and the correct answers would have opened at the closing time while a student with extra time was still working; they now wait for that time. A new closing time did not move attempts already running; it does now. Teachers of another subject in the class could see answer keys on an attempt page; they no longer receive them.
+- **Not done (part 3):** the gradebook (homework and tests per class and subject, CSV, "My grades") and the user guides' new sections. No question bank, images in questions, or parent accounts.
+- **Before real use:** legal advice on children's marks and the monitoring signals under the PDPL (SECURITY_DESIGN §7).
+- **Files:** `src/db/migrations/0014_online_tests.ts`, `src/classroom/{marking,tests-service,tests-routes,tests-student-routes}.ts`, `src/classroom/{routes,student-routes}.ts`, `src/worker.ts`, `src/app.ts`, `public/js/views/{tests,student-tests,classroom-common,classes,student}.js`, `public/js/{dom,main,i18n}.js`, `public/app.css`.
+- **Tests:** `tests/unit/test-marking.test.ts` (5), `tests/integration/online-tests.test.ts` (8), the route coverage tests, journey 21, and the test pages in the accessibility audit.
+
 ### Arabic user guide, and the Arabic interface fixes it led to · COMPLETE
 - **Implemented:** `docs/USER_GUIDE.ar.md`, the user guide in Arabic, with 62 screenshots of the Arabic interface (`docs/user-guide/images-ar/`). The demo school and its people have Arabic names, and the guide names every button as the interface shows it.
   - **How it is made:** `npm run docs:screenshots:ar` (`playwright.guide-ar.config.ts`). The screenshot script (`tests/e2e/user-guide.spec.ts`) now runs in either language. It takes every label from the interface's own dictionaries, so the same steps drive both languages, and the English run still produces the English guide's 62 screenshots.
@@ -495,7 +511,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (268 unit/integration + 24 E2E passing: 20 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (281 unit/integration + 25 E2E passing: 21 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

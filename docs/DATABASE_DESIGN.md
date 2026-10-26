@@ -58,6 +58,13 @@ erDiagram
 | `homework` | Homework set for a class | title 1–200, instructions ≤ 5,000, `materials` JSONB copy (≤ 10 books), `publish_at` < `due_at`, `max_points` > 0 or null, `allow_late`, `notified_at` | ✓ (students: their classes, once published) |
 | `homework_submissions` | A student's work on one homework | unique `(homework_id, student_id)`; `status` draft/submitted/returned; body ≤ 10,000; `points` ≥ 0; feedback ≤ 3,000; who marked and when; `returned_at` | ✓ (students: own rows) |
 | `classroom_files` | Photos and PDFs on homework or submissions | exactly one of `homework_id`, `submission_id` (both composite FKs, cascade); type JPEG/PNG/WebP/PDF; 1 B–5 MB; SHA-256; `data bytea` | ✓ (students: files of visible homework and own work) |
+| `tests` | Online tests and exams of a class (`docs/ONLINE_TESTS.md`) | subject (EN/AR); title 1–200; kind quiz/exam; status draft/published (`published_at` set exactly when published); `opens_at` < `closes_at`; time limit 1–600 min or null; attempts 1–10; shuffles; results after_submit/after_close/manual; `show_answers`; start code `^[A-Z2-9]{6}$` or null; `one_device`; `closed_early_at`; `max_extra_minutes` 0–600 (results and keys wait for it); `results_released_at`, `notified_at` | ✓ (students: published tests of their classes) |
+| `test_questions` | Questions of a test | type single/multiple/true_false/short/essay; prompt 1–2,000; `options` JSONB ≤ 10; points > 0 (2 decimals); position | ✓ (students: only of tests they have started) |
+| `test_question_keys` | The answer key of each question, apart from it | composite FK `(question_id, test_id, org_id)`, cascade | ✓ (students: only after the test is over for everyone, including extra time, with answers shown, results out, and they submitted) |
+| `test_student_overrides` | One student's extra time and attempts on a test | PK `(test_id, student_id)`; extra minutes 0–600; extra attempts 0–10 | ✓ (students: own rows, read only) |
+| `test_attempts` | A student's attempt | unique `(test_id, student_id, number)`; **one open attempt per student** (unique partial index); status in_progress/submitted (`submitted_at` set exactly when submitted); `deadline_at`; holding session; question and choice order; score, max points, needs marking, `marked_at`; `events_count` | ✓ (students: own rows) |
+| `test_answers` | An answer | PK `(attempt_id, question_id)`; answer JSONB; automatic and teacher points ≥ 0; feedback ≤ 2,000 | ✓ (students: own; written only while the attempt is open) |
+| `test_events` | What the test page noticed and what the teacher did | kind from a fixed list (started, left_page, paste, other_device, extra_time, time_up, …); `detail` JSONB (seconds, pasted length) | ✓ (students: own attempts) |
 | `sessions` | Server-side sessions | id = SHA-256(token), 64 hex; state `active/mfa_pending`; `expires_at` | — |
 | `user_tokens` | Email verification / password reset | `token_hash` unique; single use (`used_at`); expiry | — |
 | `invitations` | Pending invites | `token_hash` unique; **one open invite per (org, email)**; role ≠ owner | ✓ |
@@ -120,7 +127,10 @@ Student requests (the student portal) also set `app.current_student` (`withStude
 `app_current_student()`, migration `0013`). The classroom tables then return only that student's
 classes, published homework of those classes, their own submissions and the files of both, and refuse
 their writes except to their own submissions and files; `students` returns only their own row. Staff
-requests leave it empty and see the whole school, as before.
+requests leave it empty and see the whole school, as before. For tests (migration `0014`) a student's
+requests see published tests of their classes, questions only once they have started, answer keys only
+after the test is over for everyone (including any extra time) with answers shown and results out, and only their own attempts, answers and
+events; automatic marking reads the keys in the school's context after the student's transaction.
 
 Settings are applied with `set_config(..., true)` (transaction-local), which is safe with
 connection pooling. Tests prove: no rows without context; another tenant's context sees nothing;

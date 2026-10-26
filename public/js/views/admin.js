@@ -1,6 +1,6 @@
 import { del, get, patch, post } from '../api.js';
 import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, promptDialog, tableCard, th, toast } from '../dom.js';
-import { t } from '../i18n.js';
+import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { auditTable } from './settings.js';
 import { pageHead } from './shell.js';
@@ -26,15 +26,15 @@ export async function overviewView() {
       stat(t('admin.usersTotal'), fmtNum(o.users.total)),
       stat(t('admin.newOrgs30'), fmtNum(o.growth.newOrganizationsLast30Days))),
     h('div', { class: 'grid2' },
-      h('div', { class: 'card' }, h('h2', {}, t('admin.byPlan')), h('ul', {}, Object.entries(o.subscriptions.byPlan).map(([k, v]) => h('li', {}, `${k}: ${v}`))),
-        h('h3', {}, t('admin.byState')), h('ul', {}, Object.entries(o.subscriptions.byState).map(([k, v]) => h('li', {}, `${k}: ${v}`)))),
+      h('div', { class: 'card' }, h('h2', {}, t('admin.byPlan')), h('ul', {}, Object.entries(o.subscriptions.byPlan).map(([k, v]) => h('li', {}, `${k}: ${fmtNum(v)}`))),
+        h('h3', {}, t('admin.byState')), h('ul', {}, Object.entries(o.subscriptions.byState).map(([k, v]) => h('li', {}, `${t(`billing.stateName.${k}`)}: ${fmtNum(v)}`)))),
       h('div', { class: 'card' }, h('h2', {}, t('admin.health')),
         h('ul', {},
-          h('li', {}, `${t('admin.database')}: `, health.database.ok ? h('span', { class: 'pill ok' }, `ok · ${health.database.latencyMs} ms`) : h('span', { class: 'pill bad' }, 'error')),
-          h('li', {}, `${t('admin.migrations')}: `, health.migrations.pending.length ? h('span', { class: 'pill bad' }, health.migrations.pending.join(', ')) : h('span', { class: 'pill ok' }, 'up to date')),
+          h('li', {}, `${t('admin.database')}: `, health.database.ok ? h('span', { class: 'pill ok' }, t('admin.dbOk', { ms: health.database.latencyMs })) : h('span', { class: 'pill bad' }, t('admin.dbError'))),
+          h('li', {}, `${t('admin.migrations')}: `, health.migrations.pending.length ? h('span', { class: 'pill bad' }, health.migrations.pending.join(', ')) : h('span', { class: 'pill ok' }, t('admin.upToDate'))),
           h('li', {}, `${t('admin.worker')}: `, worker ? h('span', { class: `pill ${worker.ageSeconds < 120 ? 'ok' : 'bad'}` }, t('admin.lastBeat', { s: worker.ageSeconds })) : h('span', { class: 'pill bad' }, t('admin.noWorker'))),
-          h('li', {}, `${t('admin.outbox')}: ${o.operations.outbox.pending ?? 0} pending · ${o.operations.outbox.failed ?? 0} failed`),
-          h('li', {}, `${t('admin.failedWebhooks')}: ${o.operations.failedWebhooksLast7Days}`),
+          h('li', {}, `${t('admin.outbox')}: `, t('admin.outboxCounts', { pending: fmtNum(o.operations.outbox.pending ?? 0), failed: fmtNum(o.operations.outbox.failed ?? 0) })),
+          h('li', {}, `${t('admin.failedWebhooks')}: ${fmtNum(o.operations.failedWebhooksLast7Days)}`),
           h('li', {}, `${t('admin.billingProvider')}: ${health.billingProvider}`),
           h('li', {}, `Node ${health.process.node} · RSS ${health.process.rssMb} MB · up ${Math.round(health.process.uptimeSeconds / 60)} min`)))),
     alertsCard(alerts));
@@ -79,13 +79,13 @@ export async function orgsView(ctx) {
     pageHead(t('admin.orgs'), t('admin.orgsSub')),
     h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); navigate(`/admin/orgs?q=${encodeURIComponent(input.value)}`); } }, input, h('button', { class: 'btn small', type: 'submit' }, t('admin.search'))),
     tableCard(t('admin.orgs'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, ['Name', 'Plan', 'Members', 'Scopes', 'Status', 'Created'].map(th))),
+      h('thead', {}, h('tr', {}, [t('admin.col.name'), t('admin.col.plan'), t('nav.members'), t('nav.scopes'), t('admin.col.status'), t('admin.col.created')].map(th))),
       h('tbody', {}, organizations.map((o) => h('tr', {},
         h('td', {}, link(`/admin/orgs/${o.id}`, o.name), h('div', { class: 'mono muted' }, o.slug)),
-        h('td', {}, `${o.planId} · `, h('span', { class: 'pill' }, o.billingState)),
+        h('td', {}, `${o.planId} · `, h('span', { class: 'pill' }, t(`billing.stateName.${o.billingState}`))),
         h('td', { class: 'mono' }, String(o.members)),
         h('td', { class: 'mono' }, String(o.scopes)),
-        h('td', {}, h('span', { class: `pill ${o.status === 'active' ? 'ok' : 'bad'}` }, o.status)),
+        h('td', {}, h('span', { class: `pill ${o.status === 'active' ? 'ok' : 'bad'}` }, t(`admin.status.${o.status}`))),
         h('td', {}, fmtDate(o.createdAt))))))));
 }
 
@@ -103,8 +103,8 @@ export async function orgDetailView(ctx) {
 
   const planForm = form({
     fields: [
-      { name: 'planId', label: 'Plan', type: 'select', value: s?.planId, options: plans.map((p) => ({ value: p.id, label: p.name })) },
-      { name: 'status', label: 'Status', type: 'select', value: s?.status === 'trialing' ? 'trialing' : 'active', options: [{ value: 'active', label: 'active' }, { value: 'trialing', label: 'trialing' }] },
+      { name: 'planId', label: t('admin.col.plan'), type: 'select', value: s?.planId, options: plans.map((p) => ({ value: p.id, label: p.name })) },
+      { name: 'status', label: t('admin.col.status'), type: 'select', value: s?.status === 'trialing' ? 'trialing' : 'active', options: [{ value: 'active', label: t('billing.stateName.active') }, { value: 'trialing', label: t('billing.stateName.trialing') }] },
       { name: 'periodEnd', label: t('admin.periodEnd'), type: 'datetime-local', hint: t('admin.periodEndHint') },
       { name: 'maxMembers', label: t('admin.overrideMembers'), type: 'number', value: s?.limitOverrides?.max_members ?? '' },
       { name: 'maxStudents', label: t('admin.overrideStudents'), type: 'number', value: s?.limitOverrides?.max_students ?? '', hint: t('admin.overrideStudentsHint') },
@@ -138,17 +138,17 @@ export async function orgDetailView(ctx) {
       : h('p', { class: 'muted' }, t('admin.noGrant')));
 
   return h('div', {},
-    pageHead(o.name, `${o.slug} · ${o.status}${o.suspendedReason ? ` — ${o.suspendedReason}` : ''}`, h('div', { class: 'row' }, suspendBtn)),
+    pageHead(o.name, `${o.slug} · ${t(`admin.status.${o.status}`)}${o.suspendedReason ? ` — ${o.suspendedReason}` : ''}`, h('div', { class: 'row' }, suspendBtn)),
     h('div', { class: 'grid2' },
       h('div', { class: 'card' }, h('h2', {}, t('admin.subscription')), s ? h('ul', {},
-        h('li', {}, `Plan: ${s.planId} (effective ${s.effectivePlanId}, ${s.state})`),
-        h('li', {}, `Interval: ${s.interval}`),
-        s.trialEndsAt ? h('li', {}, `Trial ends: ${fmtDate(s.trialEndsAt, true)}`) : null,
-        s.currentPeriodEnd ? h('li', {}, `Period end: ${fmtDate(s.currentPeriodEnd, true)}${s.cancelAtPeriodEnd ? ' (canceling)' : ''}`) : null,
-        s.graceUntil ? h('li', {}, `Grace until: ${fmtDate(s.graceUntil, true)}`) : null,
-        s.pendingPlanId ? h('li', {}, `Pending: ${s.pendingPlanId}`) : null) : null,
+        h('li', {}, t('admin.sub.plan', { plan: s.planId, effective: s.effectivePlanId, state: t(`billing.stateName.${s.state}`) })),
+        s.interval ? h('li', {}, t('admin.sub.interval', { interval: t(s.interval === 'year' ? 'billing.yearly' : 'billing.monthly') })) : null,
+        s.trialEndsAt ? h('li', {}, t('admin.sub.trialEnds', { date: fmtDate(s.trialEndsAt, true) })) : null,
+        s.currentPeriodEnd ? h('li', {}, t(s.cancelAtPeriodEnd ? 'admin.sub.periodEndCanceling' : 'admin.sub.periodEnd', { date: fmtDate(s.currentPeriodEnd, true) })) : null,
+        s.graceUntil ? h('li', {}, t('admin.sub.grace', { date: fmtDate(s.graceUntil, true) })) : null,
+        s.pendingPlanId ? h('li', {}, t('admin.sub.pending', { plan: s.pendingPlanId })) : null) : null,
       h('h3', {}, t('admin.manualPlan')), planForm.el),
-      h('div', { class: 'card' }, h('h2', {}, t('nav.members')), h('ul', {}, d.members.map((m) => h('li', {}, `${m.name} <${m.email}> — ${m.role}${m.status !== 'active' ? ' (suspended)' : ''}${m.mfaEnabled ? ' · MFA' : ''}`))),
+      h('div', { class: 'card' }, h('h2', {}, t('nav.members')), h('ul', {}, d.members.map((m) => h('li', {}, `${m.name} <${m.email}> — ${t(`role.${m.role}`)}${m.status !== 'active' ? ` ${t('admin.memberSuspended')}` : ''}${m.mfaEnabled ? ` · ${t('admin.col.mfa')}` : ''}`))),
         h('p', { class: 'muted' }, t('admin.scopeCount', { n: d.scopeCount })),
         h('p', { class: 'muted' }, t('admin.studentCount', { n: d.studentCount })))),
     supportCard,
@@ -171,11 +171,11 @@ export async function usersView(ctx) {
     pageHead(t('admin.users'), null),
     h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); navigate(`/admin/users?q=${encodeURIComponent(input.value)}`); } }, input, h('button', { class: 'btn small', type: 'submit' }, t('admin.search'))),
     tableCard(t('admin.users'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, ['User', 'Status', 'MFA', 'Last login', ''].map(th))),
+      h('thead', {}, h('tr', {}, [t('admin.col.user'), t('admin.col.status'), t('admin.col.mfa'), t('admin.col.lastLogin'), ''].map(th))),
       h('tbody', {}, users.map((u) => h('tr', {},
-        h('td', {}, h('b', {}, u.name), u.isPlatformAdmin ? h('span', { class: 'pill warn' }, ' admin') : null, h('div', { class: 'muted' }, u.email)),
-        h('td', {}, h('span', { class: `pill ${u.status === 'active' ? 'ok' : 'bad'}` }, u.status), u.emailVerified ? null : h('span', { class: 'pill' }, 'unverified'), u.lockedUntil && new Date(u.lockedUntil) > new Date() ? h('span', { class: 'pill bad' }, 'locked') : null),
-        h('td', {}, u.mfaEnabled ? 'yes' : 'no'),
+        h('td', {}, h('b', {}, u.name), u.isPlatformAdmin ? [' ', h('span', { class: 'pill warn' }, t('admin.platformAdmin'))] : null, h('div', { class: 'muted' }, u.email)),
+        h('td', {}, h('span', { class: `pill ${u.status === 'active' ? 'ok' : 'bad'}` }, t(`admin.status.${u.status}`)), u.emailVerified ? null : h('span', { class: 'pill' }, t('admin.emailUnverified')), u.lockedUntil && new Date(u.lockedUntil) > new Date() ? h('span', { class: 'pill bad' }, t('admin.locked')) : null),
+        h('td', {}, t(u.mfaEnabled ? 'admin.yes' : 'admin.no')),
         h('td', {}, fmtDate(u.lastLoginAt, true)),
         h('td', {}, h('div', { class: 'row' },
           u.status === 'active' ? h('button', { type: 'button', class: 'btn small danger ghost', onclick: action(u, 'suspend') }, t('admin.suspend')) : h('button', { type: 'button', class: 'btn small ghost', onclick: action(u, 'unsuspend') }, t('admin.unsuspend')),
@@ -186,7 +186,7 @@ export async function catalogView(ctx) {
   const { versions } = await get('/api/admin/catalog/versions');
   const f = form({
     fields: [
-      { name: 'fromVersionId', label: t('admin.cloneFrom'), type: 'select', options: versions.map((v) => ({ value: v.id, label: `${v.academicYear} — ${v.label} (${v.status})` })) },
+      { name: 'fromVersionId', label: t('admin.cloneFrom'), type: 'select', options: versions.map((v) => ({ value: v.id, label: `${v.academicYear} — ${v.label} (${t(`admin.versionStatus.${v.status}`)})` })) },
       { name: 'academicYear', label: t('admin.academicYear'), required: true, placeholder: '2027/2028' },
       { name: 'label', label: t('admin.label'), required: true, maxlength: 160 },
     ],
@@ -196,10 +196,10 @@ export async function catalogView(ctx) {
   return h('div', {},
     pageHead(t('admin.catalog'), t('admin.catalogSub')),
     tableCard(t('admin.catalog'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, ['Version', 'Status', 'Subjects', 'Materials', t('verify.colVerified'), 'Published', ''].map(th))),
+      h('thead', {}, h('tr', {}, [t('admin.col.version'), t('admin.col.status'), t('admin.col.subjects'), t('admin.col.materials'), t('verify.colVerified'), t('admin.col.published'), ''].map(th))),
       h('tbody', {}, versions.map((v) => h('tr', {},
         h('td', {}, link(`/admin/catalog/${v.id}`, `${v.academicYear} — ${v.label}`)),
-        h('td', {}, h('span', { class: `pill ${v.status === 'published' ? 'ok' : v.status === 'draft' ? 'warn' : ''}` }, v.status)),
+        h('td', {}, h('span', { class: `pill ${v.status === 'published' ? 'ok' : v.status === 'draft' ? 'warn' : ''}` }, t(`admin.versionStatus.${v.status}`))),
         h('td', { class: 'mono' }, String(v.subjects)), h('td', { class: 'mono' }, String(v.materials)),
         h('td', { class: 'mono' }, `${v.subjectsVerified}/${v.subjects}`),
         h('td', {}, fmtDate(v.publishedAt)),
@@ -299,9 +299,9 @@ export async function catalogVersionView(ctx) {
     const all = tree.subjects.filter((s) => s.grade === g);
     const subs = all.filter(matches);
     if (!subs.length && verifFilter !== 'all') continue;
-    const gradeName = tree.grades[g - 1].nameEn;
+    const gradeName = locale() === 'ar' ? tree.grades[g - 1].nameAr : tree.grades[g - 1].nameEn;
     grades.push(h('details', { class: 'card', open: opened.has(g) || null, ontoggle: (e) => { if (e.target.open) opened.add(g); else opened.delete(g); } },
-      h('summary', {}, `${gradeName} — ${subs.length} subjects`),
+      h('summary', {}, `${gradeName} — ${t(subs.length === 1 ? 'picker.subject' : 'picker.subjects', { n: subs.length })}`),
       editable && all.length ? h('div', { class: 'row' }, h('button', {
         type: 'button', class: 'btn small ghost', onclick: async () => {
           if (await verifyDialog({ title: t('verify.gradeTarget', { grade: gradeName, s: all.length }), subjectIds: all.map((s) => s.id), extraMaterialIds: all.flatMap((s) => s.materials.map((m) => m.id)) })) reload();
@@ -311,7 +311,7 @@ export async function catalogVersionView(ctx) {
         h('div', { class: 'sname' }, h('b', {}, s.nameEn), h('span', { class: 'ar', lang: 'ar', dir: 'rtl' }, s.nameAr), h('span', { class: 'mono muted' }, `${s.track} · ${s.code} · ${s.status}`), h('div', { class: 'muted' }, s.block),
           verificationDetails(s),
           h('div', { class: 'row' },
-            editable ? h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${s.nameEn}`, current: s.verification, subjectIds: [s.id], extraMaterialIds: s.materials.map((m) => m.id) })) reload(); } }, t('verify.set')) : null,
+            editable ? h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${locale() === 'ar' ? s.nameAr : s.nameEn}`, current: s.verification, subjectIds: [s.id], extraMaterialIds: s.materials.map((m) => m.id) })) reload(); } }, t('verify.set')) : null,
             draft ? [
               h('button', { type: 'button', class: 'btn small ghost', onclick: async () => { if (await subjectDialog(s)) reload(); } }, t('common.edit')),
               h('button', { type: 'button', class: 'btn small danger ghost', onclick: async () => { if (await confirmDialog(t('common.delete'), s.nameEn, { danger: true }) && (await safe(() => del(`/api/admin/catalog/subjects/${s.id}`)))) reload(); } }, t('common.delete')),
@@ -341,7 +341,7 @@ export async function catalogVersionView(ctx) {
     sheetActions(versionId, tree.version.status, reload));
 
   return h('div', {},
-    pageHead(`${tree.version.academicYear} — ${tree.version.label}`, `${tree.version.status} · ${tree.counts.subjects} subjects · ${tree.counts.materials} materials`,
+    pageHead(`${tree.version.academicYear} — ${tree.version.label}`, t('admin.versionCounts', { status: t(`admin.versionStatus.${tree.version.status}`), subjects: tree.counts.subjects, materials: tree.counts.materials }),
       h('div', { class: 'row' }, link('/admin/catalog', t('admin.backToVersions')), draft ? h('button', { type: 'button', class: 'btn small', onclick: async () => { if (await subjectDialog(null)) reload(); } }, `+ ${t('admin.addSubject')}`) : h('span', { class: 'muted' }, t(editable ? 'admin.readOnlyContent' : 'admin.readOnlyVersion')))),
     draft ? h('div', { class: 'card' }, h('h2', {}, t('admin.versionDetails')), meta.el) : null,
     verificationBar,
@@ -405,7 +405,7 @@ export async function plansView(ctx) {
     plans.map((p) => {
       const f = form({
         fields: [
-          { name: 'name', label: 'Name', value: p.name },
+          { name: 'name', label: t('admin.col.name'), value: p.name },
           { name: 'priceMonthlyCents', label: t('admin.priceMonthly'), type: 'number', value: p.priceMonthlyCents },
           { name: 'priceYearlyCents', label: t('admin.priceYearly'), type: 'number', value: p.priceYearlyCents ?? '' },
           { name: 'limits', label: t('admin.limitsJson'), type: 'textarea', value: JSON.stringify(p.limits) },
@@ -430,9 +430,9 @@ export async function auditView(ctx) {
   const qs = new URLSearchParams(ctx.query);
   qs.set('limit', '100');
   const data = await get(`/api/admin/audit-logs?${qs}`);
-  const action = h('input', { type: 'search', value: ctx.query.get('action') || '', placeholder: 'action prefix', 'aria-label': 'action' });
-  const actor = h('input', { type: 'search', value: ctx.query.get('actor') || '', placeholder: 'actor email', 'aria-label': 'actor' });
-  const orgId = h('input', { type: 'search', value: ctx.query.get('orgId') || '', placeholder: 'org id', 'aria-label': 'org id' });
+  const action = h('input', { type: 'search', value: ctx.query.get('action') || '', placeholder: t('admin.filter.action'), 'aria-label': t('admin.filter.action') });
+  const actor = h('input', { type: 'search', value: ctx.query.get('actor') || '', placeholder: t('admin.filter.actor'), 'aria-label': t('admin.filter.actor') });
+  const orgId = h('input', { type: 'search', value: ctx.query.get('orgId') || '', placeholder: t('admin.filter.org'), 'aria-label': t('admin.filter.org') });
   const go = (before) => {
     const q = new URLSearchParams();
     if (action.value) q.set('action', action.value);
@@ -453,11 +453,11 @@ export async function eventsView(ctx) {
   const { events } = await get(`/api/admin/billing-events?limit=100${status ? `&status=${status}` : ''}`);
   return h('div', {},
     pageHead(t('admin.events'), t('admin.eventsSub')),
-    h('div', { class: 'seg' }, ['', 'processed', 'ignored', 'failed'].map((s) => link(`/admin/events${s ? `?status=${s}` : ''}`, s || 'all', { class: 'chipbtn', 'aria-current': s === status ? 'page' : null }))),
+    h('div', { class: 'seg' }, ['', 'processed', 'ignored', 'failed'].map((s) => link(`/admin/events${s ? `?status=${s}` : ''}`, t(`admin.eventStatus.${s || 'all'}`), { class: 'chipbtn', 'aria-current': s === status ? 'page' : null }))),
     tableCard(t('admin.events'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, ['Received', 'Provider', 'Event', 'Type', 'Status', 'Note'].map(th))),
+      h('thead', {}, h('tr', {}, [t('admin.col.received'), t('admin.col.provider'), t('admin.col.event'), t('admin.col.type'), t('admin.col.status'), t('admin.col.note')].map(th))),
       h('tbody', {}, events.map((e) => h('tr', {},
         h('td', {}, fmtDate(e.receivedAt, true)), h('td', {}, e.provider), h('td', { class: 'mono' }, e.eventId), h('td', { class: 'mono' }, e.type),
-        h('td', {}, h('span', { class: `pill ${e.status === 'processed' ? 'ok' : e.status === 'failed' ? 'bad' : ''}` }, e.status)),
+        h('td', {}, h('span', { class: `pill ${e.status === 'processed' ? 'ok' : e.status === 'failed' ? 'bad' : ''}` }, t(`admin.eventStatus.${e.status}`))),
         h('td', { class: 'muted' }, e.error || '')))))));
 }

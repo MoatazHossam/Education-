@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**35 files, 259 tests, 259 passed, 0 failed** (2026-10-26, after the user guide's fixes). Integration tests ran against a real
+**36 files, 261 tests, 261 passed, 0 failed** (2026-10-26, after the Arabic user guide's fixes). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -31,6 +31,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/billing-logic | 9 | Pass |
 | unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded), and production refusing `WEBHOOK_ALLOW_INSECURE_TARGETS` |
 | unit/i18n | 2 | Pass |
+| unit/email-templates | 2 | Pass — the Arabic invitation names the role as the Arabic interface does; the Arabic assignment email says "a book" for one and "books" for more |
 | unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
@@ -65,7 +66,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 259</summary>
+<details><summary>Show all 261</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -317,6 +318,8 @@ Full test names (verbatim from the verbose reporter):
 - unit › encryption keys › previous keys still decrypt; a key that is not configured is named in the error
 - unit › encryption keys › envelopes from before key ids were recorded are read with whichever configured key opens them
 - unit › encryption keys › DATA_ENCRYPTION_KEYS_PREVIOUS takes up to five other 32-byte keys
+- unit › Arabic emails › name the invited role as the Arabic interface does
+- unit › Arabic emails › say "a book" for one assigned book and "books" for more
 
 </details>
 
@@ -329,7 +332,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**23 tests, 23 passed** (5.3 min, 2026-10-26), Chromium, real server process on port 3100: 19 journeys,
+**23 tests, 23 passed** (5.0 min, 2026-10-26), Chromium, real server process on port 3100: 19 journeys,
 then the accessibility project (4 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -362,7 +365,7 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 20 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 83 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text) and checked that no open dialog's content is wider than the dialog. The 83 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page | Pass — 0 findings (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed) |
+| 20 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 83 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text) and checked that no open dialog's content is wider than the dialog. The 83 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page | Pass — 0 findings (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed). Also checks that in Arabic an email address and a mixed English title (with brackets and "&") are each one left-to-right run with `lang="en"`, so they are not shown reversed |
 | 21 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 | 22 | What screen readers are given, read from the browser's accessibility tree (docs/SCREEN_READER_REVIEW.md §4): on the account page's password form, the new-password field's description is its hint, then its hint and error after a failed submission, then the hint alone once corrected; the page area is not a live region; page titles follow the heading on the picker, account, settings and not-found pages and switch to the Arabic name in Arabic; picker book buttons include their kind ("(Ministry material)", "(External reference)"); after a failed submission focus is on the first field in error; the notifications button is "Notifications, 2 unread" with two unread, "Notifications" after opening the list, and focus returns to it | Pass |
 | 23 | A simulated screen reader listens while the member acts: selecting a book is heard as the book with its kind and then "polite: Saved"; opening the new-scope dialog announces "dialog, New scope" and focus lands on its Name field; a wrong current password is announced once; a too-short new password moves focus to that field, which is read with its error, and no other message is announced | Pass |
@@ -403,6 +406,12 @@ sign-ups an hour that the server allows from one address.
 ### User guide screenshots — `npm run docs:screenshots`
 
 **1 test, 1 passed** (1.1 min, 2026-10-26). It is a separate configuration, not part of `npm run test:e2e`. It builds the demo school of `docs/USER_GUIDE.md` on a fresh test database through the interface and saves 62 screens. It fails if a step stops working, or if a dialog's content is wider than the dialog. Before the fix, that check failed on the "API key created" dialog.
+
+The same test in the Arabic interface, `npm run docs:screenshots:ar`: **1 test, 1 passed** (1.1 min, 2026-10-26),
+62 screens for `docs/USER_GUIDE.ar.md`, with Arabic demo data and every label read from the interface's own Arabic
+dictionary (a missing key stops the run). Reviewing these screens found the untranslated admin console text, plan
+descriptions, reversed email addresses and brackets, left-aligned web addresses and the audit date overflow listed
+in PROJECT_STATUS.md; the English run was repeated after those fixes (1 passed, 62 screens).
 
 ## 4. Operational verification (manual, executed)
 

@@ -53,6 +53,9 @@ td .row{flex-wrap:nowrap}
 .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 select,input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],input[type=url],input[type=datetime-local],input[type=date],textarea{font:inherit;font-size:14px;border:1px solid var(--rule-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:7px 10px;min-width:0}
 textarea{width:100%;min-height:70px}
+/* Addresses read left to right in the Arabic interface too ("https://" not "//:https"). */
+input[type=url],input[type=email],input[inputmode=url],input[placeholder^="https://"]{direction:ltr}
+[dir=rtl] input[type=url],[dir=rtl] input[type=email],[dir=rtl] input[inputmode=url],[dir=rtl] input[placeholder^="https://"]{text-align:right}
 .iconbtn{border:1px solid var(--rule-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;position:relative}
 .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--margin);color:#fff;font-size:11px;line-height:18px;text-align:center}
 .banner{background:var(--pass-bg);color:var(--ink);border-bottom:1px solid var(--rule)}
@@ -77,6 +80,7 @@ textarea{width:100%;min-height:70px}
 .mono{font-family:var(--f-mono);font-size:12.5px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .spacer{flex:1}
+.nowrap{white-space:nowrap}
 .stack{display:grid;gap:12px}
 .stack>*{min-width:0}
 

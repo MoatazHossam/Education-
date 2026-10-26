@@ -21,16 +21,18 @@ export function h(tag, attrs = {}, ...children) {
 }
 
 // Text in the other language than the page (English book titles in the Arabic
-// interface, Arabic names in the English one) is wrapped in <span lang> so screen
-// readers read it with the right voice (WCAG 3.1.2). Elements that set their own
+// interface, Arabic names in the English one) is wrapped in <span lang dir> so screen
+// readers read it with the right voice (WCAG 3.1.2) and it keeps its own direction
+// ("(Term 1 & Term 2)" stays in order inside Arabic text). Elements that set their own
 // lang, and those whose text cannot hold markup, are left as they are.
 const NO_LANG_MARKING = new Set(['OPTION', 'TEXTAREA', 'PRE', 'TITLE', 'STYLE', 'SCRIPT']);
 const ARABIC = '\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF';
 const OTHER_LANGUAGE = {
   // In the English interface: Arabic words, with the spaces and punctuation between them.
-  en: { lang: 'ar', any: new RegExp(`[${ARABIC}]`), runs: new RegExp(`[${ARABIC}]+(?:[\\s\\d\u060C\u061B\u061F.,:()\u2013\u2014-]*[${ARABIC}]+)*`, 'g') },
-  // In the Arabic interface: Latin words (with digits and the punctuation inside names).
-  ar: { lang: 'en', any: /[A-Za-z]/, runs: /[A-Za-z][A-Za-z0-9'\u2019&./-]*(?:[\s,;:()&\u2013\u2014-]+[A-Za-z0-9][A-Za-z0-9'\u2019&./-]*)*/g },
+  en: { lang: 'ar', dir: 'rtl', any: new RegExp(`[${ARABIC}]`), runs: new RegExp(`[${ARABIC}]+(?:[\\s\\d\u060C\u061B\u061F.,:()\u2013\u2014-]*[${ARABIC}]+)*`, 'g') },
+  // In the Arabic interface: Latin text up to the next Arabic word, so an email address, a URL or a code
+  // ("scope.items_changed") stays one piece; it ends on a letter, digit, "/" or "…", or on a bracket it opened.
+  ar: { lang: 'en', dir: 'ltr', any: /[A-Za-z]/, runs: new RegExp(`[A-Za-z](?:[^${ARABIC}]*[A-Za-z0-9/\u2026])?\\)?`, 'g') },
 };
 
 function textNodes(text) {
@@ -39,12 +41,15 @@ function textNodes(text) {
   const out = [];
   let last = 0;
   for (const m of text.matchAll(other.runs)) {
+    // A closing bracket belongs to the run only when the run opened it.
+    const run = m[0].endsWith(')') && !m[0].includes('(') ? m[0].slice(0, -1) : m[0];
     if (m.index > last) out.push(document.createTextNode(text.slice(last, m.index)));
     const span = document.createElement('span');
     span.lang = other.lang;
-    span.textContent = m[0];
+    span.dir = other.dir;
+    span.textContent = run;
     out.push(span);
-    last = m.index + m[0].length;
+    last = m.index + run.length;
   }
   if (last < text.length) out.push(document.createTextNode(text.slice(last)));
   if (out.length === 1) return out;

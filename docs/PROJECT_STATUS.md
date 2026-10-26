@@ -286,6 +286,25 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** E2E 23/23 (the audit with the simulated reader's checks on 83 screens, and the new announcements test).
 - **Limitations:** a simulation has no voices, no language switching and none of a real screen reader's modes or verbosity; the manual review in `docs/SCREEN_READER_REVIEW.md` is still needed. The sandbox checkout page is not covered.
 
+### Arabic user guide, and the Arabic interface fixes it led to · COMPLETE
+- **Implemented:** `docs/USER_GUIDE.ar.md`, the user guide in Arabic, with 62 screenshots of the Arabic interface (`docs/user-guide/images-ar/`). The demo school and its people have Arabic names, and the guide names every button as the interface shows it.
+  - **How it is made:** `npm run docs:screenshots:ar` (`playwright.guide-ar.config.ts`). The screenshot script (`tests/e2e/user-guide.spec.ts`) now runs in either language. It takes every label from the interface's own dictionaries, so the same steps drive both languages, and the English run still produces the English guide's 62 screenshots.
+- **Fixed in the Arabic interface (found by the Arabic screenshots):**
+  - **Reading order:** English text in the Arabic interface is now marked with its direction as well as its language. Two things were displayed out of order before:
+    - a book title's closing bracket ("(Ministry textbook (Term 1 & Term 2");
+    - email addresses and codes split at "@" or "_" ("nilevalley.example@salma.fathy").
+  - **Address fields:** the "https://" placeholder showed as "//:https". Address and email fields now run left to right.
+  - **Untranslated text:** 47 strings in the platform administrator's console were hardcoded English and are now translated: table headings, the plan form, the subscription summary, statuses, platform health, the audit filters and the catalogue editor's grade headings. The English wording is unchanged, except where raw codes now show as words: roles ("Owner", not "owner"), the billing interval ("Monthly", not "month") and billing states ("trial", not "trialing").
+  - **Plan descriptions:** the four plans' descriptions are shown in Arabic while they keep their original English text. A description an administrator edits is shown as written.
+  - **Emails:** the Arabic invitation named the role in English ("بدور editor"), and the Arabic assignment email said "books" for one book. Both are fixed.
+  - **Audit log:** a long Arabic date no longer runs into the next column.
+- **Files:** `docs/USER_GUIDE.ar.md`, `docs/user-guide/images-ar/*.png`, `docs/user-guide/images/*.png` (retaken), `tests/e2e/user-guide.spec.ts`, `playwright.guide-ar.config.ts`, `playwright.guide.config.ts`, `package.json`, `public/js/{dom,i18n}.js`, `public/js/views/{admin,billing,settings}.js`, `public/app.css`, `src/notifications/email.ts`, `tests/unit/email-templates.test.ts`, `tests/e2e/accessibility.spec.ts`.
+- **Tests:**
+  - A unit test for the two Arabic emails.
+  - The accessibility audit now checks, in Arabic, that an email address is one left-to-right piece and that a book title keeps its closing bracket.
+  - Both screenshot runs pass (62 screens each).
+- **Limitations:** catalogue content (book titles, most notes, the catalogue's notice) is English in the catalogue itself, so it appears in English in the Arabic interface. Server-side validation messages and operational alert texts are still English. A professional translator has not reviewed the Arabic interface or guide.
+
 ### User guide with screenshots · COMPLETE
 - **Implemented:** `docs/USER_GUIDE.md`, a guide to every part of the system for the people who use it, with 62 screenshots in `docs/user-guide/images/`. It covers:
   - signing up and signing in, roles, the picker, scopes and comparison;
@@ -460,7 +479,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (259 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (261 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

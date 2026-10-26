@@ -1,6 +1,6 @@
 import { get, post } from '../api.js';
 import { confirmDialog, errorMessage, fmtDate, fmtMoney, fmtNum, h, link, tableCard, toast } from '../dom.js';
-import { locale, setLocale, t } from '../i18n.js';
+import { locale, setLocale, shipped, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, session } from '../state.js';
 import { pageHead } from './shell.js';
@@ -141,7 +141,7 @@ export async function billingView(ctx) {
         }
       }
       return h('div', { class: `plan ${isCurrent ? 'current' : ''}` },
-        h('h3', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, p.description), planFeatures(p),
+        h('h3', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, shipped(`plan.desc.${p.id}`, p.description)), planFeatures(p),
         isCurrent ? [h('span', { class: 'pill ok' }, t('billing.currentPlan')), trialPlan ? cta : null] : cta);
     }));
   }
@@ -179,7 +179,7 @@ export async function pricingView(ctx) {
   const { plans } = await get('/api/billing/plans');
   let interval = 'month';
   const wrap = h('div', { class: 'plans' });
-  const draw = () => wrap.replaceChildren(...plans.map((p) => h('div', { class: 'plan' }, h('h2', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, p.description), planFeatures(p))));
+  const draw = () => wrap.replaceChildren(...plans.map((p) => h('div', { class: 'plan' }, h('h2', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, shipped(`plan.desc.${p.id}`, p.description)), planFeatures(p))));
   draw();
   return h('main', { id: 'main', class: 'wrap' },
     h('div', { class: 'row' }, h('span', { class: 'spacer' }), h('button', { type: 'button', class: 'iconbtn', onclick: () => { setLocale(locale() === 'ar' ? 'en' : 'ar'); ctx.render(); } }, locale() === 'ar' ? 'English' : 'العربية')),

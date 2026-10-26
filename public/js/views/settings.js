@@ -35,7 +35,7 @@ export async function settingsView(ctx) {
   } else {
     const { apiKeys } = await get(`/api/orgs/${orgId}/api-keys`);
     const f = form({
-      fields: [{ name: 'name', label: t('apikeys.name'), required: true, maxlength: 80, placeholder: 'Content pipeline' }],
+      fields: [{ name: 'name', label: t('apikeys.name'), required: true, maxlength: 80, placeholder: t('apikeys.namePlaceholder') }],
       submitLabel: t('apikeys.create'),
       onSubmit: async (v) => {
         const r = await post(`/api/orgs/${orgId}/api-keys`, v);
@@ -130,9 +130,9 @@ export async function auditView(ctx) {
 export function auditTable(entries, { showOrg = false } = {}) {
   if (!entries.length) return h('div', { class: 'card' }, h('p', { class: 'empty' }, t('audit.empty')));
   return tableCard(t('nav.audit'), h('table', { class: 'data' },
-    h('thead', {}, h('tr', {}, [t('audit.when'), t('audit.actor'), t('audit.action'), t('audit.target'), showOrg ? 'Org' : null, t('audit.details')].filter(Boolean).map((c) => h('th', { scope: 'col' }, c)))),
+    h('thead', {}, h('tr', {}, [t('audit.when'), t('audit.actor'), t('audit.action'), t('audit.target'), showOrg ? t('admin.col.org') : null, t('audit.details')].filter(Boolean).map((c) => h('th', { scope: 'col' }, c)))),
     h('tbody', {}, entries.map((e) => h('tr', {},
-      h('td', {}, fmtDate(e.createdAt, true)),
+      h('td', { class: 'nowrap' }, fmtDate(e.createdAt, true)),
       h('td', {}, e.actor || e.actorType, h('div', { class: 'muted mono' }, e.actorType)),
       h('td', { class: 'mono' }, e.action),
       h('td', { class: 'mono' }, e.targetType ? `${e.targetType}:${String(e.targetId || '').slice(0, 8)}` : '—'),

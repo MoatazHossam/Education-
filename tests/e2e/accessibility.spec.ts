@@ -220,6 +220,12 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'], [`/org/${orgId}/settings`, 'settings (Arabic)'],
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
   ] as const) await visit(page, path, where);
+  // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
+  // (not "e2e.test@a11y…"), and a book title keeps the bracket it closes.
+  await page.goto('/account');
+  await expect(page.locator('.page-head p span[lang="en"][dir="ltr"]')).toHaveText(email);
+  await page.goto(itemsPath);
+  await expect(page.locator('#main span[lang="en"][dir="ltr"]', { hasText: /^Ministry textbook \(Term 1 & Term 2\)$/ }).first()).toBeVisible();
   await page.goto(`/org/${orgId}`);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
 

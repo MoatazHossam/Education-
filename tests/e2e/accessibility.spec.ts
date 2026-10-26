@@ -362,6 +362,15 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(studentPage, 'student test result');
   const studentResultPath = new URL(studentPage.url()).pathname;
   await visit(studentPhone, studentResultPath, 'student test result (phone)');
+  // The gradebook (docs/CLASSROOM.md §10): the class's homework and test marks, and the student's own grades.
+  const gradebookPath = `${classPath}/gradebook`;
+  await visit(page, gradebookPath, 'gradebook');
+  await visit(studentPage, '/student/grades', 'student grades');
+  await visit(studentPhone, '/student/grades', 'student grades (phone)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(studentPage.getByRole('heading', { name: 'درجاتي', level: 1 })).toBeVisible();
+  await audit(studentPage, 'student grades (Arabic)');
+  await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
 
   // Arabic (right to left).
   await page.goto(`/org/${orgId}?scope=${scopeId}`);
@@ -373,7 +382,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [`/org/${orgId}/billing`, 'billing (Arabic)'], ['/account', 'account (Arabic)'], [comparePath, 'compare scopes (Arabic)'], [`/org/${orgId}/settings`, 'settings (Arabic)'],
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
     [`/org/${orgId}/classes`, 'classes (Arabic)'], [classPath, 'class (Arabic)'], [homeworkPath, 'homework (Arabic)'],
-    [testPath, 'test (Arabic)'], [monitorPath, 'test live monitor (Arabic)'], [resultsPath, 'test results (Arabic)'],
+    [testPath, 'test (Arabic)'], [monitorPath, 'test live monitor (Arabic)'], [resultsPath, 'test results (Arabic)'], [gradebookPath, 'gradebook (Arabic)'],
   ] as const) await visit(page, path, where);
   // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
   // (not "e2e.test@a11y…"), and a book title keeps the bracket it closes.
@@ -397,6 +406,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, homeworkPath, 'homework (dark)');
   await visit(page, testPath, 'test (dark)');
   await visit(page, monitorPath, 'test live monitor (dark)');
+  await visit(page, gradebookPath, 'gradebook (dark)');
   await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
   // Phone.

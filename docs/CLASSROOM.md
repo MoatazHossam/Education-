@@ -1,9 +1,9 @@
-# Classes and homework
+# Classes, homework and the gradebook
 
 Added 2026-10-26 at the owner's request: "a complete portal for teachers and students for daily
-assignments … and online tests". This document covers the first part: **classes, teachers and daily
-homework**. Online tests and exams with monitoring are the next part; a gradebook follows them
-(§10). Everything is in English and Arabic.
+assignments … and online tests". This document covers **classes, teachers, daily homework** and the
+**gradebook** (§10). Online tests and exams with monitoring have their own document,
+`docs/ONLINE_TESTS.md`. Everything is in English and Arabic.
 
 It is built into the existing system: the same sign-in, sessions, schools, roles, student accounts
 (`docs/STUDENT_ACCOUNTS.md`), audit log, notifications and row-level security. There is no second
@@ -141,6 +141,7 @@ get 404 for the class and its homework.
 | `PATCH /api/orgs/:orgId/homework/:homeworkId/submissions/:studentId` | subject teacher, admin | `{ points?, feedback?, return? }` |
 | `POST /api/orgs/:orgId/homework/:homeworkId/return` | subject teacher, admin | `{ studentIds }`: returns those handed in or marked |
 | `GET /api/orgs/:orgId/files/:fileId` | teacher, admin | The file (§5) |
+| `GET /api/orgs/:orgId/classes/:classId/gradebook[?subject=&format=csv]` | teacher, admin | `{ class, subjects, subject, items[], students[{ name, username, cells[{status, points}], average, missing }] }`, or the CSV (§10) |
 
 `GET /api/orgs/:orgId` also returns `classroom { enabled, show, toMark }` for the navigation.
 
@@ -158,6 +159,7 @@ Students (student session; 404 for staff):
 | `DELETE /api/student/homework/:homeworkId/files/:fileId` | From the draft |
 | `GET /api/student/files/:fileId` | A file the student may see |
 | `GET /api/student/notifications`, `POST /api/student/notifications/read` | The portal's notifications (`{ ids? }`) |
+| `GET /api/student/grades` | `{ subjects[{ classId, className, subjectEn, subjectAr, average, missing, items[] }] }`: the student's own marks (§10) |
 
 Errors: `CLASSROOM_NOT_ENABLED` (402), `CLASS_NAME_TAKEN`, `ALREADY_TEACHER` (409), `TEACHER_NOT_MEMBER`
 (400), `NOT_SUBJECT_TEACHER` (403), `CLASS_ARCHIVED` (409), `DUE_BEFORE_PUBLISH`,
@@ -184,16 +186,39 @@ Egyptian Personal Data Protection Law (SECURITY_DESIGN §7), whose compliance gr
 and parental consent, the school as controller, retention (nothing is deleted automatically yet),
 and the privacy notice. Marks are set only by teachers; nothing is marked by AI.
 
-## 10. Not done yet
+## 10. Gradebook and My grades
+
+Read only: it gathers marks given on the homework and test pages (docs/ONLINE_TESTS.md) and changes none.
+
+- **Gradebook** (class page → **Gradebook**, `/org/:orgId/classes/:classId/gradebook`): one subject at a
+  time (the subjects with homework that has a full mark, or a published test). A column for each such
+  homework (by due time) and each published test (by closing time), oldest first; a row for each
+  student of the class. Any teacher of the class and the school's admins can open it, as they can its
+  homework and tests.
+- **A cell:** the mark; or *To mark* (handed in or submitted, not marked yet); *Returned* (returned
+  without a mark); *Missing* (not handed in by the due time, or a closed test never started);
+  *Working* (taking the test now); or nothing yet. Teachers see a mark given but not yet returned. A
+  test counts each student's best marked attempt.
+- **Average:** points of the marked work out of its full marks, as a percentage with one decimal.
+  Missing work is counted in its own column, not as zero, so the teacher decides what it means.
+- **CSV** (**Download CSV**): the same table in the member's language (student, username, one column per
+  item with its date and full mark, average, missing), formula-guarded like the other exports, and
+  recorded in the audit log (`class.gradebook_exported`). It is not limited by plan: it is the school's
+  own record of its students.
+- **My grades** (student portal → **Grades**, `/student/grades`): for each class and subject, the
+  student's own items with their mark, average and missing count. A homework mark shows once returned
+  and a test score once the test's results setting shows it (*Waiting for the mark* until then). The
+  request runs in the student's row-level security context, so it can only read their own work.
+
+## 11. Not done yet
 
 - **Online tests and exams** are built: see docs/ONLINE_TESTS.md (tests appear on the class page and
   on the student's Today and Tests pages).
-- **Gradebook**: marks per class and subject, CSV export, a "My grades" page for students.
-- The user guides (English and Arabic) get these pages with the gradebook.
+- No weighting between homework and tests, no term reports, and no grade scales (A–F or similar).
 - No email or SMS to students or parents; no parent accounts.
 - No virus scanning or image resizing of uploads (§5); no retention rule for old homework.
 
-## 11. Tests
+## 12. Tests
 
 - `tests/integration/classroom.test.ts` (7 tests): off until student accounts are on; classes,
   teachers and who sees what (admins all, teachers their own, other members none, other schools' students
@@ -203,6 +228,11 @@ and the privacy notice. Marks are set only by teachers; nothing is marked by AI.
   paper work, audit); late work, closed homework and taking work back; scheduled homework hidden until
   the worker announces it once; **row-level security in a student context with unfiltered queries**;
   file count, the storage limit and deleting a class.
+- `tests/integration/gradebook.test.ts` (3 tests): the gradebook's columns (homework with a full mark
+  and published tests, oldest first), cells (marked, to mark, missing, not yet), averages over marked work
+  and missing counts; a member who does not teach the class gets 404; the CSV in the member's language,
+  formula-guarded and audited; **My grades** showing only the student's own marks once returned or shown,
+  and test scores once the test is over.
 - `tests/integration/authz-coverage.test.ts` and `students.test.ts` cover the new routes like every
   other: anonymous 401, another school 404, a student session refused on staff routes, staff refused on
   the portal routes.

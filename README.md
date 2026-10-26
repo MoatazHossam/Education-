@@ -11,7 +11,8 @@ versioned **content scopes**, exported (TXT/CSV/JSON) or read by API. Around it:
 Schools can also create student accounts, organize **classes** with their teachers, and set
 **homework** that students hand in online (text, photos, PDFs) and teachers mark and return. Teachers
 give **online tests and exams** with a server-kept clock, watch them live (more time, retakes, closing
-early), mark written answers and release results.
+early), mark written answers and release results. A **gradebook** gathers each class's marks by
+subject (with a CSV download), and students see their own under **Grades**.
 English and Arabic (RTL).
 
 > **Status: not production ready.** Functionally complete and tested locally; blocked on
@@ -78,7 +79,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [API](docs/API_DOCUMENTATION.md) ·
 [Subscriptions](docs/SUBSCRIPTION_MODEL.md) ·
 [Student accounts](docs/STUDENT_ACCOUNTS.md) ·
-[Classes and homework](docs/CLASSROOM.md) ·
+[Classes, homework and gradebook](docs/CLASSROOM.md) ·
 [Online tests and exams](docs/ONLINE_TESTS.md) ·
 [Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·

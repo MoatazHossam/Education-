@@ -350,3 +350,11 @@ fieldset.question legend{font-weight:600;padding:0 6px}
 .summary{font-weight:600;margin:0 0 6px}
 .submit-row{margin:8px 0 24px}
 .answer-inline{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Gradebook and My grades (docs/CLASSROOM.md §10) */
+.cell-sub{display:block;font-size:12px;color:var(--muted);font-weight:400}
+table.data td.num,table.data th.num{text-align:end;font-variant-numeric:tabular-nums}
+table.gradebook thead th{vertical-align:bottom;min-width:8em}
+table.gradebook thead th a{font-family:var(--f-body);font-size:14px;letter-spacing:0;text-transform:none}
+table.gradebook tbody th{font-family:inherit;font-size:inherit;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600;border-top:1px solid var(--rule)}
+.subject-pick{display:flex;align-items:center;gap:8px}

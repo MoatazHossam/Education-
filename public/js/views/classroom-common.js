@@ -1,6 +1,6 @@
 // Helpers shared by the classroom pages (classes and homework, online tests).
-import { errorMessage, toast } from '../dom.js';
-import { locale } from '../i18n.js';
+import { errorMessage, fmtNum, toast } from '../dom.js';
+import { locale, t } from '../i18n.js';
 
 export const subjectName = (x) => (locale() === 'ar' ? x.subjectAr : x.subjectEn);
 
@@ -23,4 +23,12 @@ export function settableSubjects(data) {
   for (const x of data.teachers) if (!all.some((s) => s.nameEn === x.subjectEn)) all.push({ nameEn: x.subjectEn, nameAr: x.subjectAr, materials: fromCatalogue(x.subjectEn)?.materials ?? [] });
   for (const s of data.subjects) if (!all.some((a) => a.nameEn === s.nameEn)) all.push(s);
   return all;
+}
+
+/** "1 point", "6 points"; in Arabic the noun follows the number (درجة واحدة، درجتان، 3 درجات، 11 درجة). */
+export function pointsText(n) {
+  if (n === 1) return t('tests.points1');
+  if (n === 2) return t('tests.points2');
+  if (Number.isInteger(n) && n >= 3 && n <= 10) return t('tests.pointsFew', { n: fmtNum(n) });
+  return t('tests.pointsN', { n: fmtNum(n) });
 }

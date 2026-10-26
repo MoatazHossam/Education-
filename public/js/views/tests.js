@@ -6,7 +6,7 @@ import { append, confirmDialog, dialog, errorMessage, fmtDate, fmtNum, h, link, 
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { invalidateOrg } from '../state.js';
-import { act, localInput, settableSubjects, subjectName } from './classroom-common.js';
+import { act, localInput, pointsText, settableSubjects, subjectName } from './classroom-common.js';
 import { pageHead } from './shell.js';
 
 const TYPES = ['single', 'multiple', 'true_false', 'short', 'essay'];
@@ -282,13 +282,13 @@ export async function testView(ctx) {
     refresh();
   };
   const questions = h('section', { class: 'card', 'aria-labelledby': 'q-h' },
-    h('div', { class: 'row spread' }, h('h2', { id: 'q-h' }, t('tests.questionsCount', { n: data.questions.length, points: fmtNum(total) })),
+    h('div', { class: 'row spread' }, h('h2', { id: 'q-h' }, t('tests.questionsCount', { n: data.questions.length, points: pointsText(total) })),
       editableQuestions ? h('button', { type: 'button', class: 'btn', onclick: () => act(async () => { if (await questionDialog(orgId, testId)) refresh(); }) }, t('tests.addQuestion')) : null),
     data.started && data.canEdit ? h('p', { class: 'muted' }, t('tests.lockedQuestions')) : null,
     data.questions.length
       ? h('ol', { class: 'questions' }, data.questions.map((q, i) => h('li', { class: 'question' },
         h('div', { class: 'row spread' },
-          h('span', { class: 'muted' }, t(`tests.type.${q.type}`), ' · ', t('tests.pointsN', { n: fmtNum(q.points) })),
+          h('span', { class: 'muted' }, t(`tests.type.${q.type}`), ' · ', pointsText(q.points)),
           editableQuestions ? h('div', { class: 'row' },
             i > 0 ? h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('tests.moveUp', { n: i + 1 }), onclick: () => act(() => move(i, -1)) }, '↑') : null,
             i < data.questions.length - 1 ? h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('tests.moveDown', { n: i + 1 }), onclick: () => act(() => move(i, 1)) }, '↓') : null,
@@ -305,7 +305,7 @@ export async function testView(ctx) {
 
   return h('div', {},
     crumbs(orgId, data.class),
-    pageHead(test.title, t('hw.headLine', { class: data.class.name, subject: subjectName(test), due: fmtDate(test.closesAt, true) }), h('p', {}, phasePill(test)), actions),
+    pageHead(test.title, t('tests.headLine', { class: data.class.name, subject: subjectName(test), closes: fmtDate(test.closesAt, true) }), h('p', {}, phasePill(test)), actions),
     testTabs(orgId, testId, ''),
     h('section', { class: 'card', 'aria-labelledby': 's-h' }, h('h2', { id: 's-h' }, t('tests.settings')), facts, test.instructions ? h('div', { class: 'answer', dir: 'auto' }, test.instructions) : null),
     questions);

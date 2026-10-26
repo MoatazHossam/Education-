@@ -321,7 +321,8 @@ export async function classView(ctx) {
   const sub = [gradeLabel(cls.grade), cls.scopeName ? t('classes.curriculumIs', { name: cls.scopeName }) : t('classes.noCurriculum')].join(' · ');
   return h('div', {},
     h('p', { class: 'crumbs' }, link(`/org/${orgId}/classes`, data.admin ? t('classes.title') : t('classes.myTitle'))),
-    pageHead(cls.name, sub, cls.archived ? h('p', { class: 'notice' }, t('classes.archivedNote')) : null, adminActions),
+    pageHead(cls.name, sub, cls.archived ? h('p', { class: 'notice' }, t('classes.archivedNote')) : null,
+      h('div', { class: 'row' }, link(`/org/${orgId}/classes/${classId}/gradebook`, t('classes.gradebook'), { class: 'btn small' })), adminActions),
     homeworkCard,
     testsCard(orgId, data, subjects),
     h('div', { class: 'grid2' }, studentsCard, teachersCard));

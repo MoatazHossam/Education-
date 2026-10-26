@@ -313,10 +313,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - **Security:** forced row-level security: in a student's requests, questions only after starting, answer keys only after the test is over and answers are shown, only their own attempts. Read-only teachers of the class see no keys. No camera, microphone, screen or keystroke capture.
   - **Arabic:** every page, dialog, status and error message in both languages. The screen-reader check on the Arabic screens found English questions read in pieces (the final "?" on its own); text with no Arabic in it is now marked as English in one piece.
   - **Found in review and fixed before commit:** results "when the test closes" and the correct answers would have opened at the closing time while a student with extra time was still working; they now wait for that time. A new closing time did not move attempts already running; it does now. Teachers of another subject in the class could see answer keys on an attempt page; they no longer receive them.
-- **Not done (part 3):** the gradebook (homework and tests per class and subject, CSV, "My grades") and the user guides' new sections. No question bank, images in questions, or parent accounts.
+- **Not done:** no question bank, images in questions, or parent accounts. (The gradebook and the user guides' new sections followed in part 3, below.)
 - **Before real use:** legal advice on children's marks and the monitoring signals under the PDPL (SECURITY_DESIGN §7).
 - **Files:** `src/db/migrations/0014_online_tests.ts`, `src/classroom/{marking,tests-service,tests-routes,tests-student-routes}.ts`, `src/classroom/{routes,student-routes}.ts`, `src/worker.ts`, `src/app.ts`, `public/js/views/{tests,student-tests,classroom-common,classes,student}.js`, `public/js/{dom,main,i18n}.js`, `public/app.css`.
 - **Tests:** `tests/unit/test-marking.test.ts` (5), `tests/integration/online-tests.test.ts` (8), the route coverage tests, journey 21, and the test pages in the accessibility audit.
+
+### Gradebook, My grades and the user guides (teacher and student portal, part 3 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
+
+- **Implemented** (`docs/CLASSROOM.md` §10):
+  - **Gradebook** (class page → Gradebook): one subject at a time, a column for each homework with marks and each published test (oldest first), a row for each student. Cells show the mark, or To mark, Returned, Missing, Working, or nothing yet. A test counts the best marked attempt. The average counts marked work only; missing work is counted on its own, not as zero. Any teacher of the class and the school's admins can open it.
+  - **CSV**: the same table in the member's language, formula-guarded, each download in the audit log. Not limited by plan: it is the school's own record.
+  - **My grades** (student portal → Grades): the student's own marks per class and subject, homework once returned and tests once shown, with the average. Runs in the student's row-level security context.
+  - **User guides**: a new chapter in English and Arabic, "Classes, homework, tests and grades", with 19 new screenshots in each language (81 per guide); the student portal and roles sections updated. Captured by the same script in both languages.
+- **Fixed while doing it:** "1 points" on test pages (now "1 point", and in Arabic درجة واحدة / درجتان / ٣ درجات); a test's subtitle said "due" for its closing time; full-page screenshots of scrolled pages drew the sticky top bar mid-page.
+- **Not done:** no weighting between homework and tests, term reports or grade scales; no parent accounts.
+- **Files:** `src/classroom/{gradebook,gradebook-routes}.ts`, `src/app.ts`, `public/js/views/{grades,classes,student,tests,student-tests,classroom-common}.js`, `public/js/{main,i18n}.js`, `public/app.css`, `tests/e2e/user-guide.spec.ts`, `docs/USER_GUIDE.md`, `docs/USER_GUIDE.ar.md`, `docs/user-guide/images{,-ar}/`.
+- **Tests:** `tests/integration/gradebook.test.ts` (3), journey 22, 6 more screens in the accessibility audit, and both guide scripts.
 
 ### Arabic user guide, and the Arabic interface fixes it led to · COMPLETE
 - **Implemented:** `docs/USER_GUIDE.ar.md`, the user guide in Arabic, with 62 screenshots of the Arabic interface (`docs/user-guide/images-ar/`). The demo school and its people have Arabic names, and the guide names every button as the interface shows it.
@@ -511,7 +523,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (281 unit/integration + 25 E2E passing: 21 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (284 unit/integration + 26 E2E passing: 22 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

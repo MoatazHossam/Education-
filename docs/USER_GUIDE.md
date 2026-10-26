@@ -5,13 +5,14 @@ and programmes of the Egyptian curriculum (Primary 1 to Secondary 3) its
 platform covers. The team keeps those choices together in named lists called
 **content scopes**. It adds notes, assigns books to colleagues with due dates,
 and carries each list forward when a new academic year's catalogue is
-published. A school can also give its students accounts, so each student sees
-the books chosen for their grade.
+published. A school can also give its students accounts, organize classes
+with their teachers, set daily homework and online tests, and keep a gradebook;
+each student sees their own work, marks and books.
 
 This guide walks through every part of the system, screen by screen, in the
 order a school meets them. It also covers the platform administrator's
 console. The whole interface works in English and Arabic (see
-[section 15](#15-arabic-and-phones)).
+[section 16](#16-arabic-and-phones)).
 
 > **About the screenshots.** They were taken from a demo school on a test
 > server. The people, school, emails and addresses are invented. Payments use
@@ -33,13 +34,14 @@ console. The whole interface works in English and Arabic (see
 9. [A new academic year: carrying a scope forward](#9-a-new-academic-year-carrying-a-scope-forward)
 10. [Billing](#10-billing)
 11. [Students and the student portal](#11-students-and-the-student-portal)
-12. [Organization settings: API keys, webhooks, support access](#12-organization-settings-api-keys-webhooks-support-access)
-13. [Audit log](#13-audit-log)
-14. [Your account](#14-your-account)
-15. [Arabic and phones](#15-arabic-and-phones)
-16. [Emails the system sends](#16-emails-the-system-sends)
-17. [Platform administration](#17-platform-administration)
-18. [Limits and things to know](#18-limits-and-things-to-know)
+12. [Classes, homework, tests and grades](#12-classes-homework-tests-and-grades)
+13. [Organization settings: API keys, webhooks, support access](#13-organization-settings-api-keys-webhooks-support-access)
+14. [Audit log](#14-audit-log)
+15. [Your account](#15-your-account)
+16. [Arabic and phones](#16-arabic-and-phones)
+17. [Emails the system sends](#17-emails-the-system-sends)
+18. [Platform administration](#18-platform-administration)
+19. [Limits and things to know](#19-limits-and-things-to-know)
 
 ---
 
@@ -61,7 +63,7 @@ integrations. Switch between **Monthly** and **Yearly** prices at the top.
 | Enterprise | contact sales | no limit | no limit | no limit | Priority support, 730-day audit log, invoicing |
 
 Prices are in Egyptian pounds; any tax is shown on the invoice. A platform
-administrator can change prices (section 17); changes apply to new invoices
+administrator can change prices (section 18); changes apply to new invoices
 only.
 
 ### Creating an account
@@ -99,7 +101,7 @@ Sign in with your email and password at `/login`.
 
   ![Choose a new password](user-guide/images/reset-password.png)
 
-- **Two-factor authentication.** If you turned it on (section 14), or your
+- **Two-factor authentication.** If you turned it on (section 15), or your
   organization requires it for owners and admins, the next page asks for the
   6-digit code from your authenticator app. If you lost your phone, use one
   of your recovery codes instead.
@@ -110,7 +112,7 @@ Sign in with your email and password at `/login`.
   (section 11).
 
 After several wrong passwords the account is locked for a while; a platform
-administrator can unlock it (section 17).
+administrator can unlock it (section 18).
 
 ## 3. Roles: who can do what
 
@@ -124,9 +126,11 @@ Everyone in an organization has one role. The **Members** page lists them.
 | **Viewer** | Read and export scopes, notes and assignments. Cannot change anything. |
 
 The menu shows only what your role can use. Owners and admins see
-**Students** (when the student portal is on), **Billing**, **Settings** and
-**Audit log**; editors and viewers see **Picker**, **Scopes**,
-**My assignments** and **Members**.
+**Students** and **Classes** (when the student portal is on), **Billing**,
+**Settings** and **Audit log**; editors and viewers see **Picker**, **Scopes**,
+**My assignments** and **Members**. Whatever their role, a member added to a
+class as a teacher also sees **Classes** with the classes they teach
+([section 12](#12-classes-homework-tests-and-grades)).
 
 ## 4. The picker: choosing books
 
@@ -344,7 +348,7 @@ and accepts.
 
 ## 9. A new academic year: carrying a scope forward
 
-When the platform publishes the next year's catalogue (section 17), each
+When the platform publishes the next year's catalogue (section 18), each
 scope still on the old year shows a banner in the picker. Editors also get a
 notification and an email.
 
@@ -460,16 +464,200 @@ their password.
 
 ![Student sign-in: school code, username and password](user-guide/images/student-sign-in.png)
 
-They see **My curriculum**: the books of their grade, grouped like the picker,
-with the kind of each book. They can change their password and switch to
-Arabic. Students cannot change the list; it says to ask a teacher if
-something is missing.
+The portal opens on **Today**: tests open now, homework to do and missed, and
+work returned this week. **Homework**, **Tests** and **Grades** are described in
+[section 12](#12-classes-homework-tests-and-grades). **My books** (**My
+curriculum**) shows the books of their grade, grouped like the picker, with the
+kind of each book. Students can change their password and switch to Arabic.
+They cannot change the list of books; it says to ask a teacher if something is
+missing.
 
-![Omar's curriculum: the books Nile Valley Language School chose for Primary 1](user-guide/images/student-portal.png)
+![Omar's books (My books): the books Nile Valley Language School chose for Primary 1](user-guide/images/student-portal.png)
 
 ![The same page in Arabic, right to left](user-guide/images/student-portal-arabic.png)
 
-## 12. Organization settings: API keys, webhooks, support access
+## 12. Classes, homework, tests and grades
+
+When student accounts are on, owners and admins see **Classes** in the menu. A
+class has a grade, students and teachers. Its teachers set daily homework and
+online tests, and the marks come together in a gradebook.
+
+- A **teacher** is any member added to a class for a subject. Teachers see
+  **My classes**, only the classes they teach, and set and mark work only in
+  their own subjects. Other teachers of the class can look but not change.
+- Owners and admins see and manage every class.
+- No mark is given by AI: every mark comes from a teacher, or from a test's
+  answer key by fixed rules.
+
+### Setting up a class (owner or admin)
+
+**Classes → New class**: a name, the grade and the **Curriculum**, the scope
+whose books the class uses.
+
+![New class: 1A, Primary 1, curriculum Primary 1–3 core books](user-guide/images/class-new-dialog.png)
+
+On the class page:
+
+- **Choose students** lists the students of the class's grade first.
+- **Add teacher** gives a member a subject in this class. A member can teach
+  several subjects, and a subject can have several teachers.
+
+![Add a teacher to 1A: Karim Adel (Editor) for Arabic Language](user-guide/images/class-teacher-dialog.png)
+
+The class page lists its homework and its tests, the students and the
+teachers. **Gradebook** opens the class's marks. **Edit class**, **Archive**
+and **Delete** are for owners and admins.
+
+![Class 1A as Karim sees it: one homework (1 of 3 handed in), the closed Unit 2 quiz (2 of 3 submitted), three students, and Karim teaching Arabic Language](user-guide/images/class.png)
+
+### Homework
+
+**Set homework** asks for:
+
+- the subject, a title and instructions;
+- books from the class's curriculum;
+- the due time, and **Show it to students later** to schedule it;
+- the **Marks** (leave empty for homework without marks);
+- whether work handed in after the due time is accepted (it is marked late).
+
+Worksheets (photos or PDFs) can be attached on the homework's page. The
+class's students get a notification in their own language.
+
+![Homework for 1A: Read the story "The Little Seed", with the Ministry textbook, due the next morning, 10 marks](user-guide/images/homework-dialog.png)
+
+Students see it on **Today** and under **Homework**. They write an answer,
+attach photos or a PDF, and **Hand in**. Until the work is marked, **Take back**
+lets them change it.
+
+![Omar's Today: the Unit 2 quiz open now, and the homework to do](user-guide/images/student-today.png)
+
+![The homework with Omar's answer, before he hands it in](user-guide/images/student-homework.png)
+
+On the homework's page, the teacher sees who handed in, and which work is late
+or missing.
+
+- **Open** a student's work to give a mark and comments, then **Return to
+  student**.
+- **Return marked work** returns all marked work at once.
+- Work done on paper can be marked the same way, without a hand-in.
+
+Students see a mark only once it is returned.
+
+![The homework's page: details, the book, and Students' work, 1 of 3 handed in](user-guide/images/homework-roster.png)
+
+![Work of Omar Khaled: his answer, 9 out of 10 and a comment](user-guide/images/homework-mark-dialog.png)
+
+### Online tests and exams
+
+**New test** on the class page asks for:
+
+- the subject, a title and instructions, and quiz or exam;
+- when it opens and closes;
+- an optional time limit, counted from when each student starts;
+- the number of attempts;
+- when students see their results: as soon as they submit, when the test
+  closes, or when you release them.
+
+Rules you can turn on:
+
+- questions, or choices, in a different order for each student;
+- a start code that you give in the room;
+- each student continues only on the device where they started;
+- show the correct answers with the results, after the test closes.
+
+![New test for 1A: Unit 2 quiz, 20 minutes, one attempt, results when the test closes, a start code](user-guide/images/test-new-dialog.png)
+
+**Add question** offers five kinds:
+
+- **One correct choice** and **Several correct choices** (2 to 10 choices);
+- **True or false**;
+- **Short answer**: list every accepted answer, one per line. Capitals,
+  spaces, Arabic diacritics and letter forms (أ/ا, ى/ي, ة/ه) do not matter.
+- **Written answer**, which the teacher marks.
+
+Each question has its own points. With several correct choices, wrong choices
+take marks away, never below zero.
+
+![Add question: one correct choice among ب, أ and ت; B is correct; 2 points](user-guide/images/test-question-dialog.png)
+
+The test page shows the settings, the start code, and the questions with their
+answers. **Publish** tells the class's students.
+
+Once a student has started, the questions and the timing rules can no longer
+change. You can still change the title, the results settings and the closing
+time; a later closing time also gives students who are working more time.
+
+![Unit 2 quiz as a draft: settings, the start code and three questions (6 points)](user-guide/images/test-questions.png)
+
+Students start from **Today** or **Tests**. The test's page says what their
+teacher can see, and asks for the start code if the test has one.
+
+![Unit 2 quiz for Omar: when it is open, 20 minutes, one attempt, and the start code](user-guide/images/student-test-start.png)
+
+The server keeps the time, and answers save as students go. When the time is
+up, the answers are submitted automatically.
+
+![Omar taking the test: time left, saved, three questions](user-guide/images/student-test.png)
+
+**Live monitor** updates every 5 seconds. It shows who has not started, who is
+working (online or not, answers given, time left) and who submitted, with what
+the page noticed:
+
+- leaving the test page, and for how long;
+- pasting text (only how much was pasted, never the text);
+- losing the connection;
+- opening the test on another device.
+
+For one student: **Extra time**, **Submit now**, **Allow this device** (when
+each student keeps to one device), **Allow another attempt**, and **Activity**,
+the full list of what happened. For everyone: **Close the test now** and **New
+code**.
+
+The monitor sees only what a web page can: no camera, microphone or screen
+recording. What it notices is a hint, not proof.
+
+![Live monitor: Omar and Hana working, 3 of 3 answered; Adam not started](user-guide/images/test-monitor.png)
+
+**Results** lists each student's attempts and best mark. Written answers show
+**To mark**: open the attempt, give a mark and comments (you can also change an
+automatic mark), and **Save mark**. With "When I release them", **Release
+results** shows the marks to students and tells them.
+
+![Results: Hana's and Omar's attempts to mark, Adam not started](user-guide/images/test-results.png)
+
+![Omar's attempt: two answers marked automatically, the written answer marked 2.5 of 3 with a comment](user-guide/images/test-attempt.png)
+
+Students see their mark when the results setting allows, with your comments,
+and the correct answers if you chose to show them.
+
+![Omar's result: 5.5 / 6 and the comment on question 3](user-guide/images/student-test-result.png)
+
+### The gradebook and My grades
+
+**Gradebook** on the class page shows every student's marks in one subject (the
+**Subject** list switches). There is a column for each homework with marks and
+each published test, oldest first.
+
+- A test counts each student's best marked attempt.
+- **Average** counts marked work only: points out of full marks.
+- **Missing** counts homework not handed in by its due time, and closed tests
+  not taken. It is shown on its own, not as zero.
+- **Download CSV** saves the table for a spreadsheet, in your language. The
+  download is recorded in the audit log.
+
+![Gradebook for Arabic Language: Omar 5.5 and 9 (90.6%), Hana 3 (50%), Adam missing the test](user-guide/images/gradebook.png)
+
+Students see their own marks under **Grades**, by class and subject. A
+homework mark appears once it is returned, and a test mark once its results are
+shown.
+
+![Omar's grades: the Unit 2 quiz 5.5 / 6, the homework 9 / 10, average 90.6%](user-guide/images/student-grades.png)
+
+> **Before real use.** Classes, homework, tests and marks hold children's
+> personal data. The school needs legal advice under Egypt's data protection
+> law before it enters real students' work and marks.
+
+## 13. Organization settings: API keys, webhooks, support access
 
 **Settings** (owners and admins):
 
@@ -542,21 +730,22 @@ view by support is recorded in your audit log. **Revoke** ends it early.
 scopes, members, invitations, API keys and billing records. You confirm it by
 typing the organization's name and your password.
 
-## 13. Audit log
+## 14. Audit log
 
 **Audit log** (owners and admins) is the organization's security and change
 history: sign-ins, scope changes, members, invitations, billing, API keys,
-webhooks, support access, students. The plan decides how long entries are
+webhooks, support access, students, classes, homework, tests and gradebook
+downloads. The plan decides how long entries are
 kept (7 to 730 days). **Filter** by the start of an action, such as
 `scope.`, `member.` or `billing`. **Older entries** loads more.
 
-![Audit log: support access granted, a scope changed, a webhook tested and created, an API key created, a student sign-in](user-guide/images/audit-log.png)
+![Audit log: support access granted, a scope changed, a webhook tested and created, an API key created, then Karim's test marks, the closed test and returned homework, and a student sign-in](user-guide/images/audit-log.png)
 
 **Who** shows the person's email. Students have no email, so a student's
 sign-in shows "user" there and the username under **Details**. Wide entries
 scroll sideways inside the table.
 
-## 14. Your account
+## 15. Your account
 
 Click your name in the top bar.
 
@@ -584,7 +773,7 @@ Click your name in the top bar.
   sessions, notifications and recent activity) and **Delete my account**.
   Transfer or delete the organizations you own first.
 
-## 15. Arabic and phones
+## 16. Arabic and phones
 
 **العربية** in the top bar switches the whole interface to Arabic, laid out
 right to left; **English** switches back. Your choice is saved in your
@@ -601,7 +790,7 @@ the selection bar stays at the bottom.
 
 ![The picker on a phone: Primary 1 with chosen books, notes marked ✎](user-guide/images/picker-phone.png)
 
-## 16. Emails the system sends
+## 17. Emails the system sends
 
 All emails are plain text, in the person's language. Links to other people's
 data always need signing in. Examples from the demo (links shortened):
@@ -704,7 +893,7 @@ The system also sends:
 - renewal invoices, failed payments and overdue renewals;
 - the end of a subscription.
 
-## 17. Platform administration
+## 18. Platform administration
 
 Platform administrators run the service. Their menu replaces the organization
 menu. They must sign in with two-factor authentication. They **do not**
@@ -823,7 +1012,7 @@ failed), for checking payments.
 
 ![Payment provider webhooks: one processed payment.succeeded from the sandbox](user-guide/images/admin-events.png)
 
-## 18. Limits and things to know
+## 19. Limits and things to know
 
 - **Plan limits** apply as you work. When a limit is reached (seats, scopes,
   exports, students, API requests), the message says which limit and, for the
@@ -834,7 +1023,11 @@ failed), for checking payments.
 - **Payments**: this guide's screenshots use the test-mode checkout. Live
   payments go through Paymob once the account's keys are configured.
 - **Students**: the portal is turned on per school by a platform
-  administrator.
+  administrator. Classes, homework, online tests and the gradebook come with
+  it, at no extra price.
+- **Classroom files**: photos and PDFs only, up to 5 MB each and 5 per
+  piece of work, within the school's storage limit (1 GB unless the platform
+  sets more). A test has at most 100 questions.
 - **Integrations**: the read API and webhooks are part of the Professional
   plan and above. Single sign-on (Google, Microsoft) is not available yet.
 
@@ -846,8 +1039,8 @@ The screenshots are produced by `tests/e2e/user-guide.spec.ts`, using
 `npm run docs:screenshots` (config `playwright.guide.config.ts`). It starts the
 same test server and fresh database as the end-to-end tests. It then builds
 the demo school through the interface, as its people would: sign-up, scopes,
-members, notes, a new catalogue year, payment, students, settings and the
-admin console. Each screen is saved to `docs/user-guide/images/`. Run it after
+members, notes, a new catalogue year, payment, students, a class with homework,
+a test and the gradebook, settings and the admin console. Each screen is saved to `docs/user-guide/images/`. Run it after
 changing the interface, and check that the pictures still match the text. The
 run fails if a step stops working, and also if a dialog's content is wider
 than the dialog.

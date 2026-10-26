@@ -5,7 +5,7 @@ import { get, post, put } from '../api.js';
 import { append, confirmDialog, errorMessage, fmtDate, fmtNum, h, link, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
-import { subjectName } from './classroom-common.js';
+import { pointsText, subjectName } from './classroom-common.js';
 import { pageHead } from './shell.js';
 import { frame } from './student.js';
 import { answerText, clock } from './tests.js';
@@ -177,7 +177,7 @@ export async function takeView(ctx) {
 
   const questions = h('ol', { class: 'questions take' }, data.questions.map((q, i) => h('li', {},
     h('fieldset', { class: 'question', 'aria-describedby': `p-${q.id}` },
-      h('legend', {}, t('ptests.questionN', { n: fmtNum(i + 1), total: fmtNum(data.questions.length) }), ' · ', t('tests.pointsN', { n: fmtNum(q.points) })),
+      h('legend', {}, t('ptests.questionN', { n: fmtNum(i + 1), total: fmtNum(data.questions.length) }), ' · ', pointsText(q.points)),
       h('div', { class: 'prompt', id: `p-${q.id}`, dir: 'auto' }, q.prompt),
       q.type === 'multiple' ? h('p', { class: 'muted' }, t('ptests.chooseAll')) : null,
       questionInput(q, answers[q.id], changed(q.id))))));

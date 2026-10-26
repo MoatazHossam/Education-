@@ -1045,3 +1045,39 @@ test('online test: the teacher writes and publishes it, watches it live, the stu
   await expect(student.getByText('Good. Mention the annual flood too.')).toBeVisible();
   await studentCtx.close();
 });
+
+test('gradebook: the teacher sees the class’s marks for a subject and downloads them; the student sees their own grades', async ({ page, browser }) => {
+  // Journeys 20 and 21: in 7A, Laila has homework marked 9 / 10 and a test marked 5.5 / 6; Omar did not take the test.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('link', { name: 'Gradebook' }).click();
+  await expect(page.getByRole('heading', { name: 'Gradebook', level: 1 })).toBeVisible();
+  await expect(page.getByLabel('Subject')).toHaveValue(delta.subject);
+  const laila = page.locator('table.gradebook tbody tr', { hasText: 'Laila Hassan' });
+  await expect(laila).toContainText('90.6%');
+  const cells = await laila.locator('td').allTextContents();
+  expect([cells.slice(0, 2).sort(), cells[2]]).toEqual([['5.5', '9'], '90.6%']);
+  const omar = page.locator('table.gradebook tbody tr', { hasText: 'Omar Adel' });
+  await expect(omar).toContainText('Missing');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download CSV' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^gradebook-7A-.+\.csv$/);
+  const csv = parseCsv(await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
+  expect(csv[0]![0]).toBe('Student');
+  expect(csv.find((r) => r[0] === 'Laila Hassan')!.slice(-2)).toEqual(['90.6', '0']);
+
+  // Laila's own grades.
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto(`/student-login?school=${delta.schoolCode}`);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill(delta.lailaPassword);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await student.getByRole('link', { name: 'Grades' }).click();
+  await expect(student.getByRole('heading', { name: 'My grades', level: 1 })).toBeVisible();
+  const card = student.locator('section.card', { has: student.getByRole('heading', { name: `${delta.subject} · 7A` }) });
+  await expect(card).toContainText('Average: 90.6%');
+  await expect(card.locator('tbody tr', { hasText: 'Read chapter 1' })).toContainText('9 / 10');
+  await expect(card.locator('tbody tr', { hasText: 'Chapter 1 quiz' })).toContainText('5.5 / 6');
+  await studentCtx.close();
+});

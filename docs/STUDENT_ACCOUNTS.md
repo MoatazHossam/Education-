@@ -13,7 +13,7 @@ provider (`docs/wise-integration/13_PROJECT_STATUS.md`).
 | Platform administrator | Turn student accounts on for a school and set how many (`max_students` limit override on the subscription). Sees only the number of student accounts per school |
 | School owner and admins | Add a student, import a roster (CSV), set name, grade and curriculum (one of the school's scopes), issue a new password, remove a student. Page: **Students** (`/org/:orgId/students`) |
 | School editors and viewers | Nothing (403) |
-| Student | Sign in at `/student-login` with the school code, username and password; **Today** (`/student`), **Homework** (classes and homework, `docs/CLASSROOM.md`) and **Tests** (online tests and exams, `docs/ONLINE_TESTS.md`); **My books** (`/student/books`, "My curriculum"): the books of their grade in the assigned scope; notifications; switch English/Arabic; change their password; sign out |
+| Student | Sign in at `/student-login` with the school code, username and password; **Today** (`/student`), **Homework** (classes and homework, `docs/CLASSROOM.md`) **Tests** (online tests and exams, `docs/ONLINE_TESTS.md`) and **Grades** (their own marks, `docs/CLASSROOM.md` §10); **My books** (`/student/books`, "My curriculum"): the books of their grade in the assigned scope; notifications; switch English/Arabic; change their password; sign out |
 
 A student sees no other student, no staff page, no organization settings and no other school.
 

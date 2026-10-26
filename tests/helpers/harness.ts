@@ -226,6 +226,8 @@ export const STUDENT_ROUTES = [
   'GET /api/student/tests', 'GET /api/student/tests/:testId', 'POST /api/student/tests/:testId/start', 'GET /api/student/attempts/:attemptId',
   'PUT /api/student/attempts/:attemptId/answers/:questionId', 'POST /api/student/attempts/:attemptId/heartbeat', 'POST /api/student/attempts/:attemptId/events',
   'POST /api/student/attempts/:attemptId/submit', 'GET /api/student/attempts/:attemptId/result',
+  // Gradebook (docs/CLASSROOM.md §10)
+  'GET /api/student/grades',
 ];
 
 /**

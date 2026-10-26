@@ -215,8 +215,8 @@ events are deleted with the test, the class, or the student.
 
 ## 12. Not done yet
 
-- **Gradebook** per class and subject (homework and tests, best attempt), CSV export, and a "My grades"
-  page for students; the user guides get these pages with it.
+- The **gradebook** (docs/CLASSROOM.md §10) shows each student's best marked attempt next to their
+  homework; the user guides (English and Arabic) describe these pages.
 - No question bank or import, no images or formulas in questions, no partial credit on short answers.
 - No parent accounts, email or SMS to students.
 

@@ -56,6 +56,8 @@ const field = (key: string) => new RegExp(`^${escapeRe(L(key))}`);
 const grade = (n: number, lang = LANG) => `${word(lang, 'picker.grade')} ${n}`;
 /** The language button in the top bar or on a signed-out page switches to the other language. */
 const switchLabel = (to: 'en' | 'ar') => (to === 'ar' ? 'العربية' : 'English');
+/** A number as the interface writes it (Arabic-Indic digits in Arabic). */
+const fmt = (n: number) => new Intl.NumberFormat(LANG === 'ar' ? 'ar-EG' : 'en-GB').format(n);
 
 // ---------------------------------------------------------------- the demo school
 const DEMO = {
@@ -66,7 +68,11 @@ const DEMO = {
     note1: 'Order 120 copies before September; check the new cover.', note2: 'Waiting for the 2027 edition from the publisher.',
     decree: 'Ministerial Decree 123/2026', publisherSource: 'Publisher catalogue 2027', nextLabel: 'Egypt K-12 curriculum — academic year 2027/2028',
     keyName: 'Content pipeline', hookDescription: 'Lesson platform: sync selected books', supportReason: 'Ticket 2041: the Grade 2 export looks wrong',
-    omar: 'Omar Khaled', laila: 'Laila Mostafa', youssef: 'Youssef Ali', nour: 'Nour Ahmed',
+    omar: 'Omar Khaled', laila: 'Laila Mostafa', youssef: 'Youssef Ali', nour: 'Nour Ahmed', hana: 'Hana Samir', adam: 'Adam Tarek',
+    className: '1A', hwTitle: 'Read the story “The Little Seed”', hwInstructions: 'Read pages 12 to 15 and answer the three questions at the end.',
+    omarAnswer: '1) A seed. 2) Water and sun. 3) It grew into a tree.', hwFeedback: 'Very good. Write full sentences next time.',
+    testTitle: 'Unit 2 quiz', q1: 'Which letter comes first in the Arabic alphabet?', q2: 'Write the Arabic word for “small”.', q3: 'Write two sentences about your family.',
+    omarQ3: 'My family has five people. We live in Giza.', hanaQ3: 'I have a brother. He is seven.', testFeedback: 'Good sentences. Next time, say what each person does.',
   },
   ar: {
     school: 'مدرسة وادي النيل للغات', mona: 'منى حسن', karim: 'كريم عادل', salma: 'سلمى فتحي', support: 'دعم نطاق المناهج',
@@ -75,7 +81,11 @@ const DEMO = {
     note1: 'اطلب 120 نسخة قبل سبتمبر، وراجع الغلاف الجديد.', note2: 'في انتظار طبعة 2027 من الناشر.',
     decree: 'القرار الوزاري 123/2026', publisherSource: 'كتالوج الناشر 2027', nextLabel: 'مناهج مصر من الروضة حتى الثانوي — العام الدراسي 2027/2028',
     keyName: 'خط إنتاج المحتوى', hookDescription: 'منصة الدروس: مزامنة الكتب المختارة', supportReason: 'تذكرة 2041: تصدير الصف الثاني يبدو خاطئًا',
-    omar: 'عمر خالد', laila: 'ليلى مصطفى', youssef: 'يوسف علي', nour: 'نور أحمد',
+    omar: 'عمر خالد', laila: 'ليلى مصطفى', youssef: 'يوسف علي', nour: 'نور أحمد', hana: 'هنا سمير', adam: 'آدم طارق',
+    className: 'الأول أ', hwTitle: 'اقرأ قصة «البذرة الصغيرة»', hwInstructions: 'اقرأ الصفحات من 12 إلى 15 وأجب عن الأسئلة الثلاثة في آخرها.',
+    omarAnswer: '1) بذرة. 2) الماء والشمس. 3) صارت شجرة.', hwFeedback: 'أحسنت. اكتب جملًا كاملة في المرة القادمة.',
+    testTitle: 'اختبار الوحدة الثانية', q1: 'ما أول حرف في الحروف الهجائية؟', q2: 'ما عكس كلمة «كبير»؟', q3: 'اكتب جملتين عن أسرتك.',
+    omarQ3: 'أسرتي خمسة أفراد. نسكن في الجيزة.', hanaQ3: 'لي أخ واحد. عمره سبع سنوات.', testFeedback: 'جمل جيدة. في المرة القادمة اذكر عمل كل فرد.',
   },
 }[LANG];
 
@@ -107,8 +117,21 @@ async function shot(page: Page, name: string, el?: Locator, { keepToasts = false
     const y = Math.max(0, box.y - pad);
     await page.screenshot({ path, clip: { x, y, width: Math.min(view.width, box.x + box.width + pad) - x, height: Math.min(view.height, box.y + box.height + pad) - y } });
   } else if (el) await el.screenshot({ path });
-  else await page.screenshot({ path, fullPage });
+  else {
+    // A sticky top bar would be drawn where the page was scrolled to.
+    if (fullPage) await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path, fullPage });
+  }
   taken.push(name);
+}
+
+/** A dialog taller than the window, whole: the window grows for the shot and then returns to its size. */
+async function tallDialogShot(page: Page, name: string) {
+  const size = page.viewportSize()!;
+  await page.setViewportSize({ width: size.width, height: 1500 });
+  await page.getByRole('dialog').evaluate((d) => { for (const el of [d, ...d.querySelectorAll('*')]) el.scrollTop = 0; });
+  await shot(page, name, page.getByRole('dialog'));
+  await page.setViewportSize(size);
 }
 
 /** The card of a signed-out page (sign-in, invitation, checkout), with some of the page around it. */
@@ -504,6 +527,185 @@ test('user guide screenshots', async ({ browser }) => {
   await student.locator('.topbar').getByRole('button', { name: switchLabel(OTHER), exact: true }).click();
   await expect(student.locator('html')).toHaveAttribute('dir', OTHER === 'ar' ? 'rtl' : 'ltr');
   await shot(student, `student-portal-${OTHER === 'ar' ? 'arabic' : 'english'}`);
+
+  // ================================================================ classes, homework, online tests and the gradebook
+  // Docs/CLASSROOM.md and docs/ONLINE_TESTS.md. Two more Grade 1 students join Omar in class 1A; Karim teaches
+  // Arabic Language there, whose Grade 1 books are in the school's scope.
+  await student.locator('.topbar').getByRole('button', { name: switchLabel(LANG), exact: true }).click();
+  await expect(student.locator('html')).toHaveAttribute('dir', LANG === 'ar' ? 'rtl' : 'ltr');
+  const passwords: Record<string, string> = {};
+  for (const [username, name] of [['hana.samir', DEMO.hana], ['adam.tarek', DEMO.adam]] as const) {
+    await mona.getByRole('button', { name: L('students.add') }).click();
+    await dialog(mona).getByLabel(field('students.username')).fill(username);
+    await dialog(mona).getByLabel(field('students.name')).fill(name);
+    await dialog(mona).getByLabel(field('picker.grade')).selectOption('1');
+    await dialog(mona).getByLabel(field('students.curriculum')).selectOption({ label: `${DEMO.scope} (2026/2027)` });
+    await dialog(mona).getByRole('button', { name: L('students.add') }).click();
+    await expect(dialog(mona)).toContainText(L('students.passwordsTitle'));
+    passwords[username] = (await dialog(mona).locator('.cred').textContent())!.trim();
+    await dialog(mona).getByRole('button', { name: L('common.done') }).click();
+  }
+  const [arabic] = await ownerQuery(
+    `SELECT DISTINCT s.name_en, s.name_ar, s.sort_order FROM scope_items si JOIN scopes sc ON sc.id = si.scope_id JOIN catalog_materials m ON m.id = si.material_id
+     JOIN catalog_subjects s ON s.id = m.subject_id WHERE sc.org_id = $1 AND sc.name = $2 AND s.grade = 1 AND s.name_en = 'Arabic Language' ORDER BY s.sort_order`,
+    [orgId, DEMO.scope],
+  );
+  const subjectLabel = (LANG === 'ar' ? arabic.name_ar : arabic.name_en) as string;
+
+  // Mona creates the class, chooses its students and makes Karim its Arabic teacher.
+  await mona.goto(`/org/${orgId}/classes`);
+  await expect(mona.getByRole('heading', { name: L('classes.title'), level: 1 })).toBeVisible();
+  await mona.getByRole('button', { name: L('classes.new') }).click();
+  await dialog(mona).getByLabel(field('classes.name')).fill(DEMO.className);
+  await dialog(mona).getByLabel(field('picker.grade')).selectOption('1');
+  await dialog(mona).getByLabel(field('classes.curriculum')).selectOption({ label: `${DEMO.scope} (2026/2027)` });
+  await shot(mona, 'class-new-dialog', dialog(mona));
+  await dialog(mona).getByRole('button', { name: L('classes.create') }).click();
+  await expect(mona.getByRole('heading', { name: DEMO.className, level: 1 })).toBeVisible();
+  const classPath = new URL(mona.url()).pathname;
+  await mona.getByRole('button', { name: L('classes.chooseStudentsBtn') }).click();
+  for (const name of [DEMO.omar, DEMO.hana, DEMO.adam]) await dialog(mona).getByLabel(name).check();
+  await dialog(mona).getByRole('button', { name: L('common.save') }).click();
+  await expect(mona.getByRole('heading', { name: L('classes.studentsCount', { n: 3 }) })).toBeVisible();
+  await mona.getByRole('button', { name: L('classes.addTeacher') }).click();
+  await dialog(mona).getByLabel(L('classes.teacher')).selectOption({ label: `${DEMO.karim} (${L('role.editor')})` });
+  await dialog(mona).getByLabel(L('classes.subject'), { exact: true }).selectOption({ label: subjectLabel });
+  await shot(mona, 'class-teacher-dialog', dialog(mona));
+  await dialog(mona).getByRole('button', { name: L('classes.addTeacher') }).click();
+  await expect(dialog(mona)).toHaveCount(0);
+
+  // Karim sets homework with one of the class's books, then writes a test with a start code.
+  await karim.goto(classPath);
+  await karim.getByRole('button', { name: L('hw.set') }).click();
+  await dialog(karim).getByLabel(field('hw.titleField')).fill(DEMO.hwTitle);
+  await dialog(karim).getByLabel(field('hw.instructions')).fill(DEMO.hwInstructions);
+  await dialog(karim).getByRole('group', { name: L('hw.books') }).getByRole('checkbox').first().check();
+  await dialog(karim).getByLabel(field('hw.maxPoints')).fill('10');
+  await shot(karim, 'homework-dialog', dialog(karim));
+  await dialog(karim).getByRole('button', { name: L('hw.set') }).click();
+  await expect(karim.getByText(L('hw.setDone'))).toBeVisible();
+  await karim.getByRole('button', { name: L('tests.new') }).click();
+  await dialog(karim).getByLabel(field('hw.titleField')).fill(DEMO.testTitle);
+  await dialog(karim).getByLabel(field('tests.duration')).fill('20');
+  await dialog(karim).getByLabel(L('tests.requireCode')).check();
+  await tallDialogShot(karim, 'test-new-dialog');
+  await dialog(karim).getByRole('button', { name: L('tests.create') }).click();
+  await expect(karim.getByRole('heading', { name: DEMO.testTitle, level: 1 })).toBeVisible();
+  const testPath = new URL(karim.url()).pathname;
+  const startCode = (await karim.locator('.code-big').textContent())!.trim();
+  await karim.getByRole('button', { name: L('tests.addQuestion') }).click();
+  await dialog(karim).getByLabel(L('tests.prompt'), { exact: true }).fill(DEMO.q1);
+  for (const [i, letter] of ['ب', 'أ', 'ت'].entries()) await dialog(karim).getByLabel(L('tests.choice', { n: 'ABC'[i]! }), { exact: true }).fill(letter);
+  await dialog(karim).getByLabel(L('tests.correctFor', { n: 'B' })).check();
+  await dialog(karim).getByLabel(field('tests.points')).fill('2');
+  await shot(karim, 'test-question-dialog', dialog(karim));
+  await dialog(karim).getByRole('button', { name: L('common.save') }).click();
+  await karim.getByRole('button', { name: L('tests.addQuestion') }).click();
+  await dialog(karim).getByLabel(field('tests.typeLabel')).selectOption('short');
+  await dialog(karim).getByLabel(L('tests.prompt'), { exact: true }).fill(DEMO.q2);
+  await dialog(karim).getByLabel(field('tests.accepted')).fill('صغير\nصغيرة');
+  await dialog(karim).getByRole('button', { name: L('common.save') }).click();
+  await karim.getByRole('button', { name: L('tests.addQuestion') }).click();
+  await dialog(karim).getByLabel(field('tests.typeLabel')).selectOption('essay');
+  await dialog(karim).getByLabel(L('tests.prompt'), { exact: true }).fill(DEMO.q3);
+  await dialog(karim).getByLabel(field('tests.points')).fill('3');
+  await dialog(karim).getByRole('button', { name: L('common.save') }).click();
+  await expect(karim.locator('ol.questions > li')).toHaveCount(3);
+  await shot(karim, 'test-questions', undefined, { fullPage: true });
+  await karim.getByRole('button', { name: L('tests.publish') }).click();
+  await dialog(karim).getByRole('button', { name: L('tests.publish') }).click();
+  await expect(karim.getByText(L('tests.published'))).toBeVisible();
+
+  // Omar: Today lists the homework and the open test. He hands in the homework, then takes the test.
+  await student.goto('/student');
+  await expect(student.getByRole('heading', { name: L('portal.testsOpen') })).toBeVisible();
+  await shot(student, 'student-today');
+  await student.getByRole('link', { name: DEMO.hwTitle }).click();
+  await student.getByLabel(L('portal.answer')).fill(DEMO.omarAnswer);
+  await shot(student, 'student-homework', undefined, { fullPage: true });
+  await student.getByRole('button', { name: L('portal.handIn') }).click();
+  await expect(student.getByText(like('portal.handedInAt'))).toBeVisible();
+  await student.goto('/student');
+  await student.getByRole('link', { name: L('ptests.startTest', { title: DEMO.testTitle }) }).click();
+  await student.getByLabel(L('tests.code')).fill(startCode);
+  await shot(student, 'student-test-start');
+  await student.getByRole('button', { name: L('ptests.start') }).click();
+  await dialog(student).getByRole('button', { name: L('ptests.start') }).click();
+  await expect(student.getByRole('timer')).toBeVisible();
+  await student.getByLabel('أ', { exact: true }).check();
+  await student.getByLabel(L('ptests.yourAnswer')).first().fill('صغير');
+  await student.getByLabel(L('ptests.yourAnswer')).nth(1).fill(DEMO.omarQ3);
+  await expect(student.getByText(like('ptests.savedAt'))).toBeVisible();
+  await shot(student, 'student-test', undefined, { fullPage: true });
+
+  // Hana takes the test too, with one wrong answer; Adam does not start.
+  const hana = await newPage(browser);
+  await hana.goto(`/student-login?school=${schoolCode}`);
+  await hana.getByLabel(field('student.username')).fill('hana.samir');
+  await hana.getByLabel(field('auth.password')).fill(passwords['hana.samir']!);
+  await hana.getByRole('button', { name: L('auth.signIn') }).click();
+  await hana.getByRole('link', { name: L('ptests.startTest', { title: DEMO.testTitle }) }).click();
+  await hana.getByLabel(L('tests.code')).fill(startCode);
+  await hana.getByRole('button', { name: L('ptests.start') }).click();
+  await dialog(hana).getByRole('button', { name: L('ptests.start') }).click();
+  await hana.getByLabel('ب', { exact: true }).check();
+  await hana.getByLabel(L('ptests.yourAnswer')).first().fill('صغير');
+  await hana.getByLabel(L('ptests.yourAnswer')).nth(1).fill(DEMO.hanaQ3);
+  await expect(hana.getByText(like('ptests.savedAt'))).toBeVisible();
+
+  // Karim watches: Omar and Hana working, Adam not started.
+  await karim.goto(`${testPath}/monitor`);
+  await expect(karim.locator('table.data tbody tr', { hasText: DEMO.hana })).toContainText(L('tests.progress', { n: fmt(3), total: fmt(3) }), { timeout: 15_000 });
+  await shot(karim, 'test-monitor');
+  for (const p of [student, hana]) {
+    await p.getByRole('button', { name: L('ptests.submit') }).click();
+    await dialog(p).getByRole('button', { name: L('ptests.submit') }).click();
+    await expect(p.getByText(L('ptests.resultsLater'))).toBeVisible();
+  }
+
+  // Karim marks Omar's homework, closes the test and marks the written answers.
+  await karim.goto(classPath);
+  await karim.getByRole('link', { name: DEMO.hwTitle }).click();
+  await expect(karim.locator('table.data tbody tr', { hasText: DEMO.omar })).toContainText(L('hw.status.submitted'));
+  await shot(karim, 'homework-roster', undefined, { fullPage: true });
+  await karim.getByRole('button', { name: L('hw.openFor', { name: DEMO.omar }) }).click();
+  await dialog(karim).getByLabel(L('hw.markOutOf', { max: 10 })).fill('9');
+  await dialog(karim).getByLabel(L('hw.feedback')).fill(DEMO.hwFeedback);
+  await shot(karim, 'homework-mark-dialog', dialog(karim));
+  await dialog(karim).getByRole('button', { name: L('hw.return') }).click();
+  await expect(karim.getByText(L('hw.returnedToast', { name: DEMO.omar }))).toBeVisible();
+  await karim.goto(`${testPath}/monitor`);
+  await karim.getByRole('button', { name: L('tests.closeNow') }).click();
+  await dialog(karim).getByRole('button', { name: L('tests.closeNow') }).click();
+  await expect(karim.locator('.page-head .pill')).toHaveText(L('tests.phase.closed'));
+  await karim.goto(`${testPath}/results`);
+  await expect(karim.locator('table.data tbody tr', { hasText: DEMO.omar })).toContainText(L('tests.toMark'));
+  await shot(karim, 'test-results');
+  for (const [name, points, feedback] of [[DEMO.hana, '2', ''], [DEMO.omar, '2.5', DEMO.testFeedback]] as const) {
+    await karim.goto(`${testPath}/results`);
+    await karim.getByRole('link', { name: L('tests.attemptOf', { n: 1, name }) }).click();
+    await karim.getByLabel(L('tests.markOutOf', { max: fmt(3) })).fill(points);
+    if (feedback) await karim.getByLabel(L('hw.feedback')).nth(2).fill(feedback);
+    if (name === DEMO.omar) await shot(karim, 'test-attempt', undefined, { fullPage: true });
+    await karim.getByRole('button', { name: L('tests.saveMarkN', { n: 3 }) }).click();
+    await expect(karim.getByText(like('tests.savedScore'))).toBeVisible();
+  }
+
+  // The gradebook, and the class page with its homework and tests.
+  await karim.goto(`${classPath}/gradebook`);
+  await expect(karim.locator('table.gradebook tbody tr', { hasText: DEMO.omar })).toContainText(L('grades.percent', { n: fmt(90.6) }));
+  await shot(karim, 'gradebook');
+  await karim.goto(classPath);
+  await shot(karim, 'class', undefined, { fullPage: true });
+
+  // Omar: his test result and his grades.
+  await student.goto(testPath.replace(/^\/org\/[^/]+\/tests\//, '/student/tests/'));
+  await student.getByRole('link', { name: L('ptests.reviewN', { n: 1 }) }).click();
+  await expect(student.locator('.mark-big')).toBeVisible();
+  await shot(student, 'student-test-result', undefined, { fullPage: true });
+  await student.locator('.topbar').getByRole('link', { name: L('portal.grades') }).click();
+  await expect(student.getByRole('heading', { name: L('grades.mine'), level: 1 })).toBeVisible();
+  await shot(student, 'student-grades');
 
   // ================================================================ settings: organization, API keys, webhooks, support access
   await mona.goto(`/org/${orgId}/settings`);

@@ -144,6 +144,7 @@ Tree shape:
 | GET · PUT | `/attempts/:attemptId` · `/attempts/:attemptId/answers/:questionId` | The attempt (questions in its order, saved answers, deadline, server time; never keys) · save `{answer}` (`null` clears); `TIME_UP` after the deadline |
 | POST | `/attempts/:attemptId/heartbeat` · `/events` · `/submit` | Keeps the teacher's monitor current · `{kind: left_page\|returned\|paste\|offline\|online, seconds?, length?}` · submit |
 | GET | `/attempts/:attemptId/result` | The review once results are visible; correct answers only when the teacher shows them and the test is over |
+| GET | `/grades` | My grades: per class and subject, the student's own homework marks (once returned) and test scores (once shown), average and missing count (docs/CLASSROOM.md §10) |
 
 ### Classes and homework (`/api/orgs/:orgId/…`) — teachers are members added to a class; others get 404
 Full list and rules in docs/CLASSROOM.md §7. In short: `classes` (list: admins all, teachers their own;
@@ -162,6 +163,11 @@ DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `un
 `tests/:testId/attempts/:attemptId/submit` · `allow-device`, `tests/:testId/close` · `new-code`,
 `tests/:testId/results`, `tests/:testId/attempts/:attemptId` (GET; PATCH `answers/:questionId`
 `{points?, feedback?}`), `tests/:testId/release`.
+
+### Gradebook (`/api/orgs/:orgId/classes/:classId/gradebook`) — any teacher of the class and admins
+`?subject=<English subject name>&format=json|csv`: the class's homework with marks and published tests as
+columns, one row per student with each cell's status and points, average and missing count; `format=csv`
+downloads it in the member's language (formula-guarded) and is audited (`class.gradebook_exported`).
 
 ### Scopes
 | Method | Path | Role | Notes |

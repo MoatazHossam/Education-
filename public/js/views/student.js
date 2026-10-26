@@ -65,6 +65,7 @@ export function frame(ctx, ...content) {
       navLink('/student', t('portal.today')),
       navLink('/student/homework', t('portal.homework')),
       navLink('/student/tests', t('portal.tests')),
+      navLink('/student/grades', t('portal.grades')),
       navLink('/student/books', t('portal.books'))),
     h('div', { class: 'tools' },
       bell,

@@ -63,6 +63,18 @@ describe('subscribing', () => {
     expect(billing.subscription).toMatchObject({ effectivePlanId: 'starter', state: 'active' });
   });
 
+  it('trial → paid on the plan being trialled (Professional) ends the trial', async () => {
+    const owner = await signUp(h);
+    expect((await sub(owner.orgId)).plan_id).toBe('professional');
+    await subscribe(owner, 'professional', 'year');
+    expect(await sub(owner.orgId)).toMatchObject({ plan_id: 'professional', status: 'active', trial_ends_at: null, billing_interval: 'year' });
+    const billing = (await owner.client.get(`/api/orgs/${owner.orgId}/billing`)).json();
+    expect(billing.subscription).toMatchObject({ effectivePlanId: 'professional', state: 'active' });
+    // Once paid, the same plan is refused as already current.
+    const again = await owner.client.post(`/api/orgs/${owner.orgId}/billing/checkout`, { planId: 'professional', interval: 'year' });
+    expect(again.json().error.code).toBe('ALREADY_ON_PLAN');
+  });
+
   it('a failed payment leaves the invoice open and notifies the owner; retry succeeds', async () => {
     const owner = await signUp(h);
     const res = await owner.client.post(`/api/orgs/${owner.orgId}/billing/checkout`, { planId: 'professional', interval: 'year' });

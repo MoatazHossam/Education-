@@ -39,6 +39,7 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run lint` / `npm run typecheck` | Static checks |
 | `npm test` | Unit + integration tests (needs `TEST_PG_ADMIN_URL`, a PostgreSQL superuser URL) |
 | `npm run test:e2e` | Playwright end-to-end journeys |
+| `npm run docs:screenshots` | Retake the screenshots of `docs/USER_GUIDE.md` from a demo school on a fresh test database |
 | `npm run keys:check` / `npm run keys:rotate` | Report, then re-encrypt, the secrets kept encrypted at rest after changing `DATA_ENCRYPTION_KEY` (DEPLOYMENT_GUIDE §4) |
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
@@ -60,6 +61,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 
 ## Documentation
 
+[User guide](docs/USER_GUIDE.md) ·
 [Product overview](docs/PRODUCT_OVERVIEW.md) ·
 [Current state](docs/CURRENT_STATE_ASSESSMENT.md) ·
 [Feature inventory](docs/FEATURE_INVENTORY.md) ·

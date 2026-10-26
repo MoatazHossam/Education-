@@ -68,7 +68,7 @@ async function showDeliveries(orgId, w) {
       }, t('webhooks.redeliver')) : null)));
   await dialog({
     title: t('webhooks.deliveriesTitle'),
-    body: h('div', { class: 'stack' }, h('p', { class: 'muted' }, ltr(w.url)),
+    body: h('div', { class: 'stack webhook-deliveries' }, h('p', { class: 'muted' }, ltr(w.url)),
       rows.length ? h('div', { class: 'row' },
         h('p', { class: 'muted small' },
           total > rows.length ? `${t('webhooks.showingNewest', { shown: fmtNum(rows.length), total: fmtNum(total) })} ` : '',

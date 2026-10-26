@@ -47,7 +47,11 @@ function textNodes(text) {
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(document.createTextNode(text.slice(last)));
-  return out;
+  if (out.length === 1) return out;
+  // Mixed text stays one inline piece, so a flex parent (a book button, a chip) lays it out as one item.
+  const group = document.createElement('span');
+  group.append(...out);
+  return [group];
 }
 
 export function append(el, children) {

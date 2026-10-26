@@ -119,8 +119,10 @@ export async function billingView(ctx) {
   function drawPlans() {
     plansWrap.replaceChildren(...plans.map((p) => {
       const isCurrent = p.id === s.effectivePlanId && (p.id === 'free' || !paidPeriod || s.billingInterval === interval);
+      // The plan being trialled is current, and can still be subscribed to before the trial ends.
+      const trialPlan = isCurrent && s.state === 'trialing' && p.id !== 'free';
       let cta = null;
-      if (isOwner && b.provider && !isCurrent) {
+      if (isOwner && b.provider && (!isCurrent || trialPlan)) {
         if (!p.selfServe) cta = b.salesEmail ? h('a', { class: 'btn ghost', href: `mailto:${b.salesEmail}` }, t('plan.contactSales')) : h('span', { class: 'muted' }, t('plan.contactSales'));
         else if (p.id === 'free') {
           if (paidPeriod && !s.cancelAtPeriodEnd) cta = h('button', { type: 'button', class: 'btn ghost', onclick: () => summary.querySelector('.btn.danger')?.click() }, t('billing.downgradeFree'));
@@ -140,7 +142,7 @@ export async function billingView(ctx) {
       }
       return h('div', { class: `plan ${isCurrent ? 'current' : ''}` },
         h('h3', {}, p.name), h('div', { class: 'price' }, priceLabel(p, interval)), h('p', { class: 'muted' }, p.description), planFeatures(p),
-        isCurrent ? h('span', { class: 'pill ok' }, t('billing.currentPlan')) : cta);
+        isCurrent ? [h('span', { class: 'pill ok' }, t('billing.currentPlan')), trialPlan ? cta : null] : cta);
     }));
   }
   const intervalToggle = h('div', { class: 'seg', role: 'group', 'aria-label': t('billing.interval') },

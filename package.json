@@ -28,7 +28,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "docs:screenshots": "playwright test -c playwright.guide.config.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

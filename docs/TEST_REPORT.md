@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**35 files, 257 tests, 257 passed, 0 failed** (2026-10-25, after the webhook delivery history download and the screen-reader fixes). Integration tests ran against a real
+**35 files, 259 tests, 259 passed, 0 failed** (2026-10-26, after the user guide's fixes). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -41,7 +41,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/webhook-net | 4 | Pass — public-address classifier (private, loopback, link-local, CGNAT, documentation, multicast, NAT64, 6to4, IPv4-mapped); URL rules (https only, no credentials, no private or local hosts, development setting); the socket's DNS lookup refusing a host that resolves to loopback; signature format |
 | unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
 | integration/auth | 13 | Pass |
-| integration/tenancy | 16 | Pass |
+| integration/tenancy | 17 | Pass |
 | integration/scopes | 10 | Pass |
 | integration/scope-compare | 3 | Pass — same catalogue with CSV (counted, audited); last year against this year; other organization 404, same scope 400, viewer allowed, CSV refused on Free |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
@@ -53,7 +53,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/assignment-digest | 9 | Pass — the daily summary: no email per assignment for members who chose it (in-app notice kept); one summary the next morning, then none; at most one a day (assignments after the morning's sending time wait); one email across two organizations grouped by scope and assigner; unassigned/removed books and suspended organizations left out; switching back or off drops the queue, choice validated; unverified addresses; Arabic and long lists; three concurrent passes send one summary; RLS for other organizations and members; cleanup after 30 days |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
-| integration/billing | 13 | Pass |
+| integration/billing | 14 | Pass |
 | integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
 | integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
 | integration/admin-api-ops | 12 | Pass |
@@ -65,7 +65,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (verbatim from the verbose reporter):
 
-<details><summary>Show all 257</summary>
+<details><summary>Show all 259</summary>
 
 - tenancy › cross-tenant isolation over the API › a member of org B cannot read, modify, export or delete org A data
 - tenancy › cross-tenant isolation over the API › object ids from another tenant are rejected even under the attacker’s own org (BOLA)
@@ -80,6 +80,7 @@ Full test names (verbatim from the verbose reporter):
 - tenancy › roles and permissions › transfers ownership with password confirmation and keeps a single owner
 - tenancy › roles and permissions › member removal rules: owner cannot be removed, members can leave, removed users lose access
 - tenancy › invitations › existing users accept with their own account; email must match
+- tenancy › invitations › an account created from an invitation is signed in, which counts as its first sign-in
 - tenancy › invitations › revoked invitations cannot be used and duplicate members are refused
 - tenancy › data deletion and export › owner deletes an organization: its data is gone, other tenants untouched, audit retained
 - tenancy › data deletion and export › a user can export their data and delete their account unless they own an organization
@@ -110,6 +111,7 @@ Full test names (verbatim from the verbose reporter):
 - admin-api-ops › cleanup applies retention and heartbeat is visible to admins
 - billing › lists public plans without authentication
 - billing › trial → paid Starter via hosted checkout and signed webhook
+- billing › trial → paid on the plan being trialled (Professional) ends the trial
 - billing › a failed payment leaves the invoice open and notifies the owner; retry succeeds
 - billing › refuses non-self-serve plans and billing actions from non-owners
 - billing › rejects bad signatures, stale timestamps and unknown providers
@@ -327,7 +329,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**23 tests, 23 passed** (4.6 min, 2026-10-25), Chromium, real server process on port 3100: 19 journeys,
+**23 tests, 23 passed** (5.3 min, 2026-10-26), Chromium, real server process on port 3100: 19 journeys,
 then the accessibility project (4 tests), which reuses the journeys' data.
 
 | # | Journey | Result |
@@ -360,7 +362,7 @@ back — correct behaviour; the test was changed to wait for "Saved".
 
 | # | Test | Result |
 | --- | --- | --- |
-| 20 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 83 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text). The 83 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page | Pass — 0 findings (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed) |
+| 20 | axe-core 4.13 with the WCAG 2.0/2.1/2.2 A and AA rule sets on 83 screens, each also read from top to bottom by a simulated screen reader (SCREEN_READER_PRECHECK.md: no unnamed control or table header, no symbol read on its own, no skipped heading level, no unmarked other-language text) and checked that no open dialog's content is wider than the dialog. The 83 screens: sign in (light and dark), register, forgot password, pricing, invalid email/reset/invitation links; the picker (first visit, with selections and the newer-catalogue banner, list panel open, Arabic, dark, phone); new-scope and notifications dialogs; scopes, carry-forward review (also Arabic, dark, phone), members, billing (also Arabic, dark), settings, audit log, account (also Arabic); platform admin overview, organizations, organization detail, users, catalogue versions, plans, audit, webhooks, catalogue editor (light and dark) and its verification dialog; scope comparison across two catalogue years (differences only, everything, Arabic, dark, phone); Students page (empty and with a student), add-student, student-password and roster-import (with a problem) dialogs; student sign-in; student portal (English, Arabic, Arabic dark, dark, phone) and its change-password dialog; notes and assignees (with a note and a book chosen, with an overdue and a due-soon book, Arabic, dark, phone) and its edit dialog; My assignments (English, Arabic, dark, phone); My assignments in all organizations (English, Arabic, dark, phone); settings with a webhook endpoint (also Arabic, dark, phone) and the webhook secret, deliveries (with a failed test delivery, its history note and download button) and edit dialogs; the account page during two-factor setup; the picker as a viewer (read-only); the platform admin's two-factor sign-in page | Pass — 0 findings (the deliveries dialog with a row first showed the "Payload" toggle under the 24 px target size; fixed) |
 | 21 | Keyboard only: the first Tab from the top reaches the visible skip link, which moves focus to the page heading without redrawing it; a dialog opened with Enter takes focus, Escape closes it and focus returns to the opener; Tab reaches a material, its focus outline is visible, Space selects it and the tray counts it | Pass (4.5 s) |
 | 22 | What screen readers are given, read from the browser's accessibility tree (docs/SCREEN_READER_REVIEW.md §4): on the account page's password form, the new-password field's description is its hint, then its hint and error after a failed submission, then the hint alone once corrected; the page area is not a live region; page titles follow the heading on the picker, account, settings and not-found pages and switch to the Arabic name in Arabic; picker book buttons include their kind ("(Ministry material)", "(External reference)"); after a failed submission focus is on the first field in error; the notifications button is "Notifications, 2 unread" with two unread, "Notifications" after opening the list, and focus returns to it | Pass |
 | 23 | A simulated screen reader listens while the member acts: selecting a book is heard as the book with its kind and then "polite: Saved"; opening the new-scope dialog announces "dialog, New scope" and focus lands on its Name field; a wrong current password is announced once; a too-short new password moves focus to that field, which is read with its error, and no other message is announced | Pass |
@@ -397,6 +399,10 @@ and back); the password field had no description, before and after the error (3)
 buttons had no kind in their name (2); the notifications button was "Notifications" with two unread (1).
 Test 22 creates its member directly in the database, because the run already uses most of the 10
 sign-ups an hour that the server allows from one address.
+
+### User guide screenshots — `npm run docs:screenshots`
+
+**1 test, 1 passed** (1.1 min, 2026-10-26). It is a separate configuration, not part of `npm run test:e2e`. It builds the demo school of `docs/USER_GUIDE.md` on a fresh test database through the interface and saves 62 screens. It fails if a step stops working, or if a dialog's content is wider than the dialog. Before the fix, that check failed on the "API key created" dialog.
 
 ## 4. Operational verification (manual, executed)
 

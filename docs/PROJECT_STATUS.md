@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-25. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-26. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -286,6 +286,25 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** E2E 23/23 (the audit with the simulated reader's checks on 83 screens, and the new announcements test).
 - **Limitations:** a simulation has no voices, no language switching and none of a real screen reader's modes or verbosity; the manual review in `docs/SCREEN_READER_REVIEW.md` is still needed. The sandbox checkout page is not covered.
 
+### User guide with screenshots · COMPLETE
+- **Implemented:** `docs/USER_GUIDE.md`, a guide to every part of the system for the people who use it, with 62 screenshots in `docs/user-guide/images/`. It covers:
+  - signing up and signing in, roles, the picker, scopes and comparison;
+  - notes, assignees and due dates; notifications and My assignments; members and invitations;
+  - carrying a scope to a new year, billing, students and the student portal;
+  - settings (API keys, webhooks, support access), the audit log, the account page, Arabic and phones;
+  - the emails the system sends, with real examples, and the platform administrator's console.
+- **How the screenshots are made:** `npm run docs:screenshots` (`playwright.guide.config.ts`, `tests/e2e/user-guide.spec.ts`) builds an invented demo school on a fresh test database through the interface, as its people would, and saves each screen. It is not part of `npm run test:e2e`. It fails if a step stops working or a dialog's content is wider than the dialog, so the pictures can be retaken after any interface change.
+- **Fixed while taking them:**
+  - **Billing:** during a trial, the plan being trialled showed "Current plan" with no **Subscribe** button, although the server accepts that checkout. It now shows both.
+  - **Dialogs:** a new API key, a webhook signing secret and the example `curl` line ran past the right edge of their dialogs and were cut off. They now wrap. Webhook payloads are one column instead of two, and the deliveries dialog is wider.
+  - **Styling:** the link field in the catalogue verification dialog had no styling (`input[type=url]` was missing from the shared field style).
+  - **Phones:** the top bar stayed stuck while scrolling, covering about a quarter of the screen and the focused control (WCAG 2.4.11). It now scrolls away on small screens, like the picker's filters.
+  - **Admin Users page:** members who joined by creating an account from an invitation showed no last sign-in, although they were signed in. That first sign-in is now recorded.
+  - **Mixed-language text:** a title mixing scripts, such as "Al-Adwaa (الأضواء)", is kept in one piece, so the book buttons' spacing no longer splits it (a regression from the `lang` marking).
+- **Files:** `docs/USER_GUIDE.md`, `docs/user-guide/images/*.png`, `tests/e2e/user-guide.spec.ts`, `playwright.guide.config.ts`, `package.json`, `public/app.css`, `public/js/dom.js`, `public/js/views/{billing,webhooks}.js`, `src/auth/routes.ts`.
+- **Tests:** the billing journey checks the trialled plan's Subscribe button, and an integration test pays for the trialled plan end to end. An integration test checks the first sign-in from an invitation; it fails without its fix. The accessibility audit now fails if a dialog's content is wider than the dialog (it caught the API key dialog before the fix), and checks that a mixed-script title stays one piece. Unit and integration 259/259, E2E 23/23, and the guide's screenshot run (62 screens) pass.
+- **Limitations:** the screenshots show the English interface on a desktop, plus a few Arabic and phone screens. The date fields show the test browser's month/day order; people see their own computer's format. The guide describes the sandbox checkout; the Paymob page is not shown until its keys exist.
+
 ### Student accounts and student portal · COMPLETE (off for every school; legal assessment pending before real use)
 - **Implemented:** schools create accounts for their students; students sign in with the school code, a username and a password, and see the books of their grade in the scope the school assigned (`docs/STUDENT_ACCOUNTS.md`). It is the first part of the student portal planned with the Wise EduAgent integration, and it contains no AI or Wise features.
   - One sign-in system: students are `users` rows with `kind = 'student'` and no email, in the same sessions, lockout, rate limits and audit as staff. They have no membership, so every staff route refuses them (`STAFF_ONLY`); database triggers and a check constraint hold that rule. Student sessions last at most 12 hours.
@@ -441,7 +460,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (257 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (259 unit/integration + 23 E2E passing: 19 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

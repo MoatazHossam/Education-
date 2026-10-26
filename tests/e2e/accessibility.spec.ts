@@ -24,6 +24,10 @@ async function audit(page: Page, where: string) {
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   audited.push(where);
   for (const v of violations) findings.push({ where, rule: v.id, impact: v.impact, help: v.help, nodes: v.nodes.slice(0, 4).map((n) => n.target.join(' ')) });
+  // Not an axe rule: a key or link wider than its dialog runs past the edge and is cut off.
+  if (await page.evaluate(() => [...document.querySelectorAll('dialog[open]')].some((d) => d.scrollWidth > d.clientWidth + 1))) {
+    findings.push({ where, rule: 'dialog-overflow', impact: 'serious', help: 'Content is wider than its dialog', nodes: ['dialog[open]'] });
+  }
   const { phrases, complete } = await readPage(page);
   saveTranscript(audited.length, where, phrases, complete);
   srFindings.push(...checkTranscript(where, phrases), ...headingSkips(where, phrases), ...(await unmarkedLanguage(page, where)));
@@ -358,6 +362,10 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await expect(page).toHaveTitle('Egypt Curriculum Picker · دليل المناهج · Curriculum Scope');
   await expect(page.locator('.mat.moe').first()).toHaveAccessibleName(/\(Ministry material\)/);
   await expect(page.locator('.mat.ext').first()).toHaveAccessibleName(/\(External reference\)/);
+  // A title mixing scripts stays one flex item: its lang span is inside it, so the gap cannot split it.
+  const mixed = page.locator('.mat', { hasText: 'Al-Adwaa (' }).first();
+  await expect(mixed.locator('xpath=./span[1]')).toHaveText('Al-Adwaa (الأضواء)');
+  await expect(mixed.locator('xpath=./span[1]/span[@lang="ar"]')).toHaveText('الأضواء');
   for (const path of [`/org/${orgIdFromUrl(page)}/settings`, '/no-such-page']) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);

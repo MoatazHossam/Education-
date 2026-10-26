@@ -51,7 +51,7 @@ td .row{flex-wrap:nowrap}
 .nav a{padding:6px 8px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:13.5px;white-space:nowrap}
 .nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-select,input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],input[type=datetime-local],input[type=date],textarea{font:inherit;font-size:14px;border:1px solid var(--rule-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:7px 10px;min-width:0}
+select,input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],input[type=url],input[type=datetime-local],input[type=date],textarea{font:inherit;font-size:14px;border:1px solid var(--rule-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:7px 10px;min-width:0}
 textarea{width:100%;min-height:70px}
 .iconbtn{border:1px solid var(--rule-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;position:relative}
 .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--margin);color:#fff;font-size:11px;line-height:18px;text-align:center}
@@ -78,6 +78,7 @@ textarea{width:100%;min-height:70px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .spacer{flex:1}
 .stack{display:grid;gap:12px}
+.stack>*{min-width:0}
 
 .btn{border:1px solid var(--accent);background:var(--accent);color:var(--sheet);border-radius:8px;padding:7px 14px;font-size:13.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn.ghost{background:transparent;color:var(--accent)}
@@ -159,6 +160,9 @@ dialog h2{margin:0 0 10px;font-size:18px}
 .loading{padding:40px 0;color:var(--muted);text-align:center}
 .qr{background:#fff;padding:8px;border-radius:8px;display:inline-block}
 .codes{columns:2;font-family:var(--f-mono);font-size:14px;margin:8px 0;padding:10px 14px;background:var(--paper);border-radius:8px}
+/* A key, secret or payload: one column, wrapped inside the dialog instead of running past its edge. */
+pre.codes{columns:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+dialog .mono{overflow-wrap:anywhere}
 .notif-list{list-style:none;margin:0;padding:0}
 .notif-list li{padding:10px 0;border-top:1px solid var(--rule)}
 .notif-list li.unread b::before{content:"● ";color:var(--margin)}
@@ -226,7 +230,7 @@ section.grade{margin-top:28px}
 .mv.warn{color:var(--pass)}
 .vcoverage{margin-top:10px;font-size:13px;color:var(--muted);max-width:80ch}
 .carry-banner{background:var(--accent-soft)}
-dialog:has(.sheet-preview){max-width:min(760px,calc(100vw - 32px))}
+dialog:has(.sheet-preview),dialog:has(.webhook-deliveries){max-width:min(760px,calc(100vw - 32px))}
 .sheet-preview{max-height:60vh;overflow:auto;gap:8px}
 .sheet-preview p,.sheet-preview h3{margin:0}
 .sheet-preview ul{margin:4px 0;padding-inline-start:18px}
@@ -279,6 +283,8 @@ ul.legend{list-style:none;padding:0;margin:12px 0 0}
   .snote{grid-column:1}
   .grades{grid-template-columns:repeat(6,minmax(0,1fr))}
   .lbl{min-width:0;width:100%}
+  /* On a phone the wrapped top bar is tall: kept on screen it would cover a quarter of the page and the focused control. */
+  .topbar{position:static}
   .topbar .in{padding:8px 12px}
   .wrap{padding-inline:16px}
   .controls{position:static}

@@ -1,0 +1,10 @@
+# Large or regenerable media stays out of git (GitHub's 100 MB file limit; and a video in the
+# repository would be published wherever the repository is). See README.md for how to rebuild each.
+build/
+*.mp4
+*.wav
+*.m4a
+# Recorded frames: re-created by video-project/capture (shots.json, which describes them, is kept).
+recordings/*/
+# Narration takes, when recorded, are delivered beside the repository, not in it.
+audio/narration/

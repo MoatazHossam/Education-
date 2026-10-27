@@ -22,7 +22,7 @@
     "paymob:check": "tsx src/cli/paymob-check.ts",
     "keys:check": "tsx src/cli/rotate-data-key.ts --check",
     "keys:rotate": "tsx src/cli/rotate-data-key.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/e2e/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/e2e/tsconfig.json && tsc -p marketing/product-showcase/video-project/capture/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",

@@ -92,7 +92,34 @@ A student's work goes through these states:
   student it belongs to (a draft's files only to its student). Responses carry
   `Content-Security-Policy: default-src 'none'; … sandbox`, `X-Content-Type-Options: nosniff` and
   `Cache-Control: private, no-store`; images open in the browser, PDFs download.
-- Not done: virus scanning, and image resizing (phone photos are kept as taken, up to 5 MB).
+- **Checked before anyone opens them** (since 2026-10-27, migration 0016, `src/classroom/file-checks.ts`).
+  Every upload starts as *being checked*; nobody can open it, its uploader included (409
+  `FILE_CHECKING`), until the worker has:
+  - **scanned it for viruses** with ClamAV (`FILE_SCAN=clamav`: the worker streams the bytes as uploaded
+    to ClamAV's daemon over TCP; production runs it next to the worker, DEPLOYMENT_GUIDE §3);
+  - for photos, **turned it upright** (by its EXIF orientation), **made it at most 2,000 pixels** on its
+    longer side (never larger), and **encoded it again** in the same format, which drops its metadata:
+    a phone photo's EXIF can hold where and when it was taken and the phone's make. A 4,032 × 3,024 phone
+    photo of 106 KB became 2,000 × 1,500 and 30 KB in the check on Docker. The size uploaded is kept
+    (`original_size_bytes`). PDFs are kept as they are. Images claiming more than 100 million pixels are
+    refused before they are decoded.
+  The worker checks files on its own loop every 2 seconds, so a file usually opens within seconds; the
+  page says "Being checked…" and updates the list by itself, without reloading (what a student is typing
+  stays).
+- **Blocked files.** A file with a virus (`infected`) or a photo that cannot be read (`unreadable`) loses
+  its bytes; its row stays, so pages say what happened ("Virus found: deleted"), and opening it answers
+  409 `FILE_INFECTED` or `FILE_UNREADABLE`. The uploader is told in the app, in their language; for a
+  virus the school's owners and admins are told too ("the device it came from may be infected"), and
+  the audit log records `classroom.file_infected` (name, size, SHA-256, homework, uploader, the virus's
+  name) or `classroom.file_unreadable`. A blocked file takes no storage; the uploader can delete it from a
+  draft or a homework they can edit.
+- **When the scanner is down,** files wait (counted per file in `check_attempts`, last error in
+  `check_error`) and are tried again every pass; the worker logs the error once. An operational alert
+  fires when a file has waited more than 10 minutes (`file_checks_stalled`, DEPLOYMENT_GUIDE §6).
+- **Without a scanner** (`FILE_SCAN=off`, the default outside production; production must choose), photos
+  are still prepared and PDFs open after the worker's pass, with `scanned_at` empty. Files uploaded before
+  scanning was on (or before migration 0016) stay open, and the worker scans them in the background once a
+  scanner is configured; one found infected is blocked as above.
 
 ## 6. Data and row-level security
 
@@ -142,7 +169,7 @@ get 404 for the class and its homework.
 | `GET /api/orgs/:orgId/homework/:homeworkId/submissions/:studentId` | teacher, admin | The student's work (empty while a draft), mark, comments |
 | `PATCH /api/orgs/:orgId/homework/:homeworkId/submissions/:studentId` | subject teacher, admin | `{ points?, feedback?, return? }` |
 | `POST /api/orgs/:orgId/homework/:homeworkId/return` | subject teacher, admin | `{ studentIds }`: returns those handed in or marked |
-| `GET /api/orgs/:orgId/files/:fileId` | teacher, admin | The file (§5) |
+| `GET /api/orgs/:orgId/files/:fileId` | teacher, admin | The file once checked (§5); 409 `FILE_CHECKING`, `FILE_INFECTED` or `FILE_UNREADABLE` otherwise |
 | `GET /api/orgs/:orgId/classes/:classId/gradebook[?subject=&format=csv]` | teacher, admin | `{ class, subjects, subject, items[], students[{ name, username, cells[{status, points}], average, missing }] }`, or the CSV (§10) |
 
 `GET /api/orgs/:orgId` also returns `classroom { enabled, show, toMark }` for the navigation.
@@ -159,7 +186,7 @@ Students (student session; 404 for staff):
 | `POST /api/student/homework/:homeworkId/take-back` | Back to a draft (until returned; not after a closed due time) |
 | `POST /api/student/homework/:homeworkId/files` | Raw body, as for staff; goes to the draft |
 | `DELETE /api/student/homework/:homeworkId/files/:fileId` | From the draft |
-| `GET /api/student/files/:fileId` | A file the student may see |
+| `GET /api/student/files/:fileId` | A file the student may see, once checked (§5) |
 | `GET /api/student/notifications`, `POST /api/student/notifications/read` | The portal's notifications (`{ ids? }`) |
 | `GET /api/student/grades` | `{ subjects[{ classId, className, subjectEn, subjectAr, average, missing, items[] }] }`: the student's own marks (§10) |
 
@@ -282,7 +309,9 @@ pending[{ stage, deleteAfter }] }`; homework and test JSON (staff and students) 
   on the student's Today and Tests pages).
 - No weighting between homework and tests, no term reports, and no grade scales (A–F or similar).
 - No email or SMS to students or parents; no parent accounts.
-- No virus scanning or image resizing of uploads (§5).
+- Uploads are scanned by one antivirus engine (ClamAV) with signatures as fresh as its last update; it
+  catches known malware, not every new threat. Photos uploaded before 2026-10-27 keep their size and
+  metadata (only new uploads are prepared). PDFs are not rewritten or flattened (§5).
 - Retention (§11) covers homework and tests. Classes, enrolments and student accounts are not deleted
   by it; a school removes those itself. Backups keep deleted data until they are pruned
   (`RETENTION_DAYS`, DEPLOYMENT_GUIDE §5).
@@ -299,6 +328,16 @@ pending[{ stage, deleteAfter }] }`; homework and test JSON (staff and students) 
   paper work, audit); late work, closed homework and taking work back; scheduled homework hidden until
   the worker announces it once; **row-level security in a student context with unfiltered queries**;
   file count, the storage limit and deleting a class.
+- `tests/integration/file-checks.test.ts` (6 tests) and `tests/unit/file-checks.test.ts` (5): §5's checks
+  with a stand-in that speaks ClamAV's daemon protocol. Nobody opens a file before its check; a phone
+  photo is made 2,000 × 1,500 without its EXIF (location included) and PDFs are unchanged; a virus deletes
+  the bytes, tells the student (in Arabic), the owner and admins but not the teacher, and is audited; an
+  unreadable photo tells only its uploader; a failing scanner keeps files waiting, retries them, and the
+  alert fires after 10 minutes; without a scanner photos are still prepared, and once scanning is on older
+  files are scanned while they stay open; two workers never check the same file. The client sends files
+  in 64 KB chunks and fails on errors, hang-ups, timeouts and refused connections; photos are turned
+  upright, never enlarged, keep their format, and a header claiming 400 million pixels is refused before
+  decoding. Checked with the real ClamAV on Docker too (TEST_REPORT §4).
 - `tests/integration/gradebook.test.ts` (3 tests): the gradebook's columns (homework with a full mark
   and published tests, oldest first), cells (marked, to mark, missing, not yet), averages over marked work
   and missing counts; a member who does not teach the class gets 404; the CSV in the member's language,
@@ -316,7 +355,8 @@ pending[{ stage, deleteAfter }] }`; homework and test JSON (staff and students) 
   the portal routes.
 - `tests/e2e/journeys.spec.ts`, journey 20: the school sets up a class (curriculum, students, teacher),
   sets homework with a book; the student sees it on Today with a notification, answers, attaches a photo
-  (stored as PNG from its bytes) and hands in; the teacher sees "Classes (1 to mark)", opens the work with
+  (stored as PNG from its bytes; "Being checked…" until the worker's pass, then the list shows it by
+  itself and the answer typed stays) and hands in; the teacher sees "Classes (1 to mark)", opens the work with
   the photo, marks 9/10 with a comment and returns it; the student sees the mark and comment.
 - `tests/e2e/accessibility.spec.ts`: 27 more screens (classes, class, homework, every dialog, the
   student's Today, homework list and homework in each state) in English, Arabic, dark and on a phone:

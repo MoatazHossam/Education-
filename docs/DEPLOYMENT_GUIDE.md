@@ -45,6 +45,8 @@ Builds behind a TLS-intercepting proxy: `docker build --network host --build-arg
 ### 3.1 Infrastructure
 - One Linux VM with Docker (e.g. 2–4 vCPU, 4–8 GB RAM). Hetzner CPX22 (2 vCPU/4 GB) is about
   €7.99/month after its April 2026 price change ([Better Stack](https://betterstack.com/community/guides/web-servers/digitalocean-vs-hetzner/)).
+  The virus scanner (ClamAV) alone holds about 1–1.5 GB of memory: 4 GB is the minimum with it, 8 GB
+  leaves room.
   If customer data must stay in Egypt or the region, choose the hosting location after the legal
   review (SECURITY_DESIGN.md §7).
 - Prefer **managed PostgreSQL 16** with automated backups and point-in-time recovery; otherwise use
@@ -61,9 +63,15 @@ Create `.env.production` from `.env.docker.example`:
 - leave `WEBHOOK_ALLOW_INSECURE_TARGETS` unset: it lets customer webhooks reach http and private addresses, for development only, and the app refuses to start with it in production. The worker makes outbound HTTPS requests to customers' webhook URLs; if the host has an egress firewall, allow outbound 443 and block private ranges and `169.254.169.254` (SECURITY_DESIGN §6)
 - `BILLING_PROVIDER=paymob` + `PAYMOB_*` (or `disabled`)
 - `SALES_EMAIL` for the Enterprise "Contact sales" link
+- `FILE_SCAN`: the production compose file sets `clamav` (homework files are scanned by its `clamav`
+  service before anyone opens them, CLASSROOM.md §5). ClamAV updates its signatures itself from
+  `database.clamav.net`: with an egress firewall, allow outbound HTTPS to it (or run a private mirror).
+  `FILE_SCAN=off` turns scanning off; photos are still resized. Outside Docker Compose, set
+  `FILE_SCAN=clamav`, `CLAMAV_HOST` and `CLAMAV_PORT` (3310) for the worker and run `clamd` with a TCP
+  socket reachable only from it.
 
 The app refuses to start in production with the sandbox provider, a non-SMTP mailer, a non-HTTPS
-`APP_URL`, or a database role that bypasses RLS.
+`APP_URL`, `FILE_SCAN` unset, or a database role that bypasses RLS.
 
 ### 3.3 Start
 ```bash
@@ -75,6 +83,11 @@ Production runs two app instances (`app`, `app2`) behind Caddy, which balances r
 them, checks `/readyz` every 2 s and routes around an instance that is restarting or down. Each
 instance opens up to `DATABASE_POOL_MAX` (default 10) database connections: two instances and the
 worker need about 21, well within PostgreSQL's default of 100 (check a managed plan's limit).
+
+The `clamav` service (image `clamav/clamav:1.5`, signatures kept in the `clamav_db` volume) takes a
+minute or two to load its signatures on the first start, about 15 s later on; homework files uploaded
+meanwhile wait and are checked as soon as it answers (the worker logs that it is waiting). It listens
+only inside the compose network.
 
 Caddy obtains TLS certificates automatically. With managed PostgreSQL, remove the `postgres`
 service and point `DATABASE_URL`/`MIGRATION_DATABASE_URL` at it (create the three roles with the
@@ -181,6 +194,7 @@ are also written to the logs (`"msg":"operational alert"`), and contain counts o
 | Server errors | 10+ responses with status 500–599 in 5 minutes on one instance | `docker compose … logs app app2` |
 | Payment notifications failing | a provider webhook failed to process in the last hour | Platform admin → Webhooks |
 | Migrations pending | the schema is behind the code | `docker compose … run --rm migrate` |
+| Homework files waiting | a homework file has waited more than 10 minutes for its check (virus scan, photo resizing); nobody can open it meanwhile | `docker compose … ps clamav worker`, `logs clamav worker` (the worker logs the scanner's error) |
 | Database unreachable | two checks in a row cannot reach PostgreSQL (one message per instance) | `ps postgres` / the managed database status |
 
 **Outside the host (needed as well).** Nothing on the host can report that the host itself, Caddy or both app

@@ -7,7 +7,7 @@ import { append, clear, dialog, errorMessage, fmtDate, form, h, link, toast } fr
 import { locale, setLocale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
-import { fileItem, fileUploader } from './classes.js';
+import { fileItem, fileList, fileUploader } from './classes.js';
 import { pageHead } from './shell.js';
 import { testItem } from './student-tests.js';
 
@@ -175,6 +175,10 @@ export async function homeworkDetailView(ctx) {
   const sub = data.submission;
   const editable = (sub.status === 'assigned' || sub.status === 'draft') && !data.closed;
   const refresh = () => ctx.render();
+  const again = () => get(`/api/student/homework/${homeworkId}`);
+  const taskFiles = async () => (await again()).files;
+  const myFiles = async () => (await again()).submission.files;
+  const mine = (files, onRemove) => fileList(files, (f) => fileItem(`/api/student/files/${f.id}`, f, onRemove?.(f)), myFiles);
 
   const facts = h('dl', { class: 'kv' },
     h('dt', {}, t('classes.subject')), h('dd', {}, subjectName(hw), ' · ', h('span', { dir: 'auto' }, data.class.name)),
@@ -186,7 +190,7 @@ export async function homeworkDetailView(ctx) {
     facts,
     hw.instructions ? h('div', { class: 'answer', dir: 'auto' }, hw.instructions) : null,
     hw.materials.length ? [h('h3', {}, t('hw.books')), h('div', { class: 'mats' }, hw.materials.map((m) => h('span', { class: `mat book ${m.kind}`, dir: 'auto' }, m.title, h('span', { class: 'sr-only' }, ` (${t(`legend.${m.kind}`)})`))))] : null,
-    data.files.length ? [h('h3', {}, t('hw.files')), h('ul', { class: 'files' }, data.files.map((f) => fileItem(`/api/student/files/${f.id}`, f)))] : null);
+    data.files.length ? [h('h3', {}, t('hw.files')), fileList(data.files, (f) => fileItem(`/api/student/files/${f.id}`, f), taskFiles)] : null);
 
   let work;
   if (sub.status === 'returned') {
@@ -197,14 +201,14 @@ export async function homeworkDetailView(ctx) {
       h('p', { class: 'muted' }, t('hw.returnedAt', { when: fmtDate(sub.returnedAt, true) })),
       hw.workRemovedAt ? h('p', { class: 'notice' }, t('ret.student.workGone', { date: fmtDate(hw.workRemovedAt) })) : null,
       sub.body || sub.files.length ? [h('h3', {}, t('portal.yourWork')), sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : null,
-        sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/student/files/${f.id}`, f))) : null] : null);
+        sub.files.length ? mine(sub.files) : null] : null);
   } else if (sub.status === 'submitted') {
     work = h('section', { class: 'card', 'aria-labelledby': 'work-h' },
       h('h2', { id: 'work-h' }, t('portal.yourWork')),
       h('p', { class: 'notice', role: 'status' }, t('portal.handedInAt', { when: fmtDate(sub.submittedAt, true) }), sub.late ? [' ', h('span', { class: 'pill bad' }, t('hw.status.late'))] : null),
       hw.workRemovedAt ? h('p', { class: 'notice' }, t('ret.student.workGone', { date: fmtDate(hw.workRemovedAt) })) : null,
       sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : null,
-      sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/student/files/${f.id}`, f))) : null,
+      sub.files.length ? mine(sub.files) : null,
       data.closed ? null : h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => act(async () => {
         await post(`/api/student/homework/${hw.id}/take-back`);
         toast(t('portal.takenBack'));
@@ -218,11 +222,11 @@ export async function homeworkDetailView(ctx) {
     work = h('section', { class: 'card', 'aria-labelledby': 'work-h' },
       h('h2', { id: 'work-h' }, t('portal.yourWork')),
       h('div', { class: 'field' }, h('label', { for: 'answer' }, t('portal.answer')), text, h('span', { class: 'hint' }, t('portal.answerHint'))),
-      sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/student/files/${f.id}`, f, () => act(async () => {
+      sub.files.length ? mine(sub.files, (f) => () => act(async () => {
         await saveDraft();
         await del(`/api/student/homework/${hw.id}/files/${f.id}`);
         refresh();
-      })))) : null,
+      })) : null,
       fileUploader({ id: 'work-files', label: t('portal.attach'), path: `/api/student/homework/${hw.id}/files`, onDone: async () => { await saveDraft().catch(() => {}); refresh(); } }),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: () => act(async () => {

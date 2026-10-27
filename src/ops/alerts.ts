@@ -20,8 +20,10 @@ export const SERVER_ERROR_THRESHOLD = 10; // 5xx responses in 5 minutes on one i
 
 export type AlertKey =
   | 'worker_stalled' | 'email_failing' | 'email_backlog' | 'server_errors'
-  | 'payment_webhooks_failing' | 'migrations_pending' | 'database_unreachable';
-const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending'];
+  | 'payment_webhooks_failing' | 'migrations_pending' | 'file_checks_stalled' | 'database_unreachable';
+const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending', 'file_checks_stalled'];
+/** Homework files waiting longer than this for the worker's check (virus scan, photo resizing). */
+export const FILE_CHECK_STALE_MINUTES = 10;
 
 export interface Observation { key: AlertKey; summary: string; details: Record<string, number | string> }
 export interface AlertMessage { kind: 'firing' | 'reminder' | 'resolved' | 'test'; key: AlertKey | 'test'; summary: string; details: Record<string, number | string>; since?: Date }
@@ -35,6 +37,7 @@ const HINTS: Record<AlertMessage['key'], string> = {
   server_errors: 'See the app logs for the failing requests: docker compose logs app app2 (look for statusCode 500).',
   payment_webhooks_failing: 'Open Platform admin → Webhooks for the failed events and their errors.',
   migrations_pending: 'Apply the migrations: docker compose run --rm migrate. Instances report not ready until then.',
+  file_checks_stalled: 'Check the virus scanner and the worker: docker compose ps clamav worker; docker compose logs clamav worker. Teachers and students cannot open these files until they are checked.',
   database_unreachable: 'Check the database: docker compose ps postgres and its logs, or the managed database status page.',
   test: 'This is a test sent from Platform admin → Overview.',
 };
@@ -98,6 +101,14 @@ export async function evaluate(db: Database, config: AppConfig, errors: ServerEr
     const failedHooks = Number(hooks.rows[0]!.n);
     if (failedHooks > 0) {
       found.push({ key: 'payment_webhooks_failing', summary: `${failedHooks} payment provider notifications failed to process in the last hour`, details: { failedLastHour: failedHooks } });
+    }
+
+    const files = await sql<{ n: string }>`
+      SELECT count(*) AS n FROM classroom_files
+      WHERE status = 'pending' AND created_at <= now() - make_interval(mins => ${FILE_CHECK_STALE_MINUTES}::int)`.execute(trx);
+    const waitingFiles = Number(files.rows[0]!.n);
+    if (waitingFiles > 0) {
+      found.push({ key: 'file_checks_stalled', summary: `${waitingFiles} homework ${waitingFiles === 1 ? 'file has' : 'files have'} waited more than ${FILE_CHECK_STALE_MINUTES} minutes to be checked`, details: { waitingFiles } });
     }
 
     const pending = await pendingMigrations(db);

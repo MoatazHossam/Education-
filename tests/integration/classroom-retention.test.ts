@@ -13,7 +13,7 @@ beforeEach(async () => resetData(h.ownerDb));
 
 const SCIENCE = { subjectEn: 'Science', subjectAr: 'العلوم' };
 const DAY = 86_400_000;
-const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000970485973000003e8000003e801b57b526b0000000d4944415408d763606060600000000500015ef32a3a0000000049454e44ae426082', 'hex');
 
 // Today at 10:00 UTC, midday in Cairo: notices go out between 08:00 and 21:00 Cairo time.
 const base = new Date(`${new Date().toISOString().slice(0, 10)}T10:00:00Z`);

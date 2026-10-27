@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
+import { latestEmailText, ownerQuery, runDigestPass, runFileCheckPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -830,7 +830,7 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
 });
 
 // A 1×1 PNG: the server keeps a file only when its first bytes are an image or a PDF.
-const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000970485973000003e8000003e801b57b526b0000000d4944415408d763606060600000000500015ef32a3a0000000049454e44ae426082', 'hex');
 
 test('classes and homework: the school sets up a class, a student hands in work with a photo, the teacher marks and returns it', async ({ page, browser }) => {
   // Journey 13's school, which already has student accounts (Laila and Omar, Grade 7) and the "Prep 1 books" scope.
@@ -889,8 +889,11 @@ test('classes and homework: the school sets up a class, a student hands in work 
   await expect(student.locator('.mats')).toContainText(delta.firstBook);
   await student.getByLabel('Your answer').fill('1) The Nile. 2) Upper Egypt. 3) Aswan.');
   await student.getByLabel('Attach photos or a PDF').setInputFiles({ name: 'notebook.jpg', mimeType: 'image/jpeg', buffer: PNG });
-  // The server keeps the real type: a PNG, whatever the name says.
-  await expect(student.locator('.files')).toContainText('notebook.png');
+  // The server keeps the real type: a PNG, whatever the name says. It opens once the worker has
+  // checked it (run directly here, as the E2E run starts no worker); the list updates by itself.
+  await expect(student.locator('.files')).toContainText('notebook.png · Being checked…');
+  expect(await runFileCheckPass()).toMatchObject({ ready: 1 });
+  await expect(student.locator('.files a', { hasText: 'notebook.png' })).toBeVisible({ timeout: 10_000 });
   await expect(student.getByLabel('Your answer')).toHaveValue('1) The Nile. 2) Upper Egypt. 3) Aswan.');
   await student.getByRole('button', { name: 'Hand in' }).click();
   await expect(student.getByText(/You handed this in/)).toBeVisible();

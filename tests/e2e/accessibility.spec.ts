@@ -4,7 +4,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { hashPassword } from '../../src/auth/password.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, registerAndVerify, signInAsPlatformAdmin, uid } from './helpers.js';
 import { checkTranscript, heard, headingSkips, listen, readPage, saveTranscript, TRANSCRIPTS, unmarkedLanguage, type SrFinding } from './screen-reader.js';
-import { ownerQuery } from './server.js';
+import { ownerQuery, runFileCheckPass } from './server.js';
 
 // Automated WCAG 2.2 A/AA audit (axe-core) of every screen and the main
 // dialogs, in English and Arabic, light and dark, desktop and phone. Runs after
@@ -12,7 +12,7 @@ import { ownerQuery } from './server.js';
 // together. Automated checks cover only part of WCAG; see TEST_REPORT.md.
 
 // A 1×1 PNG, for a student's photo of their work.
-const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000970485973000003e8000003e801b57b526b0000000d4944415408d763606060600000000500015ef32a3a0000000049454e44ae426082', 'hex');
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 interface Finding { where: string; rule: string; impact: string | null | undefined; help: string; nodes: string[] }
@@ -252,6 +252,9 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await studentPage.getByLabel('Your answer').fill('a a a a a');
   await studentPage.getByLabel('Attach photos or a PDF').setInputFiles({ name: 'letters.png', mimeType: 'image/png', buffer: PNG });
   await expect(studentPage.locator('.files')).toContainText('letters.png');
+  await audit(studentPage, 'student homework (draft, photo being checked)');
+  await runFileCheckPass();
+  await expect(studentPage.locator('.files a', { hasText: 'letters.png' })).toBeVisible({ timeout: 10_000 });
   await audit(studentPage, 'student homework (draft with a photo)');
   await studentPage.getByRole('button', { name: 'Hand in' }).click();
   await expect(studentPage.getByText(/You handed this in/)).toBeVisible();

@@ -1,5 +1,6 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { runClassroomFileChecks } from '../../src/classroom/file-checks.js';
 import { runHomeworkAnnouncements } from '../../src/classroom/service.js';
 import { withStudentContext, withSystemContext } from '../../src/db/index.js';
 import { addMember, Client, createHarness, createStudent, enableStudents, publishedVersionId, resetData, signUp, studentLogin, type Harness } from '../helpers/harness.js';
@@ -12,7 +13,7 @@ afterAll(async () => h.close());
 beforeEach(async () => resetData(h.ownerDb));
 
 // A tiny real PNG (1×1) and JPEG header; the server decides the type from these bytes.
-const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000970485973000003e8000003e801b57b526b0000000d4944415408d763606060600000000500015ef32a3a0000000049454e44ae426082', 'hex');
 const PDF = Buffer.from('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n', 'latin1');
 
 async function upload(client: Client, url: string, data: Buffer, name: string, contentType = 'application/octet-stream') {
@@ -194,11 +195,15 @@ describe('homework', () => {
     expect(roster.find((r: { name: string }) => r.name === 'Omar')).toMatchObject({ status: 'assigned', missing: false });
     const view = (await s.teacher.client.get(`/api/orgs/${s.owner.orgId}/homework/${hw.id}/submissions/${s.amira.userId}`)).json();
     expect(view.submission).toMatchObject({ status: 'submitted', body: 'Final answer: 1) a 2) b 3) c' });
+    expect(view.submission.files[0].status).toBe('pending');
+    // Files open once the worker has checked them (file-checks.test.ts covers the checks).
+    expect((await s.teacher.client.get(`/api/orgs/${s.owner.orgId}/files/${view.submission.files[0].id}`)).json().error.code).toBe('FILE_CHECKING');
+    expect(await runClassroomFileChecks(h.db, null)).toMatchObject({ ready: 2 });
     const file = await s.teacher.client.get(`/api/orgs/${s.owner.orgId}/files/${view.submission.files[0].id}`);
     expect(file.statusCode).toBe(200);
     expect(file.headers['content-type']).toBe('image/png');
     expect(file.headers['content-security-policy']).toContain('sandbox');
-    expect(file.rawPayload.equals(PNG)).toBe(true);
+    expect(file.rawPayload.subarray(0, 8).equals(PNG.subarray(0, 8))).toBe(true);
     // PDFs download rather than open in the app's origin.
     const pdf = await amira.get(`/api/student/files/${teacherFile.json().file.id}`);
     expect(pdf.headers['content-disposition']).toMatch(/^attachment; filename="worksheet.pdf"/);
@@ -272,6 +277,7 @@ describe('homework', () => {
     expect(omarFile.json().error.code).toBe('HOMEWORK_HANDED_IN');
     await omar.post(`/api/student/homework/${hw.id}/take-back`);
     const file = (await upload(omar, `/api/student/homework/${hw.id}/files`, PNG, 'omar.png')).json().file;
+    await runClassroomFileChecks(h.db, null);
     expect((await amira.get(`/api/student/files/${file.id}`)).statusCode).toBe(404);
     expect((await omar.get(`/api/student/files/${file.id}`)).statusCode).toBe(200);
 

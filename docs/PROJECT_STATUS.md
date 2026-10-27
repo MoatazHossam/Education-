@@ -270,6 +270,21 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:** a new E2E test checks, with the browser's accessibility tree, a field's description before and after an error, page titles in both languages, the picker's book names, the notifications button's name before and after reading, and that the page area is not a live region. Against the previous front end it reports 13 failures, one for each fixed problem (TEST_REPORT §3).
 - **Limitations:** the review itself has not been done: it needs a person who uses a screen reader daily, and a native Arabic reader for the Arabic pass. Until then, how the app sounds is unverified.
 
+### Screen-reader checklist for the teacher and student portal · CHECKLIST READY, REVIEW NOT STARTED
+
+- **Asked:** "start on item 4" of the next priorities (§4.2): tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page.
+- **Implemented:**
+  - **Checklist** (`docs/SCREEN_READER_REVIEW.md`): tasks 23–32 for the portal, written from what the pages actually announce: classes and homework, marking homework, writing a test, the live monitor, results and marking a test, the gradebook, keeping classroom data (teachers, owners and admins); Today and homework with files being checked, a timed test (the timer is read on demand, 5 and 1 minutes announced once, saving silent while it works and its failure said once), results and grades (students). Test data for them, including a 6-minute test to hear the timer. Tasks 24, 26–28 and 30–32 are repeated in Arabic (with the Arabic-Indic digits of the timer); a phone check for taking a test.
+  - **Results page:** the shared page now holds 72 checks (32 tasks; F13–F16; AR4; P5), with the Arabic and phone ones shown only where they apply. Results recorded before stay as they were.
+- **Found by the simulated screen reader on the portal, and fixed** (SCREEN_READER_PRECHECK §3, P10–P12):
+  - **The timer** announced "5 minutes left" as soon as a test was opened with less time left, said "1 minutes left", did not announce again after the teacher gave more time, and used the singular for "5 minutes" in Arabic. Now each mark is said once when crossed (`public/js/countdown.js`, unit-tested), "1 minute left.", "متبقٍ ٥ دقائق." and "متبقٍ دقيقة واحدة.".
+  - **Marking a test:** every question's fields had the same names; they now start with "Question N: " for screen readers.
+  - **Live monitor:** the table was rebuilt every 5 seconds and focus put back on the teacher's button, which a screen reader reads again; now only changed cells are redrawn and a focused button stays.
+- **Heard in the tests (simulated):** "Handed in." on handing in; saving failures said once; the monitor's summary when it changes, and the teacher's button read at most once while it refreshes; "Saved. Total: 2 / 2" on marking.
+- **Left for the human tester, as checks:** how the timer and Arabic-Indic digits sound; whether the reading position holds while the monitor refreshes; where focus lands after attaching a file (the page is drawn again); whether moving through the gradebook's subject list with the arrow keys loads each subject at once (WCAG 3.2.2; the organization switcher works the same way).
+- **Files:** `docs/SCREEN_READER_REVIEW.md`, `docs/SCREEN_READER_PRECHECK.md`, `public/js/countdown.js` (+ `.d.ts`), `public/js/views/{student-tests,tests}.js`, `public/js/i18n.js`, `tests/unit/countdown.test.ts`, `tests/e2e/accessibility.spec.ts`; the results page (artifact).
+- **Tests:** `tests/unit/countdown.test.ts` (4); the accessibility audit's new listening checks (handing in, saving failures, the monitor, marking) and field names.
+
 ### Simulated screen-reader pre-check and tester results page · COMPLETE (manual review still not started)
 - **Implemented:**
   - **Simulated screen reader:** Guidepup's Virtual Screen Reader (`@guidepup/virtual-screen-reader` 0.33.0, MIT, development dependency only) reads every screen the accessibility audit checks, now 83, from top to bottom. A new test listens to what is announced after actions. The audit fails on an unnamed control or table header, a symbol read on its own, a skipped heading level, or text in the other language without `lang`. Transcripts are written to `test-results/screen-reader/` on each run. Details, coverage of the checklist's 22 tasks, and what a simulation cannot tell: `docs/SCREEN_READER_PRECHECK.md`.
@@ -569,7 +584,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (301 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (305 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -592,10 +607,10 @@ Where things stand (2026-10-27): the teacher and student portal is complete and 
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
 pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
-items 1 to 3 are done the same day: schools set how long they keep classroom data (PR #24), one exam
-for a whole grade on one school network was load-tested and its limits fixed (PR #25), and homework files
-are scanned for viruses and photos resized before anyone opens them (see Safer uploads above). Nothing
-else below is started.
+items 1 to 4 are done the same day: schools set how long they keep classroom data (PR #24), one exam
+for a whole grade on one school network was load-tested and its limits fixed (PR #25), homework files
+are scanned for viruses and photos resized before anyone opens them (PR #26), and the screen-reader
+checklist covers the portal (see above). Nothing else below is started.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -608,7 +623,7 @@ These block release; development cannot do them.
 | 3 | Paymob test-mode keys, then `npm run paymob:check` and the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position | No real billing until then | B-2, B-3 |
 | 4 | Production host, SMTP and alert channels, the backup job, then a restore drill | Nothing can be deployed | B-4 |
 | 5 | Catalogue verification by a curriculum specialist (0 of 231 subjects so far) | Product value and liability | B-6 |
-| 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist's 22 tasks cover the student's sign-in and curriculum but none of the portal's new pages; those tasks need adding first (4.2 item 4) | — |
+| 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist now has 32 tasks, 23–32 for the portal (4.2 item 4, done), and the results page holds them | — |
 | 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8) and an AI provider (B-10) | Needed before selling the portal, and before any AI feature | B-8, B-10 |
 | 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
 
@@ -621,7 +636,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 | 1 | ~~**Retention of classroom data.**~~ **Done 2026-10-27** (Keeping classroom data, above): three periods per school, notices 14 days ahead to owners and admins, a hold per item, the gradebook linked for download, off until set | — | — |
 | 2 | ~~**Exams at school scale.**~~ **Done 2026-10-27** (Exams at school scale, above): the load test found that 40 of 100 students on one address could not start; the portal's limits now count per student and the flood guard per account, and 100 and 300 students took the exam with no request refused | — | — |
 | 3 | ~~**Safer uploads.**~~ **Done 2026-10-27** (Safer uploads, above): ClamAV scans every file in the worker before anyone opens it, photos are made at most 2,000 px without their metadata, and an alert fires when files wait | — | — |
-| 4 | **Screen-reader checklist for the portal.** Add tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page | Needed before the manual review (4.1 item 6) | 1 |
+| 4 | ~~**Screen-reader checklist for the portal.**~~ **Done 2026-10-27** (Screen-reader checklist for the teacher and student portal, above): tasks 23–32 in both languages and on the results page; three problems the simulated reader found are fixed | — | — |
 | 5 | **Arabic import messages.** Translate the server validation messages in the roster import and catalogue sheet import previews | The rest of the student pages are translated (STUDENT_ACCOUNTS §9) | 1 |
 | 6 | **E2E in Firefox and WebKit** as well as Chromium | Open item from roadmap P1. Students and teachers use whatever browser their device has; E2E runs only in Chromium today | 1–2 |
 
@@ -631,7 +646,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #25 (exams at school scale) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `88b1c06`): 4.2 item 3 (safer uploads). The next
-development step is 4.2 item 4 (the screen-reader checklist for the portal), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #26 (safer uploads) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `18c2a58`): 4.2 item 4 (the screen-reader checklist for
+the portal). The next development step is 4.2 item 5 (Arabic import messages), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

@@ -256,8 +256,13 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await runFileCheckPass();
   await expect(studentPage.locator('.files a', { hasText: 'letters.png' })).toBeVisible({ timeout: 10_000 });
   await audit(studentPage, 'student homework (draft with a photo)');
+  await listen(studentPage);
   await studentPage.getByRole('button', { name: 'Hand in' }).click();
   await expect(studentPage.getByText(/You handed this in/)).toBeVisible();
+  // Handing in is confirmed politely, and the page is read again from its heading.
+  const handedIn = await heard(studentPage);
+  expect(handedIn).toContain('polite: Handed in.');
+  expect(handedIn).toContain('heading, Practise the letters, level 1');
   await audit(studentPage, 'student homework (handed in)');
   await visit(studentPage, '/student/homework?show=all', 'student homework list');
   await page.getByRole('link', { name: 'Practise the letters' }).click();
@@ -326,6 +331,21 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(studentPage.getByRole('timer')).toBeVisible();
   await audit(studentPage, 'taking a test');
   const attemptPath = new URL(studentPage.url()).pathname;
+  // Saving is silent while it works. Answers that do not reach the school are said once, however
+  // many wait; the timer says nothing with 30 minutes left.
+  const answersRoute = '**/api/student/attempts/*/answers/*';
+  await listen(studentPage);
+  await studentPage.route(answersRoute, (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":{"code":"UNAVAILABLE","message":"Unavailable"}}' }));
+  await studentPage.getByLabel('A', { exact: true }).check();
+  await expect(studentPage.locator('.testbar')).toContainText('Not saved yet (1)');
+  await studentPage.getByLabel('Your answer').fill('Ba');
+  await studentPage.getByLabel('Your answer').blur();
+  await expect(studentPage.locator('.testbar')).toContainText('Not saved yet (2)');
+  const unsaved = await heard(studentPage);
+  expect(unsaved.filter((p) => p === 'polite: Some answers are not saved yet. The page keeps trying.')).toHaveLength(1);
+  expect(unsaved.filter((p) => /saving|saved|minutes? left/i.test(p) && !p.startsWith('polite: Some answers'))).toEqual([]);
+  await studentPage.unroute(answersRoute);
+  await expect(studentPage.getByText(/^Saved /)).toBeVisible({ timeout: 40_000 });
   await studentPage.getByLabel('A', { exact: true }).check();
   await studentPage.getByLabel('Your answer').fill('Ball');
   await expect(studentPage.getByText(/^Saved /)).toBeVisible();
@@ -336,6 +356,18 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await page.getByRole('button', { name: 'Extra time for Ally Student' }).click();
   await audit(page, 'extra time dialog');
   await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Extra time for Ally Student' })).toBeFocused();
+  // From here the monitor refreshes every 5 seconds while the student goes on: listen to it, and
+  // count the focus moves and refreshes (the simulator reports a repeated focus move only once).
+  let refreshes = 0;
+  const countRefresh = (r: { url(): string }) => { if (/\/monitor$/.test(r.url())) refreshes++; };
+  page.on('request', countRefresh);
+  await page.evaluate(() => {
+    const w = window as unknown as { focusMoves: number };
+    w.focusMoves = 0;
+    document.addEventListener('focusin', () => { w.focusMoves++; });
+  });
+  await listen(page);
   await studentPage.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
   await expect(studentPage.getByRole('timer')).toBeVisible();
   await audit(studentPage, 'taking a test (Arabic)');
@@ -347,6 +379,16 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await studentPage.getByRole('dialog').getByRole('button', { name: 'Submit' }).click();
   await expect(studentPage.getByText('Your answers are saved. Your teacher will show the results later.')).toBeVisible();
   await audit(studentPage, 'test submitted (results later)');
+  await expect(page.locator('.summary')).toHaveText('Working: 0 (online 0) · Submitted: 1 · Not started: 0', { timeout: 15_000 });
+  await expect.poll(() => refreshes, { timeout: 20_000 }).toBeGreaterThanOrEqual(4);
+  page.off('request', countRefresh);
+  // The summary is said when it changes. The refreshes do not move the teacher's focus, so the
+  // button they are on is not read again every 5 seconds: focus moves once at most, when that
+  // student's buttons changed (on submitting).
+  const board = await heard(page);
+  expect(board).toContain('polite: Working: 0 (online 0) · Submitted: 1 · Not started: 0');
+  expect(await page.evaluate(() => (window as unknown as { focusMoves: number }).focusMoves)).toBeLessThanOrEqual(1);
+  await expect(page.getByRole('button', { name: 'Extra time for Ally Student' })).toBeFocused();
   await page.goto(monitorPath);
   await page.getByRole('button', { name: 'Close the test now' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Close the test now' }).click();
@@ -356,9 +398,15 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   const resultsPath = new URL(page.url()).pathname;
   await page.getByRole('link', { name: 'Attempt 1 of Ally Student' }).click();
   await audit(page, 'test attempt marking');
-  await page.getByLabel('Mark (out of 1)').fill('1');
+  // Every question has the same fields; their names say which question they belong to.
+  await expect(page.getByRole('spinbutton', { name: 'Question 1: Change the mark (out of 1; empty keeps the automatic one)' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Question 1: Comments for the student' })).toBeVisible();
+  await listen(page);
+  await page.getByRole('spinbutton', { name: 'Question 2: Mark (out of 1)' }).fill('1');
   await page.getByRole('button', { name: 'Save the mark for question 2' }).click();
   await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
+  // Saving a mark is said politely, with the new total.
+  expect((await heard(page)).some((p) => /^polite: Saved\. Total: \d+ \/ 2$/.test(p))).toBe(true);
   await studentPage.goto('/student/tests');
   await studentPage.getByRole('link', { name: 'Letters quiz' }).click();
   await studentPage.getByRole('link', { name: 'See your answers of attempt 1' }).click();

@@ -52,7 +52,15 @@ saves each one as it is marked, and needs Contributor access from the owner.
   - at least two unread notifications for the owner;
   - a webhook endpoint with a few deliveries (a failed test is enough);
   - a student account with a scope and a grade;
-  - a platform administrator with two-factor sign-in.
+  - a platform administrator with two-factor sign-in;
+  - for the teacher and student portal (tasks 23–32): student accounts switched on
+    for the school; a class with two students, a teacher (a viewer or editor added
+    as the class's teacher of one subject) and a curriculum scope; homework with
+    marks, one student's work handed in with a photo; a test with a start code and
+    two questions (one with choices, one written), and a second test with a
+    **6-minute time limit** (to hear the 5- and 1-minute announcements); one
+    submitted attempt to mark. A worker must be running (`npm run dev:worker`):
+    files open only after its check (CLASSROOM.md §5).
 
 ## 3. How to record results
 
@@ -66,7 +74,7 @@ the exact words: each screen reader phrases it differently.
 
 ## 4. Changes made before this review: confirm them
 
-F1–F5 were found while preparing the checklist, by reading the markup; F6–F12
+F1–F5 were found while preparing the checklist, by reading the markup; F6–F16
 by the simulated screen reader (SCREEN_READER_PRECHECK.md). All are fixed and
 covered by automated checks (tests/e2e/accessibility.spec.ts), but only a
 screen reader shows how they actually sound.
@@ -85,6 +93,10 @@ screen reader shows how they actually sound.
 | F10 | The ✓ before the verification count and the bell were read as symbols. | Hidden from screen readers. | Neither is read. |
 | F11 | The column holding a row's buttons had a blank header in 7 tables. | Named "Details and actions". | Moving into that column announces its name. |
 | F12 | The picker's colour key had no name; kinds were read as "External refs"; pricing plans jumped from heading level 1 to 3. | A group named "Colour key"; kinds in full; plans are level-2 headings. | As described. |
+| F13 | A timed test opened with less than 5 minutes left announced "5 minutes left" at once; with under a minute it said "1 minutes left"; after the teacher gave more time the marks were not said again. In Arabic, "5 minutes" used the singular. | Each mark (5 minutes, 1 minute) is said once, when the time left crosses it; not when the test opens past it; again after more time. "1 minute left." in English; "متبقٍ ٥ دقائق." and "متبقٍ دقيقة واحدة." in Arabic. | Task 31. |
+| F14 | When marking a test, every question's fields were named the same ("Mark (out of 1)", "Comments for the student"). | Their names start with the question: "Question 2: Mark (out of 1)". | Task 27: tabbing through the fields says which question each belongs to. |
+| F15 | The live monitor rebuilt its table every 5 seconds and put focus back on the button the teacher was on, so a screen reader could read that button again every 5 seconds. | Only cells that changed are redrawn; the focused button is left alone. | Task 26: resting on a row's button for a minute, nothing is read again unless that student's buttons changed. |
+| F16 | On the Arabic test pages, an English question was read in pieces (its final "?" on its own), and "null" was read where an empty part of the page was drawn. | English text in the Arabic interface is marked as English in one piece; nothing empty is read. | Tasks 31 and 27 in Arabic. |
 
 ## 5. Every page (each combination)
 
@@ -195,9 +207,96 @@ Do each task with the screen reader alone, without looking at the screen.
     "Verification…" dialog, bulk verification from a spreadsheet (upload,
     preview, apply).
 
+### Teacher (and owner or admin) in the classroom
+
+These need the portal's test data (§2). "Teacher" is a member added to a class as
+the teacher of a subject; owners and admins see every class.
+
+23. **Classes and homework**: the Classes page; a class (students, teachers,
+    homework and tests); **Set homework** (subject, title, instructions, books,
+    due time, "Show it to students later", marks, late work). Attach a worksheet:
+    the file field, "Uploading …", then the file listed with "Being checked…" until
+    its check, and its link a few seconds later without the page moving. Note where
+    focus lands after the upload. The homework's roster: each student's status
+    ("Handed in", "Late", "Missing", "Returned") is read as words, and the column of
+    buttons as "Details and actions".
+24. **Marking homework**: "Open the work of …" opens the dialog "Work of …": the
+    handed-in time, the answer, the files (a photo's name, size and link), "Mark
+    (out of 10)", "Comments for the student", "Save without returning" and "Return
+    to student"; "Returned to …" is announced, and the roster then reads the mark.
+25. **Writing a test**: **New test** (kind, opening and closing times, time limit,
+    attempts, start code, one device, when results show); **Add question** for each
+    type (with choices: "Choice A", "Choice A is correct", "Delete choice A", "Add a
+    choice"); "Questions (2, 2 points)"; **Publish** and its confirmation.
+26. **Live monitor**, while a student takes the test:
+    - the summary ("Working: 1 (online 1) · Submitted: 0 · Not started: 1") is
+      announced when it changes, at most every 5 seconds; nothing else the refresh
+      does is announced, and the countdowns in the table are not read out (F15);
+    - resting on a row's button keeps focus there across refreshes;
+    - the table: each cell with its header (Student, Status with "2 of 2 answered ·
+      29:53 left", Noticed, Best mark, Attempts, Details and actions); read it while
+      it refreshes and note whether the reading position is kept;
+    - the start code: note whether its letters are spelled out;
+    - "Extra time for …" (dialog), "Submit the work of … now" (confirmation),
+      "Allow … to continue on another device", "Allow another attempt for …" and
+      "Activity of …" (dialog listing what was noticed); their confirmations;
+    - "Close the test now" and its confirmation.
+27. **Results and marking a test**: the Results table; "Attempt 1 of …"; on the
+    attempt, each question's type, its mark or "To mark", the question, "Answer:",
+    the correct answer or marking guide. The fields are named after their question
+    ("Question 2: Mark (out of 1)", "Question 1: Comments for the student", F14);
+    "Save the mark for question 2" announces "Saved. Total: 2 / 2". With results
+    released by hand, **Release results** and its confirmation.
+28. **Gradebook**: "Gradebook" on the class page; "Subject" (the page reloads for
+    another subject: with the list closed, move through it with the arrow keys and
+    note whether each subject loads at once, WCAG 3.2.2); the table: column headers
+    read each item's title, kind, date and "out of …"; row headers the students;
+    cells a mark, "To mark", "Missing", "Returned" or "None"; "Average" and
+    "Missing"; **Download CSV**.
+29. **Keeping classroom data** (owner or admin): the three periods and their hints;
+    saving with items already past the new periods asks first and says how many;
+    the items due with their dates and **Keep**; the kept list and "Let the periods
+    apply".
+
+### Student, in the portal
+
+30. **Today and homework**: Today's sections ("To do", "Tests open now",
+    "Returned this week") and the notifications; a homework: the task (subject, due
+    time, books with their kinds, files), "Your answer" and its hint, **Attach photos
+    or a PDF** (the file chooser, "Uploading …", then the file "Being checked…" and,
+    seconds later, its link, without the page moving or the answer being lost; a
+    file deleted for a virus says "Virus found: deleted" and a message is
+    announced), **Save draft** ("Draft saved."), **Hand in** ("Handed in." is
+    announced and the page is read again from its heading), **Take back**; once
+    returned, "Your mark" and the comments.
+31. **Taking a timed test** (use the 6-minute test):
+    - the start page (window, time limit, attempts, when results show, what the
+      teacher can see), "Start code", the start dialog;
+    - on the test: the heading, the "Time left" region and timer. The time is read
+      when you go to it; it is **not** read out every second;
+    - "5 minutes left." and "1 minute left." are each announced once (F13); open the
+      test again with less than 5 minutes left: nothing is announced at once; when
+      the teacher gives more time, "Your teacher gave you more time." is announced,
+      and the marks are said again when they come;
+    - each question is a group named "Question 1 of 2 · 1 point", then its text;
+      choices are radio buttons or checkboxes; a written answer is "Your answer";
+    - **saving is silent while it works** (the bar shows "Saved 10:31": read it when
+      you want). With the network off (aeroplane mode), change an answer: "Some
+      answers are not saved yet. The page keeps trying." is announced once; the bar
+      says "Not saved yet (1): trying again"; with the network back it saves by
+      itself;
+    - **Submit**: the confirmation says how many questions are unanswered, and, if
+      any answer is not saved, warns first that it would be lost;
+    - when time runs out: "Time is up. Your answers were submitted." and the result.
+32. **Results and grades**: a test's result (the score, each question with the
+    student's answer, the correct answer when shown, the teacher's comment);
+    **Grades**: a section per subject and class with the average and missing count,
+    and its table (item, date, mark).
+
 ## 7. Arabic interface
 
-Repeat §5 and tasks 1, 4, 7, 11, 12, 16 and 20 in Arabic. In addition:
+Repeat §5 and tasks 1, 4, 7, 11, 12, 16, 20 and the portal's 24, 26, 27, 28,
+30, 31 and 32 in Arabic. In addition:
 
 - Labels, buttons and messages are read in Arabic with the Arabic voice, and
   English book titles and URLs in English.
@@ -206,6 +305,10 @@ Repeat §5 and tasks 1, 4, 7, 11, 12, 16 and 20 in Arabic. In addition:
   sentences).
 - Plural forms and gender agreement sound natural (the Arabic copy has not been
   reviewed by a professional translator yet; note anything odd).
+- The test's timer and the monitor's countdowns use Arabic-Indic digits ("٢٩:٥٣"):
+  note how they are read. "متبقٍ ٥ دقائق." and "متبقٍ دقيقة واحدة." (F13).
+- English question text, answers and student names in the Arabic portal are read
+  in English, each in one piece (F16).
 
 ## 8. Phone (combinations C and D)
 
@@ -214,7 +317,11 @@ Repeat §5 and tasks 1, 4, 7, 11, 12, 16 and 20 in Arabic. In addition:
   next.
 - Dialogs open and close with the screen reader's gestures (two-finger scrub on
   VoiceOver, back gesture on TalkBack) and focus returns to the opener.
-- Tables that scroll sideways can be explored.
+- Tables that scroll sideways can be explored (the live monitor and the gradebook
+  are wide).
+- Taking a test on a phone: the time-left bar stays in reach while swiping through
+  the questions; the choices and **Submit** can be reached and activated; the
+  on-screen keyboard does not hide the field being typed in.
 
 ## 9. Results
 

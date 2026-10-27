@@ -57,36 +57,46 @@ text from ARABIC_NARRATION_SCRIPT.md (the "يُقرأ" lines where given). The t
 length instead of the estimate; scenes, pointer, camera, music cues and subtitles follow automatically. Lines
 without a take keep the estimate, and `prepare` reports how many are recorded.
 
-Or generate the takes with a synthetic voice. The chosen voice is a **female neural voice from Azure AI Speech**
-(`ar-SA-ZariyahNeural` by default). It needs a Speech resource (the free F0 tier covers both cuts, about
-12,600 characters), its key and region as environment secrets `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`
-(never in the repository or the chat), and `*.tts.speech.microsoft.com` allowed by the network policy:
+Or generate the takes with a synthetic voice. The current takes (2026-10-27) use the open-source Piper voice
+`ar_JO-kareem-medium` (sherpa-onnx GitHub release `tts-models`), **with our own pronunciation**: the voice is not
+given the text. `audio/arabic_g2p.py` turns each diacritized line into phonemes by the reading rules, and the
+phoneme ids go straight to the model, so nothing re-reads or guesses the vowels:
 
 ```sh
-node narrate.mjs samples                       # → ../audio/voice-samples/<voice>.wav, two lines per voice
-node narrate.mjs samples --voices ar-SA-ZariyahNeural,ar-EG-SalmaNeural --rate -5%
-node narrate.mjs 20 --voice ar-SA-ZariyahNeural --rate 0%
-node narrate.mjs 3 --voice ar-SA-ZariyahNeural --rate 0%
+python3 -m venv /path/to/venv && /path/to/venv/bin/pip install piper-tts
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-medium.onnx --length-scale 0.72 --sentence-silence 0.3
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx --length-scale 0.72 --sentence-silence 0.3
+python3 -m unittest discover -s audio -p 'test_*.py'     # the reading rules
 ```
 
-The requests go through curl (which uses the environment's HTTPS proxy and CA bundle); the key is passed to
-curl on its standard input, never on the command line or on disk. Throttling and server errors are retried.
-Each take is 48 kHz mono, trimmed of the voice's own leading and trailing silence. `--rate` is the SSML
-speaking rate (e.g. `-5%`, `+4%`), used to land each cut in its target length (20-minute cut 19:30–20:30,
-3-minute cut 2:50–3:10).
+Why: Piper (like most open voices) reads Arabic through espeak-ng, which mispronounces fully diacritized text.
+Checked word by word over both scripts, it drops the vowel after every shadda when the marks are in Unicode's
+normal order (الشَّمْسُ → ʔaʃʃmsu, سَنُدَرِّسُ → sanudarrsu), reads a waw or ya that carries a vowel as a vowel
+(هِيَ → hiːa, بَيَانَات → baiaːnaːt), ignores hamzat al-wasl (بِالْمَنْهَجِ → bi aːlmanhadʒi), reads ذَلِكَ and
+هَذَا with a short a, and has no pausal forms. The rules in `arabic_g2p.py`: every short vowel, tanween, sukun and
+shadda as written; long vowels and diphthongs; the dagger alif also where it is not written (هٰذَا، ذٰلِكَ،
+لٰكِنَّ، هٰكَذَا); hamzat al-wasl (silent in connected speech, a long vowel before it shortened, a helping vowel after
+a consonant, ʔa / ʔi after a pause); the article's lam assimilated to sun letters; iqlab (n → m before b); pausal
+forms before every pause; ta marbuta; stress. Phonemes are written in espeak's own notation, the one the voice
+was trained on. The phonemes of every line are saved next to the line list (`build/<cut>/narration-lines-phonemes.json`).
 
-The voice is given the diacritized text as written, so the script's tashkeel guides the pronunciation (numbers
-and foreign terms have a spoken form, `say`); a line that still comes out wrong is fixed in the script, found
-with `lib/asr_check.py` and by listening. At each pause it reads in pausal form, as a narrator does: the
-final short vowel or tanween of the word before a comma or full stop is not voiced, and tanween al-fath on alif
-becomes a long "aa". Lines that already have a file are skipped, so a human take placed first is kept;
-`--force` regenerates, `--only <sceneId>` limits to one scene.
+`--length-scale` sets the pace (0.72 ≈ 8.8 letters a second including pauses, the pace the script was written
+for), `--sentence-silence` the pause between sentences, `--max-pause` (0.28 s) shortens the pauses the voice
+makes at commas, `--noise-scale` and `--noise-w` its variation; `--tempo` time-stretches (not used). Lines that
+already have a file are skipped, so a human take placed first is kept; `--force` regenerates, `--only <sceneId>`
+limits to one scene.
 
-`--engine piper --voice <model.onnx>` uses an open-source Piper voice instead (`pip install piper-tts` in a
-virtual environment, `PIPER_PYTHON` pointing to its Python; `--length-scale`, `--sentence-silence`, `--tempo`
-and `--tashkeel` as in `audio/narrate.py`). The only Arabic Piper voice, `ar_JO-kareem-medium` (male), was
-tried on 2026-10-27 and **rejected by the owner** (quality; a female voice was asked for); its licence could
-not be confirmed either. Those takes are not used.
+**The voice's licence could not be confirmed**: its model card refers to a training-data repository that states
+no licence. Other Arabic voices were checked: the three newer Piper voices (`ar_JO-SA_dii`, `SA_miro`,
+`SA_miro_V2`) are CC BY-NC-SA 4.0 (no commercial use), and Nabra-82M (Kokoro architecture, licence also not
+confirmable here) was far less intelligible in the speech-recognition check (15–17 % character error rate
+against 3.7 %), cut line endings and cannot tell س from ص.
+
+`--engine azure` uses an Azure AI Speech neural voice instead (default `ar-SA-ZariyahNeural`, `--rate` for the
+pace; `node narrate.mjs samples` renders two lines per voice). It needs `AZURE_SPEECH_KEY` and
+`AZURE_SPEECH_REGION` as environment secrets (never in the repository or the chat) and
+`*.tts.speech.microsoft.com` allowed by the network policy. The requests go through curl; the key is passed to
+curl on its standard input, never on the command line or on disk.
 
 `lib/asr_check.py` transcribes the takes with Whisper (small, sherpa-onnx `asr-models` release) and reports a
 character error rate per line against the script, to find lines worth listening to.

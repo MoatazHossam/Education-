@@ -140,12 +140,20 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
   homework students hand in (text, photos, PDFs) and the marks and comments teachers give
   (`docs/CLASSROOM.md`). This is more sensitive than the account data above: school work and marks of
   minors. It is under the same switch as student accounts, and the same legal advice is needed **before
-  real students' work and marks are entered**, including how long work and marks are kept (nothing is
-  deleted automatically yet). Marks are given only by teachers; no AI marks or changes them.
+  real students' work and marks are entered**, including how long work and marks are kept (the school
+  sets it, see the retention bullet below). Marks are given only by teachers; no AI marks or changes them.
 - **Online tests and exams (2026-10-26):** answers, scores and monitoring events (when the test page
   was left and for how long, the length of pasted text, connection losses, another device) of minors
   (`docs/ONLINE_TESTS.md` §9). No camera, microphone, screen or keystroke capture. The student is told
   what is recorded on the test page. Automatic marks follow fixed rules; no AI marks. Same switch and
   the same legal advice before real students take tests, including whether the school needs consent
   for the monitoring signals and how long they are kept (they are deleted with the test, class or
-  student, not automatically yet).
+  student, and by the school's retention periods below).
+- **Retention of classroom data (2026-10-27):** each school's owners and admins set how long to keep
+  test monitoring records, students' work, and homework and tests with their marks, in days from the due
+  time or the test's end (`docs/CLASSROOM.md` §11). Nothing is deleted until a period is set; every
+  deletion is announced to owners and admins at least 14 days ahead, checked again against the current
+  periods and holds when its date comes, and audited by the system without student work in the entry.
+  The worker deletes in each school's own tenant transaction, so row-level security limits it to that
+  school. The periods themselves are the school's decision with its legal adviser: the product makes
+  them possible, it does not choose them. Backups keep deleted data until they are pruned.

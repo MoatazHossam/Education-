@@ -9,6 +9,7 @@ import * as admin from './views/admin.js';
 import * as billing from './views/billing.js';
 import * as carry from './views/carry.js';
 import * as classes from './views/classes.js';
+import * as retention from './views/retention.js';
 import * as compare from './views/compare.js';
 import * as grades from './views/grades.js';
 import * as items from './views/items.js';
@@ -59,6 +60,8 @@ route('/org/:orgId/assignments', { access: 'user', org: true, view: assignments.
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });
 route('/org/:orgId/classes', { access: 'user', org: true, view: classes.classesView });
+// Before /classes/:classId, which would otherwise take "retention" for a class id.
+route('/org/:orgId/classes/retention', { access: 'user', org: true, view: retention.retentionView });
 route('/org/:orgId/classes/:classId', { access: 'user', org: true, view: classes.classView });
 route('/org/:orgId/classes/:classId/gradebook', { access: 'user', org: true, view: grades.gradebookView });
 route('/org/:orgId/homework/:homeworkId', { access: 'user', org: true, view: classes.homeworkView });

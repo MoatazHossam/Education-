@@ -201,6 +201,8 @@ function homeworkJson(h: Homework) {
     maxPoints: num(h.max_points),
     allowLate: h.allow_late,
     createdAt: h.created_at,
+    // Students' work was deleted under the school's retention periods (classroom/retention.ts).
+    workRemovedAt: h.work_removed_at,
   };
 }
 export { homeworkJson };

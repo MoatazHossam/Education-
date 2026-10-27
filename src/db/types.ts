@@ -530,6 +530,10 @@ export interface HomeworkTable {
   max_points: NullableDecimal;
   allow_late: Generated<boolean>;
   notified_at: NullableTimestamp;
+  /** Students' work was deleted under the school's retention periods (migration 0015). */
+  work_removed_at: NullableTimestamp;
+  /** Kept whatever the retention periods say, until an admin lifts the hold. */
+  retention_hold: Generated<boolean>;
   created_by: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
@@ -608,6 +612,11 @@ export interface TestsTable {
   max_extra_minutes: Generated<number>;
   published_at: NullableTimestamp;
   notified_at: NullableTimestamp;
+  /** Students' answers were deleted under the school's retention periods (migration 0015). */
+  work_removed_at: NullableTimestamp;
+  /** The monitoring events were deleted under the school's retention periods. */
+  monitoring_removed_at: NullableTimestamp;
+  retention_hold: Generated<boolean>;
   created_by: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
@@ -691,6 +700,29 @@ export interface TestEventsTable {
   detail: Json<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------- classroom data retention (migration 0015)
+export type RetentionStage = 'monitoring' | 'work' | 'records';
+
+export interface ClassroomRetentionTable {
+  org_id: string;
+  monitoring_days: number | null;
+  work_days: number | null;
+  records_days: number | null;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
+}
+
+export interface ClassroomRetentionNoticesTable {
+  id: Generated<string>;
+  org_id: string;
+  homework_id: string | null;
+  test_id: string | null;
+  item_id: ColumnType<string, never, never>;
+  stage: RetentionStage;
+  delete_after: Timestamp;
+  notified_at: Generated<Date>;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
@@ -710,6 +742,8 @@ export interface DB {
   test_attempts: TestAttemptsTable;
   test_answers: TestAnswersTable;
   test_events: TestEventsTable;
+  classroom_retention: ClassroomRetentionTable;
+  classroom_retention_notices: ClassroomRetentionNoticesTable;
   user_tokens: UserTokensTable;
   invitations: InvitationsTable;
   catalog_versions: CatalogVersionsTable;

@@ -8,6 +8,7 @@ import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { invalidateOrg } from '../state.js';
 import { act, localInput, settableSubjects, subjectName } from './classroom-common.js';
+import { retentionNotes } from './retention.js';
 import { pageHead } from './shell.js';
 import { testsCard } from './tests.js';
 
@@ -95,7 +96,8 @@ export async function classesView(ctx) {
     h('td', {}, c.toMark ? h('span', { class: 'pill warn' }, t('classes.toMark', { n: c.toMark })) : none())));
   return h('div', {}, head,
     h('div', { class: 'row page-actions' }, newClass,
-      data.admin ? link(`/org/${orgId}/classes${archived ? '' : '?archived=1'}`, archived ? t('classes.hideArchived') : t('classes.showArchived')) : null),
+      data.admin ? link(`/org/${orgId}/classes${archived ? '' : '?archived=1'}`, archived ? t('classes.hideArchived') : t('classes.showArchived')) : null,
+      data.admin ? link(`/org/${orgId}/classes/retention`, t('ret.link')) : null),
     data.classes.length
       ? tableCard(t('classes.title'), h('table', { class: 'data' },
         h('thead', {}, h('tr', {}, [t('classes.class'), t('picker.grade'), t('classes.students'), t('classes.teachers'), t('classes.toMarkCol')].map(th))),
@@ -355,7 +357,7 @@ async function markDialog(orgId, hw, row, canMark) {
     ? h('p', { class: 'notice' }, t('hw.notHandedInOnline'))
     : h('div', { class: 'stack' },
       h('p', { class: 'muted' }, t('hw.handedInAt', { when: fmtDate(sub.submittedAt, true) }), sub.late ? [' ', h('span', { class: 'pill bad' }, t('hw.status.late'))] : null),
-      sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : h('p', { class: 'muted' }, t('hw.noText')),
+      sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : h('p', { class: 'muted' }, hw.workRemovedAt ? t('ret.workGone') : t('hw.noText')),
       sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/orgs/${orgId}/files/${f.id}`, f))) : null);
   const save = async (andReturn) => {
     err.textContent = '';
@@ -457,6 +459,7 @@ export async function homeworkView(ctx) {
   return h('div', {},
     h('p', { class: 'crumbs' }, link(`/org/${orgId}/classes`, t('classes.title')), ' › ', link(`/org/${orgId}/classes/${data.class.id}`, data.class.name, { dir: 'auto' })),
     pageHead(hw.title, t('hw.headLine', { class: data.class.name, subject: subjectName(hw), due: dueLabel(hw) }), editActions),
+    retentionNotes('homework', hw, data.retention),
     details,
     roster);
 }

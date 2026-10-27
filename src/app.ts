@@ -27,6 +27,7 @@ import { registerScopeRoutes } from './scopes/routes.js';
 import { registerStudentRoutes } from './students/routes.js';
 import { registerGradebookRoutes } from './classroom/gradebook-routes.js';
 import { registerClassroomRoutes } from './classroom/routes.js';
+import { registerRetentionRoutes } from './classroom/retention-routes.js';
 import { registerStudentClassroomRoutes } from './classroom/student-routes.js';
 import { registerTestRoutes } from './classroom/tests-routes.js';
 import { registerStudentTestRoutes } from './classroom/tests-student-routes.js';
@@ -168,6 +169,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   registerTestRoutes(app, ctx);
   registerStudentTestRoutes(app, ctx);
   registerGradebookRoutes(app, ctx);
+  registerRetentionRoutes(app, ctx);
   await registerBillingRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
   registerApiV1Routes(app, ctx);

@@ -2,7 +2,7 @@
 
 Added 2026-10-26 at the owner's request: "a complete portal for teachers and students for daily
 assignments … and online tests". This document covers **classes, teachers, daily homework** and the
-**gradebook** (§10). Online tests and exams with monitoring have their own document,
+**gradebook** (§10), and **how long a school keeps this data** (§11). Online tests and exams with monitoring have their own document,
 `docs/ONLINE_TESTS.md`. Everything is in English and Arabic.
 
 It is built into the existing system: the same sign-in, sessions, schools, roles, student accounts
@@ -17,6 +17,7 @@ application or user database.
 | Teacher: any member of the school (viewer, editor…) added to a class for a subject | See **My classes** (only the classes they teach); set homework for their subjects, with instructions, books from the class's curriculum and worksheet files; see who handed in; open each student's work; mark it, comment and return it, alone or several at once |
 | Student (school-created account) | **Today**: what is due (overdue first), what was missed, and work returned this week. **Homework**: all homework of their classes. Open one, write an answer, attach photos or PDFs, save a draft, hand in, take it back before it is marked, see the mark and comments once returned. **My books**: the curriculum, as before. Notifications for new and returned homework |
 | Members who teach nothing | No classes (the page says an admin adds them) |
+| School owner and admins, again | Set how long the school keeps students' work, marks and test monitoring records; see what is due to be deleted; keep one homework or test longer (§11) |
 | Platform administrator | Turns student accounts on for a school (§2). No access to classes, homework or marks |
 
 A teacher of one subject sees the class's other homework but can change and mark only their own
@@ -102,9 +103,10 @@ Migration `0013_classroom.ts`. All tables carry `org_id` and forced row-level se
 | `classes` | name, grade, curriculum scope, archived time |
 | `class_students` | class ↔ student (composite keys keep both in the same school) |
 | `class_teachers` | class ↔ member, subject (English and Arabic); cascades from the membership |
-| `homework` | the fields of §4, `notified_at` |
+| `homework` | the fields of §4, `notified_at`; `work_removed_at` and `retention_hold` (§11, migration 0015) |
 | `homework_submissions` | one per homework and student: text, state, handed-in time, late, mark, comments, who marked and when, returned time |
 | `classroom_files` | name, type, size, SHA-256 and bytes; belongs to exactly one homework or one submission |
+| `classroom_retention`, `classroom_retention_notices` | the school's retention periods, and each notice of a deletion to come (§11); staff only |
 
 Student requests run in a new context, `withStudentContext`, which sets `app.current_student` as well
 as the school. The policies then expose, **whatever the query asks for**: only the student's own
@@ -183,8 +185,8 @@ Errors: `CLASSROOM_NOT_ENABLED` (402), `CLASS_NAME_TAKEN`, `ALREADY_TEACHER` (40
 The system now stores children's school work and marks. This is personal data of minors under the
 Egyptian Personal Data Protection Law (SECURITY_DESIGN §7), whose compliance grace period ends around
 1 November 2026. **Get legal advice before real students' work and marks are entered**: lawful basis
-and parental consent, the school as controller, retention (nothing is deleted automatically yet),
-and the privacy notice. Marks are set only by teachers; nothing is marked by AI.
+and parental consent, the school as controller, how long to keep each kind of data (the school sets
+it, §11; nothing is deleted until it does), and the privacy notice. Marks are set only by teachers; nothing is marked by AI.
 
 ## 10. Gradebook and My grades
 
@@ -210,15 +212,84 @@ Read only: it gathers marks given on the homework and test pages (docs/ONLINE_TE
   and a test score once the test's results setting shows it (*Waiting for the mark* until then). The
   request runs in the student's row-level security context, so it can only read their own work.
 
-## 11. Not done yet
+## 11. Keeping classroom data (retention)
+
+Added 2026-10-27. Owners and admins decide how long the school keeps classroom data (Classes →
+**Keeping data**, `/org/:orgId/classes/retention`). Migration `0015_classroom_retention.ts`, code in
+`src/classroom/retention.ts`.
+
+- **Three periods**, in days, each counted from a homework's **due time** or a test's **end** (its
+  closing time plus any extra time given, or when it was closed early). Each is unset ("Keep") until the
+  school chooses; **nothing is deleted while a period is unset**, and every school starts unset.
+
+  | Period | What is deleted | What stays |
+  | --- | --- | --- |
+  | Test monitoring records | The test's monitoring events (left the page, pasting, offline, another device, and the start/submit events); each attempt's event count and browser session id | Attempts, answers, scores |
+  | Students' work | Homework: each hand-in's text and files, and drafts never handed in. Tests: each answer (stored as JSON `null`) | Hand-in times, late flags, marks, comments, automatic marks per answer, scores |
+  | Homework and tests, with their marks | The homework or test itself, with every hand-in, file, attempt, answer, mark and comment, and the students' notifications that link to it; it leaves the gradebook | Nothing; the audit entry keeps its title and class |
+
+  The choices offered are 7, 30, 90 and 180 days and 1, 2, 3 and 5 years (the API takes any whole
+  number of days from 1 to 3650). Work and monitoring cannot be kept longer than the homework or test
+  they belong to (`RETENTION_ORDER`, also a database check). The periods are the school's decision, to
+  take with its legal adviser; the page says so.
+- **Notice before deletion.** When a homework's or test's stage comes within **14 days** of its end,
+  a notice is recorded for it and the school's owners and admins are told: one in-app notification and
+  one email (to a verified address) each, listing class, homework or test, what will be deleted and the
+  date. Deletion waits until **at least 14 days after the notice**, so setting a short period on old data
+  never deletes anything at once. Before saving, the page shows how many homework and tests are already
+  past the new periods and asks to confirm.
+- **Checked again when the date comes.** The worker deletes only what is still due under the current
+  periods, dates and holds: a longer period, a later due or closing time, or a hold cancels the deletion
+  (the notice is dropped). A test with an attempt still in progress waits. Saving periods also drops
+  notices they no longer cover.
+- **Keep one item longer** (an appeal, a dispute): **Keep** on the page puts a hold on that homework or
+  test; its notices go and none come while it is held. **Let the periods apply** lifts the hold.
+- **What people see.** The page lists what is due to be deleted (with a link to the class's gradebook
+  for that subject, to download it first) and what is kept. Homework and test pages say what is due to
+  be deleted and when, or what was deleted and when; a teacher opening deleted work reads that it was
+  deleted under the school's retention periods. A student's homework and test result say their answer
+  was deleted because the school keeps work for a limited time, and still show the mark and comments.
+  The gradebook keeps every mark until the homework or test itself is deleted.
+- **Worker.** `runClassroomRetention` runs with the hourly cleanup, for each active school with
+  settings, in that school's own tenant transaction (row-level security limits every statement to it).
+  Notices go out between 08:00 and 21:00 Cairo time; due deletions happen at any hour. A suspended
+  school is skipped until it is active again.
+- **Re-marking after deletion.** Marking an attempt again (a teacher's new mark on another answer)
+  keeps the stored automatic mark of a deleted answer instead of recomputing it from nothing.
+- **Audit.** `classroom.retention_updated` (periods before and after, notices dropped and sent),
+  `classroom.retention_hold` (homework or test, title, kept or not) and, by the system,
+  `classroom.retention_applied` (counts per stage, and up to 100 items with kind, id, title, class and
+  stage; never student work).
+- **Access.** Owners and admins only (403 for other members, `STAFF_ONLY` for students). The settings
+  and notices are in tables with forced row-level security that a student's request cannot read.
+
+API (CSRF as usual):
+
+| Method and path | Who | Purpose |
+| --- | --- | --- |
+| `GET /api/orgs/:orgId/classroom-retention` | admin | `{ periods: { monitoringDays, workDays, recordsDays }, updatedAt, updatedBy, noticeDays, upcoming[], held[] }` |
+| `POST /api/orgs/:orgId/classroom-retention/preview` | admin | Periods → `{ homework, tests, counts, deleteFrom }`: what saving them would announce now |
+| `PUT /api/orgs/:orgId/classroom-retention` | admin | Periods (each a number of days or `null`) → the same as GET, plus `noticesSent` |
+| `PUT /api/orgs/:orgId/classroom-retention/hold` | admin | `{ kind: 'homework'\|'test', id, keep }` → the same as GET |
+
+Homework and test responses for staff carry `retention { hold, workRemovedAt, monitoringRemovedAt,
+pending[{ stage, deleteAfter }] }`; homework and test JSON (staff and students) carry `workRemovedAt`
+(and `monitoringRemovedAt` for tests).
+
+## 12. Not done yet
 
 - **Online tests and exams** are built: see docs/ONLINE_TESTS.md (tests appear on the class page and
   on the student's Today and Tests pages).
 - No weighting between homework and tests, no term reports, and no grade scales (A–F or similar).
 - No email or SMS to students or parents; no parent accounts.
-- No virus scanning or image resizing of uploads (§5); no retention rule for old homework.
+- No virus scanning or image resizing of uploads (§5).
+- Retention (§11) covers homework and tests. Classes, enrolments and student accounts are not deleted
+  by it; a school removes those itself. Backups keep deleted data until they are pruned
+  (`RETENTION_DAYS`, DEPLOYMENT_GUIDE §5).
+- Teachers are not told about deletions to come by notification (their pages show them); owners and
+  admins are.
 
-## 12. Tests
+## 13. Tests
 
 - `tests/integration/classroom.test.ts` (7 tests): off until student accounts are on; classes,
   teachers and who sees what (admins all, teachers their own, other members none, other schools' students
@@ -233,6 +304,13 @@ Read only: it gathers marks given on the homework and test pages (docs/ONLINE_TE
   and missing counts; a member who does not teach the class gets 404; the CSV in the member's language,
   formula-guarded and audited; **My grades** showing only the student's own marks once returned or shown,
   and test scores once the test is over.
+- `tests/integration/classroom-retention.test.ts` (4 tests): nothing is deleted without periods; the
+  preview; notices to owners and admins only (in-app and email, with no student work in it), at least 14
+  days ahead; after the notice the work and monitoring are deleted, hand-ins, marks, comments, scores and
+  the gradebook stay, and re-marking keeps the automatic mark; a hold, a longer period (saved, or changed
+  behind the worker's back) and a later due time each cancel a deletion; no notices at night; the records
+  stage deletes the homework with its students' notifications; another school is untouched; only owners
+  and admins, periods in order, another school's homework cannot be held.
 - `tests/integration/authz-coverage.test.ts` and `students.test.ts` cover the new routes like every
   other: anonymous 401, another school 404, a student session refused on staff routes, staff refused on
   the portal routes.
@@ -242,4 +320,8 @@ Read only: it gathers marks given on the homework and test pages (docs/ONLINE_TE
   the photo, marks 9/10 with a comment and returns it; the student sees the mark and comment.
 - `tests/e2e/accessibility.spec.ts`: 27 more screens (classes, class, homework, every dialog, the
   student's Today, homework list and homework in each state) in English, Arabic, dark and on a phone:
-  0 axe findings, 0 simulated screen-reader findings.
+  0 axe findings, 0 simulated screen-reader findings. 7 more for §11: the Keeping data page with nothing
+  set, the confirmation, items due, an item kept; in Arabic, dark and on a phone.
+- `tests/e2e/journeys.spec.ts`, journey 23: the owner sets 30 days for students' work, confirms, sees the
+  homework and test due, keeps the test; after the worker's pass 15 days later the homework page and the
+  teacher's view of the work say it was deleted, the mark 9 stays; the student sees why, and her mark.

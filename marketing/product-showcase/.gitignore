@@ -8,3 +8,5 @@ build/
 recordings/*/
 # Narration takes, when recorded, are delivered beside the repository, not in it.
 audio/narration/
+# Python bytecode caches.
+__pycache__/

@@ -57,6 +57,18 @@ text from ARABIC_NARRATION_SCRIPT.md (the "يُقرأ" lines where given). The t
 length instead of the estimate; scenes, pointer, camera, music cues and subtitles follow automatically. Lines
 without a take keep the estimate, and `prepare` reports how many are recorded.
 
+Or generate the takes with an open-source voice (Piper, `pip install piper-tts` in a virtual environment; the
+voice model comes from Hugging Face):
+
+```sh
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-medium.onnx
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx
+```
+
+It speaks the diacritized text as written (Piper's own diacritizer is off; `--tashkeel` turns it on), trims
+each take, and skips lines that already have a file, so a human take placed first is kept. `--force`
+regenerates, `--only <sceneId>` limits to one scene, `--length-scale` sets the pace (default 1.12, calm).
+
 ## 4. Build a cut
 
 ```sh

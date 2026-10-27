@@ -79,9 +79,13 @@ its own transaction; there is no tenant file storage.
 
 1. `onRequest`: resolve the caller — session cookie (`sid` / `__Host-sid`, SHA-256 hashed lookup,
    idle 7 d / absolute 30 d (12 h for platform admins)) or, for `/api/v1/*`, an API key.
-2. Rate limiting (global 600/min/IP when enabled, a per-process flood guard in memory; stricter
-   per-route limits on auth, invitations, billing and API v1 120/min, counted in PostgreSQL so they
-   hold across app instances: `src/http/rate-limit-store.ts`).
+2. Rate limiting (when enabled). A per-process flood guard in memory counts every API request by
+   address, before the caller is resolved: 600/min, or 6,000/min for requests carrying a session
+   cookie, since a school's students share one address. After the session is resolved, those are
+   held to 600/min per account (per address when the cookie is not a valid session). Stricter
+   per-route limits on auth, invitations, billing and API v1 120/min, and per student on the
+   portal's routes (`perAccount`), are counted in PostgreSQL so they hold across app instances:
+   `src/http/rate-limit-store.ts`, `src/http/rate-limit.ts`.
 3. `preHandler` CSRF defence: `Origin` must match `APP_URL`, `Sec-Fetch-Site: cross-site` rejected,
    and cookie-authenticated mutations must send `X-CSRF-Token = HMAC(SESSION_SECRET, session id)`.
    Only `application/json` bodies are parsed (HTML forms cannot send them).

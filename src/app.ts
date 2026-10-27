@@ -17,7 +17,8 @@ import type { AppConfig } from './config.js';
 import type { Database } from './db/index.js';
 import type { AppContext } from './http/context.js';
 import { registerHealthRoutes } from './http/health.js';
-import { rateLimitStore } from './http/rate-limit-store.js';
+import { MemoryWindows, rateLimitStore } from './http/rate-limit-store.js';
+import { ACCOUNT_MAX, ADDRESS_MAX, SIGNED_IN_ADDRESS_MAX } from './http/rate-limit.js';
 import { ServerErrorCounter } from './ops/alerts.js';
 import { AppError } from './lib/errors.js';
 import { safeEqual } from './lib/crypto.js';
@@ -84,10 +85,14 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   await app.register(cookie);
   // Route-specific limits count in PostgreSQL, so every app instance enforces the
   // same limits; the global limit is a per-process flood guard (rate-limit-store.ts).
+  // It runs before the session is looked up, so it counts per address: higher for
+  // requests carrying a session cookie (a school's students share one address), which
+  // are then held to ACCOUNT_MAX per account once the session is checked (below).
+  const sessionCookie = sessionCookieName(config);
   await app.register(rateLimit, {
     store: rateLimitStore(db, config.SESSION_SECRET),
     global: config.RATE_LIMIT_ENABLED,
-    max: 600,
+    max: (req) => (req.cookies?.[sessionCookie] ? SIGNED_IN_ADDRESS_MAX : ADDRESS_MAX),
     timeWindow: '1 minute',
     allowList: (req) => !req.url.startsWith('/api/'),
     errorResponseBuilder: (_req, ctx2) => ({
@@ -117,10 +122,25 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
       req.auth = await resolveApiKey(ctx, req);
       return;
     }
-    const token = req.cookies[sessionCookieName(config)];
+    const token = req.cookies[sessionCookie];
     if (token) {
       const resolved = await resolveSession(db, token);
       if (resolved) req.auth = { kind: 'session', ...resolved };
+    }
+  });
+
+  // The flood guard's second step for requests that carried a session cookie: per account
+  // once verified, per address when the cookie was not a valid session. In this process's
+  // memory, like the first step.
+  const accountWindows = new MemoryWindows(50_000);
+  app.addHook('preHandler', async (req, reply) => {
+    if (!config.RATE_LIMIT_ENABLED || !req.url.startsWith('/api/') || req.url.startsWith('/api/v1/') || !req.cookies[sessionCookie]) return;
+    const key = req.auth?.kind === 'session' ? `account:${req.auth.user.id}` : `address:${req.ip}`;
+    const { current, ttl } = await accountWindows.incr(key, 60_000);
+    if (current > ACCOUNT_MAX) {
+      const seconds = Math.max(1, Math.ceil(ttl / 1000));
+      reply.header('retry-after', String(seconds));
+      throw new AppError(429, 'RATE_LIMITED', `Too many requests. Try again in ${seconds} seconds.`);
     }
   });
 

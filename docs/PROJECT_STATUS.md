@@ -334,6 +334,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `src/db/migrations/0015_classroom_retention.ts`, `src/db/{migrator,types}.ts`, `src/classroom/{retention,retention-routes}.ts`, `src/classroom/{service,routes,tests-service,tests-routes}.ts`, `src/notifications/email.ts`, `src/worker.ts`, `src/app.ts`, `public/js/views/{retention,classes,tests,student,student-tests}.js`, `public/js/{main,i18n}.js`.
 - **Tests:** `tests/integration/classroom-retention.test.ts` (4), journey 23, 7 more screens in the accessibility audit, the guide scripts (one new screenshot per language).
 
+### Exams at school scale (one online test for a whole grade on one school network) · COMPLETE (measured on the local two-instance stack; not on production hardware)
+
+- **Asked:** "start on item 2" of the next priorities (§4.2): load-test one online test with 100–300 students and several teachers on the live monitor on the two-instance stack, then make the flood guard count per student session or raise it.
+- **Found** (load test before the fix, 100 students from one address, 3 teachers, 8 minutes; TEST_REPORT §5): the limits on what students do counted **per address**, so a school shared one student's allowance. 40 of 100 students could not start the exam (starting: 60 per 15 minutes for the whole school), and after about 7 minutes heartbeats were refused (1,200 an hour for the whole school). The flood guard (600 requests a minute per address and instance) was not reached by 100 students, but would be by about 300.
+- **Implemented:**
+  - **Per student:** starting a test, saving answers, heartbeats, page events, homework drafts, hand-ins, uploads and the student's password change now count per account once the session is verified (`perAccount`), still in PostgreSQL and shared by both instances. One student is held to the same limits as before; a classmate at the same address is not affected.
+  - **Flood guard in two steps:** before the session is looked up it counts per address, 600 a minute, or 6,000 for requests that carry a session cookie; after the lookup each account is held to 600 a minute, and a cookie that is not a valid session is counted for its address (a forged or rotated cookie gets no allowance of its own). Still in each process's memory: no database work per request.
+  - **Saving on a weak connection:** an answer that fails to save (connection lost, 429, 5xx) is kept and tried again after 5 s, then up to every 30 s; the test bar says "Not saved yet (n): trying again" and a screen reader hears it once. Submitting tries those answers again first, and if some are still not saved it says how many and asks before submitting without them. Before, the page showed an error and did not try again (typed answers were sent again on submitting; a choice was saved only if the student changed it). English and Arabic.
+  - **Load-test script** `scripts/load-exam.mjs`: sets up a school's class and a 20-question test through the API, signs students in from one address over the first minute, saves answers, sends heartbeats and page events as the page does, submits; teachers poll the monitor every 5 s; reports status codes and latency per kind of request and checks every acknowledged answer against the teacher's view.
+- **Results after the fix** (same stack, 8 minutes each): 100 students with 3 teachers, and 300 students with 5 teachers (about 1,900 requests a minute from one address): every student started and submitted, **no request refused or failed**, every acknowledged answer stored (1,993 and 5,981). With 300 students, p95 was 28 ms for saving an answer, 25 ms for a heartbeat and 79 ms for the monitor (300 rows); the slowest request took 189 ms.
+- **Not done:** not measured on production hardware or over a real school network; per-instance flood guard (an address can make up to N × 6,000 signed-in requests a minute with N instances; SECURITY_DESIGN §6 item 2).
+- **Files:** `src/http/rate-limit.ts`, `src/app.ts`, `src/classroom/{tests-student-routes,student-routes}.ts`, `src/students/routes.ts`, `public/js/views/student-tests.js`, `public/js/i18n.js`, `scripts/load-exam.mjs`.
+- **Tests:** `tests/integration/school-network-limits.test.ts` (2, both fail on the code before the fix), journey 24, the load test (TEST_REPORT §5).
+
 ### Gradebook, My grades and the user guides (teacher and student portal, part 3 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
 
 - **Implemented** (`docs/CLASSROOM.md` §10):
@@ -539,7 +553,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (288 unit/integration + 27 E2E passing: 23 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (290 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -558,12 +572,13 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-Where things stand (2026-10-27): the teacher and student portal is complete and off for every school,
-and schools can now set how long they keep its data (4.2 item 1, done the same day; see Keeping classroom data above).
+Where things stand (2026-10-27): the teacher and student portal is complete and off for every school.
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
 pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
-item 1 is done; nothing else below is started.
+items 1 and 2 are done the same day: schools set how long they keep classroom data (PR #24), and one
+exam for a whole grade on one school network was load-tested and its limits fixed (see Exams at school
+scale above). Nothing else below is started.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -587,7 +602,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 | # | Item | Why | Size |
 | --- | --- | --- | --- |
 | 1 | ~~**Retention of classroom data.**~~ **Done 2026-10-27** (Keeping classroom data, above): three periods per school, notices 14 days ahead to owners and admins, a hold per item, the gradebook linked for download, off until set | — | — |
-| 2 | **Exams at school scale.** Load-test one online test with 100–300 students saving answers and sending heartbeats, and several teachers on the live monitor, on the two-instance stack. Then count the flood guard per student session on the portal's routes, or raise it for them | A whole grade sitting an exam from one school network is the busiest moment in the product, and it is untested. A class of 30 taking a test makes about 200 requests a minute (STUDENT_ACCOUNTS §9), so about 90 students on one address reach the guard's 600 a minute on one instance | 2–3 |
+| 2 | ~~**Exams at school scale.**~~ **Done 2026-10-27** (Exams at school scale, above): the load test found that 40 of 100 students on one address could not start; the portal's limits now count per student and the flood guard per account, and 100 and 300 students took the exam with no request refused | — | — |
 | 3 | **Safer uploads.** Scan homework files for viruses in the worker before a teacher can open them, and resize large photos | Children's files are opened on teachers' devices. CLASSROOM §5 lists both as not done | 2–3 |
 | 4 | **Screen-reader checklist for the portal.** Add tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page | Needed before the manual review (4.1 item 6) | 1 |
 | 5 | **Arabic import messages.** Translate the server validation messages in the roster import and catalogue sheet import previews | The rest of the student pages are translated (STUDENT_ACCOUNTS §9) | 1 |
@@ -599,7 +614,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #23 is merged. On `claude/friendly-rubin-hmemjl` (from `main` at
-`6837f1a`): the status update, then 4.2 item 1 (retention of classroom data). The next development step
-is 4.2 item 2 (exams at school scale), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #24 (retention of classroom data) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `89ec966`): 4.2 item 2 (exams at school scale). The next
+development step is 4.2 item 3 (safer uploads), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

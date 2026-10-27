@@ -202,4 +202,7 @@ failures (any uptime service, for example UptimeRobot or Better Stack); it also 
 - [ ] Paymob test-mode run recorded (or billing disabled with manual invoicing)
 - [ ] Platform admin created with TOTP; demo data absent
 - [ ] Monitoring and alerts firing to a real channel
+- [ ] Before schools use online tests: `scripts/load-exam.mjs` run on staging hardware like production's,
+      with the largest grade expected on one school network (TEST_REPORT §5). It creates a class,
+      students and a test, so run it as the owner of a test school on staging, never a real school
 - [ ] Privacy policy, terms and support contact published

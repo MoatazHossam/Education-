@@ -5,7 +5,7 @@ import { getEntitlements, lockOrg } from '../billing/entitlements.js';
 import type { Trx } from '../db/index.js';
 import type { Homework } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
-import { rateLimited } from '../http/rate-limit.js';
+import { perAccount, rateLimited } from '../http/rate-limit.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { asStudent } from '../students/context.js';
@@ -95,7 +95,7 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
     });
   });
 
-  app.put('/api/student/homework/:homeworkId/submission', rateLimited(600, '1 hour'), async (req) => {
+  app.put('/api/student/homework/:homeworkId/submission', rateLimited(600, '1 hour', perAccount), async (req) => {
     const { homeworkId } = parse(HomeworkParams, req.params);
     const body = parse(z.object({ body: z.string().max(10000) }), req.body);
     return asStudent(ctx, req, async (trx, { user }) => {
@@ -106,7 +106,7 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
     });
   });
 
-  app.post('/api/student/homework/:homeworkId/hand-in', rateLimited(120, '1 hour'), async (req) => {
+  app.post('/api/student/homework/:homeworkId/hand-in', rateLimited(120, '1 hour', perAccount), async (req) => {
     const { homeworkId } = parse(HomeworkParams, req.params);
     const body = parse(z.object({ body: z.string().max(10000).optional() }), req.body ?? {});
     return asStudent(ctx, req, async (trx, { user }) => {
@@ -139,7 +139,7 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
   await app.register(async (scope) => {
     scope.addContentTypeParser(UPLOAD_CONTENT_TYPES, { parseAs: 'buffer', bodyLimit: MAX_FILE_BYTES + 1 }, (_req, body, done) => done(null, body));
 
-    scope.post('/api/student/homework/:homeworkId/files', { bodyLimit: MAX_FILE_BYTES + 1, ...rateLimited(120, '1 hour') }, async (req, reply) => {
+    scope.post('/api/student/homework/:homeworkId/files', { bodyLimit: MAX_FILE_BYTES + 1, ...rateLimited(120, '1 hour', perAccount) }, async (req, reply) => {
       const { homeworkId } = parse(HomeworkParams, req.params);
       const file = await asStudent(ctx, req, async (trx, { user, org }) => {
         const hw = await visibleHomework(trx, homeworkId);

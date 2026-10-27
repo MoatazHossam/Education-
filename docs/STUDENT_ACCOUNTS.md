@@ -138,10 +138,13 @@ field names), `student.password_reset`, `student.removed`, `student.password_cha
 2. Price of student accounts (currently enabled only by a platform administrator, free of charge).
 3. Server validation messages in the import preview are in English (as in the catalogue sheet import);
    the rest of the student pages are translated.
-4. Many students behind one school address share the per-process flood guard (600 API requests a
-   minute per address and instance); a class of 30 loading the portal uses well under that. A class of
-   30 taking an online test (a heartbeat every 20 seconds plus saves) makes roughly 200 requests a
-   minute, also under it; for larger groups on one address, raise the guard or add instances.
+4. Many students usually share one school address (the school's NAT). Since 2026-10-27 the limits on
+   what students do in the portal (starting a test, saving answers, heartbeats, page events, homework
+   drafts, hand-ins and uploads, password changes) count per student, and the flood guard allows 6,000
+   requests a minute per address for signed-in requests while holding each account to 600. Before,
+   these counted per address: a whole school shared, for example, 60 test starts in 15 minutes and
+   1,200 heartbeats an hour, which one class of 30 used up in about 13 minutes of an exam. Measured
+   with `scripts/load-exam.mjs` (TEST_REPORT §5).
 5. Students have no self-service data export or account deletion: the school, expected to be the
    controller, sees every stored field on the Students page and removes accounts. Confirm this with
    the legal assessment.

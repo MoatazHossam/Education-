@@ -561,6 +561,9 @@ export interface HomeworkSubmissionsTable {
 
 export type ClassroomFileType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
+/** docs/CLASSROOM.md §5: checked by the worker before anyone can open it. */
+export type ClassroomFileStatus = 'pending' | 'ready' | 'infected' | 'unreadable';
+
 export interface ClassroomFilesTable {
   id: Generated<string>;
   org_id: string;
@@ -570,9 +573,18 @@ export interface ClassroomFilesTable {
   content_type: ClassroomFileType;
   size_bytes: number;
   sha256: string;
-  data: Buffer;
+  /** Null once the file is blocked (infected or unreadable). */
+  data: Buffer | null;
   uploaded_by: string | null;
   created_at: Generated<Date>;
+  status: Generated<ClassroomFileStatus>;
+  scanned_at: Date | null;
+  virus_name: string | null;
+  /** Set when a photo was resized or re-encoded: its size as uploaded. */
+  original_size_bytes: number | null;
+  check_attempts: Generated<number>;
+  check_error: string | null;
+  checked_at: Date | null;
 }
 
 // ---------------------------------------------------------------- online tests and exams (docs/ONLINE_TESTS.md)

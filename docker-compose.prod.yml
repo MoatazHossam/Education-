@@ -11,6 +11,8 @@ x-app-production: &app-production
     NODE_ENV: production
     TRUST_PROXY: "true"
     SHUTDOWN_DRAIN_MS: "5000"
+    FILE_SCAN: ${FILE_SCAN:-clamav}
+    CLAMAV_HOST: clamav
   stop_grace_period: 30s
 
 services:
@@ -28,9 +30,32 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Scans homework files with ClamAV before anyone can open them (docs/CLASSROOM.md §5).
   worker:
     environment:
       NODE_ENV: production
+      FILE_SCAN: ${FILE_SCAN:-clamav}
+      CLAMAV_HOST: clamav
+    depends_on:
+      clamav:
+        condition: service_started
+
+  # ClamAV's daemon, reached by the worker on port 3310 inside the compose network only.
+  # It needs about 1.5 GB of memory, takes a minute or two to load its signatures after a
+  # start (files wait meanwhile), and updates them itself (freshclam) from
+  # database.clamav.net, so allow that host out. FILE_SCAN=off in the env file turns
+  # scanning off; the service can then be left out (docker compose up without it).
+  clamav:
+    image: clamav/clamav:1.5
+    restart: unless-stopped
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 3
 
   migrate:
     environment:
@@ -59,3 +84,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  clamav_db:

@@ -28,6 +28,9 @@ x-app-env: &app-env
   PAYMOB_INTEGRATION_IDS: ${PAYMOB_INTEGRATION_IDS:-}
   ALERT_EMAILS: ${ALERT_EMAILS:-}
   ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+  # Virus scan of homework files (docs/CLASSROOM.md §5); production turns it on (docker-compose.prod.yml).
+  FILE_SCAN: ${FILE_SCAN:-off}
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
 
 services:
   postgres:

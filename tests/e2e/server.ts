@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
+import { runClassroomFileChecks } from '../../src/classroom/file-checks.js';
 import { runClassroomRetention } from '../../src/classroom/retention.js';
 import { loadConfig } from '../../src/config.js';
 import { createDatabase } from '../../src/db/index.js';
@@ -133,6 +134,16 @@ export async function runWebhookPass() {
   const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
   try {
     return await processWebhookDeliveries(db, loadConfig(E2E_ENV));
+  } finally {
+    await db.destroy();
+  }
+}
+
+/** One pass of the worker's file checks (docs/CLASSROOM.md §5) against the E2E database; no virus scanner here. */
+export async function runFileCheckPass() {
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  try {
+    return await runClassroomFileChecks(db, null);
   } finally {
     await db.destroy();
   }

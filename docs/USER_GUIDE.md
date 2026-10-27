@@ -529,6 +529,14 @@ Students see it on **Today** and under **Homework**. They write an answer,
 attach photos or a PDF, and **Hand in**. Until the work is marked, **Take back**
 lets them change it.
 
+Every file is checked before anyone can open it, usually within seconds: it
+shows **Being checked…** until then, and the list updates by itself. Files are
+scanned for viruses, and large photos are made smaller, which also removes the
+information phones store in them, such as where the photo was taken. A file
+with a virus is deleted and shows **Virus found: deleted**; whoever uploaded it
+is told, and so are the school's owners and admins. A photo that cannot be read
+is deleted too, and its uploader is asked to upload it again.
+
 ![Omar's Today: the Unit 2 quiz open now, and the homework to do](user-guide/images/student-today.png)
 
 ![The homework with Omar's answer, before he hands it in](user-guide/images/student-homework.png)
@@ -1066,7 +1074,8 @@ failed), for checking payments.
   it, at no extra price.
 - **Classroom files**: photos and PDFs only, up to 5 MB each and 5 per
   piece of work, within the school's storage limit (1 GB unless the platform
-  sets more). A test has at most 100 questions.
+  sets more). Each is checked (virus scan, photos made at most 2,000 pixels)
+  before it opens. A test has at most 100 questions.
 - **Classroom data** is kept until the school sets how long to keep it
   (section 12, Keeping classroom data). Classes and student accounts are not
   deleted by those periods.

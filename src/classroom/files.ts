@@ -2,12 +2,13 @@ import { createHash } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Entitlements } from '../billing/entitlements.js';
 import type { Executor } from '../db/index.js';
-import type { ClassroomFileType } from '../db/types.js';
+import type { ClassroomFileStatus, ClassroomFileType } from '../db/types.js';
 import { AppError, badRequest } from '../lib/errors.js';
 
 // Files on homework and submissions (docs/CLASSROOM.md §5): photos of written
 // work and PDFs. The browser sends the raw bytes; the type is decided from the
 // first bytes, never from the browser's claim, and only four types are kept.
+// Each file is then checked by the worker (file-checks.ts) before anyone can open it.
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const MAX_FILES_PER_ITEM = 5;
@@ -53,8 +54,14 @@ export function readUpload(req: FastifyRequest): { data: Buffer; type: Classroom
   return { data, type, name: cleanFileName(typeof header === 'string' ? header : undefined, type) };
 }
 
+/** Bytes the school stores; a blocked file (its bytes deleted) takes none. */
 export async function storageUsedBytes(exec: Executor, orgId: string): Promise<number> {
-  const r = await exec.selectFrom('classroom_files').select((eb) => eb.fn.coalesce(eb.fn.sum<string>('size_bytes'), eb.val('0')).as('n')).where('org_id', '=', orgId).executeTakeFirstOrThrow();
+  const r = await exec
+    .selectFrom('classroom_files')
+    .select((eb) => eb.fn.coalesce(eb.fn.sum<string>('size_bytes'), eb.val('0')).as('n'))
+    .where('org_id', '=', orgId)
+    .where('data', 'is not', null)
+    .executeTakeFirstOrThrow();
   return Number(r.n);
 }
 
@@ -71,7 +78,7 @@ export async function assertStorageAvailable(exec: Executor, orgId: string, ent:
 export async function saveFile(
   exec: Executor,
   f: { orgId: string; homeworkId?: string; submissionId?: string; upload: { data: Buffer; type: ClassroomFileType; name: string }; uploadedBy: string },
-): Promise<{ id: string; name: string; contentType: ClassroomFileType; size: number }> {
+): Promise<{ id: string; name: string; contentType: ClassroomFileType; size: number; status: ClassroomFileStatus }> {
   const row = await exec
     .insertInto('classroom_files')
     .values({
@@ -85,20 +92,44 @@ export async function saveFile(
       data: f.upload.data,
       uploaded_by: f.uploadedBy,
     })
-    .returning(['id', 'name', 'content_type', 'size_bytes'])
+    .returning(['id', 'name', 'content_type', 'size_bytes', 'status'])
     .executeTakeFirstOrThrow();
-  return { id: row.id, name: row.name, contentType: row.content_type, size: row.size_bytes };
+  return { id: row.id, name: row.name, contentType: row.content_type, size: row.size_bytes, status: row.status };
 }
 
 export async function filesOf(exec: Executor, where: { homeworkId: string } | { submissionId: string }) {
   const rows = await exec
     .selectFrom('classroom_files')
-    .select(['id', 'name', 'content_type', 'size_bytes', 'created_at'])
+    .select(['id', 'name', 'content_type', 'size_bytes', 'created_at', 'status', 'original_size_bytes'])
     .$if('homeworkId' in where, (q) => q.where('homework_id', '=', (where as { homeworkId: string }).homeworkId))
     .$if('submissionId' in where, (q) => q.where('submission_id', '=', (where as { submissionId: string }).submissionId))
     .orderBy('created_at')
     .execute();
-  return rows.map((r) => ({ id: r.id, name: r.name, contentType: r.content_type, size: r.size_bytes, createdAt: r.created_at }));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    contentType: r.content_type,
+    size: r.size_bytes,
+    createdAt: r.created_at,
+    // pending: being checked; ready: can be opened; infected or unreadable: deleted (§5).
+    status: r.status,
+    uploadedSize: r.original_size_bytes,
+  }));
+}
+
+const NOT_OPENABLE: Record<Exclude<ClassroomFileStatus, 'ready'>, [string, string]> = {
+  pending: ['FILE_CHECKING', 'This file is still being checked. Try again in a moment.'],
+  infected: ['FILE_INFECTED', 'A virus was found in this file, so it was deleted.'],
+  unreadable: ['FILE_UNREADABLE', 'This photo could not be read, so it was deleted.'],
+};
+
+/** A file opens only once the worker has checked it. */
+export function openable<T extends { status: ClassroomFileStatus; data: Buffer | null }>(f: T): T & { data: Buffer } {
+  if (f.status !== 'ready' || !f.data) {
+    const [code, message] = NOT_OPENABLE[f.status === 'ready' ? 'unreadable' : f.status];
+    throw new AppError(409, code, message);
+  }
+  return f as T & { data: Buffer };
 }
 
 /**

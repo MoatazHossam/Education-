@@ -297,7 +297,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - **Files:** JPEG, PNG, WebP and PDF, type decided from the bytes, 5 MB each, 5 per item, a per-school storage limit (`max_storage_mb`, 1 GB unless overridden), served sandboxed.
   - **Security:** classroom tables have forced row-level security; student requests set `app.current_student`, so a student's queries return only their classes, published homework and own work whatever they ask for. The same switch as student accounts turns it on; no plan or price changed.
   - **Arabic:** every page, dialog, status and error in both languages. Reviewing the screens fixed two display problems in Arabic: a mark "9 / 10" read as "10 / 9" (now "9 من 10") and a class "7A" shown as "A7" in mixed text (digits written against a Latin word now stay with it).
-- **Not done (next parts):** online tests and exams, the gradebook, the user guides' new sections; no email or SMS to students or parents; no virus scanning of uploads; no retention rule for old work.
+- **Not done (next parts):** online tests and exams, the gradebook, the user guides' new sections; no email or SMS to students or parents; no virus scanning of uploads (done 2026-10-27, see Safer uploads); no retention rule for old work (done 2026-10-27).
 - **Before real use:** legal advice on children's work and marks under the PDPL (SECURITY_DESIGN §7).
 - **Files:** `src/db/migrations/0013_classroom.ts`, `src/classroom/{service,files,routes,student-routes}.ts`, `src/students/context.ts`, `src/db/index.ts` (`withStudentContext`), `src/worker.ts`, `src/orgs/routes.ts`, `public/js/views/{classes,student,shell}.js`, `public/js/{api,dom,i18n}.js`, `public/app.css`.
 - **Tests:** `tests/integration/classroom.test.ts` (7), the route coverage tests, journey 20, and 27 more screens in the accessibility audit.
@@ -347,6 +347,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Not done:** not measured on production hardware or over a real school network; per-instance flood guard (an address can make up to N × 6,000 signed-in requests a minute with N instances; SECURITY_DESIGN §6 item 2).
 - **Files:** `src/http/rate-limit.ts`, `src/app.ts`, `src/classroom/{tests-student-routes,student-routes}.ts`, `src/students/routes.ts`, `public/js/views/student-tests.js`, `public/js/i18n.js`, `scripts/load-exam.mjs`.
 - **Tests:** `tests/integration/school-network-limits.test.ts` (2, both fail on the code before the fix), journey 24, the load test (TEST_REPORT §5).
+
+### Safer uploads (virus scan and photo resizing of homework files) · COMPLETE (scanning verified with the real ClamAV on the local stack; not yet on the production host)
+
+- **Asked:** "start on item 3" of the next priorities (§4.2): scan homework files for viruses in the worker before a teacher can open them, and resize large photos.
+- **Implemented** (`docs/CLASSROOM.md` §5, migration 0016):
+  - **Nobody opens a file before it is checked.** New uploads are *being checked*; the file routes answer 409 `FILE_CHECKING` until the worker is done. The worker checks files on its own loop every 2 seconds, oldest first, one transaction and row lock per file, so two workers never check the same file.
+  - **Virus scan:** ClamAV's daemon over TCP (clamd `INSTREAM`), with the bytes as uploaded. The production compose file runs `clamav/clamav:1.5` next to the worker (signatures in a volume, updated by freshclam) and sets `FILE_SCAN=clamav`; production refuses to start without an explicit `FILE_SCAN` (`clamav` or `off`).
+  - **Photos:** turned upright by their EXIF orientation, at most 2,000 pixels on the longer side (never enlarged), encoded again in the same format, which drops their metadata (a phone photo's location, time and phone model). Decoded in the worker, never in the web process; images claiming over 100 megapixels are refused before decoding. PDFs are kept as they are.
+  - **A file with a virus** loses its bytes and shows "Virus found: deleted"; the uploader is told (in their language), and the school's owners and admins too; the audit log records it with the virus's name and the file's SHA-256. **A photo that cannot be read** is deleted and its uploader asked to upload it again. Blocked files take no storage.
+  - **Scanner down:** files wait and are retried every pass (attempts and last error kept), the worker logs the error once, and a new operational alert, *Homework files waiting*, fires after 10 minutes.
+  - **Older files** (before this change, or uploaded while scanning was off) stay open and are scanned in the background once a scanner runs.
+  - **Pages:** "Being checked…" next to the file, and the list updates itself every 3 seconds without reloading the page (focus and what a student is typing stay); a toast says when a file was deleted. The upload hint says files open once checked. English and Arabic; both user guides say so.
+- **Verified on Docker** (TEST_REPORT §4): the production-settings stack with the real ClamAV 1.5.4. A phone photo of 4,032 × 3,024 (106 KB, EXIF with GPS) became 2,000 × 1,500 (30 KB) without EXIF, checked 2.1 s after hand-in; the teacher got 409 before that. A PDF opened unchanged. The EICAR test file was found ("Eicar-Test-Signature"), deleted, audited and reported to the student and the owner. With ClamAV stopped, a file waited (retried every 2 s), the alert fired once its wait passed 10 minutes, and 15 s after ClamAV was started again the file opened.
+- **Not done:** one antivirus engine only; PDFs are not rewritten; photos uploaded before 2026-10-27 keep their size and metadata.
+- **Files:** `src/db/migrations/0016_file_checks.ts`, `src/db/{migrator,types}.ts`, `src/classroom/{file-checks,files,routes,student-routes}.ts`, `src/worker.ts`, `src/ops/alerts.ts`, `src/config.ts`, `public/js/views/{classes,student}.js`, `public/js/i18n.js`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.example`, `.env.docker.example`, `package.json` (`sharp`).
+- **Tests:** `tests/unit/file-checks.test.ts` (5), `tests/integration/file-checks.test.ts` (6), `classroom.test.ts` (opening waits for the check), the configuration test, journey 20 and the accessibility audit (a photo being checked, then checked). The test PNG used by the classroom tests and journeys was corrupt (its compressed data failed its checksum); it is now a valid 1 × 1 PNG.
 
 ### Gradebook, My grades and the user guides (teacher and student portal, part 3 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
 
@@ -553,7 +569,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (290 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (301 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -576,9 +592,10 @@ Where things stand (2026-10-27): the teacher and student portal is complete and 
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
 pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
-items 1 and 2 are done the same day: schools set how long they keep classroom data (PR #24), and one
-exam for a whole grade on one school network was load-tested and its limits fixed (see Exams at school
-scale above). Nothing else below is started.
+items 1 to 3 are done the same day: schools set how long they keep classroom data (PR #24), one exam
+for a whole grade on one school network was load-tested and its limits fixed (PR #25), and homework files
+are scanned for viruses and photos resized before anyone opens them (see Safer uploads above). Nothing
+else below is started.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -603,7 +620,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 | --- | --- | --- | --- |
 | 1 | ~~**Retention of classroom data.**~~ **Done 2026-10-27** (Keeping classroom data, above): three periods per school, notices 14 days ahead to owners and admins, a hold per item, the gradebook linked for download, off until set | — | — |
 | 2 | ~~**Exams at school scale.**~~ **Done 2026-10-27** (Exams at school scale, above): the load test found that 40 of 100 students on one address could not start; the portal's limits now count per student and the flood guard per account, and 100 and 300 students took the exam with no request refused | — | — |
-| 3 | **Safer uploads.** Scan homework files for viruses in the worker before a teacher can open them, and resize large photos | Children's files are opened on teachers' devices. CLASSROOM §5 lists both as not done | 2–3 |
+| 3 | ~~**Safer uploads.**~~ **Done 2026-10-27** (Safer uploads, above): ClamAV scans every file in the worker before anyone opens it, photos are made at most 2,000 px without their metadata, and an alert fires when files wait | — | — |
 | 4 | **Screen-reader checklist for the portal.** Add tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page | Needed before the manual review (4.1 item 6) | 1 |
 | 5 | **Arabic import messages.** Translate the server validation messages in the roster import and catalogue sheet import previews | The rest of the student pages are translated (STUDENT_ACCOUNTS §9) | 1 |
 | 6 | **E2E in Firefox and WebKit** as well as Chromium | Open item from roadmap P1. Students and teachers use whatever browser their device has; E2E runs only in Chromium today | 1–2 |
@@ -614,7 +631,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #24 (retention of classroom data) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `89ec966`): 4.2 item 2 (exams at school scale). The next
-development step is 4.2 item 3 (safer uploads), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #25 (exams at school scale) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `88b1c06`): 4.2 item 3 (safer uploads). The next
+development step is 4.2 item 4 (the screen-reader checklist for the portal), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

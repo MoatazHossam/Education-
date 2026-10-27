@@ -142,7 +142,11 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...TEST_ENV, ALERT_EMAILS: 'ops@example.com,not-an-email' })).toThrow(/ALERT_EMAILS/);
     expect(() => loadConfig({ ...TEST_ENV, SESSION_SECRET: 'short' })).toThrow(/SESSION_SECRET/);
     expect(() => loadConfig({ ...TEST_ENV, DATA_ENCRYPTION_KEY: 'abc' })).toThrow(/DATA_ENCRYPTION_KEY/);
-    const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', SALES_EMAIL: '', PAYMOB_SECRET_KEY: '' });
+    // Homework files: production chooses virus scanning explicitly, and ClamAV needs its address.
+    expect(() => loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example' })).toThrow(/FILE_SCAN must be set in production/);
+    expect(() => loadConfig({ ...TEST_ENV, FILE_SCAN: 'clamav' })).toThrow(/CLAMAV_HOST is required/);
+    expect(loadConfig({ ...TEST_ENV, FILE_SCAN: 'clamav', CLAMAV_HOST: 'clamav' }).CLAMAV_PORT).toBe(3310);
+    const ok = loadConfig({ ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', SALES_EMAIL: '', PAYMOB_SECRET_KEY: '', FILE_SCAN: 'off' });
     expect(ok.SALES_EMAIL).toBeUndefined();
     expect(ok.secureCookies).toBe(true);
     expect(ok.WEBHOOK_ALLOW_INSECURE_TARGETS).toBe(false);

@@ -13,7 +13,7 @@ import { getScope } from '../scopes/service.js';
 import { zGrade } from '../students/service.js';
 import { itemRetention } from './retention.js';
 import { classTests } from './tests-service.js';
-import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
+import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, openable, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
 import {
   assertClassroomEnabled,
   assertTeachesSubject,
@@ -428,7 +428,7 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
       await homeworkAccess(trx, access, homeworkId!).catch(() => {
         throw notFound('File');
       });
-      return f;
+      return openable(f);
     });
     return sendFile(reply, file);
   });

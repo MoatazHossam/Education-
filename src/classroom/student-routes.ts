@@ -9,7 +9,7 @@ import { perAccount, rateLimited } from '../http/rate-limit.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { asStudent } from '../students/context.js';
-import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
+import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, openable, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
 import { homeworkJson, num, studentHomework } from './service.js';
 import { myTests } from './tests-student-routes.js';
 
@@ -170,9 +170,9 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
   app.get('/api/student/files/:fileId', async (req, reply) => {
     const { fileId } = parse(z.object({ fileId: zUuid }), req.params);
     const file = await asStudent(ctx, req, async (trx) => {
-      const f = await trx.selectFrom('classroom_files').select(['name', 'content_type', 'data']).where('id', '=', fileId).executeTakeFirst();
+      const f = await trx.selectFrom('classroom_files').select(['name', 'content_type', 'data', 'status']).where('id', '=', fileId).executeTakeFirst();
       if (!f) throw notFound('File');
-      return f;
+      return openable(f);
     });
     return sendFile(reply, file);
   });

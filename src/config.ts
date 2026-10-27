@@ -68,6 +68,13 @@ const EnvSchema = z
     // (src/webhooks/net.ts). For local development and tests, this also allows http and
     // private or loopback addresses. Refused in production.
     WEBHOOK_ALLOW_INSECURE_TARGETS: bool.default(false),
+
+    // Homework files (docs/CLASSROOM.md §5): the worker scans each one with ClamAV
+    // (clamd over TCP) before anyone can open it. "off" keeps only the photo
+    // resizing. Production must choose explicitly.
+    FILE_SCAN: z.enum(['clamav', 'off']).optional(),
+    CLAMAV_HOST: z.string().min(1).optional(),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {
@@ -86,6 +93,12 @@ const EnvSchema = z
       if (env.WEBHOOK_ALLOW_INSECURE_TARGETS) {
         ctx.addIssue({ code: 'custom', path: ['WEBHOOK_ALLOW_INSECURE_TARGETS'], message: 'WEBHOOK_ALLOW_INSECURE_TARGETS cannot be used in production' });
       }
+      if (!env.FILE_SCAN) {
+        ctx.addIssue({ code: 'custom', path: ['FILE_SCAN'], message: 'FILE_SCAN must be set in production: clamav (scan homework files for viruses) or off' });
+      }
+    }
+    if (env.FILE_SCAN === 'clamav' && !env.CLAMAV_HOST) {
+      ctx.addIssue({ code: 'custom', path: ['CLAMAV_HOST'], message: 'CLAMAV_HOST is required when FILE_SCAN=clamav' });
     }
     if (env.DATA_ENCRYPTION_KEYS_PREVIOUS.includes(env.DATA_ENCRYPTION_KEY)) {
       ctx.addIssue({ code: 'custom', path: ['DATA_ENCRYPTION_KEYS_PREVIOUS'], message: 'DATA_ENCRYPTION_KEYS_PREVIOUS must not contain the current DATA_ENCRYPTION_KEY' });

@@ -23,14 +23,58 @@ export function fmtSize(bytes) {
   return bytes >= 1048576 ? t('hw.sizeMB', { n: fmtNum(Number((bytes / 1048576).toFixed(1))) }) : t('hw.sizeKB', { n: fmtNum(Math.max(1, Math.round(bytes / 1024))) });
 }
 
-/** A file: images show a small preview; PDFs download. */
+/**
+ * A file: images show a small preview; PDFs download. A file opens only once the
+ * server has checked it (virus scan, photo resizing); until then, or when it was
+ * deleted for a virus or as unreadable, it is listed without a link.
+ */
 export function fileItem(href, f, onRemove) {
+  const remove = onRemove ? h('button', { type: 'button', class: 'btn small danger ghost', 'aria-label': t('hw.removeFile', { name: f.name }), onclick: onRemove }, t('common.delete')) : null;
+  if (f.status && f.status !== 'ready') {
+    const state = f.status === 'pending'
+      ? h('span', { class: 'muted' }, ` · ${t('hw.fileChecking')}`)
+      : [' ', h('span', { class: 'pill bad' }, t(f.status === 'infected' ? 'hw.fileInfected' : 'hw.fileUnreadable'))];
+    return h('li', { class: 'file' }, h('span', { dir: 'auto' }, f.name), state, remove);
+  }
   const image = f.contentType.startsWith('image/');
   return h('li', { class: 'file' },
     image ? h('a', { href, target: '_blank', rel: 'noopener' }, h('img', { src: href, alt: f.name, loading: 'lazy' })) : null,
     h('a', { href, ...(image ? { target: '_blank', rel: 'noopener' } : { download: f.name }) }, h('span', { dir: 'auto' }, f.name)),
     h('span', { class: 'muted' }, ` · ${fmtSize(f.size)}`),
-    onRemove ? h('button', { type: 'button', class: 'btn small danger ghost', 'aria-label': t('hw.removeFile', { name: f.name }), onclick: onRemove }, t('common.delete')) : null);
+    remove);
+}
+
+const CHECK_POLL_MS = 3000;
+const CHECK_POLL_MAX = 200;
+
+/**
+ * A list of files. While one is being checked, asks `reload` (the files as the server now
+ * lists them) every few seconds and redraws the list in place, so the page keeps its focus
+ * and what the student is typing. A file deleted for a virus or as unreadable is also told.
+ */
+export function fileList(files, makeItem, reload) {
+  const ul = h('ul', { class: 'files' }, files.map(makeItem));
+  const watch = (current, round) => {
+    if (!reload || round >= CHECK_POLL_MAX || !current.some((f) => f.status === 'pending')) return;
+    setTimeout(async () => {
+      if (!ul.isConnected) return;
+      let fresh;
+      try { fresh = await reload(); } catch { return watch(current, round + 1); }
+      if (!ul.isConnected) return;
+      const changed = fresh.length !== current.length || fresh.some((f) => current.find((c) => c.id === f.id)?.status !== f.status);
+      if (changed) {
+        for (const f of fresh) {
+          if (current.find((c) => c.id === f.id)?.status === 'pending' && (f.status === 'infected' || f.status === 'unreadable')) {
+            toast(t(f.status === 'infected' ? 'hw.fileInfectedToast' : 'hw.fileUnreadableToast', { name: f.name }), 'error');
+          }
+        }
+        ul.replaceChildren(...fresh.map(makeItem));
+      }
+      watch(fresh, round + 1);
+    }, CHECK_POLL_MS);
+  };
+  watch(files, 0);
+  return ul;
 }
 
 /** A file input that uploads each chosen file at once and reports progress in a live region. */
@@ -48,7 +92,7 @@ export function fileUploader({ id, label, path, onDone }) {
     input.value = '';
     await onDone();
   });
-  return h('div', { class: 'field' }, h('label', { for: id }, label), input, h('span', { class: 'hint' }, t('hw.fileHint')), status);
+  return h('div', { class: 'field' }, h('label', { for: id }, label), input, h('span', { class: 'hint' }, t('hw.fileHint'), ' ', t('hw.filesChecked')), status);
 }
 
 // ------------------------------------------------------------ classes list
@@ -358,7 +402,7 @@ async function markDialog(orgId, hw, row, canMark) {
     : h('div', { class: 'stack' },
       h('p', { class: 'muted' }, t('hw.handedInAt', { when: fmtDate(sub.submittedAt, true) }), sub.late ? [' ', h('span', { class: 'pill bad' }, t('hw.status.late'))] : null),
       sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : h('p', { class: 'muted' }, hw.workRemovedAt ? t('ret.workGone') : t('hw.noText')),
-      sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/orgs/${orgId}/files/${f.id}`, f))) : null);
+      sub.files.length ? fileList(sub.files, (f) => fileItem(`/api/orgs/${orgId}/files/${f.id}`, f), async () => (await get(`/api/orgs/${orgId}/homework/${hw.id}/submissions/${row.studentId}`)).submission.files) : null);
   const save = async (andReturn) => {
     err.textContent = '';
     const body = { feedback: feedback.value.trim() || null, return: andReturn };
@@ -395,10 +439,10 @@ export async function homeworkView(ctx) {
     h('dt', {}, t('hw.setOn')), h('dd', {}, scheduled ? t('hw.scheduledFor', { when: fmtDate(hw.publishAt, true) }) : fmtDate(hw.publishAt, true)),
     h('dt', {}, t('hw.maxPoints')), h('dd', {}, hw.maxPoints === null ? t('hw.noPoints') : String(hw.maxPoints)));
 
-  const files = h('ul', { class: 'files' }, data.files.map((f) => fileItem(`/api/orgs/${orgId}/files/${f.id}`, f, data.canEdit ? () => act(async () => {
+  const files = fileList(data.files, (f) => fileItem(`/api/orgs/${orgId}/files/${f.id}`, f, data.canEdit ? () => act(async () => {
     await del(`/api/orgs/${orgId}/homework/${homeworkId}/files/${f.id}`);
     refresh();
-  }) : null)));
+  }) : null), async () => (await get(`/api/orgs/${orgId}/homework/${homeworkId}`)).files);
 
   const editActions = data.canEdit
     ? h('div', { class: 'row' },

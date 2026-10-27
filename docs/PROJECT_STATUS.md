@@ -642,6 +642,23 @@ Blocked by B-2…B-6. Plan: docs/IMPLEMENTATION_ROADMAP.md.
 ### Documentation · COMPLETE
 All 16 documents in `docs/` plus `README.md`, written against the code as committed.
 
+**Published copies of the guides.** Each guide is also a web page on claude.ai, with an offline PDF and a
+single HTML file. Each page links to its other-language version, and the deployment guides link to the
+user guides.
+
+| Guide | Web page | Offline copies | Built from |
+| --- | --- | --- | --- |
+| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF, HTML | `docs/USER_GUIDE.md`, republished 2026-10-27 |
+| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF, HTML | `docs/USER_GUIDE.ar.md`, republished 2026-10-27 |
+| Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` on `main` at `fdc3f80`, 2026-10-27 |
+| دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (23 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` on `main` at `fdc3f80`, 2026-10-27 |
+
+- The pages are private: only their owner can open them until each is shared from its Share menu.
+- The offline copies were handed over in the working session; they are not stored in the repository.
+- The pages and copies do not follow the Markdown by themselves. The scripts that build them are not in the
+  repository, so after a guide changes, ask for its copies to be rebuilt and republished; the links stay
+  the same.
+
 ## 3. Definition of Done checklist
 
 | Condition | State |
@@ -713,8 +730,9 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #31 (the operations scripts for Linux and Windows) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `c6b8b47`): the deployment guide in Arabic.
+**Resume point (2026-10-27).** PR #32 (the deployment guide in Arabic) is merged, and both deployment guides
+are published as web pages with offline copies (Documentation, above). On `claude/friendly-rubin-hmemjl`
+(from `main` at `fdc3f80`): the published guide links recorded in this file.
 4.2 is finished; the next development work is for the owner to choose, from the items after the pilot
 or from 4.1 once its blockers clear. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

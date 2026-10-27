@@ -79,6 +79,13 @@ previewed line by line (invalid usernames, duplicates in the file or at the scho
 unknown scopes, empty names) and applied **all or nothing**, inside the plan limit. The response carries
 the new passwords once, for the credentials download.
 
+Each problem in the preview is its own entry, `{ line, code, params, message }`, so a line with three
+problems is listed three times. `message` is the English text; `code` and `params` let the Arabic
+interface say the same problem in Arabic, with the file's own values (a username, a scope name) kept in
+place. The codes and their English texts are in `src/lib/import-problems.ts`; a unit test checks that
+each has an Arabic text. A file that is not UTF-8, or has a quote that is never closed, is refused as a
+whole: `400 FILE_NOT_UTF8` or `400 CSV_INVALID`, also shown in Arabic.
+
 ## 6. API
 
 Staff (owner and admins; organization routes, CSRF as usual):
@@ -87,7 +94,7 @@ Staff (owner and admins; organization routes, CSRF as usual):
 | --- | --- |
 | `GET /api/orgs/:orgId/students` | `{ enabled, limit, used, schoolCode, grades, students[] }` |
 | `POST /api/orgs/:orgId/students` | `{ username, name, grade, scopeId? }` → 201 `{ student, password }` |
-| `POST /api/orgs/:orgId/students/import` | `{ csv, apply }` → preview `{ rows, errors, limit, used }` or applied `{ created[] (with passwords), schoolCode }` |
+| `POST /api/orgs/:orgId/students/import` | `{ csv, apply }` → preview `{ rows, errors[] ({ line, code, params, message }), limit, used }` or applied `{ created[] (with passwords), schoolCode }` |
 | `PATCH /api/orgs/:orgId/students/:userId` | `{ name?, grade?, scopeId? (null clears) }` |
 | `POST /api/orgs/:orgId/students/:userId/reset-password` | → `{ password }`; ends the student's sessions |
 | `DELETE /api/orgs/:orgId/students/:userId` | Deletes the account |
@@ -104,7 +111,7 @@ Students:
 | `POST /api/auth/logout` | As for staff |
 
 Errors: `STUDENTS_NOT_ENABLED` (402), `PLAN_LIMIT_REACHED` (402), `USERNAME_TAKEN` (409),
-`IMPORT_INVALID` (400), `STAFF_ONLY` (403), `STUDENT_PORTAL_OFF` (403), `ORG_SUSPENDED` (403),
+`IMPORT_INVALID` (400), `FILE_NOT_UTF8` (400), `CSV_INVALID` (400), `STAFF_ONLY` (403), `STUDENT_PORTAL_OFF` (403), `ORG_SUSPENDED` (403),
 `INVALID_CREDENTIALS` (401).
 
 ## 7. Audit
@@ -116,28 +123,33 @@ field names), `student.password_reset`, `student.removed`, `student.password_cha
 
 ## 8. Tests
 
-- `tests/integration/students.test.ts` (25 tests): off by default and on per school; limit and the
+- `tests/integration/students.test.ts` (26 tests): off by default and on per school; limit and the
   Free-plan fallback; sign-in, equal errors, lockout and reset; password change; **every route of the
   application called with a student session** (only the portal routes succeed; staff routes answer
   `STAFF_ONLY`); staff accounts cannot use the portal; database triggers and constraints;
   editors/viewers refused; another school gets 404 and sees nothing under RLS; scopes of another school
   refused; removal and school deletion delete the accounts; platform user list excludes students;
-  import preview, all-or-nothing apply, Excel/Arabic files, limit; the portal shows only the grade's
+  import preview (one entry per problem, with its code and parameters), unreadable files refused with
+  their own codes, all-or-nothing apply, Excel/Arabic files, limit; the portal shows only the grade's
   books in the assigned scope; suspended school; generated passwords.
 - `tests/e2e/journeys.spec.ts`: a platform admin turns students on, the owner adds one and imports a
   roster (with the credentials download), the student signs in from the staff sign-in page's link, sees
   exactly the scope's books for their grade, cannot open staff pages, switches to Arabic, and is signed
   out by a staff password reset.
-- `tests/e2e/accessibility.spec.ts`: the Students page and its three dialogs, the student sign-in, and
-  the portal in English, Arabic, dark and on a phone (axe WCAG 2.2 AA, 0 findings).
+- `tests/e2e/accessibility.spec.ts`: the Students page and its three dialogs, the import preview with
+  five problems in Arabic (each said in Arabic, right to left, the username and scope name kept in
+  place), the student sign-in, and the portal in English, Arabic, dark and on a phone (axe WCAG 2.2 AA,
+  0 findings).
+- `tests/unit/import-problems.test.ts`: every problem code has an Arabic text with the same
+  placeholders.
 
 ## 9. Open points
 
 1. **Legal assessment before real students use it** (SECURITY_DESIGN §7): children's data under the
    Egyptian PDPL, parental consent, the school as controller, retention, privacy notice.
 2. Price of student accounts (currently enabled only by a platform administrator, free of charge).
-3. Server validation messages in the import preview are in English (as in the catalogue sheet import);
-   the rest of the student pages are translated.
+3. Resolved on 2026-10-27: the import preview's problems are shown in Arabic in the Arabic interface,
+   as in the catalogue sheet import (§5).
 4. Many students usually share one school address (the school's NAT). Since 2026-10-27 the limits on
    what students do in the portal (starting a test, saving answers, heartbeats, page events, homework
    drafts, hand-ins and uploads, password changes) count per student, and the flood guard allows 6,000

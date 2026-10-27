@@ -6,7 +6,7 @@ review in SCREEN_READER_REVIEW.md. **This is not that review.** It finds
 structural problems early, so the tester's time goes on what only a person can
 judge.
 
-Last run: 2026-10-27. Every check passes. The browser recorded 148 screen
+Last run: 2026-10-27. Every check passes. The browser recorded 149 screen
 transcripts (about 65,000 spoken phrases) and the reader reports 0 findings. The
 portal's screens and announcements were read for SCREEN_READER_REVIEW tasks 23–32;
 three problems found there are fixed (§3, P10–P12).
@@ -21,7 +21,7 @@ three problems found there are fixed (§3, P10–P12).
   announce, for example "polite: Saved".
 - **Where it runs:** inside the end-to-end tests
   (`tests/e2e/screen-reader.ts`), in the accessibility project:
-  - **Audit:** every screen and dialog the axe audit checks (148 of them,
+  - **Audit:** every screen and dialog the axe audit checks (149 of them,
     English and Arabic, light and dark, desktop and phone) is also read from top
     to bottom. An open dialog is read on its own, as a modal dialog keeps a
     screen reader inside it.

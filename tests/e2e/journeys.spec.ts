@@ -302,6 +302,25 @@ test('platform admin records verification marks in bulk from an edited spreadshe
   await expect(dlg).toContainText('Mark: Not verified → Verified (Publisher catalogue 2027)');
   await dlg.getByRole('button', { name: 'Apply 3 changes' }).click();
   await expect(page.getByText(/^Verified: 0\/231 subjects, 3\/\d+ materials/)).toBeVisible();
+
+  // In Arabic the preview names subjects in Arabic and says each problem in Arabic.
+  await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  const again = parseCsv(await (await page.request.get(`/api/admin/catalog/versions/${versionId}/sheet`)).text()).map((r) => r.map(unguardCell));
+  const subjectAt = again.findIndex((x) => x[col('row_type')] === 'subject' && x[col('grade')] === '1');
+  const materialAt = again.findIndex((x, i) => i > subjectAt && x[col('row_type')] === 'material');
+  const nameAr = again[subjectAt]![col('name_ar')]!;
+  again[subjectAt]![col('name_en')] += ' (edited)';
+  again[materialAt]![col('verification_status')] = 'needs_review';
+  await page.locator('input[type="file"]').setInputFiles({ name: 'catalogue.csv', mimeType: 'text/csv', buffer: Buffer.from(toCsv(again)) });
+  const ar = page.getByRole('dialog', { name: 'معاينة جدول البيانات' });
+  await expect(ar.locator('.alert.error li')).toHaveText([
+    `السطر ${subjectAt + 1}: الإصدارات المنشورة للقراءة فقط: لا يتغير فيها إلا أعمدة التحقق (تغيّر: \u2068name_en\u2069)`,
+    `السطر ${materialAt + 1}: العنصر الذي يحتاج إلى مراجعة يحتاج إلى قيمة في verification_note`,
+  ]);
+  await expect(ar).toContainText(`السطر ${subjectAt + 1} الصف الأول الابتدائي · ${nameAr}`);
+  await ar.getByRole('button', { name: 'إلغاء' }).click();
+  await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.getByText(/^Verified: 0\/231 subjects, 3\/\d+ materials/)).toBeVisible();
 });
 
 test('owner compares two scopes side by side and downloads the comparison', async ({ page }) => {

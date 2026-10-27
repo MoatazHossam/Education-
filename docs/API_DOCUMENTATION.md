@@ -22,7 +22,7 @@ application/json`); other content types are rejected with `415`.
 ```
 | Status | Typical codes |
 | --- | --- |
-| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `ASSIGNEE_NOT_MEMBER`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH`, `IMPORT_INVALID` |
+| 400 | `VALIDATION_ERROR` (details: `[{path, message}]`), `BAD_REQUEST`, `INVALID_MATERIALS`, `ASSIGNEE_NOT_MEMBER`, `TOKEN_INVALID`, `INVALID_PASSWORD`, `CONFIRMATION_MISMATCH`, `IMPORT_INVALID`, `FILE_NOT_UTF8`, `CSV_INVALID` |
 | 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `MFA_REQUIRED`, `MFA_INVALID` |
 | 402 | `PLAN_LIMIT_REACHED`, `FEATURE_NOT_IN_PLAN`, `STUDENTS_NOT_ENABLED` |
 | 403 | `FORBIDDEN`, `CSRF_TOKEN_INVALID`, `CSRF_ORIGIN_MISMATCH`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ORG_SUSPENDED`, `MFA_REQUIRED_BY_ORG`, `MFA_ENROLLMENT_REQUIRED`, `SUPPORT_ACCESS_REQUIRED`, `STAFF_ONLY`, `STUDENT_PORTAL_OFF` |
@@ -30,6 +30,12 @@ application/json`); other content types are rejected with `415`.
 | 409 | `CONFLICT`, `SCOPE_NAME_TAKEN`, `ALREADY_MEMBER`, `PAYMENT_REQUIRED`, `USE_SCHEDULED_CHANGE`, `ALREADY_ON_PLAN`, `OWNS_ORGANIZATIONS`, `USERNAME_TAKEN` |
 | 429 | `RATE_LIMITED` |
 | 500 | `INTERNAL_ERROR` (with `requestId`) |
+
+**Problems in an imported file.** The previews of the roster import and the catalogue sheet import list
+each problem as `{line | row, code, params, message}`. `message` is English; `code` is stable and
+`params` holds the values it mentions, for example
+`{"line": 5, "code": "roster_username_repeats", "params": {"username": "ok.one", "line": 2}, "message": "username \"ok.one\" repeats line 2"}`.
+The web interface shows Arabic from the code. Codes and English texts: `src/lib/import-problems.ts`.
 
 ### Rate limits
 Global flood guard (when `RATE_LIMIT_ENABLED`, per app instance): 600 requests/min per IP; requests
@@ -127,7 +133,7 @@ Tree shape:
 | POST | `/:orgId/webhooks/:id/deliveries/:deliveryId/redeliver` | admin | Queues the same event again (same event id) → `202`; `409 DELIVERY_PENDING` while it is still being sent |
 | GET | `/:orgId/students` | admin | `{enabled, limit, used, schoolCode, grades, students[]}` |
 | POST | `/:orgId/students` | admin | `{username, name, grade, scopeId?}` → `201 {student, password}` (password shown once); 402 `STUDENTS_NOT_ENABLED` / `PLAN_LIMIT_REACHED` |
-| POST | `/:orgId/students/import` | admin | `{csv, apply}`: preview `{rows, errors, limit, used}`; apply (all or nothing) → `{created[] with passwords, schoolCode}` |
+| POST | `/:orgId/students/import` | admin | `{csv, apply}`: preview `{rows, errors, limit, used}`, one error per problem `{line, code, params, message}` (see "Problems in an imported file" below); apply (all or nothing) → `{created[] with passwords, schoolCode}`; `400 FILE_NOT_UTF8` / `CSV_INVALID` for a file that cannot be read |
 | PATCH / DELETE | `/:orgId/students/:userId` | admin | `{name?, grade?, scopeId? (null clears)}` · delete the account |
 | POST | `/:orgId/students/:userId/reset-password` | admin | → `{password}`; ends the student's sessions and lifts a lockout |
 
@@ -237,7 +243,7 @@ curl -b cookies.txt -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json'
 every id must belong to the version; changes the catalogue ETag; audited as `admin.catalog_verification_set`),
 `GET /catalog/versions/:id/sheet` (CSV download: one row per subject and material with ids, content and verification columns),
 `POST /catalog/versions/:id/sheet {csv, apply?: boolean}` (up to 8 MB / 20,000 rows; `apply: false` returns `{plan: {changes, errors, warnings, summary}}`
-and writes nothing; `apply: true` writes the whole file or nothing (`400 IMPORT_INVALID` with the errors); verification columns on drafts and
+and writes nothing; each error and warning is `{row, code, params, message}`, row 0 meaning the whole file; `apply: true` writes the whole file or nothing (`400 IMPORT_INVALID` with the errors); verification columns on drafts and
 published versions, content and new materials on drafts only; `409 VERSION_ARCHIVED`; audited as `admin.catalog_imported`),
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited),
 `GET /alerts` (`{channels: {emails, emailTransport, webhook}, alerts: [...]}`: firing alerts and those resolved in the last 30 days),

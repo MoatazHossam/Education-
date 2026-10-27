@@ -285,6 +285,17 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `docs/SCREEN_READER_REVIEW.md`, `docs/SCREEN_READER_PRECHECK.md`, `public/js/countdown.js` (+ `.d.ts`), `public/js/views/{student-tests,tests}.js`, `public/js/i18n.js`, `tests/unit/countdown.test.ts`, `tests/e2e/accessibility.spec.ts`; the results page (artifact).
 - **Tests:** `tests/unit/countdown.test.ts` (4); the accessibility audit's new listening checks (handing in, saving failures, the monitor, marking) and field names.
 
+### Arabic messages in the import previews · COMPLETE
+
+- **Asked:** "start on item 5" of the next priorities (§4.2): translate the server validation messages in the roster import and catalogue sheet import previews.
+- **Implemented:**
+  - **Problem codes:** every problem the roster import and the catalogue sheet import report now carries a stable code and its parameters next to the English text (`src/lib/import-problems.ts`, 35 codes). API clients keep reading `message`. The Arabic interface shows the Arabic text for the code (`problemText` in `public/js/dom.js`); values taken from the file (a username, a scope or column name) are isolated so a Latin word cannot reorder the Arabic sentence around it.
+  - **Roster import:** each problem is listed on its own, so a line with three problems is listed three times and counted as three. A file that is not UTF-8, or has a quote that is never closed, is refused with a code of its own (`FILE_NOT_UTF8`, `CSV_INVALID`) and an Arabic message; before, it was `BAD_REQUEST`, which the Arabic interface showed as the generic "something went wrong".
+  - **Catalogue sheet import:** its errors and its warning carry codes too. In Arabic, the preview names a changed subject by its Arabic grade and subject names (the server's label is English), and "Row N" now reads «السطر N», as in the roster import, because «الصف» also means a grade.
+- **Tests:** `tests/unit/import-problems.test.ts` (2): every code has an Arabic text with the same placeholders, and no Arabic text is left without a code. The unit and integration tests of both imports now check codes and parameters, and a new integration test covers a line with three problems and the two unreadable files. In the end-to-end tests, the accessibility audit opens the roster import in Arabic with five problems and checks each item's Arabic text, its right-to-left direction and the isolated values (one more screen, 0 findings); journey 11 uploads a sheet with two problems in the Arabic interface and checks the Arabic messages and the Arabic subject label.
+- **Files:** `src/lib/import-problems.ts`, `src/students/{service,routes}.ts`, `src/catalog/sheet.ts`, `public/js/{dom,i18n}.js`, `public/js/views/{students,admin}.js`, `tests/unit/{import-problems,catalog-sheet}.test.ts`, `tests/integration/{students,catalog-sheet}.test.ts`, `tests/e2e/{accessibility,journeys}.spec.ts`, docs (`STUDENT_ACCOUNTS.md`, `API_DOCUMENTATION.md`, `USER_GUIDE.ar.md` and its import screenshots).
+- **Not done:** a native speaker has not reviewed the new Arabic texts (4.1 item 6). Other server messages, such as the details of form validation errors and the operational alerts, are still English. The published copies of the Arabic user guide (web page, PDF and HTML) still show the old import screenshot and the sentence saying the problem may appear in English; the guide in the repository is updated.
+
 ### Simulated screen-reader pre-check and tester results page · COMPLETE (manual review still not started)
 - **Implemented:**
   - **Simulated screen reader:** Guidepup's Virtual Screen Reader (`@guidepup/virtual-screen-reader` 0.33.0, MIT, development dependency only) reads every screen the accessibility audit checks, now 83, from top to bottom. A new test listens to what is announced after actions. The audit fails on an unnamed control or table header, a symbol read on its own, a skipped heading level, or text in the other language without `lang`. Transcripts are written to `test-results/screen-reader/` on each run. Details, coverage of the checklist's 22 tasks, and what a simulation cannot tell: `docs/SCREEN_READER_PRECHECK.md`.
@@ -408,7 +419,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - A unit test for the two Arabic emails.
   - The accessibility audit now checks, in Arabic, that an email address is one left-to-right piece and that a book title keeps its closing bracket.
   - Both screenshot runs pass (62 screens each).
-- **Limitations:** catalogue content (book titles, most notes, the catalogue's notice) is English in the catalogue itself, so it appears in English in the Arabic interface. Server-side validation messages and operational alert texts are still English. A professional translator has not reviewed the Arabic interface or guide.
+- **Limitations:** catalogue content (book titles, most notes, the catalogue's notice) is English in the catalogue itself, so it appears in English in the Arabic interface. Server-side validation messages and operational alert texts are still English, except the problems listed by the two import previews, which are shown in Arabic since 2026-10-27 (Arabic messages in the import previews, above). A professional translator has not reviewed the Arabic interface or guide.
 
 ### User guide with screenshots · COMPLETE
 - **Implemented:** `docs/USER_GUIDE.md`, a guide to every part of the system for the people who use it, with 62 screenshots in `docs/user-guide/images/`. It covers:
@@ -441,7 +452,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Limitations:**
   - Not for real students until the legal assessment (B-9).
   - No price yet for student accounts.
-  - Import error messages are in English.
+  - Import error messages were in English until 2026-10-27; they are now shown in Arabic in the Arabic interface (Arabic messages in the import previews, above).
   - No classes, assignments, progress or AI: Wise EduAgent could not be inspected (B-8) and no AI provider is chosen (B-10).
 
 ### Scope comparison · COMPLETE
@@ -584,7 +595,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (305 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (308 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -607,10 +618,11 @@ Where things stand (2026-10-27): the teacher and student portal is complete and 
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
 pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
-items 1 to 4 are done the same day: schools set how long they keep classroom data (PR #24), one exam
+items 1 to 5 are done the same day: schools set how long they keep classroom data (PR #24), one exam
 for a whole grade on one school network was load-tested and its limits fixed (PR #25), homework files
-are scanned for viruses and photos resized before anyone opens them (PR #26), and the screen-reader
-checklist covers the portal (see above). Nothing else below is started.
+are scanned for viruses and photos resized before anyone opens them (PR #26), the screen-reader
+checklist covers the portal (PR #27), and the problems listed by the two import previews are shown in
+Arabic (see above). Nothing else below is started.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -637,7 +649,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 | 2 | ~~**Exams at school scale.**~~ **Done 2026-10-27** (Exams at school scale, above): the load test found that 40 of 100 students on one address could not start; the portal's limits now count per student and the flood guard per account, and 100 and 300 students took the exam with no request refused | — | — |
 | 3 | ~~**Safer uploads.**~~ **Done 2026-10-27** (Safer uploads, above): ClamAV scans every file in the worker before anyone opens it, photos are made at most 2,000 px without their metadata, and an alert fires when files wait | — | — |
 | 4 | ~~**Screen-reader checklist for the portal.**~~ **Done 2026-10-27** (Screen-reader checklist for the teacher and student portal, above): tasks 23–32 in both languages and on the results page; three problems the simulated reader found are fixed | — | — |
-| 5 | **Arabic import messages.** Translate the server validation messages in the roster import and catalogue sheet import previews | The rest of the student pages are translated (STUDENT_ACCOUNTS §9) | 1 |
+| 5 | ~~**Arabic import messages.**~~ **Done 2026-10-27** (Arabic messages in the import previews, above): every problem in the roster and catalogue sheet previews has a code, and the Arabic interface says it in Arabic | — | — |
 | 6 | **E2E in Firefox and WebKit** as well as Chromium | Open item from roadmap P1. Students and teachers use whatever browser their device has; E2E runs only in Chromium today | 1–2 |
 
 **After the pilot's feedback, not before:**
@@ -646,7 +658,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #26 (safer uploads) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `18c2a58`): 4.2 item 4 (the screen-reader checklist for
-the portal). The next development step is 4.2 item 5 (Arabic import messages), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #27 (the screen-reader checklist for the portal) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `252485d`): 4.2 item 5 (Arabic import messages). The next
+development step is 4.2 item 6 (E2E in Firefox and WebKit), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

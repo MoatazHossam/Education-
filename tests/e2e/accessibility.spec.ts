@@ -187,6 +187,24 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(sd.getByText('Problems to fix first: 1.')).toBeVisible();
   await audit(page, 'import students dialog (preview with a problem)');
   await page.keyboard.press('Escape');
+  // In Arabic the problems are said in Arabic, one per item; the file's own values keep their place in the sentence.
+  await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  await page.getByRole('button', { name: 'استيراد ملف CSV…' }).click();
+  sd = page.getByRole('dialog', { name: 'استيراد الطلاب' });
+  await sd.getByLabel('ملف الطلاب (CSV)').setInputFiles({ name: 'roster.csv', mimeType: 'text/csv', buffer: Buffer.from(`username,name,grade,scope\nok.one,One,1,\n${username},Dup,1,\nbad name,,13,Old plan\n`) });
+  await expect(sd.getByText('مشكلات يجب إصلاحها أولًا: 5.')).toBeVisible();
+  const iso = (v: string) => `⁨${v}⁩`;
+  await expect(sd.locator('li')).toHaveText([
+    `السطر 3: اسم المستخدم «${iso(username)}» مستخدم بالفعل في مدرستك`,
+    'السطر 4: اسم المستخدم: من 3 إلى 40 حرفًا من الحروف الإنجليزية أو الأرقام أو النقاط أو الشرطات، يبدأ وينتهي بحرف أو رقم',
+    'السطر 4: الاسم: مطلوب، بحد أقصى 120 حرفًا',
+    'السطر 4: الصف: رقم من 1 إلى 12',
+    `السطر 4: النطاق: لا يوجد نطاق باسم «${iso('Old plan')}»`,
+  ]);
+  expect(await sd.locator('li span[dir="auto"]').evaluateAll((els) => els.map((el) => getComputedStyle(el).direction))).toEqual(Array(5).fill('rtl'));
+  await audit(page, 'import students dialog in Arabic (problems)');
+  await page.keyboard.press('Escape');
+  await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
   const schoolCode = (await page.locator('.code-big').textContent())!.trim();
   const studentPage = await newPage(browser);
   await visit(studentPage, `/student-login?school=${schoolCode}`, 'student sign-in');

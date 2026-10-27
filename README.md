@@ -24,8 +24,8 @@ English and Arabic (RTL).
 ## Quick start (Docker)
 
 ```bash
-cp .env.docker.example .env.docker      # set passwords; SESSION_SECRET=$(openssl rand -base64 48); DATA_ENCRYPTION_KEY=$(openssl rand -base64 32)
-docker compose --env-file .env.docker up --build
+cp .env.docker.example .env.docker      # set passwords (openssl rand -hex 24); SESSION_SECRET=$(openssl rand -base64 48); DATA_ENCRYPTION_KEY=$(openssl rand -base64 32)
+ops/start.sh --env dev                  # or: docker compose --env-file .env.docker up --build (Windows: ops\start.bat --env dev)
 # App: http://localhost:3000 · Mailpit (emails): http://localhost:8025
 docker compose --env-file .env.docker exec app node dist/cli/create-platform-admin.js --email you@example.com
 ```
@@ -51,7 +51,9 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run keys:check` / `npm run keys:rotate` | Report, then re-encrypt, the secrets kept encrypted at rest after changing `DATA_ENCRYPTION_KEY` (DEPLOYMENT_GUIDE §4) |
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
-| `scripts/backup.sh`, `scripts/restore.sh`, `scripts/verify-backup.sh` | Backups (see docs) |
+| `ops/cs.sh` (Linux), `ops\cs.bat` (Windows) | Start, stop, status, back up (encrypted; copies to a folder or USB drive, an SFTP server or an S3 bucket), restore and test a backup, interactively or scheduled (DEPLOYMENT_GUIDE §8) |
+| `scripts/rolling-restart.sh [--build]` | Upgrade or restart production one app instance at a time (DEPLOYMENT_GUIDE §4) |
+| `scripts/backup.sh`, `scripts/restore.sh`, `scripts/verify-backup.sh` | Database-only backups with the PostgreSQL client tools on the host, without Docker (DEPLOYMENT_GUIDE §5) |
 | `node scripts/perf-smoke.mjs` | Latency/throughput probe |
 | `node scripts/load-exam.mjs <url> [students] [teachers] [minutes]` | Load test of one online exam taken by a whole grade from one address, with teachers on the live monitor (TEST_REPORT §5) |
 
@@ -63,7 +65,8 @@ src/            server (Fastify + TypeScript)
 public/         single-page front end (vanilla ES modules, EN/AR)
 tests/          unit/, integration/ (real PostgreSQL), e2e/ (Playwright)
 deploy/         Postgres role init, Caddyfile
-scripts/        backup/restore/verify, performance probe
+ops/            operations scripts for Linux and Windows: start, stop, status, backup, restore
+scripts/        rolling restart, host-tool backups, performance and load probes
 legacy/         the original artifact, verbatim
 docs/           product, architecture, security, API, billing, deployment, testing, commercial, status
 ```

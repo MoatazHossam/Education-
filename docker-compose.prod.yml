@@ -5,12 +5,18 @@
 
 # On SIGTERM an instance reports "draining" on /readyz for 5 s, so Caddy (which
 # checks every 2 s) stops sending it requests, then finishes the ones in flight.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
 x-app-production: &app-production
   ports: !reset []
   environment:
     NODE_ENV: production
     TRUST_PROXY: "true"
-    SHUTDOWN_DRAIN_MS: "5000"
+    SHUTDOWN_DRAIN_MS: ${SHUTDOWN_DRAIN_MS:-5000}
     FILE_SCAN: ${FILE_SCAN:-clamav}
     CLAMAV_HOST: clamav
   stop_grace_period: 30s
@@ -48,6 +54,7 @@ services:
   clamav:
     image: clamav/clamav:1.5
     restart: unless-stopped
+    logging: *logging
     volumes:
       - clamav_db:/var/lib/clamav
     healthcheck:
@@ -57,9 +64,13 @@ services:
       start_period: 180s
       retries: 3
 
+  # Same scanner settings as the app: with FILE_SCAN=clamav in the env file, the app's
+  # configuration check also needs CLAMAV_HOST here (migrate does not use the scanner).
   migrate:
     environment:
       NODE_ENV: production
+      FILE_SCAN: ${FILE_SCAN:-clamav}
+      CLAMAV_HOST: clamav
 
   mailpit:
     profiles: ["dev-only"]
@@ -67,6 +78,7 @@ services:
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"

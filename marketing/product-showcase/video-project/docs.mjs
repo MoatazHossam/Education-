@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { estimateSeconds, plain, wordCount } from './lib/estimate.mjs';
+import { plain, wordCount } from './lib/estimate.mjs';
 import { buildTimeline } from './lib/timeline.mjs';
 import { features, notShown } from './script/features.mjs';
 
@@ -92,6 +92,15 @@ function textOverlays(s) {
   return out.join('<br>') || '—';
 }
 
+const voiced = cuts.every((c) => c.tl.narration.estimated === 0);
+const TIMING = {
+  ar: voiced
+    ? 'الأزمنة محسوبة من تسجيلات التعليق الصوتي الحالية (صوت مولَّد للمراجعة؛ انظر PRODUCTION_STATUS.md).'
+    : 'الأزمنة تقديرية إلى أن يُسجَّل التعليق الصوتي (سرعة قراءة هادئة؛ انظر PRODUCTION_STATUS.md)، ثم تُحسب من التسجيل نفسه.',
+  en: voiced
+    ? 'Times come from the current narration takes (a generated guide voice; see PRODUCTION_STATUS.md).'
+    : 'Times are estimates until the narration is recorded; then they come from the recording.',
+};
 const cell = (x) => String(x).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
 
 function narrationDoc(lang) {
@@ -100,16 +109,16 @@ function narrationDoc(lang) {
   out.push(isAr ? '# نصّ التعليق الصوتي — بالتشكيل الكامل' : '# English translation of the narration');
   out.push('');
   out.push(isAr
-    ? '<div dir="rtl">\n\nهذا هو النصّ الذي يُقرأ في الفيديو، مشكولًا بالكامل كما طُلب. الأزمنة تقديرية إلى أن يُسجَّل التعليق الصوتي (سرعة قراءة هادئة؛ انظر PRODUCTION_STATUS.md)، ثم تُحسب من التسجيل نفسه. حيث يختلف ما يُنطق عمّا يُكتب (أرقام، مصطلحات إنجليزية) يظهر تحت السطر «يُقرأ:».\n\n**توجيهات للقارئ:** عربية فصحى واضحة يفهمها جمهور مصر والخليج والمنطقة؛ صوت دافئ وواثق بلا مبالغة؛ سرعة نحو ١٠٥–١١٥ كلمة في الدقيقة؛ وقفة قصيرة عند الفاصلة وأطول عند النقطة؛ تُنطق المصطلحات الإنجليزية كما هي (SaaS «ساس»، API «إيه بي آي»، Webhooks «ويب هوكس»، Paymob «باي موب»، Wise EduAgent «وايز إيدو إيجنت»، Curriculum Scope «كاريكيولَم سكوب»).\n\n</div>'
-    : 'The English translation used for the English subtitles (english.srt, english-3min.srt). Times are estimates until the narration is recorded; then they come from the recording.');
+    ? `<div dir="rtl">\n\nهذا هو النصّ الذي يُقرأ في الفيديو، مشكولًا بالكامل كما طُلب. ${TIMING.ar} حيث يختلف ما يُنطق عمّا يُكتب (أرقام، مصطلحات إنجليزية) يظهر تحت السطر «يُقرأ:».\n\n**توجيهات للقارئ:** عربية فصحى واضحة يفهمها جمهور مصر والخليج والمنطقة؛ صوت دافئ وواثق بلا مبالغة؛ سرعة نحو ١٠٥–١١٥ كلمة في الدقيقة؛ وقفة قصيرة عند الفاصلة وأطول عند النقطة؛ تُنطق المصطلحات الإنجليزية كما هي (SaaS «ساس»، API «إيه بي آي»، Webhooks «ويب هوكس»، Paymob «باي موب»، Wise EduAgent «وايز إيدو إيجنت»، Curriculum Scope «كاريكيولَم سكوب»).\n\n</div>`
+    : `The English translation used for the English subtitles (english.srt, english-3min.srt). ${TIMING.en}`);
   out.push('');
   for (const c of cuts) {
     const words = c.script.scenes.reduce((a, s) => a + s.lines.reduce((b, l) => b + wordCount(l.ar), 0), 0);
     out.push(`## ${isAr ? c.script.meta.title : c.script.meta.titleEn}`);
     out.push('');
     out.push(isAr
-      ? `<div dir="rtl">المدة المقدّرة: ${mmss(c.tl.duration)} · عدد الكلمات: ${words} · المشاهد: ${c.tl.scenes.length} · الأسطر: ${c.tl.scenes.reduce((a, s) => a + s.lines.length, 0)}</div>`
-      : `Estimated duration ${mmss(c.tl.duration)} · ${words} Arabic words · ${c.tl.scenes.length} scenes · ${c.tl.scenes.reduce((a, s) => a + s.lines.length, 0)} lines`);
+      ? `<div dir="rtl">${voiced ? 'المدة' : 'المدة المقدّرة'}: ${mmss(c.tl.duration)} · عدد الكلمات: ${words} · المشاهد: ${c.tl.scenes.length} · الأسطر: ${c.tl.scenes.reduce((a, s) => a + s.lines.length, 0)}</div>`
+      : `${voiced ? 'Duration' : 'Estimated duration'} ${mmss(c.tl.duration)} · ${words} Arabic words · ${c.tl.scenes.length} scenes · ${c.tl.scenes.reduce((a, s) => a + s.lines.length, 0)} lines`);
     out.push('');
     let ch = 0;
     for (const s of c.tl.scenes) {
@@ -135,7 +144,7 @@ function narrationDoc(lang) {
 }
 
 function storyboard() {
-  const out = ['# Storyboard', '', 'One row per scene, generated from `video-project/script/*.mjs` (`node docs.mjs`). Times are from the estimated timeline until the narration is recorded. Every product screen is a recording of the running application (`recordings/`, captured by `video-project/capture/showcase.spec.ts`); diagrams and cards are motion graphics in the product\'s colours and font.', ''];
+  const out = ['# Storyboard', '', 'One row per scene, generated from `video-project/script/*.mjs` (`node docs.mjs`). ' + TIMING.en + ' Every product screen is a recording of the running application (`recordings/`, captured by `video-project/capture/showcase.spec.ts`); diagrams and cards are motion graphics in the product\'s colours and font.', ''];
   for (const c of cuts) {
     out.push(`## ${c.script.meta.titleEn} — ${mmss(c.tl.duration)}`, '');
     out.push('| # | Time | Scene | Template | Visual | Narration (summary) |', '| --- | --- | --- | --- | --- | --- |');
@@ -214,6 +223,6 @@ writeFileSync(join(ROOT, 'ENGLISH_TRANSLATION.md'), narrationDoc('en'));
 writeFileSync(join(ROOT, 'STORYBOARD.md'), storyboard());
 writeFileSync(join(ROOT, 'SCENE_BY_SCENE_PRODUCTION.md'), sceneByScene());
 for (const c of cuts) {
-  const est = c.script.scenes.reduce((a, s) => a + s.lines.reduce((b, l) => b + estimateSeconds(l.say ?? l.ar), 0), 0);
-  console.log(`${c.id}: ${mmss(c.tl.duration)} total, ${mmss(est)} of narration (estimated), ${c.script.scenes.reduce((a, s) => a + s.lines.reduce((b, l) => b + plain(l.ar).length, 0), 0)} characters`);
+  const spoken = c.tl.scenes.reduce((a, s) => a + s.lines.reduce((b, l) => b + l.d, 0), 0);
+  console.log(`${c.id}: ${mmss(c.tl.duration)} total, ${mmss(spoken)} of narration (${c.tl.narration.recorded} lines recorded, ${c.tl.narration.estimated} estimated), ${c.script.scenes.reduce((a, s) => a + s.lines.reduce((b, l) => b + plain(l.ar).length, 0), 0)} characters`);
 }

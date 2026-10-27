@@ -1,15 +1,29 @@
 # Local development / single-host stack:
 #   cp .env.docker.example .env.docker && docker compose --env-file .env.docker up --build
 # Production adds docker-compose.prod.yml (Caddy TLS proxy, a second app instance, no Mailpit).
+# ops/start.sh (Linux) and ops\start.bat (Windows) start either one (docs/DEPLOYMENT_GUIDE.md §8).
 name: curriculum-scope
 
+# Every container's log is capped (5 files of 10 MB), so logs cannot fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+# Every setting the app reads (src/config.ts) can be set in the env file; empty means the default.
 x-app-env: &app-env
   NODE_ENV: ${NODE_ENV:-development}
   APP_URL: ${APP_URL:-http://localhost:3000}
   TRUST_PROXY: ${TRUST_PROXY:-false}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  DATABASE_URL: postgres://${DB_APP_USER}:${DB_APP_PASSWORD}@postgres:5432/${DB_NAME}
-  MIGRATION_DATABASE_URL: postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}
+  # The bundled postgres service by default. For a managed database, set DATABASE_URL,
+  # MIGRATION_DATABASE_URL and DATABASE_SSL=true in the env file and start without the
+  # bundled one (--scale postgres=0; the ops scripts do this when DATABASE_URL is set).
+  DATABASE_URL: ${DATABASE_URL:-postgres://${DB_APP_USER}:${DB_APP_PASSWORD}@postgres:5432/${DB_NAME}}
+  MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}}
+  DATABASE_SSL: ${DATABASE_SSL:-}
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
   APP_DB_ROLE: ${DB_APP_USER}
   SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
   DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
@@ -26,26 +40,38 @@ x-app-env: &app-env
   PAYMOB_PUBLIC_KEY: ${PAYMOB_PUBLIC_KEY:-}
   PAYMOB_HMAC_SECRET: ${PAYMOB_HMAC_SECRET:-}
   PAYMOB_INTEGRATION_IDS: ${PAYMOB_INTEGRATION_IDS:-}
+  PAYMOB_API_BASE: ${PAYMOB_API_BASE:-}
+  TRIAL_DAYS: ${TRIAL_DAYS:-}
+  GRACE_DAYS: ${GRACE_DAYS:-}
+  RENEWAL_NOTICE_DAYS: ${RENEWAL_NOTICE_DAYS:-}
+  AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-}
+  RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-}
+  WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-}
+  SHUTDOWN_DRAIN_MS: ${SHUTDOWN_DRAIN_MS:-}
   ALERT_EMAILS: ${ALERT_EMAILS:-}
   ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+  ALERT_CHECK_INTERVAL_MS: ${ALERT_CHECK_INTERVAL_MS:-}
   # Virus scan of homework files (docs/CLASSROOM.md §5); production turns it on (docker-compose.prod.yml).
   FILE_SCAN: ${FILE_SCAN:-off}
   CLAMAV_HOST: ${CLAMAV_HOST:-}
+  CLAMAV_PORT: ${CLAMAV_PORT:-}
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      # Required by the bundled database only (the ops scripts check it); unused with a managed one.
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-}
       DB_NAME: ${DB_NAME}
       DB_OWNER_USER: ${DB_OWNER_USER}
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
       DB_APP_USER: ${DB_APP_USER}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       DB_BACKUP_USER: ${DB_BACKUP_USER:-curriculum_backup}
-      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:?set DB_BACKUP_PASSWORD}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
@@ -57,19 +83,24 @@ services:
     # Not published to the host by default; uncomment for local tooling.
     # ports: ["127.0.0.1:5432:5432"]
 
+  # APP_IMAGE_TAG picks the image: "local" is the one built here; a rebuild (scripts/rolling-restart.sh
+  # --build, or the start script's) keeps the one it replaces as "previous", for a rollback (DEPLOYMENT_GUIDE §4).
   migrate:
     build: .
-    image: curriculum-scope:local
+    image: curriculum-scope:${APP_IMAGE_TAG:-local}
     command: ["sh", "-c", "node dist/db/migrate-cli.js up && node dist/db/seed-cli.js --catalog-only"]
+    logging: *logging
     environment: *app-env
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
     restart: "no"
 
   app:
-    image: curriculum-scope:local
+    image: curriculum-scope:${APP_IMAGE_TAG:-local}
     restart: unless-stopped
+    logging: *logging
     environment: *app-env
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -78,9 +109,10 @@ services:
         condition: service_completed_successfully
 
   worker:
-    image: curriculum-scope:local
+    image: curriculum-scope:${APP_IMAGE_TAG:-local}
     command: ["node", "dist/worker.js"]
     restart: unless-stopped
+    logging: *logging
     healthcheck:
       # The worker has no HTTP server; healthy means a recent heartbeat in the database.
       test: ["CMD", "node", "dist/cli/worker-health.js"]
@@ -96,6 +128,7 @@ services:
   mailpit:
     image: axllent/mailpit:v1.27
     restart: unless-stopped
+    logging: *logging
     ports:
       - "127.0.0.1:8025:8025"
 

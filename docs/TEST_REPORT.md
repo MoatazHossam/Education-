@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**46 files, 308 tests, 308 passed, 0 failed** (2026-10-27, with the journeys in Firefox and WebKit). Integration tests ran against a real
+**47 files, 311 tests, 311 passed, 0 failed** (2026-10-27, with the operations scripts). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -31,6 +31,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/billing-logic | 9 | Pass |
 | unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded), and production refusing `WEBHOOK_ALLOW_INSECURE_TARGETS` |
 | unit/i18n | 2 | Pass |
+| unit/backup-crypt | 3 | Pass — backup archive encryption (`src/lib/backup-crypt.ts`): round trip for sizes from 0 to 1.1 MB whatever the chunk boundaries; a wrong passphrase, one changed byte, a cut file, another format, a header with no data and a passphrase under 12 characters all refused; a fresh salt and IV each time |
 | unit/countdown | 4 | Pass — the time left announced in a timed test (`public/js/countdown.js`): 5 and 1 minutes once each as they are crossed; nothing for a mark already behind when the test opens; again after more time; only the nearer mark when a tick jumps past both |
 | unit/email-templates | 2 | Pass — the Arabic invitation names the role as the Arabic interface does; the Arabic assignment email says "a book" for one and "books" for more |
 | unit/file-checks | 5 | Pass — the ClamAV daemon client against a stand-in speaking its protocol: clean and infected, 64 KB chunks, errors, hang-ups, timeouts and refused connections; photos made at most 2,000 px without EXIF (location included), turned upright, never enlarged, same format; wrong type, garbage and a header claiming 400 million pixels refused |
@@ -76,7 +77,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 
 Full test names (file › group › test, from `npx vitest list`):
 
-<details><summary>Show all 308</summary>
+<details><summary>Show all 311</summary>
 
 - admin-api-ops › platform administration › is invisible to ordinary users and requires MFA for admins
 - admin-api-ops › platform administration › sees customer metadata but not scope contents without a support grant
@@ -127,6 +128,9 @@ Full test names (file › group › test, from `npx vitest list`):
 - authz-coverage › authorization coverage (all registered routes) › org routes: 401 when anonymous, 404 for members of another organization
 - authz-coverage › authorization coverage (all registered routes) › public API routes require an API key
 - authz-coverage › second-factor brute force › locks the account after repeated wrong codes and ends the pending session
+- backup-crypt › backup archive encryption › round-trips data of any size, whatever the chunk boundaries
+- backup-crypt › backup archive encryption › refuses a wrong passphrase, a changed byte, a cut file, another format and a short passphrase
+- backup-crypt › backup archive encryption › uses a fresh salt and IV each time
 - billing › subscribing › lists public plans without authentication
 - billing › subscribing › trial → paid Starter via hosted checkout and signed webhook
 - billing › subscribing › trial → paid on the plan being trialled (Professional) ends the trial
@@ -580,6 +584,60 @@ owner (as the teacher) and a new student; the database was read with `psql` in t
 | `docker compose start clamav` | The file `ready` and scanned **15 s** later (signatures already in the volume) |
 | Five minutes with nothing waiting | The alert **resolved** (10:35:19, one "resolved" message from one instance) |
 
+### Operations scripts: backups, copies, restores and a lost server (2026-10-27)
+
+The production-settings stack again (two app instances, worker, ClamAV, Caddy with its local certificate
+authority, PostgreSQL), started with `ops/start.sh --env prod --yes`. Data was made through the API: a
+school owner (confirmed in SQL, as no mailbox exists here) with two-factor sign-in on, a webhook (its
+signing secret stored encrypted), 20 students who sat an online test with `scripts/load-exam.mjs` (436
+requests, 0 failed, 208 saved answers all matching the teacher's view), and homework with a photo checked
+by ClamAV. Copy targets ran in containers on one Docker network (`BACKUP_DOCKER_NETWORK`): an SFTP server
+(`atmoz/sftp`, one user with an SSH key, one with the password `Sec ret"&!x 2026`), an S3-compatible
+server (`rclone serve s3`: MinIO's image was not available here, and no real cloud provider was used),
+and a folder standing in for a USB drive. Interactive runs were driven through a pseudo-terminal.
+
+**Linux script (`ops/cs.sh`)**
+
+| Check | Result |
+| --- | --- |
+| Interactive backup: settings file and certificates included, encrypted, copies to the folder, SFTP and the bucket | Pass in 6.5 s: archive 304 KB (dump 284 KB, 51 tables, 16 migrations); the four files have the same checksum; none of `PGDMP`, `SESSION_SECRET`, `DATA_ENCRYPTION_KEY`, `manifest` or the photo's name appears in the archive; the passphrase appears in no file |
+| `--yes` with no terminal, passphrase from the passphrase file | Pass: the saved choices reused, all three copies made |
+| SFTP server stopped | The backup kept here and in the folder; "copies failed: server", exit 1; no lock or unfinished files left |
+| Old backups (files dated 40 and 7 days back, and a file not named `cs-backup-*`, in all four places) | The 40-day-old backups deleted in the backup folder, the folder copy, on SFTP and in the bucket; the others kept |
+| Test of one backup fetched from each of the four places (`--only-verify`) | Pass ×4: 16 migrations, row-level security forced on 34 tables, all 51 tables' row counts equal to the backup's check; the scratch database dropped |
+| One byte changed in the folder copy | Refused by the checksum; with the checksum file removed, refused by the decryption ("Wrong passphrase, or the file is damaged"); exit 1 |
+| Wrong passphrase | Refused, exit 1 |
+| Restore from the bucket after renaming the school and deleting the webhook, switch | New database `curriculum_scope_r<time>`, checks passed, app back within a minute; the name and the webhook back, the photo's bytes identical (MD5), 20 test attempts, key check passed; the owner signed in through Caddy with password and TOTP |
+| **Lost server:** `docker compose down -v` (database, certificates, virus signatures gone), settings file, local backups and copy settings removed; restore from SFTP | Pass in about 90 s: the SFTP connection set up during the restore, the settings file put back from the backup, the database restored and checked, the certificates restored (HTTPS still validated by the old certificate authority), all services healthy, two-factor sign-in worked |
+| Managed database: a separate PostgreSQL 16 with the three roles and an admin that is neither superuser nor `BYPASSRLS` (only `CREATEDB` and membership of the owner role); restore and switch | New database owned by the owner role; `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `BACKUP_DATABASE_URL` rewritten; checks as the backup role passed; two-factor sign-in worked; backup and test from it passed, also with `DB_NAME` left out |
+| SFTP server replaced (new host key) | Copy refused ("knownhosts: key mismatch"), exit 1 |
+| A lock held by a running process; a lock and a decrypted file left by a killed run | Refused ("another backup or restore is running (process …)"); taken over with a warning, the leftovers deleted |
+| Stop, "remove the containers" | Containers removed; the four volumes kept |
+
+**Windows script (`ops\cs.ps1`), run with PowerShell 7.4.2 on Linux**
+
+| Check | Result |
+| --- | --- |
+| Start (`--yes`), status, menu | Pass |
+| Interactive backup, passphrase typed twice, copies to all three | Pass |
+| Backups made by one script, tested by the other (bucket and SFTP) | Pass both ways |
+| Interactive restore from the backup folder, certificates restored over the existing ones, switch | Pass: data back, photo identical, key check passed, two-factor sign-in worked; the replaced certificates saved first |
+| Lost server, rebuilt from the bucket (bucket connection set up during the restore) | Pass, as with the Linux script, including the note that the old database is empty |
+| Password SFTP set up through the menu (the password above) | Connected; stored obscured; unattended backups from both scripts reached it |
+| Passphrase file made through the menu | Mode 600; unattended backup used it |
+| Damaged copy, wrong passphrase, no terminal without `--yes`, `--yes` without `--env`, SFTP stopped | Same refusals, messages and exit codes as the Linux script |
+| Managed database: backup, test, restore without switching | Pass |
+| Unattended full restore with switch (`--yes`), both scripts, after all fixes | Pass |
+| Windows PowerShell 5.1 | Not run (no Windows here). A parser scan finds no PowerShell 7-only syntax, and the file is ASCII only |
+
+Problems the drill found, all fixed in the same change: the `migrate` job failed in production when the
+settings file set `FILE_SCAN=clamav` (`CLAMAV_HOST` was not passed to it); SFTP copies failed with a
+`known_hosts` holding only the server's ed25519 key (the copy tool asked for ECDSA first; it now asks for
+a key type the file lists); on a server without a settings file the restore asked about the settings file
+a second time; the certificate volume made by the restore drew a Compose warning (Compose now makes it);
+closing the window during a restore left the lock and decrypted files behind (now taken over and deleted);
+a saved SSH key could not be swapped for a password (answer `none`).
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,
@@ -725,3 +783,4 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - Branded browsers and devices (Safari on macOS and iOS, Firefox and Chrome on Windows and Android, phones and tablets); the accessibility tests in Firefox and WebKit; manual screen-reader review; external penetration test.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).
+- The Windows operations scripts on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler), backup copies to a real cloud bucket (Amazon S3, Backblaze B2, Cloudflare R2), and the `start` script's image rebuild (builds here need the proxy settings).

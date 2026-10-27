@@ -2,3 +2,6 @@
 # core.autocrlf=true. Shell scripts run inside Linux containers (the PostgreSQL
 # init script, backups) fail with CRLF: "/bin/sh^M: bad interpreter".
 * text=auto eol=lf
+
+# Windows batch files need CRLF line endings.
+*.bat text eol=crlf

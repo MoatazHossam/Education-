@@ -4,6 +4,7 @@
 #
 #   scripts/rolling-restart.sh            restart app, then app2, then the worker
 #   scripts/rolling-restart.sh --build    rebuild the image and apply migrations first
+#   APP_IMAGE_TAG=previous scripts/rolling-restart.sh   roll back to the image before the last build
 #
 # ENV_FILE (default .env.production) selects the environment file. Migrations
 # must work with the previous release still running (DEPLOYMENT_GUIDE §4).
@@ -24,6 +25,12 @@ wait_ready() {
 }
 
 if [ "${1:-}" = "--build" ]; then
+  # Keep the image being replaced as curriculum-scope:previous. Rollback (with migrations that the
+  # previous release can still use, §4): APP_IMAGE_TAG=previous scripts/rolling-restart.sh
+  if docker image inspect curriculum-scope:local >/dev/null 2>&1; then
+    docker image tag curriculum-scope:local curriculum-scope:previous
+    echo "Kept the current image as curriculum-scope:previous."
+  fi
   dc build migrate
   dc run --rm migrate
 fi

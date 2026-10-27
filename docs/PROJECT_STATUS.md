@@ -285,6 +285,43 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `docs/SCREEN_READER_REVIEW.md`, `docs/SCREEN_READER_PRECHECK.md`, `public/js/countdown.js` (+ `.d.ts`), `public/js/views/{student-tests,tests}.js`, `public/js/i18n.js`, `tests/unit/countdown.test.ts`, `tests/e2e/accessibility.spec.ts`; the results page (artifact).
 - **Tests:** `tests/unit/countdown.test.ts` (4); the accessibility audit's new listening checks (handing in, saving failures, the monitor, marking) and field names.
 
+### Operations scripts for Linux and Windows · COMPLETE (drilled on the local production-settings stack; the Windows script not yet run on Windows)
+
+- **Asked:** "is the deployment guide complete and what else can we do before making batch files to backup, restore, start and stop for everything?", then "both" (Linux and Windows) and "all options and choice during run" (every kind of backup copy, chosen while it runs).
+- **Implemented:**
+  - **The gaps found in the guide, first:**
+    - Compose now passes every setting the app reads, so a managed database (with SSL), the pool size, the timings and the image tag can be set in the settings file.
+    - Every container's log is capped at 5 × 10 MB.
+    - A rebuild keeps the image it replaces as `curriculum-scope:previous`, for a rollback (`APP_IMAGE_TAG=previous`).
+    - The production `migrate` job failed when the settings file set `FILE_SCAN=clamav`: fixed.
+    - `ops/verify.sql` checks a database (migrations, forced row-level security, row counts of all 51 tables, invariants); `scripts/verify-backup.sh` uses it too.
+    - Database passwords: hex is now advised, since base64's `/` breaks database addresses.
+  - **`ops/cs.sh` (Linux) and `ops\cs.ps1` with `.bat` launchers (Windows):**
+    - Commands: start, stop, status, back up, restore, test a backup, and set up the copies, plus a menu of all of them.
+    - Every choice is asked and saved as the next default; `--yes` reuses the saved choices for cron and Task Scheduler.
+    - The host needs only Docker: the tools run in containers.
+  - **Backups:**
+    - Contents: the database (homework files included) and a check of it, optionally the settings file and the TLS certificates.
+    - Encrypted with a passphrase (AES-256-GCM with scrypt, by a tool in the app image, `src/lib/backup-crypt.ts`) and checksummed.
+    - Copies: a folder or USB drive, an SFTP server (key or password, host key checked) and/or an S3-compatible bucket.
+    - Old backups are deleted by age wherever the new one arrived.
+    - One run at a time; a failure exits non-zero.
+  - **Restores:**
+    - A restore never overwrites: it creates a new database, checks it against the backup, then switches, keeping the previous database and settings.
+    - After the switch, the encryption key is checked against every stored secret.
+    - On a computer without a settings file, the backup's settings are put back, so one command rebuilds a lost server.
+    - Managed databases are supported, with an admin that needs no superuser rights.
+- **Tests:**
+  - `tests/unit/backup-crypt.test.ts` (3).
+  - The drill in TEST_REPORT §4: both scripts, every kind of copy, the failure cases, a lost server and a managed database. It found six problems, all fixed.
+- **Files:** `ops/` (`cs.sh`, `cs.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
+- **Not done:**
+  - The Windows script has run only under PowerShell 7 on Linux, not on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler).
+  - Copies went to servers in containers, not to a real cloud provider.
+  - The start script's rebuild was not run here (builds need the proxy settings).
+  - No scheduled job exists yet on a real host (B-4).
+  - On Windows, Docker Desktop needs a signed-in user, so a server that must run unattended belongs on Linux.
+
 ### Journeys in Firefox and WebKit · COMPLETE
 
 - **Asked:** "start on item 6" of the next priorities (§4.2): end-to-end tests in Firefox and WebKit as well as Chromium.
@@ -591,11 +628,11 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | --- | --- | --- |
 | Security review + fixes (open redirect, MFA brute force, session hygiene) | COMPLETE | `authz-coverage.test.ts` |
 | Dockerfile, compose (dev + prod overlay: Caddy and two app instances) | COMPLETE (local) | Image built; production-settings stack healthy; rolling restarts under load without failed requests (TEST_REPORT §4) |
-| Backup / restore / verify scripts | COMPLETE (local) | Executed; see TEST_REPORT §4 |
+| Operations scripts, Linux and Windows: start, stop, status, encrypted backups with copies (folder or USB drive, SFTP, S3 bucket), restore, test, scheduled runs | COMPLETE (local) | Drill with both scripts, including rebuilding a wiped server from an off-site copy (TEST_REPORT §4); the Windows script not yet run on Windows |
 | CI workflow | PARTIALLY COMPLETE | GitHub Actions runs on `main` are refused (B-7). All workflow steps pass when run with `scripts/ci-local.sh` on a clean clone of `main` (2026-10-23) |
 | Performance | PARTIALLY COMPLETE | Sandbox smoke results; no production-sized load test |
 | Monitoring & alerting | PARTIALLY COMPLETE | In-app alerts by email and webhook (operational alerts section); still needed: alert channels set to real addresses, an external uptime check on `/readyz` (B-4) |
-| Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 |
+| Disaster-recovery drill on production infrastructure | NOT STARTED | Needs B-4 (the same drill passed on the local stack) |
 | External penetration test | NOT STARTED | Recommended before launch |
 
 ### Phase 6 — Commercial release · NOT STARTED
@@ -608,7 +645,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (308 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility; the 24 journeys also pass in Firefox and WebKit) |
+| Core workflows function correctly | ✓ (311 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility; the 24 journeys also pass in Firefox and WebKit) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -620,10 +657,10 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 | Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
 | Monitoring and alerts configured | ✓ built in and tested locally; ✗ real channels and external uptime check not configured (B-4) |
-| Backup and recovery tested | ✓ locally; ✗ not on production infrastructure |
+| Backup and recovery tested | ✓ locally, with both scripts, including rebuilding a wiped server from an off-site copy; ✗ not on production infrastructure; ✗ the Windows script not yet on Windows |
 | Deployment reproducible | ✓ locally (Docker/compose) |
 | Documentation accurate | ✓ |
-| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–7); rolling restart exercised on a local production-settings stack; ✗ not on the production host |
+| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–8) with scripts for Linux and Windows; rolling restart and the backup and restore drill exercised on a local production-settings stack; ✗ not on the production host |
 
 ## 4. Next development priorities
 
@@ -636,8 +673,9 @@ for a whole grade on one school network was load-tested and its limits fixed (PR
 are scanned for viruses and photos resized before anyone opens them (PR #26), the screen-reader
 checklist covers the portal (PR #27), the problems listed by the two import previews are shown in
 Arabic (PR #28), and the journeys run in Firefox and WebKit as well as Chromium, which found and fixed a
-way to lose picker changes (see above). The list below is done; what remains waits on the owner (4.1) or
-on the pilot's feedback.
+way to lose picker changes (PR #29). After that, at the owner's request, came the operations scripts for
+Linux and Windows: start, stop, status, encrypted backups with copies, restores and a lost-server rebuild
+(see above). The list below is done; what remains waits on the owner (4.1) or on the pilot's feedback.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -648,11 +686,12 @@ These block release; development cannot do them.
 | 1 | Legal advice on students' data: accounts, homework and its files, marks, test answers and the monitoring signals. It should cover parental consent, the school as controller and the agreement with it, how long each kind of data is kept, the privacy notice, PDPL licensing and the hosting location | The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 (SECURITY_DESIGN §7). Until the advice is in, keep student accounts and the portal off for every school. The answers set the retention periods each school enters (Classes → Keeping data, built) | B-5, B-9 |
 | 2 | Clear the GitHub billing lock, then let CI run on `main` on GitHub-hosted runners | PRs #22 and #23 were merged on local checks only | B-7 |
 | 3 | Paymob test-mode keys, then `npm run paymob:check` and the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position | No real billing until then | B-2, B-3 |
-| 4 | Production host, SMTP and alert channels, the backup job, then a restore drill | Nothing can be deployed | B-4 |
+| 4 | Production host, SMTP and alert channels, then the scheduled backup with an off-site copy and a restore drill there (scripts ready: DEPLOYMENT_GUIDE §8) | Nothing can be deployed | B-4 |
 | 5 | Catalogue verification by a curriculum specialist (0 of 231 subjects so far) | Product value and liability | B-6 |
 | 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist now has 32 tasks, 23–32 for the portal (4.2 item 4, done), and the results page holds them | — |
 | 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8) and an AI provider (B-10) | Needed before selling the portal, and before any AI feature | B-8, B-10 |
 | 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
+| 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\cs.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
 
 ### 4.2 Development that can start now
 
@@ -673,8 +712,8 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #28 (Arabic import messages) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `751ea84`): 4.2 item 6 (the journeys in Firefox and WebKit).
-That finishes 4.2; the next development work is for the owner to choose, from the items after the pilot
+**Resume point (2026-10-27).** PR #30 (Arabic guide republished) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `6f0bfd8`): the operations scripts for Linux and Windows.
+4.2 is finished; the next development work is for the owner to choose, from the items after the pilot
 or from 4.1 once its blockers clear. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

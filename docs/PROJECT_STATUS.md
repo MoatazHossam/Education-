@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-26. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-27. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -17,10 +17,10 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
-| B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile | Account owner: resolve billing on the account that owns the repository |
+| B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23; still the case for PR #23 on 2026-10-26) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile. PRs #22 and #23 were merged on local checks only | Account owner: resolve billing on the account that owns the repository |
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 | B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
-| B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7) | No school should use student accounts with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
+| B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts), and since 2026-10-26 the teacher and student portal on the same switch (classes, homework, online tests with monitoring, gradebook). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7). The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 | No school should use student accounts or the portal with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
 | B-10 | No AI provider chosen | The Wise EduAgent features (assistant etc.) cannot be built | Owner: provider and model, who holds the key and pays for usage |
 
 ## 2. Deliverables
@@ -542,13 +542,47 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-1. Clear the GitHub billing lock (B-7) and confirm CI on GitHub-hosted runners, then get Paymob test-mode keys and run `npm run paymob:check` followed by the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position (B-3).
-2. Catalogue verification (B-6): a curriculum specialist reviews entries against decrees and publishers and records marks in Platform admin → Catalogue.
-3. Production host + monitoring + backup job (B-4), then a restore drill.
-4. Legal review (B-5), pilot with 3–5 design partners.
+Where things stand (2026-10-27): the teacher and student portal is complete and off for every school.
+It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
+students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
+pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Nothing
+below is started.
 
-**Resume point (2026-10-25).** After PR #10 (scope comparison, merged at `b298586`) work switched to the
-Wise EduAgent student-portal integration (`docs/wise-integration/`). Wise itself could not be inspected
-(B-8); on the owner's decision, student accounts created by schools were built as the portal's
-foundation (above). Waiting on the owner: access to Wise (B-8) and an AI provider (B-10); legal
-assessment before real student use (B-9). Per-item notes and assignees (Roadmap P2) are done (above).
+### 4.1 Needed from the owner or from outside the team
+
+These block release; development cannot do them.
+
+| # | What | Why now | Blocker |
+| --- | --- | --- | --- |
+| 1 | Legal advice on students' data: accounts, homework and its files, marks, test answers and the monitoring signals. It should cover parental consent, the school as controller and the agreement with it, how long each kind of data is kept, the privacy notice, PDPL licensing and the hosting location | The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 (SECURITY_DESIGN §7). Until the advice is in, keep student accounts and the portal off for every school. The answers set the retention periods in 4.2 item 1 | B-5, B-9 |
+| 2 | Clear the GitHub billing lock, then let CI run on `main` on GitHub-hosted runners | PRs #22 and #23 were merged on local checks only | B-7 |
+| 3 | Paymob test-mode keys, then `npm run paymob:check` and the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position | No real billing until then | B-2, B-3 |
+| 4 | Production host, SMTP and alert channels, the backup job, then a restore drill | Nothing can be deployed | B-4 |
+| 5 | Catalogue verification by a curriculum specialist (0 of 231 subjects so far) | Product value and liability | B-6 |
+| 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist's 22 tasks cover the student's sign-in and curriculum but none of the portal's new pages; those tasks need adding first (4.2 item 4) | — |
+| 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8) and an AI provider (B-10) | Needed before selling the portal, and before any AI feature | B-8, B-10 |
+| 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
+
+### 4.2 Development that can start now
+
+In the recommended order. None of these items waits on a blocker. Sizes are estimates in days.
+
+| # | Item | Why | Size |
+| --- | --- | --- | --- |
+| 1 | **Retention of classroom data.** Each school sets periods for homework work and files, marks, test answers and monitoring events. A worker job deletes data past its period, with a notice to the school beforehand and a CSV export of the gradebook. Off until periods are set | Nothing is deleted automatically today (SECURITY_DESIGN §7) and the legal advice will ask for it. The mechanism does not depend on the periods chosen | 3–5 |
+| 2 | **Exams at school scale.** Load-test one online test with 100–300 students saving answers and sending heartbeats, and several teachers on the live monitor, on the two-instance stack. Then count the flood guard per student session on the portal's routes, or raise it for them | A whole grade sitting an exam from one school network is the busiest moment in the product, and it is untested. A class of 30 taking a test makes about 200 requests a minute (STUDENT_ACCOUNTS §9), so about 90 students on one address reach the guard's 600 a minute on one instance | 2–3 |
+| 3 | **Safer uploads.** Scan homework files for viruses in the worker before a teacher can open them, and resize large photos | Children's files are opened on teachers' devices. CLASSROOM §5 lists both as not done | 2–3 |
+| 4 | **Screen-reader checklist for the portal.** Add tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page | Needed before the manual review (4.1 item 6) | 1 |
+| 5 | **Arabic import messages.** Translate the server validation messages in the roster import and catalogue sheet import previews | The rest of the student pages are translated (STUDENT_ACCOUNTS §9) | 1 |
+| 6 | **E2E in Firefox and WebKit** as well as Chromium | Open item from roadmap P1. Students and teachers use whatever browser their device has; E2E runs only in Chromium today | 1–2 |
+
+**After the pilot's feedback, not before:**
+- weighting between homework and tests, term reports and grade scales;
+- a question bank, and images or formulas in questions;
+- parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
+- card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
+
+**Resume point (2026-10-27).** PR #23 is merged. The branch `claude/friendly-rubin-hmemjl` was brought up
+to `main` (`6837f1a`) for follow-up work. The next development step is 4.2 item 1 (retention),
+unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

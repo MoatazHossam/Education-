@@ -376,8 +376,10 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**27 tests, 27 passed** (7.7 min, 2026-10-27), Chromium, real server process on port 3100: 23 journeys,
-then the accessibility project (4 tests), which reuses the journeys' data.
+**28 tests, 28 passed** (8.1 min, 2026-10-27, with journey 24), Chromium, real server process on port 3100: 24 journeys,
+then the accessibility project (4 tests), which reuses the journeys' data. Journey 24's first run
+stopped in its own setup: it left the question editor's third choice empty, which the editor refuses;
+the test now fills it.
 The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 screens it takes about
 5.5 minutes (the first run with the new screens stopped at the 5-minute limit, with no finding).
 

@@ -539,7 +539,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (284 unit/integration + 26 E2E passing: 22 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (288 unit/integration + 27 E2E passing: 23 journeys, 4 accessibility) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |

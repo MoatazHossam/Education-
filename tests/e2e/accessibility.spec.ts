@@ -49,7 +49,8 @@ async function newPage(browser: Browser, opts: Parameters<Browser['newContext']>
 }
 
 test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, light and dark, desktop and phone)', async ({ browser }) => {
-  test.setTimeout(300_000);
+  // About 150 screens, each checked by axe and read by the simulated screen reader.
+  test.setTimeout(480_000);
 
   // Signed out.
   const guest = await newPage(browser);

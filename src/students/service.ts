@@ -6,6 +6,7 @@ import { gradeList, loadCatalogTree } from '../catalog/service.js';
 import type { Executor, Trx } from '../db/index.js';
 import type { Locale } from '../db/types.js';
 import { AppError, limitReached } from '../lib/errors.js';
+import { problem, type Problem } from '../lib/import-problems.js';
 
 // School-created student accounts (docs/STUDENT_ACCOUNTS.md). Data kept per
 // student: display name, username, grade and the scope that is their
@@ -119,7 +120,8 @@ export async function listStudents(exec: Executor, orgId: string) {
 
 export interface ImportPlan {
   rows: (NewStudent & { line: number; scopeName: string | null })[];
-  errors: { line: number; message: string }[];
+  /** One entry per problem, so a line can appear more than once. */
+  errors: ({ line: number } & Problem)[];
 }
 
 const HEADER_ALIASES: Record<string, keyof NewStudent | 'scope'> = {
@@ -135,19 +137,20 @@ const HEADER_ALIASES: Record<string, keyof NewStudent | 'scope'> = {
  */
 export function planStudentImport(records: string[][], existingUsernames: Set<string>, scopesByName: Map<string, string>): ImportPlan {
   const plan: ImportPlan = { rows: [], errors: [] };
+  const fail = (line: number, p: Problem) => plan.errors.push({ line, ...p });
   const [header, ...body] = records;
   if (!header) {
-    plan.errors.push({ line: 1, message: 'The file is empty' });
+    fail(1, problem('roster_empty'));
     return plan;
   }
   const cols = header.map((c) => HEADER_ALIASES[c.trim().toLowerCase()]);
   for (const need of ['username', 'name', 'grade'] as const) {
-    if (!cols.includes(need)) plan.errors.push({ line: 1, message: `Missing column "${need}"` });
+    if (!cols.includes(need)) fail(1, problem('roster_missing_column', { column: need }));
   }
   if (plan.errors.length) return plan;
-  if (!body.length) plan.errors.push({ line: 2, message: 'The file has no students' });
+  if (!body.length) fail(2, problem('roster_no_students'));
   if (body.length > MAX_IMPORT_ROWS) {
-    plan.errors.push({ line: MAX_IMPORT_ROWS + 2, message: `At most ${MAX_IMPORT_ROWS} students per file. Split the file and import each part.` });
+    fail(MAX_IMPORT_ROWS + 2, problem('roster_too_many', { max: MAX_IMPORT_ROWS }));
     return plan;
   }
   const seen = new Map<string, number>();
@@ -158,20 +161,20 @@ export function planStudentImport(records: string[][], existingUsernames: Set<st
     const name = zStudentName.safeParse(cell('name'));
     const grade = zGrade.safeParse(cell('grade'));
     const scopeName = cols.includes('scope') ? cell('scope') : '';
-    const problems: string[] = [];
-    if (!username.success) problems.push(`username: ${username.error.issues[0]?.message ?? 'invalid'}`);
-    if (!name.success) problems.push('name: required, at most 120 characters');
-    if (!grade.success) problems.push('grade: a number from 1 to 12');
+    const problems: Problem[] = [];
+    if (!username.success) problems.push(problem('roster_username'));
+    if (!name.success) problems.push(problem('roster_name'));
+    if (!grade.success) problems.push(problem('roster_grade'));
     const scopeId = scopeName ? scopesByName.get(scopeName.toLowerCase()) : null;
-    if (scopeName && !scopeId) problems.push(`scope: no scope named "${scopeName}"`);
+    if (scopeName && !scopeId) problems.push(problem('roster_scope', { scope: scopeName }));
     if (username.success) {
-      if (existingUsernames.has(username.data)) problems.push(`username "${username.data}" is already used at your school`);
+      if (existingUsernames.has(username.data)) problems.push(problem('roster_username_taken', { username: username.data }));
       const first = seen.get(username.data);
-      if (first) problems.push(`username "${username.data}" repeats line ${first}`);
+      if (first) problems.push(problem('roster_username_repeats', { username: username.data, line: first }));
       else seen.set(username.data, line);
     }
     if (problems.length) {
-      plan.errors.push({ line, message: problems.join('; ') });
+      for (const p of problems) fail(line, p);
       continue;
     }
     plan.rows.push({ line, username: username.data!, name: name.data!, grade: grade.data!, scopeId: scopeId ?? null, scopeName: scopeName || null });

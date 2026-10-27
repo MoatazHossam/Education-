@@ -2,6 +2,7 @@ import type { Selectable } from 'kysely';
 import type { Executor } from '../db/index.js';
 import type { CatalogMaterialsTable, CatalogSubjectsTable, VerificationStatus } from '../db/types.js';
 import { CsvError, parseCsv, toCsv, unguardCell } from '../lib/csv.js';
+import { problem, type Problem } from '../lib/import-problems.js';
 
 // Spreadsheet round trip for one catalogue version: export every subject and
 // material with its verification mark, edit in Excel, import with a preview.
@@ -49,8 +50,9 @@ export interface RowChange {
 }
 export interface ImportPlan {
   changes: RowChange[];
-  errors: { row: number; message: string }[];
-  warnings: { row: number; message: string }[];
+  /** Row 0 is the whole file. */
+  errors: ({ row: number } & Problem)[];
+  warnings: ({ row: number } & Problem)[];
   summary: { rows: number; unchanged: number; subjectsChanged: number; materialsChanged: number; materialsAdded: number; marksChanged: number; marksCleared: number };
 }
 
@@ -84,28 +86,28 @@ const sameMark = (a: Mark, b: Mark) => a.status === b.status && a.source === b.s
 
 export function planImport(state: SheetState, csvText: string, opts: { draft: boolean }): ImportPlan {
   const plan: ImportPlan = { changes: [], errors: [], warnings: [], summary: { rows: 0, unchanged: 0, subjectsChanged: 0, materialsChanged: 0, materialsAdded: 0, marksChanged: 0, marksCleared: 0 } };
-  const fail = (row: number, message: string) => {
-    plan.errors.push({ row, message });
+  const fail = (row: number, p: Problem) => {
+    plan.errors.push({ row, ...p });
   };
   if (csvText.includes('�')) {
-    fail(0, 'The file is not UTF-8. In Excel, save it as "CSV UTF-8 (Comma delimited)".');
+    fail(0, problem('not_utf8'));
     return plan;
   }
   let records: string[][];
   try {
     records = parseCsv(csvText);
   } catch (err) {
-    fail(0, err instanceof CsvError ? err.message : 'The file could not be read as CSV');
+    fail(0, problem(err instanceof CsvError ? 'csv_quote' : 'csv_unreadable'));
     return plan;
   }
   const header = (records[0] ?? []).map((h) => h.trim().toLowerCase());
   const missing = SHEET_COLUMNS.filter((c) => !header.includes(c));
   if (missing.length) {
-    fail(1, `Missing columns: ${missing.join(', ')}. Start from a downloaded sheet.`);
+    fail(1, problem('sheet_missing_columns', { columns: missing.join(', ') }));
     return plan;
   }
   if (records.length - 1 > MAX_ROWS) {
-    fail(0, `The sheet has more than ${MAX_ROWS} rows`);
+    fail(0, problem('sheet_too_many_rows', { max: MAX_ROWS }));
     return plan;
   }
   const col = Object.fromEntries(SHEET_COLUMNS.map((c) => [c, header.indexOf(c)])) as Record<Column, number>;
@@ -121,38 +123,38 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
     plan.summary.rows++;
     const type = get('row_type').toLowerCase();
     if (type !== 'subject' && type !== 'material') {
-      fail(row, 'row_type must be "subject" or "material"');
+      fail(row, problem('sheet_row_type'));
       continue;
     }
     const subject = subjects.get(get('subject_id'));
     if (!subject) {
-      fail(row, type === 'subject' ? 'Unknown subject_id. New subjects are added in the editor.' : 'Unknown subject_id');
+      fail(row, problem(type === 'subject' ? 'sheet_new_subject' : 'sheet_unknown_subject'));
       continue;
     }
 
     // Verification columns, shared by both row types.
     const mark: Mark = { status: (get('verification_status').toLowerCase() || 'unverified') as VerificationStatus, source: blankToNull(get('verification_source')), url: blankToNull(get('verification_url')), note: blankToNull(get('verification_note')) };
-    const rowErrors: string[] = [];
-    if (!MARKS.includes(mark.status)) rowErrors.push('verification_status must be unverified, verified or needs_review');
+    const rowErrors: Problem[] = [];
+    if (!MARKS.includes(mark.status)) rowErrors.push(problem('sheet_mark_status'));
     if (mark.status === 'unverified') Object.assign(mark, { source: null, url: null, note: null });
-    if (mark.status === 'verified' && !mark.source) rowErrors.push('A verified entry needs verification_source');
-    if (mark.status === 'needs_review' && !mark.note) rowErrors.push('An entry that needs review needs verification_note');
-    if (mark.source && mark.source.length > 300) rowErrors.push('verification_source is longer than 300 characters');
-    if (mark.note && mark.note.length > 1000) rowErrors.push('verification_note is longer than 1000 characters');
-    if (mark.url && (!/^https?:\/\/\S+$/.test(mark.url) || mark.url.length > 2000)) rowErrors.push('verification_url must be an http(s) link');
+    if (mark.status === 'verified' && !mark.source) rowErrors.push(problem('sheet_verified_source'));
+    if (mark.status === 'needs_review' && !mark.note) rowErrors.push(problem('sheet_review_note'));
+    if (mark.source && mark.source.length > 300) rowErrors.push(problem('sheet_too_long', { field: 'verification_source', max: 300 }));
+    if (mark.note && mark.note.length > 1000) rowErrors.push(problem('sheet_too_long', { field: 'verification_note', max: 1000 }));
+    if (mark.url && (!/^https?:\/\/\S+$/.test(mark.url) || mark.url.length > 2000)) rowErrors.push(problem('sheet_url'));
 
     let change: RowChange;
     if (type === 'subject') {
-      if (seen.has(subject.id)) rowErrors.push('This subject appears twice');
+      if (seen.has(subject.id)) rowErrors.push(problem('sheet_subject_twice'));
       seen.add(subject.id);
       const grade = Number(get('grade'));
       const v = { grade, track: get('track'), block: get('block'), code: get('code'), name_en: get('name_en'), name_ar: get('name_ar'), status: get('status'), note: blankToNull(get('note')) };
-      if (!Number.isInteger(grade) || grade < 1 || grade > 12) rowErrors.push('grade must be 1–12');
-      if (!(TRACKS as readonly string[]).includes(v.track)) rowErrors.push(`track must be one of ${TRACKS.join(', ')}`);
-      if (!(STATUSES as readonly string[]).includes(v.status)) rowErrors.push(`status must be one of ${STATUSES.join(', ')}`);
-      if (!/^[A-Za-z0-9_-]{1,40}$/.test(v.code)) rowErrors.push('code must be 1–40 letters, digits, - or _');
-      for (const [f, max] of [['block', 300], ['name_en', 200], ['name_ar', 200]] as const) if (!v[f] || v[f].length > max) rowErrors.push(`${f} must be 1–${max} characters`);
-      if (v.note && v.note.length > 1000) rowErrors.push('note is longer than 1000 characters');
+      if (!Number.isInteger(grade) || grade < 1 || grade > 12) rowErrors.push(problem('sheet_grade'));
+      if (!(TRACKS as readonly string[]).includes(v.track)) rowErrors.push(problem('sheet_one_of', { field: 'track', values: TRACKS.join(', ') }));
+      if (!(STATUSES as readonly string[]).includes(v.status)) rowErrors.push(problem('sheet_one_of', { field: 'status', values: STATUSES.join(', ') }));
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(v.code)) rowErrors.push(problem('sheet_code'));
+      for (const [f, max] of [['block', 300], ['name_en', 200], ['name_ar', 200]] as const) if (!v[f] || v[f].length > max) rowErrors.push(problem('sheet_length', { field: f, max }));
+      if (v.note && v.note.length > 1000) rowErrors.push(problem('sheet_too_long', { field: 'note', max: 1000 }));
       const content = (Object.keys(v) as (keyof typeof v)[]).filter((f) => v[f] !== subject[f]).map((f) => ({ field: f, from: subject[f], to: v[f] }));
       change = { row, kind: 'subject', id: subject.id, subjectId: subject.id, label: `Grade ${subject.grade} · ${subject.name_en}`, content, values: v, mark: null, markCleared: false };
       if (!sameMark(markOf(subject), mark)) change.mark = { from: markOf(subject), to: mark };
@@ -160,17 +162,17 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
       const id = get('material_id');
       const existing = id ? materials.get(id) : undefined;
       if (id && !existing) {
-        fail(row, 'Unknown material_id');
+        fail(row, problem('sheet_unknown_material'));
         continue;
       }
-      if (existing && existing.subject_id !== subject.id) rowErrors.push('Moving a material to another subject is not supported');
+      if (existing && existing.subject_id !== subject.id) rowErrors.push(problem('sheet_material_move'));
       if (existing) {
-        if (seen.has(existing.id)) rowErrors.push('This material appears twice');
+        if (seen.has(existing.id)) rowErrors.push(problem('sheet_material_twice'));
         seen.add(existing.id);
       }
       const v = { kind: get('kind'), title: get('title') };
-      if (!(KINDS as readonly string[]).includes(v.kind)) rowErrors.push(`kind must be one of ${KINDS.join(', ')}`);
-      if (!v.title || v.title.length > 300) rowErrors.push('title must be 1–300 characters');
+      if (!(KINDS as readonly string[]).includes(v.kind)) rowErrors.push(problem('sheet_one_of', { field: 'kind', values: KINDS.join(', ') }));
+      if (!v.title || v.title.length > 300) rowErrors.push(problem('sheet_length', { field: 'title', max: 300 }));
       const context = { grade: String(subject.grade), track: subject.track, block: subject.block, code: subject.code, name_en: subject.name_en, name_ar: subject.name_ar } as const;
       if ((Object.keys(context) as (keyof typeof context)[]).some((f) => get(f) !== '' && get(f) !== context[f]) || get('status') || get('note')) ignoredContext++;
       const content = existing
@@ -181,8 +183,8 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
       if (!sameMark(from, mark)) change.mark = { from, to: mark };
     }
 
-    if (change.content.length && !opts.draft) rowErrors.push(`Published versions are read-only: only the verification columns can change (${change.content.map((c) => c.field).join(', ')} changed)`);
-    for (const message of rowErrors) fail(row, message);
+    if (change.content.length && !opts.draft) rowErrors.push(problem('sheet_published', { fields: change.content.map((c) => c.field).join(', ') }));
+    for (const p of rowErrors) fail(row, p);
     if (!change.content.length && !change.mark) {
       plan.summary.unchanged++;
       continue;
@@ -194,7 +196,7 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
     }
     plan.changes.push(change);
   }
-  if (ignoredContext) plan.warnings.push({ row: 0, message: `${ignoredContext} material rows have edited subject columns; those are ignored. Change subjects on their subject rows.` });
+  if (ignoredContext) plan.warnings.push({ row: 0, ...problem('sheet_context_ignored', { n: ignoredContext }) });
 
   // Natural keys must stay unique after the changes.
   const changed = new Map(plan.changes.filter((c) => c.id).map((c) => [c.id!, c]));
@@ -205,7 +207,7 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
   };
   for (const s of state.subjects) subjectKeys.set(subjectKey(s), (subjectKeys.get(subjectKey(s)) ?? 0) + 1);
   for (const c of plan.changes.filter((x) => x.kind === 'subject')) {
-    if ((subjectKeys.get(subjectKey(subjects.get(c.id!)!)) ?? 0) > 1) fail(c.row, 'Another subject in this grade and track already has this block and code');
+    if ((subjectKeys.get(subjectKey(subjects.get(c.id!)!)) ?? 0) > 1) fail(c.row, problem('sheet_subject_clash'));
   }
   const titles = new Map<string, number>();
   for (const m of state.materials) {
@@ -217,7 +219,7 @@ export function planImport(state: SheetState, csvText: string, opts: { draft: bo
     titles.set(key, (titles.get(key) ?? 0) + 1);
   }
   for (const c of plan.changes.filter((x) => x.kind === 'material')) {
-    if ((titles.get(`${c.subjectId}|${c.values.title}`) ?? 0) > 1) fail(c.row, 'Another material of this subject already has this title');
+    if ((titles.get(`${c.subjectId}|${c.values.title}`) ?? 0) > 1) fail(c.row, problem('sheet_title_clash'));
   }
 
   plan.errors.sort((a, b) => a.row - b.row);

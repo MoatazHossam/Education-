@@ -42,7 +42,7 @@ describe('catalogue spreadsheet', () => {
       set(4, 'verification_status', 'needs_review');
     });
     const plan = planImport(state, csv, { draft: false });
-    expect(plan.errors).toEqual([{ row: 4, message: 'An entry that needs review needs verification_note' }]);
+    expect(plan.errors).toEqual([{ row: 4, code: 'sheet_review_note', params: {}, message: 'An entry that needs review needs verification_note' }]);
     expect(plan.changes[0]).toMatchObject({ row: 3, kind: 'material', id: 'm1', content: [], mark: { to: { status: 'verified', source: 'Ministerial Decree 123/2026' } } });
   });
 
@@ -87,8 +87,11 @@ describe('catalogue spreadsheet', () => {
       '8: Another material of this subject already has this title',
       '9: Unknown subject_id. New subjects are added in the editor.',
     ]));
-    expect(planImport(state, 'row_type,subject_id\nsubject,ar', { draft: true }).errors[0]!.message).toMatch(/^Missing columns: material_id, grade/);
-    expect(planImport(state, exportSheet(state).replace('Subject', 'Subj�ct'), { draft: true }).errors[0]!.message).toMatch(/not UTF-8/);
+    const missing = planImport(state, 'row_type,subject_id\nsubject,ar', { draft: true }).errors[0]!;
+    expect(missing).toMatchObject({ row: 1, code: 'sheet_missing_columns', params: { columns: expect.stringMatching(/^material_id, grade, /) } });
+    expect(missing.message).toMatch(/^Missing columns: material_id, grade/);
+    expect(planImport(state, exportSheet(state).replace('Subject', 'Subj�ct'), { draft: true }).errors[0]).toMatchObject({ row: 0, code: 'not_utf8', message: expect.stringMatching(/not UTF-8/) });
+    expect(planImport(state, 'row_type,subject_id\n"subject,ar', { draft: true }).errors[0]).toMatchObject({ row: 0, code: 'csv_quote' });
   });
 
   it('reads a semicolon-separated sheet saved by Excel in some locales', () => {

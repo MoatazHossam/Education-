@@ -325,8 +325,11 @@ describe('roster import', () => {
     const preview = (await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv })).json();
     expect(preview.applied).toBe(false);
     expect(preview.rows.map((r: { username: string }) => r.username)).toEqual(['ok.one']);
-    expect(preview.errors.map((e: { line: number }) => e.line)).toEqual([3, 4, 5, 6, 7, 8]);
-    expect(preview.errors[2].message).toContain('repeats line 2');
+    expect(preview.errors.map((e: { line: number; code: string }) => `${e.line} ${e.code}`)).toEqual([
+      '3 roster_username', '4 roster_username_taken', '5 roster_username_repeats', '6 roster_grade', '7 roster_scope', '8 roster_name',
+    ]);
+    expect(preview.errors[2]).toEqual({ line: 5, code: 'roster_username_repeats', params: { username: 'ok.one', line: 2 }, message: 'username "ok.one" repeats line 2' });
+    expect(preview.errors[4].params).toEqual({ scope: 'Nope' });
     const apply = await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv, apply: true });
     expect(apply.statusCode).toBe(400);
     expect(apply.json().error.code).toBe('IMPORT_INVALID');
@@ -361,10 +364,22 @@ describe('roster import', () => {
   it('rejects files without the required columns or with too many rows', async () => {
     const owner = await school();
     const noGrade = (await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv: 'username,name\na,b' })).json();
-    expect(noGrade.errors).toEqual([{ line: 1, message: 'Missing column "grade"' }]);
+    expect(noGrade.errors).toEqual([{ line: 1, code: 'roster_missing_column', params: { column: 'grade' }, message: 'Missing column "grade"' }]);
     const many = [header, ...Array.from({ length: 301 }, (_, i) => `u${i}x,N,1,`)].join('\n');
     const big = (await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv: many })).json();
-    expect(big.errors[0].message).toContain('At most 300');
+    expect(big.errors[0]).toMatchObject({ code: 'roster_too_many', params: { max: 300 }, message: expect.stringContaining('At most 300') });
+  });
+
+  it('lists each problem of a line on its own, and names unreadable files with their own codes', async () => {
+    const owner = await school();
+    const twice = (await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv: `${header}\nBad Name!,,0,` })).json();
+    expect(twice.errors.map((e: { line: number; code: string }) => `${e.line} ${e.code}`)).toEqual(['2 roster_username', '2 roster_name', '2 roster_grade']);
+    const notUtf8 = await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv: `${header}\nmona,Mon�,4,` });
+    expect(notUtf8.statusCode).toBe(400);
+    expect(notUtf8.json().error).toMatchObject({ code: 'FILE_NOT_UTF8', message: expect.stringMatching(/not UTF-8/) });
+    const open = await owner.client.post(`/api/orgs/${owner.orgId}/students/import`, { csv: `${header}\n"mona,Mona,4,` });
+    expect(open.statusCode).toBe(400);
+    expect(open.json().error).toMatchObject({ code: 'CSV_INVALID', message: 'A quoted field is not closed' });
   });
 });
 

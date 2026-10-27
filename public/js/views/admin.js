@@ -1,5 +1,5 @@
 import { del, get, patch, post } from '../api.js';
-import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, promptDialog, tableCard, th, toast } from '../dom.js';
+import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, problemText, promptDialog, tableCard, th, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { auditTable } from './settings.js';
@@ -339,7 +339,7 @@ export async function catalogVersionView(ctx) {
     h('div', { class: 'row' },
       h('span', {}, t('verify.adminCoverage', { sv: vc.subjectsVerified, s: tree.counts.subjects, mv: vc.materialsVerified, m: tree.counts.materials, r: vc.subjectsNeedReview + vc.materialsNeedReview })),
       h('label', { class: 'row' }, t('verify.filter'), filterSel)),
-    sheetActions(versionId, tree.version.status, reload));
+    sheetActions(versionId, tree, reload));
 
   return h('div', {},
     pageHead(`${tree.version.academicYear} — ${tree.version.label}`, t('admin.versionCounts', { status: t(`admin.versionStatus.${tree.version.status}`), subjects: tree.counts.subjects, materials: tree.counts.materials }),
@@ -353,7 +353,8 @@ export async function catalogVersionView(ctx) {
 const MARK_LABEL = { unverified: 'verify.statusUnverified', verified: 'verify.statusVerified', needs_review: 'verify.statusNeedsReview' };
 const LIST_LIMIT = 100;
 
-function sheetActions(versionId, status, reload) {
+function sheetActions(versionId, tree, reload) {
+  const status = tree.version.status;
   const url = `/api/admin/catalog/versions/${versionId}/sheet`;
   const file = h('input', { type: 'file', accept: '.csv,text/csv', hidden: true, onchange: async () => {
     const f = file.files?.[0];
@@ -362,7 +363,7 @@ function sheetActions(versionId, status, reload) {
     try {
       const csv = await f.text();
       const { plan } = await post(url, { csv, apply: false });
-      if (await sheetPreview(plan) && (await safe(() => post(url, { csv, apply: true }), t('sheet.applied', { n: plan.changes.length })))) reload();
+      if (await sheetPreview(plan, tree) && (await safe(() => post(url, { csv, apply: true }), t('sheet.applied', { n: plan.changes.length })))) reload();
     } catch (e) { toast(errorMessage(e), 'error'); }
   } });
   return h('div', { class: 'row' },
@@ -372,12 +373,17 @@ function sheetActions(versionId, status, reload) {
 }
 
 /** Shows what an uploaded sheet would change; resolves true when the admin applies it. */
-function sheetPreview(plan) {
+function sheetPreview(plan, tree) {
   const s = plan.summary;
+  // The server labels a subject in English ("Grade 4 · Arabic"); in Arabic it is named from the catalogue.
+  const labelOf = (c) => {
+    const subj = c.kind === 'subject' && locale() === 'ar' ? tree.subjects.find((x) => x.id === c.subjectId) : null;
+    return subj ? `${tree.grades[subj.grade - 1].nameAr} · ${subj.nameAr}` : c.label;
+  };
   const more = (n) => (n > LIST_LIMIT ? h('p', { class: 'muted' }, t('sheet.more', { n: n - LIST_LIMIT })) : null);
   const markText = (m) => [t(MARK_LABEL[m.status]), m.source ? ` (${m.source})` : '', m.note ? ` — ${m.note}` : ''].join('');
   const changeItem = (c) => h('li', {},
-    h('b', {}, t('sheet.row', { n: c.row })), ' ', h('span', { dir: 'auto' }, c.label),
+    h('b', {}, t('sheet.row', { n: c.row })), ' ', h('span', { dir: 'auto' }, labelOf(c)),
     h('ul', {},
       c.content.map((f) => h('li', {}, h('span', { class: 'mono' }, f.field), ': ', h('span', { dir: 'auto' }, f.from ?? '—'), ' → ', h('span', { dir: 'auto' }, f.to ?? '—'))),
       c.mark ? h('li', {}, t('sheet.mark'), ': ', h('span', { dir: 'auto' }, markText(c.mark.from)), ' → ', h('span', { dir: 'auto' }, markText(c.mark.to))) : null,
@@ -387,8 +393,8 @@ function sheetPreview(plan) {
     plan.changes.length ? h('p', { class: 'muted' }, t('sheet.counts', { marks: s.marksChanged, content: s.subjectsChanged + s.materialsChanged, added: s.materialsAdded, cleared: s.marksCleared })) : null,
     plan.errors.length ? h('div', { class: 'alert error', role: 'alert' },
       h('b', {}, plan.errors.length === 1 ? t('sheet.errorsTitleOne') : t('sheet.errorsTitle', { n: plan.errors.length })),
-      h('ul', {}, plan.errors.slice(0, LIST_LIMIT).map((e) => h('li', {}, e.row ? `${t('sheet.row', { n: e.row })}: ` : '', e.message))), more(plan.errors.length)) : null,
-    plan.warnings.length ? h('div', { class: 'alert' }, h('ul', {}, plan.warnings.map((w) => h('li', {}, w.message)))) : null,
+      h('ul', {}, plan.errors.slice(0, LIST_LIMIT).map((e) => h('li', {}, e.row ? `${t('sheet.row', { n: e.row })}: ` : '', problemText(e)))), more(plan.errors.length)) : null,
+    plan.warnings.length ? h('div', { class: 'alert' }, h('ul', {}, plan.warnings.map((w) => h('li', {}, problemText(w))))) : null,
     plan.changes.length ? [h('h3', {}, t('sheet.changesTitle')), h('ul', {}, plan.changes.slice(0, LIST_LIMIT).map(changeItem)), more(plan.changes.length)] : null,
     !plan.changes.length && !plan.errors.length ? h('p', {}, t('sheet.noChanges')) : null);
   const canApply = !plan.errors.length && plan.changes.length > 0;

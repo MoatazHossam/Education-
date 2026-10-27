@@ -125,6 +125,18 @@ export function errorMessage(err) {
   return hasKey(key) ? t(key) : t('err.generic');
 }
 
+/**
+ * A problem in an uploaded file (`{ code, params, message }`, src/lib/import-problems.ts): Arabic uses the
+ * translation of its code, other languages the server's English text. Values from the file are isolated
+ * (FSI…PDI) so a Latin username or column name cannot reorder the Arabic sentence around it.
+ */
+export function problemText(p) {
+  const key = `import.${p?.code}`;
+  if (locale() !== 'ar' || !hasKey(key)) return p.message;
+  const params = Object.fromEntries(Object.entries(p.params ?? {}).map(([k, v]) => [k, typeof v === 'string' ? `\u2068${v}\u2069` : v]));
+  return t(key, params);
+}
+
 /** Modal dialog built on <dialog>; resolves with the clicked action value. */
 export function dialog({ title, body, actions }) {
   return new Promise((resolve) => {

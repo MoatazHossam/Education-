@@ -99,7 +99,7 @@ describe('catalogue spreadsheet export and import', () => {
       [s.materials[1]!.id, 'verification_status', 'verified'], [s.materials[1]!.id, 'verification_source', 'Decree'],
     ]);
     const preview = (await upload(admin, versionId, csv, false)).json().plan;
-    expect(preview.errors).toEqual([{ row: expect.any(Number), message: 'Published versions are read-only: only the verification columns can change (title changed)' }]);
+    expect(preview.errors).toEqual([{ row: expect.any(Number), code: 'sheet_published', params: { fields: 'title' }, message: 'Published versions are read-only: only the verification columns can change (title changed)' }]);
     const applied = await upload(admin, versionId, csv, true);
     expect(applied.statusCode).toBe(400);
     expect(applied.json().error.code).toBe('IMPORT_INVALID');
@@ -152,7 +152,7 @@ describe('catalogue spreadsheet export and import', () => {
     expect((await owner.client.post(`/api/admin/catalog/versions/${versionId}/sheet`, { csv: 'x', apply: false })).statusCode).toBe(404);
 
     const bad = (await upload(admin, versionId, 'row_type,subject_id\nsubject,�', false)).json().plan;
-    expect(bad.errors[0].message).toMatch(/not UTF-8/);
+    expect(bad.errors[0]).toMatchObject({ code: 'not_utf8', message: expect.stringMatching(/not UTF-8/) });
 
     const next = (await admin.post('/api/admin/catalog/versions', { fromVersionId: versionId, academicYear: '2027/2028', label: 'Next' })).json().id as string;
     await admin.post(`/api/admin/catalog/versions/${next}/publish`);

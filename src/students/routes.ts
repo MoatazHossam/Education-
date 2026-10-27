@@ -10,7 +10,8 @@ import type { Trx } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
 import { perAccount, rateLimited } from '../http/rate-limit.js';
 import { CsvError, parseCsv } from '../lib/csv.js';
-import { AppError, badRequest, notFound } from '../lib/errors.js';
+import { AppError, notFound } from '../lib/errors.js';
+import { IMPORT_MESSAGES } from '../lib/import-problems.js';
 import { parse, zLocale, zPassword, zUuid } from '../lib/validation.js';
 import { getScope } from '../scopes/service.js';
 import { asStudent } from './context.js';
@@ -80,12 +81,13 @@ export function registerStudentRoutes(app: FastifyInstance, ctx: AppContext): vo
     const body = parse(z.object({ csv: z.string().max(1_500_000), apply: z.boolean().default(false) }), req.body);
     return inOrg(ctx, req, orgId, 'admin', async (trx, { org, user }) => {
       if (body.apply) await lockOrg(trx, orgId);
-      if (body.csv.includes('�')) throw badRequest('The file is not UTF-8. In Excel, save it as "CSV UTF-8 (Comma delimited)".');
+      // Codes of their own, so the interface can say these in Arabic (err.FILE_NOT_UTF8, err.CSV_INVALID).
+      if (body.csv.includes('�')) throw new AppError(400, 'FILE_NOT_UTF8', IMPORT_MESSAGES.not_utf8);
       let records: string[][];
       try {
         records = parseCsv(body.csv);
       } catch (err) {
-        throw badRequest(err instanceof CsvError ? err.message : 'The file could not be read as CSV');
+        throw new AppError(400, 'CSV_INVALID', IMPORT_MESSAGES[err instanceof CsvError ? 'csv_quote' : 'csv_unreadable']);
       }
       const existing = await trx.selectFrom('students').select('username').where('org_id', '=', orgId).execute();
       const scopes = await trx.selectFrom('scopes').select(['id', 'name']).where('org_id', '=', orgId).execute();

@@ -378,11 +378,13 @@ export async function monitorView(ctx) {
   };
   const rowActions = (r) => {
     const key = (name) => `${r.studentId}:${name}`;
-    if (!data.canEdit) return r.current ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, r)) }, t('tests.activity')) : null;
+    // A row's buttons can outlive a refresh (only changed cells are redrawn): read the row as it is now.
+    const now = () => data.students.find((x) => x.studentId === r.studentId) ?? r;
+    if (!data.canEdit) return r.current ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, now())) }, t('tests.activity')) : null;
     const c = r.current;
     return h('div', { class: 'row' },
-      c ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, r)) }, t('tests.activity')) : null,
-      h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('time'), 'aria-label': t('tests.extraTimeFor', { name: r.name }), onclick: () => act(async () => { if (await extraTimeDialog(orgId, testId, r)) await refreshNow(); }) }, t('tests.extraTime')),
+      c ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, now())) }, t('tests.activity')) : null,
+      h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('time'), 'aria-label': t('tests.extraTimeFor', { name: r.name }), onclick: () => act(async () => { if (await extraTimeDialog(orgId, testId, now())) await refreshNow(); }) }, t('tests.extraTime')),
       c?.status === 'in_progress' ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('submit'), 'aria-label': t('tests.submitFor', { name: r.name }), onclick: () => act(async () => {
         if (!(await confirmDialog(t('tests.submitTitle'), t('tests.submitText', { name: r.name }), { confirmLabel: t('tests.submitNow') }))) return;
         await post(`/api/orgs/${orgId}/tests/${testId}/attempts/${c.attemptId}/submit`);
@@ -420,20 +422,30 @@ export async function monitorView(ctx) {
           await post(`/api/orgs/${orgId}/tests/${testId}/close`);
           await refreshNow();
         }) }, t('tests.closeNow'))) : null]);
-    // A redraw keeps keyboard focus on the same control (each row's buttons carry a key), or on the table.
+    // Only cells that changed are replaced, so a control that keeps focus (and a screen reader's
+    // place) is left alone while the board refreshes. If the focused control itself had to go,
+    // focus moves to its new copy (each row's buttons carry a key), or to the table.
     const focused = tbody.contains(document.activeElement) ? document.activeElement.dataset?.key ?? '' : null;
-    tbody.replaceChildren(...data.students.map((r) => h('tr', {},
-      h('td', {}, h('b', { dir: 'auto' }, r.name), h('div', { class: 'mono muted', dir: 'ltr' }, r.username)),
-      h('td', {}, statusText(r, offset)),
-      h('td', {}, flags(r)),
-      h('td', {}, r.best && !r.best.needsMarking ? t('hw.markOf', { points: fmtNum(r.best.score), max: fmtNum(r.best.maxPoints) }) : none()),
-      h('td', {}, t('tests.attemptsOf', { n: fmtNum(r.attemptsUsed), total: fmtNum(r.attemptsAllowed) }), r.extraMinutes ? h('div', { class: 'muted' }, t('tests.extraMinutes', { n: fmtNum(r.extraMinutes) })) : null),
-      h('td', {}, rowActions(r)))));
-    if (focused !== null) {
+    const sameRows = tbody.children.length === data.students.length && data.students.every((r, i) => tbody.children[i].dataset.student === r.studentId);
+    if (!sameRows) tbody.replaceChildren(...data.students.map((r) => h('tr', { 'data-student': r.studentId }, rowCells(r))));
+    else data.students.forEach((r, i) => rowCells(r).forEach((cell, j) => {
+      const old = tbody.children[i].children[j];
+      if (old.outerHTML !== cell.outerHTML) old.replaceWith(cell);
+    }));
+    if (focused !== null && !tbody.contains(document.activeElement)) {
       const again = focused && tbody.querySelector(`[data-key="${CSS.escape(focused)}"]`);
       (again || tbody.closest('.table-wrap'))?.focus({ preventScroll: true });
     }
   };
+  const rowCells = (r) => [
+    h('td', {}, h('b', { dir: 'auto' }, r.name), h('div', { class: 'mono muted', dir: 'ltr' }, r.username)),
+    h('td', {}, statusText(r, offset)),
+    h('td', {}, flags(r)),
+    h('td', {}, r.best && !r.best.needsMarking ? t('hw.markOf', { points: fmtNum(r.best.score), max: fmtNum(r.best.maxPoints) }) : none()),
+    h('td', {}, t('tests.attemptsOf', { n: fmtNum(r.attemptsUsed), total: fmtNum(r.attemptsAllowed) }), r.extraMinutes ? h('div', { class: 'muted' }, t('tests.extraMinutes', { n: fmtNum(r.extraMinutes) })) : null),
+    // The attempt is part of the markup, so buttons acting on an attempt are rebuilt when it changes.
+    h('td', { 'data-attempt': r.current?.attemptId ?? '' }, rowActions(r)),
+  ];
   draw();
   // Live: the board every 5 seconds, the countdowns every second, while this page is shown.
   const tick = setInterval(() => {
@@ -519,8 +531,9 @@ export async function attemptView(ctx) {
       q.type !== 'essay' && keyText(q) ? h('p', { class: 'muted' }, t('tests.answerIs'), ': ', h('span', { dir: 'auto' }, keyText(q))) : null,
       q.type === 'essay' && keyText(q) ? h('p', { class: 'muted' }, t('tests.guide'), ': ', h('span', { dir: 'auto' }, keyText(q))) : null,
       data.canMark && a.status === 'submitted' ? h('div', { class: 'mark-row' },
-        h('div', { class: 'field' }, h('label', { for: `m-${q.id}` }, q.type === 'essay' ? t('tests.markOutOf', { max: fmtNum(q.points) }) : t('tests.overrideOutOf', { max: fmtNum(q.points) })), pts),
-        h('div', { class: 'field' }, h('label', { for: `f-${q.id}` }, t('hw.feedback')), fb),
+        // Every question has the same two fields: their names say which question they belong to.
+        h('div', { class: 'field' }, h('label', { for: `m-${q.id}` }, h('span', { class: 'sr-only' }, t('tests.questionNPrefix', { n: fmtNum(i + 1) })), q.type === 'essay' ? t('tests.markOutOf', { max: fmtNum(q.points) }) : t('tests.overrideOutOf', { max: fmtNum(q.points) })), pts),
+        h('div', { class: 'field' }, h('label', { for: `f-${q.id}` }, h('span', { class: 'sr-only' }, t('tests.questionNPrefix', { n: fmtNum(i + 1) })), t('hw.feedback')), fb),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn small', 'aria-label': t('tests.saveMarkN', { n: i + 1 }), onclick: () => act(async () => {
           const r = await patch(`/api/orgs/${orgId}/tests/${testId}/attempts/${attemptId}/answers/${q.id}`, { points: pts.value === '' ? null : Number(pts.value), feedback: fb.value.trim() || null });
           status.textContent = t('tests.savedScore', { score: fmtNum(r.score), max: fmtNum(a.maxPoints) });

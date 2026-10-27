@@ -89,7 +89,9 @@ and leave a comment per answer. A student's best marked attempt is their result.
 - **The server keeps the time.** The clock on the page follows the server's (a heartbeat every
   20 seconds also brings extra time the teacher gives). Saves up to 15 seconds after the deadline are
   accepted for network delays; after that, any request submits the attempt (`TIME_UP`) and the worker
-  submits attempts nobody comes back to. A screen reader hears the time left at 5 minutes and 1 minute.
+  submits attempts nobody comes back to. A screen reader hears the time left at 5 minutes and 1 minute, once each
+  as the time left crosses them (not when the test is opened with less time left), and again after more time is given;
+  the timer itself is read only when the student goes to it.
 - Submit asks for confirmation and says how many questions are unanswered.
 - The page tells the student what their teacher can see (§9) before and during the test.
 - Results appear by the test's setting. When answers are shown and the test is over, the review shows each

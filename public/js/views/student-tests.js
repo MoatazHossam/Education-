@@ -9,6 +9,7 @@ import { pointsText, subjectName } from './classroom-common.js';
 import { pageHead } from './shell.js';
 import { frame } from './student.js';
 import { answerText, clock } from './tests.js';
+import { countdownAnnouncer } from '../countdown.js';
 
 const HEARTBEAT_MS = 20_000;
 const TEXT_SAVE_DELAY_MS = 800;
@@ -149,7 +150,7 @@ export async function takeView(ctx) {
   const timerText = h('span', { class: 'clock' });
   const announce = h('p', { class: 'sr-only', 'aria-live': 'polite' });
   const saveState = h('span', { class: 'muted' });
-  const announced = new Set();
+  const minutesLeft = countdownAnnouncer();
   const finish = async (why) => {
     if (finished) return;
     finished = true;
@@ -283,12 +284,8 @@ export async function takeView(ctx) {
     const left = deadline - (Date.now() + offset);
     timerText.textContent = clock(left);
     bar.classList.toggle('urgent', left < 5 * 60_000);
-    for (const m of [5, 1]) {
-      if (left <= m * 60_000 && left > 0 && !announced.has(m)) {
-        announced.add(m);
-        announce.textContent = t('ptests.minutesLeft', { n: fmtNum(m) });
-      }
-    }
+    const m = minutesLeft(left);
+    if (m) announce.textContent = m === 1 ? t('ptests.oneMinuteLeft') : t('ptests.minutesLeft', { n: fmtNum(m) });
     if (left <= 0) finish('time');
   };
   const tick = setInterval(() => {

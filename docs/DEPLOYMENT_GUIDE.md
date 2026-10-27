@@ -1,5 +1,7 @@
 # Deployment guide
 
+العربية: [دليل النشر والتشغيل](DEPLOYMENT_GUIDE.ar.md) (the same guide in Arabic; update both together).
+
 Nothing here has been deployed to a real production host from this repository; every step below
 was run locally (development stack, Docker image, compose stack, backup and restore) as recorded
 in TEST_REPORT.md. Day-to-day operation (start, stop, backups, restores) uses the scripts in `ops/`,

@@ -90,6 +90,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [Online tests and exams](docs/ONLINE_TESTS.md) ·
 [Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
+[دليل النشر والتشغيل (عربي)](docs/DEPLOYMENT_GUIDE.ar.md) ·
 [Test strategy](docs/TEST_STRATEGY.md) ·
 [Test report](docs/TEST_REPORT.md) ·
 [Screen-reader review](docs/SCREEN_READER_REVIEW.md) ·

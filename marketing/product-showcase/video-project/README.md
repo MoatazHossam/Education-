@@ -65,9 +65,21 @@ PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-m
 PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx
 ```
 
-It speaks the diacritized text as written (Piper's own diacritizer is off; `--tashkeel` turns it on), trims
-each take, and skips lines that already have a file, so a human take placed first is kept. `--force`
-regenerates, `--only <sceneId>` limits to one scene, `--length-scale` sets the pace (default 1.12, calm).
+It speaks the diacritized text as written (Piper's own diacritizer is off; `--tashkeel` turns it on), in
+pausal form at each pause as a narrator reads (the final short vowel or tanween of the word before a comma or
+full stop is not voiced), trims each take, and skips lines that already have a file, so a human take placed
+first is kept. `--force` regenerates, `--only <sceneId>` limits to one scene, `--length-scale` and
+`--sentence-silence` set the pace, and `--tempo` speeds the takes up without changing the pitch.
+
+The current takes (2026-10-27) use the Arabic voice `ar_JO-kareem-medium` as packaged by the k2-fsa
+sherpa-onnx project (GitHub release `tts-models`, `vits-piper-ar_JO-kareem-medium.tar.bz2`, sha256
+`9ebbcea3…3dbce`), with `--length-scale 0.8 --sentence-silence 0.2`, and `--tempo 1.14` (20-minute cut) or
+`--tempo 1.10` (3-minute cut) so each cut lands in its target length. **The voice's licence could not be
+confirmed**: its model card refers to a training-data repository that states no licence. Treat these takes as
+a guide voice for review until the licence is confirmed or a human or licensed voice replaces them.
+
+`lib/asr_check.py` transcribes the takes with Whisper (small, sherpa-onnx `asr-models` release) and reports a
+character error rate per line against the script, to find lines worth listening to.
 
 ## 4. Build a cut
 

@@ -1,10 +1,13 @@
 """Speaks narration lines with a Piper voice: python3 narrate.py <lines.json> --voice <model.onnx> [--length-scale 1.12]
-[--tashkeel]
+[--sentence-silence 0.3] [--tempo 1.0] [--tashkeel]
 
 lines.json is a list of {"text", "out"} (written by ../narrate.mjs). Each line becomes a 16-bit mono WAV with
 the voice's leading and trailing silence trimmed and a short pause between sentences. The text is already fully
-diacritized, so Piper's own diacritizer is off unless --tashkeel is given."""
+diacritized, so Piper's own diacritizer is off unless --tashkeel is given. --tempo speeds the take up (or slows
+it down) without changing the pitch (FFmpeg atempo), for fitting a cut to its target length."""
 import json
+import os
+import subprocess
 import sys
 import wave
 
@@ -29,6 +32,7 @@ def main():
     voice.use_tashkeel = '--tashkeel' in sys.argv
     config = SynthesisConfig(length_scale=float(arg('--length-scale', '1.12')), normalize_audio=True)
     pause = float(arg('--sentence-silence', '0.3'))
+    tempo = float(arg('--tempo', '1.0'))
     for n, line in enumerate(lines, 1):
         parts, sr = [], voice.config.sample_rate
         for chunk in voice.synthesize(line['text'], syn_config=config):
@@ -41,6 +45,9 @@ def main():
             w.setsampwidth(2)
             w.setframerate(sr)
             w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
+        if abs(tempo - 1) > 1e-3:
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', line['out'], '-af', f'atempo={tempo:.4f}', '-c:a', 'pcm_s16le', line['out'] + '.tmp.wav'], check=True)
+            os.replace(line['out'] + '.tmp.wav', line['out'])
         print(f'{n}/{len(lines)} {line["out"]}', flush=True)
 
 

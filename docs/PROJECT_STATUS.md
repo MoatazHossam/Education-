@@ -314,6 +314,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Tests:**
   - `tests/unit/backup-crypt.test.ts` (3).
   - The drill in TEST_REPORT §4: both scripts, every kind of copy, the failure cases, a lost server and a managed database. It found six problems, all fixed.
+- **Arabic deployment guide** (asked afterwards: "update the deployment guide in Arabic too"): `docs/DEPLOYMENT_GUIDE.ar.md` is the whole guide in Arabic, sections 1–8, with the commands unchanged and the scripts' English prompts quoted with their meaning (the scripts themselves speak English). The two guides link to each other and are to be updated together.
 - **Files:** `ops/` (`cs.sh`, `cs.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
 - **Not done:**
   - The Windows script has run only under PowerShell 7 on Linux, not on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler).
@@ -712,8 +713,8 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #30 (Arabic guide republished) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `6f0bfd8`): the operations scripts for Linux and Windows.
+**Resume point (2026-10-27).** PR #31 (the operations scripts for Linux and Windows) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `c6b8b47`): the deployment guide in Arabic.
 4.2 is finished; the next development work is for the owner to choose, from the items after the pilot
 or from 4.1 once its blockers clear. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

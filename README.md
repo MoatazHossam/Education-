@@ -52,6 +52,7 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
 | `scripts/backup.sh`, `scripts/restore.sh`, `scripts/verify-backup.sh` | Backups (see docs) |
 | `node scripts/perf-smoke.mjs` | Latency/throughput probe |
+| `node scripts/load-exam.mjs <url> [students] [teachers] [minutes]` | Load test of one online exam taken by a whole grade from one address, with teachers on the live monitor (TEST_REPORT §5) |
 
 ## Layout
 

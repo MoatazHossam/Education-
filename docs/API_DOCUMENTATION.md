@@ -32,9 +32,13 @@ application/json`); other content types are rejected with `415`.
 | 500 | `INTERNAL_ERROR` (with `requestId`) |
 
 ### Rate limits
-Global 600 requests/min/IP (when `RATE_LIMIT_ENABLED`); login 10/15 min per IP+email; student
-sign-in 10/15 min per IP+school+username; student creation and password resets 120/h; roster
-imports 30/h; register
+Global flood guard (when `RATE_LIMIT_ENABLED`, per app instance): 600 requests/min per IP; requests
+carrying a session cookie 6,000/min per IP (a school's students share one address) and 600/min per
+signed-in account (or per IP when the cookie is not a valid session). Login 10/15 min per IP+email;
+student sign-in 10/15 min per IP+school+username. Per student, whatever address they share: starting
+a test 60/15 min, saving answers 3,000/h, heartbeats and page events 1,200/h each, saving homework
+600/h, handing in and uploading 120/h each, changing their password 10/15 min. Student creation and
+password resets 120/h; roster imports 30/h; register
 10/h/IP; password-reset and resend-verification 5/h per IP+email; MFA verify 10/15 min; invitations
 30/h; checkout 20/h; public API 120/min/IP plus the plan's monthly request quota. Route limits are
 counted across all app instances; the global limit is counted per app instance.

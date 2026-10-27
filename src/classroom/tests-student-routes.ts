@@ -4,7 +4,7 @@ import { requireStudentSession } from '../auth/guards.js';
 import { withOrgContext, type Trx } from '../db/index.js';
 import type { QuestionOption, Test, TestAttempt } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
-import { rateLimited } from '../http/rate-limit.js';
+import { perAccount, rateLimited } from '../http/rate-limit.js';
 import { AppError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { asStudent } from '../students/context.js';
@@ -123,7 +123,7 @@ export function registerStudentTestRoutes(app: FastifyInstance, ctx: AppContext)
     });
   });
 
-  app.post('/api/student/tests/:testId/start', rateLimited(60, '15 minutes'), async (req) => {
+  app.post('/api/student/tests/:testId/start', rateLimited(60, '15 minutes', perAccount), async (req) => {
     const { testId } = parse(TestParams, req.params);
     const body = parse(z.object({ code: z.string().trim().toUpperCase().max(12).optional() }), req.body ?? {});
     const { session } = requireStudentSession(req);
@@ -216,7 +216,7 @@ export function registerStudentTestRoutes(app: FastifyInstance, ctx: AppContext)
     return r.body;
   });
 
-  app.put('/api/student/attempts/:attemptId/answers/:questionId', rateLimited(3000, '1 hour'), async (req) => {
+  app.put('/api/student/attempts/:attemptId/answers/:questionId', rateLimited(3000, '1 hour', perAccount), async (req) => {
     const { attemptId, questionId } = parse(AttemptParams.extend({ questionId: zUuid }), req.params);
     const body = parse(z.object({ answer: z.unknown() }), req.body);
     const { session } = requireStudentSession(req);
@@ -251,7 +251,7 @@ export function registerStudentTestRoutes(app: FastifyInstance, ctx: AppContext)
   });
 
   // Every 20 seconds while the test page is open: keeps the teacher's monitor current and the page's clock in step.
-  app.post('/api/student/attempts/:attemptId/heartbeat', rateLimited(1200, '1 hour'), async (req) => {
+  app.post('/api/student/attempts/:attemptId/heartbeat', rateLimited(1200, '1 hour', perAccount), async (req) => {
     const { attemptId } = parse(AttemptParams, req.params);
     const { session } = requireStudentSession(req);
     const r = await asStudent(ctx, req, async (trx, { org }) => {
@@ -269,7 +269,7 @@ export function registerStudentTestRoutes(app: FastifyInstance, ctx: AppContext)
   });
 
   // What the page notices (shown to the teacher): leaving the test page, pasting, losing the connection.
-  app.post('/api/student/attempts/:attemptId/events', rateLimited(1200, '1 hour'), async (req) => {
+  app.post('/api/student/attempts/:attemptId/events', rateLimited(1200, '1 hour', perAccount), async (req) => {
     const { attemptId } = parse(AttemptParams, req.params);
     const body = parse(
       z.object({ kind: z.enum(['left_page', 'returned', 'paste', 'offline', 'online']), seconds: z.number().min(0).max(36_000).optional(), length: z.number().int().min(0).max(1_000_000).optional() }),

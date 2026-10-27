@@ -12,6 +12,10 @@ import { answerText, clock } from './tests.js';
 
 const HEARTBEAT_MS = 20_000;
 const TEXT_SAVE_DELAY_MS = 800;
+// An answer that could not be saved (connection lost, server busy) is tried again after 5 s,
+// then 10, 20 and every 30 s, for as long as the page is open.
+const RETRY_FIRST_MS = 5_000;
+const RETRY_MAX_MS = 30_000;
 
 /** One test in a list: what it is, when, and what the student can do now. */
 export function testItem(test) {
@@ -156,16 +160,51 @@ export async function takeView(ctx) {
     navigate(`/student/attempts/${attemptId}/result`, { replace: true });
   };
 
+  // Answers the server has not confirmed yet, and the timer that tries them again.
+  const unsaved = new Set();
+  let retryTimer = null;
+  let retryDelay = RETRY_FIRST_MS;
+  const retryUnsaved = () => {
+    if (retryTimer || finished) return;
+    retryTimer = setTimeout(async () => {
+      retryTimer = null;
+      for (const qid of [...unsaved]) if (!(await save(qid))) return;
+    }, retryDelay);
+    retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+  };
+  /** Saves one answer; true when the server has it. */
   const save = async (qid) => {
     clearTimeout(timers[qid]);
     saveState.textContent = t('ptests.saving');
     try {
       await put(`/api/student/attempts/${attemptId}/answers/${qid}`, { answer: answers[qid] ?? null });
-      saveState.textContent = t('ptests.savedAt', { when: new Intl.DateTimeFormat(locale() === 'ar' ? 'ar-EG' : 'en-GB', { timeStyle: 'short' }).format(new Date()) });
+      unsaved.delete(qid);
+      if (unsaved.size) saveState.textContent = t('ptests.notSaved', { n: fmtNum(unsaved.size) });
+      else {
+        retryDelay = RETRY_FIRST_MS;
+        saveState.textContent = t('ptests.savedAt', { when: new Intl.DateTimeFormat(locale() === 'ar' ? 'ar-EG' : 'en-GB', { timeStyle: 'short' }).format(new Date()) });
+      }
+      return true;
     } catch (err) {
-      if (err.code === 'TIME_UP' || err.code === 'ATTEMPT_SUBMITTED') return finish(err.code === 'TIME_UP' ? 'time' : 'teacher');
-      saveState.textContent = '';
-      toast(errorMessage(err), 'error');
+      if (err.code === 'TIME_UP' || err.code === 'ATTEMPT_SUBMITTED') {
+        finish(err.code === 'TIME_UP' ? 'time' : 'teacher');
+        return false;
+      }
+      if (err.code === 'OTHER_DEVICE') {
+        finished = true;
+        cleanup();
+        toast(errorMessage(err), 'error');
+        navigate(`/student/tests/${data.test.id}`, { replace: true });
+        return false;
+      }
+      // Kept, and said once while answers are waiting, not on every failure. A lost connection,
+      // a busy server or "too many requests" is tried again; any other refusal would only repeat.
+      if (!unsaved.size) announce.textContent = t('ptests.notSavedAnnounce');
+      unsaved.add(qid);
+      saveState.textContent = t('ptests.notSaved', { n: fmtNum(unsaved.size) });
+      if (!err.status || err.status === 408 || err.status === 429 || err.status >= 500) retryUnsaved();
+      else toast(errorMessage(err), 'error');
+      return false;
     }
   };
   const changed = (qid) => (value, now) => {
@@ -183,7 +222,8 @@ export async function takeView(ctx) {
       questionInput(q, answers[q.id], changed(q.id))))));
 
   const submit = h('button', { type: 'button', class: 'btn', onclick: async () => {
-    for (const qid of Object.keys(timers)) await save(qid);
+    for (const qid of new Set([...Object.keys(timers), ...unsaved])) await save(qid);
+    if (unsaved.size && !(await confirmDialog(t('ptests.unsavedTitle'), t('ptests.unsavedText', { n: fmtNum(unsaved.size) }), { danger: true, confirmLabel: t('ptests.submitAnyway') }))) return;
     const blank = data.questions.filter((q) => answers[q.id] === undefined || answers[q.id] === null || (Array.isArray(answers[q.id]) && !answers[q.id].length)).length;
     if (!(await confirmDialog(t('ptests.submitTitle'), blank ? t('ptests.submitBlank', { n: fmtNum(blank) }) : t('ptests.submitText'), { confirmLabel: t('ptests.submit') }))) return;
     try {
@@ -230,6 +270,7 @@ export async function takeView(ctx) {
   const cleanup = () => {
     clearInterval(tick);
     clearInterval(beat);
+    clearTimeout(retryTimer);
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('blur', away);
     window.removeEventListener('focus', back);

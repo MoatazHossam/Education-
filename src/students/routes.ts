@@ -8,7 +8,7 @@ import { getEntitlements, lockOrg } from '../billing/entitlements.js';
 import { gradeList } from '../catalog/service.js';
 import type { Trx } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
-import { rateLimited } from '../http/rate-limit.js';
+import { perAccount, rateLimited } from '../http/rate-limit.js';
 import { CsvError, parseCsv } from '../lib/csv.js';
 import { AppError, badRequest, notFound } from '../lib/errors.js';
 import { parse, zLocale, zPassword, zUuid } from '../lib/validation.js';
@@ -165,7 +165,7 @@ export function registerStudentRoutes(app: FastifyInstance, ctx: AppContext): vo
     return { status: 'updated' };
   });
 
-  app.post('/api/student/password', rateLimited(10, '15 minutes'), async (req) => {
+  app.post('/api/student/password', rateLimited(10, '15 minutes', perAccount), async (req) => {
     const { user, session } = requireStudentSession(req);
     const body = parse(z.object({ currentPassword: z.string().min(1).max(256), newPassword: zPassword }), req.body);
     if (!(await verifyPassword(user.password_hash, body.currentPassword))) throw new AppError(400, 'INVALID_PASSWORD', 'Current password is incorrect');

@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**41 files, 288 tests, 288 passed, 0 failed** (2026-10-27, with classroom data retention). Integration tests ran against a real
+**42 files, 290 tests, 290 passed, 0 failed** (2026-10-27, with the limits for a school's students on one network). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -66,12 +66,13 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/rate-limit-store | 6 | Pass — one login limit across two app instances and a restart; exact counts under concurrency; window expiry; HMAC keys only; the global guard stays per process; cleanup |
 | integration/classroom | 7 | Pass — classes and homework (`docs/CLASSROOM.md`): off until student accounts are on; who sees which class; the whole homework cycle (curriculum books and subject teachers only, notifications in each student's language, private drafts, file type from the bytes, hand-in, download headers, mark limits, return one and several, paper work, audit); late, closed and taken-back work; scheduled homework announced once by the worker; row-level security with unfiltered queries in a student context; file count, storage limit, deleting a class |
 | integration/online-tests | 8 | Pass — online tests and exams (`docs/ONLINE_TESTS.md`): drafts hidden from students (also directly in the database), publishing notifies the class in each student's language; students get questions without answer keys, answers are checked and saved, submission marks them, the teacher marks the written answer, and a teacher of another subject sees no keys and cannot mark; start code, attempts and a retake; the server keeps the time (late saves refused, the worker submits the rest); a new closing time moves running attempts, and results and answers wait for a classmate's extra time; the live monitor (left the page, pasting, another device), one device, submitting for a student, closing early and reopening; settings locked after a start and manual release; row-level security for another student with unfiltered queries |
+| integration/school-network-limits | 2 | Pass — a school's students on one address (`docs/STUDENT_ACCOUNTS.md` §9): 65 students start a test and send heartbeats (the 61st start was refused when limits counted per address); one student is still held to 60 starts in 15 minutes while a classmate is not; the flood guard lets two accounts make 800 requests a minute from one address, stops each account at 600 with `RATE_LIMITED` and `retry-after`, and holds a forged session cookie, also a changing one, to its address. Both tests fail on the code before the change |
 | integration/classroom-retention | 4 | Pass — keeping classroom data (`docs/CLASSROOM.md` §11): nothing deleted until a school sets periods; the preview; notices to owners and admins only (in-app and email, no student work in them) at least 14 days ahead; after the notice, work and monitoring are deleted while hand-ins, marks, comments, scores and the gradebook stay, and re-marking keeps the automatic mark; a hold, a longer period (saved, or changed behind the worker) and a later due time each cancel a deletion; no notices at night; the records stage deletes the homework with its students' notifications; another school untouched; owners and admins only, periods in order |
 | integration/gradebook | 3 | Pass — the gradebook (`docs/CLASSROOM.md` §10): columns for homework with a full mark and published tests, oldest first; marked, to-mark, missing and not-yet cells; averages over marked work and missing counts; 404 for a member who does not teach the class; the CSV in the member's language (English and Arabic), formula-guarded and audited; My grades showing a student only their own marks, once returned or shown |
 
 Full test names (file › group › test, from `npx vitest list`):
 
-<details><summary>Show all 288</summary>
+<details><summary>Show all 290</summary>
 
 - admin-api-ops › platform administration › is invisible to ordinary users and requires MFA for admins
 - admin-api-ops › platform administration › sees customer metadata but not scope contents without a support grant
@@ -203,6 +204,8 @@ Full test names (file › group › test, from `npx vitest list`):
 - rate-limit-store › shared rate limits (PostgreSQL) › counts concurrent requests from several instances exactly
 - rate-limit-store › shared rate limits (PostgreSQL) › starts a new window when the old one ends; reading does not count; namespaces are separate
 - rate-limit-store › shared rate limits (PostgreSQL) › the worker deletes expired counters and keeps live ones
+- school-network-limits › one school network › each student has their own allowance on the test routes, however many share the address
+- school-network-limits › one school network › the flood guard lets many accounts share an address, and stops one account or a forged cookie at 600 a minute
 - scope-carry-forward › carrying a scope to the next academic year › previews what carries over, what is missing, what changed and what is new
 - scope-carry-forward › carrying a scope to the next academic year › copies into a new scope for the new year, with chosen replacements; the old scope is untouched
 - scope-carry-forward › carrying a scope to the next academic year › moves a scope in place, which also works at the Free plan scope limit
@@ -403,6 +406,7 @@ The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 sc
 | 21 | Online test (journey 20's class 7A): the owner writes "Chapter 1 quiz" with a 20-minute limit and a start code, adds three questions (one correct choice, a short answer accepting "Aswan" or "أسوان", a written answer; 6 points) and publishes it; Laila starts from Today ("Tests open now"), first with a wrong code (refused), then the right one in lower case; the clock shows the time left; she answers (the short answer in Arabic), leaves the page once and pastes once, and the page shows "Saved"; on the live monitor she is "Working", "3 of 3 answered", "Left the page 1×", "Pasted 1×", Omar "Not started"; the owner gives her 10 minutes more; she submits and is told the results come later; the owner closes the test, opens Results ("To mark"), sees 2 / 2 and 1 / 1 marked automatically, marks the written answer 2.5 of 3 with a comment ("Saved. Total: 5.5 / 6"); Laila's past tests show 5.5 / 6 and her review shows the comment | Pass |
 | 22 | Gradebook (journeys 20 and 21's class 7A): the owner opens **Gradebook** from the class page; the subject is preselected; Laila's row shows 9 (homework) and 5.5 (test) and an average of 90.6%, Omar's shows the test as Missing; **Download CSV** saves `gradebook-7A-….csv` whose header starts with "Student" and whose Laila row ends with 90.6 and 0 missing. Laila signs in, opens **Grades** and sees her subject in 7A with "Average: 90.6%", the homework 9 / 10 and the test 5.5 / 6 | Pass |
 | 23 | Keeping classroom data (journeys 20–22's class 7A, its homework and test moved 40 days back): the owner opens **Keeping data** from Classes (nothing due), sets 30 days for students' work; saving asks first ("homework: 1, tests: 1"); both are listed as due and the owner's email lists the homework; **Keep** moves the test to the kept list. One worker pass 15 days later deletes the homework's work: the homework page says so, the teacher's view of Laila's work says the answer and files were deleted and the mark is still 9; Laila's grades still show 9 / 10 and her homework page says why her work is gone | Pass |
+| 24 | Saving on a weak connection (journey 20's class 7A): the owner writes and publishes "Weak Wi-Fi quiz" with one choice question; Laila starts it. Her first save is answered 503 by the test (the network stands in for a busy server): the bar says "Not saved yet (1): trying again", and the page saves it by itself 5 s later ("Saved"). With every save failing she changes her answer; the bar says so again, and **Submit** first shows "Some answers are not saved" ("Answers not saved yet: 1."), which she cancels. Once saves go through, the page saves the answer by itself, she submits, and the database holds her latest answer | Pass |
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -552,6 +556,69 @@ database. So the global limit stays a per-process flood guard, and only the rout
 (login, two-factor codes, resets, registration, invitations, checkout, the v1 API) are counted in
 PostgreSQL, where the extra ~0.9 ms is small next to the work those requests already do (a login
 hashes a password with Argon2id).
+
+### One exam for a whole grade on one school network (2026-10-27) — `scripts/load-exam.mjs`
+
+The production-settings stack of §4 (Caddy with its local certificate, `app` and `app2`, worker,
+PostgreSQL 16, Mailpit; `NODE_ENV=production`, rate limits on), rebuilt from this branch, on the same
+4-vCPU sandbox as the load generator. The script signs in as the school's owner, creates a class of
+new students (roster import) and a 20-question exam (16 single-choice, 4 short answers, shuffled),
+publishes it, then for 8 minutes: every student signs in and starts within the first minute, saves an
+answer about every 20 s, sends a heartbeat every 20 s as the test page does, reports leaving the page
+now and then (5% of saves) and submits at the end; 3 teachers (separate sessions) refresh the live
+monitor every 5 s. Every request leaves from one machine, so the server sees one client address, as
+for a school behind one NAT. At the end every answer the server acknowledged is compared with the
+teacher's view of the attempt.
+
+**Before the fix** (`main` at the start of this work), 100 students:
+
+| Request | n | 2xx | 429 | p50 | p95 | p99 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Student sign-in | 100 | 100 | 0 | 38 ms | 104 ms | 140 ms |
+| Start the test | 100 | **60** | **40** | 17 ms | 26 ms | 30 ms |
+| Save an answer | 1,360 | 1,360 | 0 | 20 ms | 27 ms | 36 ms |
+| Heartbeat | 1,411 | 1,200 | **211** | 16 ms | 23 ms | 29 ms |
+| Live monitor (3 teachers) | 306 | 306 | 0 | 26 ms | 47 ms | 59 ms |
+| Submit | 60 | 60 | 0 | 51 ms | 98 ms | 230 ms |
+
+3,763 requests in 521 s (7.2 a second). **40 of 100 students could not start**: starting was limited
+to 60 in 15 minutes per address, so for the whole school. The 60 who started lost their heartbeats
+after about 6.7 minutes (1,200 an hour per address, at 3 a minute each), so the monitor would have
+shown them offline. Answers acknowledged: 1,199, all stored as acknowledged. The flood guard
+(600 a minute per address and instance) was not reached: about 430 requests a minute on average,
+shared by two instances.
+
+**After the fix** (this branch), same stack, same script:
+
+| Request | 100 students, 3 teachers: n | 2xx | 429 | p50 | p95 | p99 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Student sign-in | 100 | 100 | 0 | 46 ms | 110 ms | 234 ms |
+| Start the test | 100 | 100 | 0 | 25 ms | 51 ms | 80 ms |
+| Save an answer | 2,178 | 2,178 | 0 | 20 ms | 29 ms | 34 ms |
+| Heartbeat | 2,302 | 2,302 | 0 | 17 ms | 25 ms | 31 ms |
+| Page event | 122 | 122 | 0 | 16 ms | 22 ms | 24 ms |
+| Live monitor | 306 | 306 | 0 | 30 ms | 47 ms | 55 ms |
+| Submit | 100 | 100 | 0 | 56 ms | 69 ms | 73 ms |
+
+5,612 requests in 527 s (10.6 a second), none refused and none failed. Every student started and
+submitted; 1,993 acknowledged answers, all stored as acknowledged.
+
+| Request | 300 students, 5 teachers: n | 2xx | 429 | p50 | p95 | p99 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Student sign-in | 300 | 300 | 0 | 37 ms | 85 ms | 131 ms |
+| Start the test | 300 | 300 | 0 | 22 ms | 33 ms | 43 ms |
+| Save an answer | 6,604 | 6,604 | 0 | 19 ms | 28 ms | 40 ms |
+| Heartbeat | 6,900 | 6,900 | 0 | 16 ms | 25 ms | 40 ms |
+| Page event | 308 | 308 | 0 | 15 ms | 23 ms | 36 ms |
+| Live monitor (300 rows) | 505 | 505 | 0 | 52 ms | 79 ms | 103 ms |
+| Submit | 300 | 300 | 0 | 60 ms | 83 ms | 98 ms |
+
+16,423 requests in 524 s (31.3 a second, about 1,900 a minute from one address, so about 940 a
+minute on each instance: past the old guard's 600). None refused and none failed; every student
+started and submitted; 5,981 acknowledged answers, all stored as acknowledged. The slowest request
+took 189 ms. One `docker stats` snapshot two minutes in showed each app instance at about 7% of a CPU
+and PostgreSQL at about 19%. Lint and typecheck ran at low priority during the run's last minutes. These are
+sandbox figures on one machine, not a capacity guarantee; repeat on staging hardware (DEPLOYMENT_GUIDE §7).
 
 ## 6. CI pipeline on a clean checkout (local equivalent of GitHub Actions)
 

@@ -79,6 +79,13 @@ and leave a comment per answer. A student's best marked attempt is their result.
   requests read the questions (row-level security, §7).
 - Answers save as the student types (after a pause) and when they leave a field. The page shows "Saved"
   and the time.
+- **An answer that does not reach the server is saved again.** If a save fails because the connection
+  dropped, the server is busy (429) or unavailable (5xx), the page keeps the latest answer for that
+  question and tries again after 5 seconds, then less often up to every 30 seconds, until it is saved.
+  The bar says "Not saved yet (n): trying again", and a screen reader hears it once. Submitting first
+  tries those answers again; if some are still not saved, the page says how many and asks before
+  submitting without them. When the time is up or the attempt was submitted or moved to another
+  device, the page stops trying and says so.
 - **The server keeps the time.** The clock on the page follows the server's (a heartbeat every
   20 seconds also brings extra time the teacher gives). Saves up to 15 seconds after the deadline are
   accepted for network delays; after that, any request submits the attempt (`TIME_UP`) and the worker
@@ -173,11 +180,17 @@ Students (student session + CSRF):
 | `GET /api/student/tests/:testId` | one test and the student's attempts |
 | `POST /api/student/tests/:testId/start` | `{code?}`; starts or resumes; 60 per 15 minutes |
 | `GET /api/student/attempts/:attemptId` | the attempt: questions in its order, saved answers, deadline, server time |
-| `PUT /api/student/attempts/:attemptId/answers/:questionId` | `{answer}`; `null` clears it |
-| `POST /api/student/attempts/:attemptId/heartbeat` | keeps the monitor current; returns the deadline |
-| `POST /api/student/attempts/:attemptId/events` | `{kind: left_page, returned, paste, offline, online; seconds?; length?}` |
+| `PUT /api/student/attempts/:attemptId/answers/:questionId` | `{answer}`; `null` clears it; 3,000 an hour |
+| `POST /api/student/attempts/:attemptId/heartbeat` | keeps the monitor current; returns the deadline; 1,200 an hour |
+| `POST /api/student/attempts/:attemptId/events` | `{kind: left_page, returned, paste, offline, online; seconds?; length?}`; 1,200 an hour |
 | `POST /api/student/attempts/:attemptId/submit` | submit |
 | `GET /api/student/attempts/:attemptId/result` | the review, when results are visible |
+
+The limits on the student routes count **per student** (per account), not per address, so a whole grade
+can sit a test from one school network; they are shared by every app instance. The flood guard in front
+of every API request also lets many signed-in students share one address and holds each account to
+600 requests a minute (docs/STUDENT_ACCOUNTS.md §9). A load test of one exam with 100 and 300 students
+on one address is in docs/TEST_REPORT.md §5 (`scripts/load-exam.mjs`).
 
 Error codes: `TEST_EMPTY`, `TEST_ALREADY_CLOSED`, `TEST_STARTED`, `TEST_NOT_OPEN`, `CLOSES_BEFORE_OPENS`,
 `TOO_MANY_QUESTIONS`, `QUESTION_INVALID`, `ANSWER_INVALID`, `WRONG_START_CODE`, `NO_START_CODE`,
@@ -244,5 +257,13 @@ Nothing is deleted until the school sets a period, and owners and admins are tol
   and publishes it; the student starts from Today (a wrong code first), answers, leaves the page and
   pastes; the monitor shows it; extra time; the student submits; the teacher closes, opens the results,
   marks the written answer, and the student sees 5.5 / 6 and the comment.
+- `tests/integration/school-network-limits.test.ts` (2): 65 students of one school start and send
+  heartbeats from one address (the 61st was refused before), one student is still held to the start
+  limit while a classmate is not; the flood guard counts per account and holds a forged cookie to its
+  address.
+- `tests/e2e/journeys.spec.ts`, journey 24: saves fail (503) while a student answers; the page says the
+  answer is not saved and is trying again, submitting warns how many are waiting, and once the network
+  is back the latest answer is the one stored.
+- `scripts/load-exam.mjs`: the load test of one exam (TEST_REPORT §5).
 - `tests/e2e/accessibility.spec.ts`: every test page and dialog for teachers and students in English,
   Arabic, dark and on a phone: 0 axe findings, 0 simulated screen-reader findings.

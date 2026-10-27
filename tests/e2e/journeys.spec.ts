@@ -1140,3 +1140,73 @@ test('keeping classroom data: the owner sets how long work is kept, keeps a test
   await expect(student.locator('.mark-big')).toHaveText('9 / 10');
   await studentCtx.close();
 });
+
+test('online test: an answer that does not reach the server is saved again, and submitting warns while one is waiting', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  // Journey 20's class 7A; a short test Laila takes on a weak connection.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('button', { name: 'New test' }).click();
+  let dlg = page.getByRole('dialog', { name: 'New test for 7A' });
+  await dlg.getByLabel('Title').fill('Weak Wi-Fi quiz');
+  await dlg.getByRole('button', { name: 'Create test' }).click();
+  await expect(page.getByRole('heading', { name: 'Weak Wi-Fi quiz', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Add question' }).click();
+  dlg = page.getByRole('dialog', { name: 'Add question' });
+  await dlg.getByLabel('Question', { exact: true }).fill('Which sea lies north of Egypt?');
+  await dlg.getByLabel('Choice A', { exact: true }).fill('The Mediterranean');
+  await dlg.getByLabel('Choice B', { exact: true }).fill('The Red Sea');
+  await dlg.getByLabel('Choice C', { exact: true }).fill('The Dead Sea');
+  await dlg.getByLabel('Choice A is correct').check();
+  await dlg.getByLabel('Points').fill('1');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Questions (1, 1 point)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('dialog', { name: 'Publish the test' }).getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();
+
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto(`/student-login?school=${delta.schoolCode}`);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill(delta.lailaPassword);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await student.getByRole('link', { name: 'Start Weak Wi-Fi quiz' }).click();
+  await student.getByRole('button', { name: 'Start' }).click();
+  await student.getByRole('dialog', { name: 'Start the test' }).getByRole('button', { name: 'Start' }).click();
+  await expect(student.getByRole('timer')).toBeVisible();
+  const bar = student.locator('.testbar');
+  const answers = '**/api/student/attempts/*/answers/*';
+  const unavailable = { status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: 'Service unavailable' } }) };
+
+  // The first save is lost on the way; the page says so and tries again by itself 5 seconds later.
+  let lost = 1;
+  await student.route(answers, (route) => (lost-- > 0 ? route.fulfill(unavailable) : route.continue()));
+  await student.getByLabel('The Mediterranean').check();
+  await expect(bar).toContainText('Not saved yet (1): trying again');
+  await expect(bar).toContainText(/Saved \d/, { timeout: 15_000 });
+
+  // While the server cannot be reached, submitting asks first instead of losing the answer.
+  await student.unroute(answers);
+  await student.route(answers, (route) => route.fulfill(unavailable));
+  await student.getByLabel('The Red Sea').check();
+  await expect(bar).toContainText('Not saved yet (1): trying again');
+  await student.getByRole('button', { name: 'Submit' }).click();
+  const warning = student.getByRole('dialog', { name: 'Some answers are not saved' });
+  await expect(warning).toContainText('Answers not saved yet: 1.');
+  await warning.getByRole('button', { name: 'Cancel' }).click();
+
+  // The connection is back: the next try saves the answer, and submitting is as usual.
+  await student.unroute(answers);
+  await expect(bar).toContainText(/Saved \d/, { timeout: 40_000 });
+  await student.getByRole('button', { name: 'Submit' }).click();
+  await student.getByRole('dialog', { name: 'Submit your answers' }).getByRole('button', { name: 'Submit' }).click();
+  await expect(student.getByText('Your answers are saved. Your teacher will show the results later.')).toBeVisible();
+  const stored = await ownerQuery(
+    `SELECT x.answer FROM test_answers x JOIN test_attempts a ON a.id = x.attempt_id JOIN tests t ON t.id = a.test_id WHERE t.org_id = $1 AND t.title = 'Weak Wi-Fi quiz'`,
+    [delta.orgId],
+  );
+  expect(stored).toEqual([{ answer: 'b' }]);
+  await studentCtx.close();
+});

@@ -57,15 +57,15 @@ export async function resetData(ownerDb: Database): Promise<void> {
 
 let ipCounter = 0;
 
-/** Minimal browser-like client: cookie jar, CSRF header, unique client IP. */
+/** Minimal browser-like client: cookie jar, CSRF header, unique client IP (or the one given, to share an address). */
 export class Client {
   cookies = new Map<string, string>();
   csrf: string | null = null;
   readonly ip: string;
 
-  constructor(private readonly app: FastifyInstance) {
+  constructor(private readonly app: FastifyInstance, ip?: string) {
     ipCounter++;
-    this.ip = `10.${(ipCounter >> 16) & 255}.${(ipCounter >> 8) & 255}.${ipCounter & 255}`;
+    this.ip = ip ?? `10.${(ipCounter >> 16) & 255}.${(ipCounter >> 8) & 255}.${ipCounter & 255}`;
   }
 
   async request(method: InjectOptions['method'], url: string, body?: unknown, headers: Record<string, string> = {}) {

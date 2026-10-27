@@ -7,6 +7,7 @@ import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { invalidateOrg } from '../state.js';
 import { act, localInput, pointsText, settableSubjects, subjectName } from './classroom-common.js';
+import { retentionNotes } from './retention.js';
 import { pageHead } from './shell.js';
 
 const TYPES = ['single', 'multiple', 'true_false', 'short', 'essay'];
@@ -307,6 +308,7 @@ export async function testView(ctx) {
     crumbs(orgId, data.class),
     pageHead(test.title, t('tests.headLine', { class: data.class.name, subject: subjectName(test), closes: fmtDate(test.closesAt, true) }), h('p', {}, phasePill(test)), actions),
     testTabs(orgId, testId, ''),
+    retentionNotes('test', test, data.retention),
     h('section', { class: 'card', 'aria-labelledby': 's-h' }, h('h2', { id: 's-h' }, t('tests.settings')), facts, test.instructions ? h('div', { class: 'answer', dir: 'auto' }, test.instructions) : null),
     questions);
 }
@@ -335,12 +337,15 @@ function flags(row) {
   return list.length ? h('div', { class: 'row' }, list) : none();
 }
 
-async function eventsDialog(orgId, testId, row) {
+async function eventsDialog(orgId, test, row) {
+  const testId = test.id;
   const { events } = await get(`/api/orgs/${orgId}/tests/${testId}/attempts/${row.current.attemptId}/events`);
   const detail = (e) => (e.detail?.seconds !== undefined ? t('tests.ev.seconds', { s: fmtNum(e.detail.seconds) }) : e.detail?.length !== undefined ? t('tests.ev.chars', { n: fmtNum(e.detail.length) }) : e.detail?.minutes !== undefined ? t('tests.ev.minutes', { n: fmtNum(e.detail.minutes) }) : '');
   await dialog({
     title: t('tests.activityOf', { name: row.name }),
-    body: h('ol', { class: 'events' }, events.map((e) => h('li', {}, h('span', { class: 'mono muted' }, fmtDate(e.at, true)), ' ', t(`tests.ev.${e.kind}`), ' ', detail(e)))),
+    body: test.monitoringRemovedAt
+      ? h('p', { class: 'muted' }, t('ret.removed.monitoring', { date: fmtDate(test.monitoringRemovedAt) }))
+      : h('ol', { class: 'events' }, events.map((e) => h('li', {}, h('span', { class: 'mono muted' }, fmtDate(e.at, true)), ' ', t(`tests.ev.${e.kind}`), ' ', detail(e)))),
     actions: [{ label: t('common.close'), value: true, kind: 'ghost' }],
   });
 }
@@ -373,10 +378,10 @@ export async function monitorView(ctx) {
   };
   const rowActions = (r) => {
     const key = (name) => `${r.studentId}:${name}`;
-    if (!data.canEdit) return r.current ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, testId, r)) }, t('tests.activity')) : null;
+    if (!data.canEdit) return r.current ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, r)) }, t('tests.activity')) : null;
     const c = r.current;
     return h('div', { class: 'row' },
-      c ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, testId, r)) }, t('tests.activity')) : null,
+      c ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('activity'), 'aria-label': t('tests.activityOf', { name: r.name }), onclick: () => act(() => eventsDialog(orgId, data.test, r)) }, t('tests.activity')) : null,
       h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('time'), 'aria-label': t('tests.extraTimeFor', { name: r.name }), onclick: () => act(async () => { if (await extraTimeDialog(orgId, testId, r)) await refreshNow(); }) }, t('tests.extraTime')),
       c?.status === 'in_progress' ? h('button', { type: 'button', class: 'btn small ghost', 'data-key': key('submit'), 'aria-label': t('tests.submitFor', { name: r.name }), onclick: () => act(async () => {
         if (!(await confirmDialog(t('tests.submitTitle'), t('tests.submitText', { name: r.name }), { confirmLabel: t('tests.submitNow') }))) return;
@@ -480,6 +485,7 @@ export async function resultsView(ctx) {
     crumbs(orgId, data.class),
     pageHead(test.title, t('tests.resultsSub')),
     testTabs(orgId, testId, '/results'),
+    retentionNotes('test', test, data.retention),
     release,
     tableCard(t('tests.tabResults'), h('table', { class: 'data' },
       h('thead', {}, h('tr', {}, [t('students.student'), t('tests.best'), t('tests.attemptsCol')].map(th))),
@@ -509,7 +515,7 @@ export async function attemptView(ctx) {
       h('div', { class: 'row spread' }, h('span', { class: 'muted' }, t(`tests.type.${q.type}`)),
         h('span', {}, earned === null ? h('span', { class: 'pill warn' }, t('tests.toMark')) : t('hw.markOf', { points: fmtNum(earned), max: fmtNum(q.points) }))),
       h('div', { class: 'prompt', dir: 'auto' }, q.prompt),
-      h('p', {}, h('b', {}, t('tests.theirAnswer')), ' ', given ? h('span', { class: 'answer-inline', dir: 'auto' }, given) : h('span', { class: 'muted' }, t('tests.noAnswer'))),
+      h('p', {}, h('b', {}, t('tests.theirAnswer')), ' ', given ? h('span', { class: 'answer-inline', dir: 'auto' }, given) : h('span', { class: 'muted' }, data.test.workRemovedAt ? t('ret.answerGone') : t('tests.noAnswer'))),
       q.type !== 'essay' && keyText(q) ? h('p', { class: 'muted' }, t('tests.answerIs'), ': ', h('span', { dir: 'auto' }, keyText(q))) : null,
       q.type === 'essay' && keyText(q) ? h('p', { class: 'muted' }, t('tests.guide'), ': ', h('span', { dir: 'auto' }, keyText(q))) : null,
       data.canMark && a.status === 'submitted' ? h('div', { class: 'mark-row' },

@@ -116,6 +116,11 @@ Migration `0014_online_tests.ts`:
 | `test_answers` | the answer (JSON), save time, automatic and teacher points, comment |
 | `test_events` | started, resumed, left the page / returned (seconds), paste (length only), offline / online, another device, device allowed, extra time, submitted, time up, submitted by the teacher, closed |
 
+Migration `0015_classroom_retention.ts` adds `tests.work_removed_at`, `tests.monitoring_removed_at` and
+`tests.retention_hold`: the school's retention periods (docs/CLASSROOM.md §11) can delete a test's
+monitoring events, then its answers (each becomes JSON `null`; marks, comments and scores stay), then the
+test with everything in it.
+
 All tables have forced row-level security on `org_id` like the rest of the schema. A student's requests
 run with `app.current_student` set (`withStudentContext`), and then:
 
@@ -211,7 +216,9 @@ Marks and monitoring events are personal data of children. Before a school enter
 the school (as controller) needs legal advice on Egypt's Personal Data Protection Law; its executive
 regulations' grace period ends around 1 November 2026. Platform administrators get no automatic access:
 support access is as for the rest of a school's data (docs/SECURITY_DESIGN.md). Attempts, answers and
-events are deleted with the test, the class, or the student.
+events are deleted with the test, the class, or the student, and by the school's own retention periods
+(docs/CLASSROOM.md §11): monitoring events and answers can each be kept for a shorter time than marks.
+Nothing is deleted until the school sets a period, and owners and admins are told at least 14 days before.
 
 ## 12. Not done yet
 

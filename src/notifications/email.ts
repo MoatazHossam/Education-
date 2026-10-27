@@ -101,6 +101,16 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
       text: `مرحبًا ${p.name}،\n\nتحتاج هذه الكتب المسندة إليك في ${p.orgName} إلى متابعة:\n\n${p.sections}\n\nحدّث حالتها أو اطّلع على كل كتبك:\n${p.link}\n\nتصلك هذه الرسالة لأن كتبًا لها مواعيد أُسندت إليك. يصلك تذكير واحد لكل كتاب عند اقتراب موعده وآخر عند تأخره. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}`,
     }),
   },
+  classroom_retention: {
+    en: (p) => ({
+      subject: `Classroom data in ${p.orgName} will be deleted from ${p.date}`,
+      text: `Hello ${p.name},\n\nUnder the retention periods set for ${p.orgName}, this classroom data will be deleted on or after the date shown:\n\n${p.items}\n\nBefore then you can download the gradebooks you need, keep an item longer, or change the periods:\n${p.link}\n\nYou receive this because you are an owner or admin of ${p.orgName}.${SIGN_EN}`,
+    }),
+    ar: (p) => ({
+      subject: `ستُحذف بيانات من الفصول في ${p.orgName} بدءًا من ${p.date}`,
+      text: `مرحبًا ${p.name}،\n\nوفق مدد الاحتفاظ المحددة لـ ${p.orgName}، ستُحذف بيانات الفصول التالية في التاريخ المبيّن أو بعده:\n\n${p.items}\n\nقبل ذلك يمكنك تنزيل دفاتر الدرجات التي تحتاجها، أو الاحتفاظ بعنصر مدة أطول، أو تغيير المدد:\n${p.link}\n\nتصلك هذه الرسالة لأنك مالك أو مسؤول في ${p.orgName}.${SIGN_AR}`,
+    }),
+  },
   catalog_review: {
     en: (p) => ({ subject: `${p.count} ${p.count === '1' ? 'item' : 'items'} in your scopes ${p.count === '1' ? 'is' : 'are'} under review`, text: `Our curriculum team flagged ${p.count} catalogue items that ${p.orgName} has selected:\n${p.items}\n\nNote: ${p.note}\n\nAffected scopes:\n${p.scopes}\n\nOpen: ${p.link}\n\nTurn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
     ar: (p) => ({ subject: `${p.count} من العناصر في نطاقاتك قيد المراجعة`, text: `أشار فريق المناهج إلى ${p.count} من عناصر الدليل التي اختارتها ${p.orgName}:\n${p.items}\n\nالملاحظة: ${p.note}\n\nالنطاقات المتأثرة:\n${p.scopes}\n\nفتح: ${p.link}\n\nيمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),

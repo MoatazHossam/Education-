@@ -318,6 +318,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Files:** `src/db/migrations/0014_online_tests.ts`, `src/classroom/{marking,tests-service,tests-routes,tests-student-routes}.ts`, `src/classroom/{routes,student-routes}.ts`, `src/worker.ts`, `src/app.ts`, `public/js/views/{tests,student-tests,classroom-common,classes,student}.js`, `public/js/{dom,main,i18n}.js`, `public/app.css`.
 - **Tests:** `tests/unit/test-marking.test.ts` (5), `tests/integration/online-tests.test.ts` (8), the route coverage tests, journey 21, and the test pages in the accessibility audit.
 
+### Keeping classroom data (retention periods per school) · COMPLETE (off until a school sets periods; the periods are the school's legal decision)
+
+- **Asked:** "start on item 1" of the next priorities (§4.2): each school sets how long it keeps classroom data, with a notice before deletion and the gradebook to download.
+- **Implemented** (`docs/CLASSROOM.md` §11):
+  - **Three periods per school**, in days from a homework's due time or a test's end: test monitoring records; students' work (homework answers and files, test answers); homework and tests with their marks. All unset ("Keep") until a school chooses: nothing is deleted before that. Work and monitoring cannot outlive their homework or test.
+  - **Notice first:** when an item comes within 14 days of its period's end, owners and admins get an in-app notification and an email listing it; deletion waits at least 14 days after the notice, so a short period on old data never deletes anything at once. Saving shows how many items are already past the new periods and asks to confirm.
+  - **Checked again when the date comes:** a longer period, a later due or closing time, or a hold cancels the deletion; a test with an attempt still running waits.
+  - **Keep one item** (an appeal): a hold per homework or test, and "Let the periods apply" to lift it.
+  - **What stays:** after work is deleted, hand-in times, marks, comments, automatic marks per answer and scores stay, and the gradebook is unchanged until the homework or test itself is deleted. Re-marking an attempt keeps the stored automatic mark of a deleted answer.
+  - **Pages:** Classes → Keeping data (periods, what is due with a gradebook link and Keep, what is kept); homework and test pages say what is due or was deleted; students read that their answer was deleted because the school keeps work for a limited time, with their mark still shown. English and Arabic.
+  - **Worker:** hourly, per school in its own tenant transaction (row-level security limits every deletion to that school); notices between 08:00 and 21:00 Cairo time; suspended schools skipped. Audited: `classroom.retention_updated`, `classroom.retention_hold`, and `classroom.retention_applied` by the system with titles and counts, never student work.
+- **Not done:** classes, enrolments and student accounts are not deleted by the periods (schools remove those themselves); teachers are not notified (their pages show it); backups keep deleted data until pruned.
+- **Before real use:** the periods themselves come from the school's legal advice (B-5, B-9).
+- **Files:** `src/db/migrations/0015_classroom_retention.ts`, `src/db/{migrator,types}.ts`, `src/classroom/{retention,retention-routes}.ts`, `src/classroom/{service,routes,tests-service,tests-routes}.ts`, `src/notifications/email.ts`, `src/worker.ts`, `src/app.ts`, `public/js/views/{retention,classes,tests,student,student-tests}.js`, `public/js/{main,i18n}.js`.
+- **Tests:** `tests/integration/classroom-retention.test.ts` (4), journey 23, 7 more screens in the accessibility audit, the guide scripts (one new screenshot per language).
+
 ### Gradebook, My grades and the user guides (teacher and student portal, part 3 of 3) · COMPLETE (off for every school; legal assessment pending before real use)
 
 - **Implemented** (`docs/CLASSROOM.md` §10):
@@ -542,11 +558,12 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 ## 4. Next development priorities
 
-Where things stand (2026-10-27): the teacher and student portal is complete and off for every school.
+Where things stand (2026-10-27): the teacher and student portal is complete and off for every school,
+and schools can now set how long they keep its data (4.2 item 1, done the same day; see Keeping classroom data above).
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
-pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Nothing
-below is started.
+pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
+item 1 is done; nothing else below is started.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -554,7 +571,7 @@ These block release; development cannot do them.
 
 | # | What | Why now | Blocker |
 | --- | --- | --- | --- |
-| 1 | Legal advice on students' data: accounts, homework and its files, marks, test answers and the monitoring signals. It should cover parental consent, the school as controller and the agreement with it, how long each kind of data is kept, the privacy notice, PDPL licensing and the hosting location | The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 (SECURITY_DESIGN §7). Until the advice is in, keep student accounts and the portal off for every school. The answers set the retention periods in 4.2 item 1 | B-5, B-9 |
+| 1 | Legal advice on students' data: accounts, homework and its files, marks, test answers and the monitoring signals. It should cover parental consent, the school as controller and the agreement with it, how long each kind of data is kept, the privacy notice, PDPL licensing and the hosting location | The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 (SECURITY_DESIGN §7). Until the advice is in, keep student accounts and the portal off for every school. The answers set the retention periods each school enters (Classes → Keeping data, built) | B-5, B-9 |
 | 2 | Clear the GitHub billing lock, then let CI run on `main` on GitHub-hosted runners | PRs #22 and #23 were merged on local checks only | B-7 |
 | 3 | Paymob test-mode keys, then `npm run paymob:check` and the staging checklist (DEPLOYMENT_GUIDE §3.5); decide the tax position | No real billing until then | B-2, B-3 |
 | 4 | Production host, SMTP and alert channels, the backup job, then a restore drill | Nothing can be deployed | B-4 |
@@ -569,7 +586,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 
 | # | Item | Why | Size |
 | --- | --- | --- | --- |
-| 1 | **Retention of classroom data.** Each school sets periods for homework work and files, marks, test answers and monitoring events. A worker job deletes data past its period, with a notice to the school beforehand and a CSV export of the gradebook. Off until periods are set | Nothing is deleted automatically today (SECURITY_DESIGN §7) and the legal advice will ask for it. The mechanism does not depend on the periods chosen | 3–5 |
+| 1 | ~~**Retention of classroom data.**~~ **Done 2026-10-27** (Keeping classroom data, above): three periods per school, notices 14 days ahead to owners and admins, a hold per item, the gradebook linked for download, off until set | — | — |
 | 2 | **Exams at school scale.** Load-test one online test with 100–300 students saving answers and sending heartbeats, and several teachers on the live monitor, on the two-instance stack. Then count the flood guard per student session on the portal's routes, or raise it for them | A whole grade sitting an exam from one school network is the busiest moment in the product, and it is untested. A class of 30 taking a test makes about 200 requests a minute (STUDENT_ACCOUNTS §9), so about 90 students on one address reach the guard's 600 a minute on one instance | 2–3 |
 | 3 | **Safer uploads.** Scan homework files for viruses in the worker before a teacher can open them, and resize large photos | Children's files are opened on teachers' devices. CLASSROOM §5 lists both as not done | 2–3 |
 | 4 | **Screen-reader checklist for the portal.** Add tasks for handing in homework, taking a timed test (what the timer and saving announce), the live monitor, marking and the gradebook, in both languages, with checks for each on the results page | Needed before the manual review (4.1 item 6) | 1 |
@@ -582,7 +599,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #23 is merged. The branch `claude/friendly-rubin-hmemjl` was brought up
-to `main` (`6837f1a`) for follow-up work. The next development step is 4.2 item 1 (retention),
-unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #23 is merged. On `claude/friendly-rubin-hmemjl` (from `main` at
+`6837f1a`): the status update, then 4.2 item 1 (retention of classroom data). The next development step
+is 4.2 item 2 (exams at school scale), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

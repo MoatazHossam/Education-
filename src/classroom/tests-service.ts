@@ -76,6 +76,9 @@ export function testJson(t: Test, now = new Date()) {
     requireCode: t.access_code !== null,
     oneDevice: t.one_device,
     publishedAt: t.published_at,
+    // Deleted under the school's retention periods (classroom/retention.ts).
+    workRemovedAt: t.work_removed_at,
+    monitoringRemovedAt: t.monitoring_removed_at,
   };
 }
 
@@ -138,7 +141,7 @@ export async function markAttempt(exec: Executor, attemptId: string): Promise<vo
     .where('q.test_id', '=', attempt.test_id)
     .execute();
   const answers = new Map(
-    (await exec.selectFrom('test_answers').select(['question_id', 'answer', 'manual_points']).where('attempt_id', '=', attemptId).execute()).map((a) => [a.question_id, a]),
+    (await exec.selectFrom('test_answers').select(['question_id', 'answer', 'auto_points', 'manual_points']).where('attempt_id', '=', attemptId).execute()).map((a) => [a.question_id, a]),
   );
   let auto = 0;
   let manual = 0;
@@ -147,8 +150,10 @@ export async function markAttempt(exec: Executor, attemptId: string): Promise<vo
   for (const q of questions) {
     const given = answers.get(q.id);
     const points = Number(q.points);
-    const a = autoMark(q.type, points, (q.key ?? []) as AnswerKey, given?.answer as GivenAnswer | undefined);
-    if (given) await exec.updateTable('test_answers').set({ auto_points: a }).where('attempt_id', '=', attemptId).where('question_id', '=', q.id).execute();
+    // An answer deleted under the school's retention periods (classroom/retention.ts) keeps the automatic mark it had.
+    const removed = given !== undefined && given.answer === null;
+    const a = removed ? num(given.auto_points) : autoMark(q.type, points, (q.key ?? []) as AnswerKey, given?.answer as GivenAnswer | undefined);
+    if (given && !removed) await exec.updateTable('test_answers').set({ auto_points: a }).where('attempt_id', '=', attemptId).where('question_id', '=', q.id).execute();
     const m = num(given?.manual_points ?? null);
     if (a !== null) auto += a;
     if (m !== null) manual += m;

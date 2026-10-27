@@ -371,6 +371,19 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(studentPage.getByRole('heading', { name: 'درجاتي', level: 1 })).toBeVisible();
   await audit(studentPage, 'student grades (Arabic)');
   await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  // Keeping classroom data (docs/CLASSROOM.md §11): the periods, the confirmation, what is due and what is kept.
+  const retentionPath = `/org/${orgId}/classes/retention`;
+  await visit(page, retentionPath, 'keeping classroom data (nothing set)');
+  await page.getByLabel('Test monitoring records').selectOption({ label: '7 days' });
+  await page.getByRole('button', { name: 'Save periods' }).click();
+  await expect(page.getByRole('dialog', { name: 'Delete data past these periods?' })).toBeVisible();
+  await audit(page, 'retention confirmation dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save periods' }).click();
+  await expect(page.getByRole('button', { name: 'Keep “Letters quiz”' })).toBeVisible();
+  await audit(page, 'keeping classroom data (due to be deleted)');
+  await page.getByRole('button', { name: 'Keep “Letters quiz”' }).click();
+  await expect(page.getByRole('heading', { name: 'Kept whatever the periods say' })).toBeVisible();
+  await audit(page, 'keeping classroom data (kept)');
 
   // Arabic (right to left).
   await page.goto(`/org/${orgId}?scope=${scopeId}`);
@@ -383,6 +396,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
     [`/org/${orgId}/classes`, 'classes (Arabic)'], [classPath, 'class (Arabic)'], [homeworkPath, 'homework (Arabic)'],
     [testPath, 'test (Arabic)'], [monitorPath, 'test live monitor (Arabic)'], [resultsPath, 'test results (Arabic)'], [gradebookPath, 'gradebook (Arabic)'],
+    [retentionPath, 'keeping classroom data (Arabic)'],
   ] as const) await visit(page, path, where);
   // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
   // (not "e2e.test@a11y…"), and a book title keeps the bracket it closes.
@@ -407,6 +421,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, testPath, 'test (dark)');
   await visit(page, monitorPath, 'test live monitor (dark)');
   await visit(page, gradebookPath, 'gradebook (dark)');
+  await visit(page, retentionPath, 'keeping classroom data (dark)');
   await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
   // Phone.
@@ -418,6 +433,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(phone, itemsPath, 'notes and assignees (phone)');
   await visit(phone, assignmentsPath, 'my assignments (phone)');
   await visit(phone, `/org/${orgId}/settings`, 'settings (phone)');
+  await visit(phone, retentionPath, 'keeping classroom data (phone)');
   await visit(phone, allAssignmentsPath, 'my assignments in all organizations (phone)');
 
   // Platform admin.

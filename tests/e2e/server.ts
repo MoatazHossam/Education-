@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
+import { runClassroomRetention } from '../../src/classroom/retention.js';
 import { loadConfig } from '../../src/config.js';
 import { createDatabase } from '../../src/db/index.js';
 import { runAssignmentDigests } from '../../src/scopes/digest.js';
@@ -132,6 +133,16 @@ export async function runWebhookPass() {
   const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
   try {
     return await processWebhookDeliveries(db, loadConfig(E2E_ENV));
+  } finally {
+    await db.destroy();
+  }
+}
+
+/** One pass of the worker's classroom retention (docs/CLASSROOM.md §11) against the E2E database. */
+export async function runRetentionPass(now: Date) {
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  try {
+    return await runClassroomRetention(db, loadConfig(E2E_ENV), now);
   } finally {
     await db.destroy();
   }

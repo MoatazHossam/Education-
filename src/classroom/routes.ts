@@ -11,6 +11,7 @@ import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { getScope } from '../scopes/service.js';
 import { zGrade } from '../students/service.js';
+import { itemRetention } from './retention.js';
 import { classTests } from './tests-service.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
 import {
@@ -264,6 +265,7 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
         canEdit: teachesSubject(acc, hw.subject_en),
         files: await filesOf(trx, { homeworkId }),
         roster: await homeworkRoster(trx, hw),
+        retention: await itemRetention(trx, 'homework', hw),
       };
     });
   });

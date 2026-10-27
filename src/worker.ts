@@ -1,5 +1,6 @@
 import pino from 'pino';
 import { runBillingLifecycle } from './billing/service.js';
+import { runClassroomRetention } from './classroom/retention.js';
 import { runHomeworkAnnouncements } from './classroom/service.js';
 import { runTestDeadlines } from './classroom/tests-service.js';
 import { loadConfig } from './config.js';
@@ -48,6 +49,10 @@ async function main() {
       }
       if (Date.now() - lastCleanup > CLEANUP_EVERY_MS) {
         tick.cleanup = await runCleanup(db, config);
+        // Schools' own retention periods for classroom data (docs/CLASSROOM.md §11).
+        const retention = await runClassroomRetention(db, config);
+        if (retention.failed) log.warn({ retention }, 'classroom retention failed for some schools; they are retried on the next pass');
+        tick.retention = retention;
         lastCleanup = Date.now();
       }
       await heartbeat(db, 'worker', { ...tick, pid: process.pid });

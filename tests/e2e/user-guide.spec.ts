@@ -707,6 +707,19 @@ test('user guide screenshots', async ({ browser }) => {
   await expect(student.getByRole('heading', { name: L('grades.mine'), level: 1 })).toBeVisible();
   await shot(student, 'student-grades');
 
+  // Mona sets how long the school keeps classroom data; the test's monitoring records come due.
+  await mona.goto(`/org/${orgId}/classes`);
+  await mona.getByRole('link', { name: L('ret.link') }).click();
+  await expect(mona.getByRole('heading', { name: L('ret.title'), level: 1 })).toBeVisible();
+  await mona.getByLabel(L('ret.stage.monitoring')).selectOption({ label: L('ret.daysFew', { n: fmt(7) }) });
+  await mona.getByLabel(L('ret.stage.work')).selectOption({ label: L('ret.year1') });
+  await mona.getByLabel(L('ret.stage.records')).selectOption({ label: L('ret.yearsFew', { n: fmt(3) }) });
+  await mona.getByRole('button', { name: L('ret.save') }).click();
+  await expect(dialog(mona)).toContainText(L('ret.confirmTitle'));
+  await dialog(mona).getByRole('button', { name: L('ret.save') }).click();
+  await expect(mona.getByRole('button', { name: L('ret.keepItemLabel', { title: DEMO.testTitle }) })).toBeVisible();
+  await shot(mona, 'retention', undefined, { fullPage: true });
+
   // ================================================================ settings: organization, API keys, webhooks, support access
   await mona.goto(`/org/${orgId}/settings`);
   await expect(mona.getByRole('heading', { name: L('settings.title'), level: 1 })).toBeVisible();

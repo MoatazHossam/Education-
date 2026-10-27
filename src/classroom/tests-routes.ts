@@ -10,6 +10,7 @@ import { rateLimited } from '../http/rate-limit.js';
 import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { attemptDeadline, newAccessCode, questionProblem } from './marking.js';
+import { itemRetention } from './retention.js';
 import { assertClassroomEnabled, assertTeachesSubject, classAccess, num, teachesSubject, zPoints, zSubjectName, type ClassAccess } from './service.js';
 import {
   giveExtraTime,
@@ -161,6 +162,7 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
         canEdit,
         started: await hasAttempts(trx, testId),
         questions: await testQuestions(trx, testId, canEdit),
+        retention: await itemRetention(trx, 'test', test),
       };
     });
   });
@@ -440,6 +442,7 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
         test: testJson(test),
         class: { id: acc.cls.id, name: acc.cls.name },
         canEdit,
+        retention: await itemRetention(trx, 'test', test),
         students: rows.map((r) => ({
           studentId: r.studentId,
           name: r.name,

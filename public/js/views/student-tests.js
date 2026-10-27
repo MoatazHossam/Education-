@@ -300,7 +300,7 @@ export async function resultView(ctx) {
       h('div', { class: 'row spread' }, h('span', { class: 'muted' }, t('ptests.questionN', { n: fmtNum(i + 1), total: fmtNum(data.questions.length) })),
         q.waiting ? h('span', { class: 'pill warn' }, t('ptests.waiting')) : h('span', { class: q.earned === q.points ? 'pill ok' : 'pill' }, t('hw.markOf', { points: fmtNum(q.earned ?? 0), max: fmtNum(q.points) }))),
       h('div', { class: 'prompt', dir: 'auto' }, q.prompt),
-      h('p', {}, h('b', {}, t('ptests.yourAnswer')), ': ', given ? h('span', { dir: 'auto' }, given) : h('span', { class: 'muted' }, t('tests.noAnswer'))),
+      h('p', {}, h('b', {}, t('ptests.yourAnswer')), ': ', given ? h('span', { dir: 'auto' }, given) : h('span', { class: 'muted' }, data.test.workRemovedAt ? t('ret.student.answerGone') : t('tests.noAnswer'))),
       correct ? h('p', { class: 'muted' }, t('tests.answerIs'), ': ', h('span', { dir: 'auto' }, correct)) : null,
       q.feedback ? h('div', { class: 'answer', dir: 'auto' }, q.feedback) : null);
   });

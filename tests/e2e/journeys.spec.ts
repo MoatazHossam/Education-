@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, runWebhookPass, startServer, stopServer } from './server.js';
+import { latestEmailText, ownerQuery, runDigestPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -1079,5 +1079,64 @@ test('gradebook: the teacher sees the class’s marks for a subject and download
   await expect(card).toContainText('Average: 90.6%');
   await expect(card.locator('tbody tr', { hasText: 'Read chapter 1' })).toContainText('9 / 10');
   await expect(card.locator('tbody tr', { hasText: 'Chapter 1 quiz' })).toContainText('5.5 / 6');
+  await studentCtx.close();
+});
+
+test('keeping classroom data: the owner sets how long work is kept, keeps a test, and after the notice the work is deleted but the mark stays', async ({ page, browser }) => {
+  // Journeys 20–22's class 7A: Laila's homework (with a photo, marked 9 / 10) and her test (5.5 / 6), both now 40 days old.
+  await ownerQuery(`UPDATE homework SET publish_at = now() - interval '50 days', due_at = now() - interval '40 days' WHERE org_id = $1 AND title = 'Read chapter 1'`, [delta.orgId]);
+  // (A test closed early ends when it was closed, so that moves too.)
+  await ownerQuery(`UPDATE tests SET opens_at = now() - interval '41 days', closes_at = now() - interval '40 days', closed_early_at = CASE WHEN closed_early_at IS NULL THEN NULL ELSE now() - interval '40 days' END WHERE org_id = $1 AND title = 'Chapter 1 quiz'`, [delta.orgId]);
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: 'Keeping data' }).click();
+  await expect(page.getByRole('heading', { name: 'Keeping classroom data', level: 1 })).toBeVisible();
+  await expect(page.getByText('Nothing is due to be deleted.')).toBeVisible();
+  await expect(page.getByLabel('Students’ work')).toHaveValue('');
+
+  // Thirty days for students' work: both are past it, so saving asks first.
+  await page.getByLabel('Students’ work').selectOption({ label: '30 days' });
+  await page.getByRole('button', { name: 'Save periods' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Delete data past these periods?' });
+  await expect(confirm).toContainText('homework: 1, tests: 1');
+  await confirm.getByRole('button', { name: 'Save periods' }).click();
+  await expect(page.getByText('Saved. Owners and admins were told what will be deleted (2).')).toBeVisible();
+  const due = page.locator('section.card', { has: page.getByRole('heading', { name: 'Due to be deleted' }) });
+  await expect(due.locator('tbody tr', { hasText: 'Read chapter 1' })).toContainText('Students’ work');
+  await expect(due.locator('tbody tr', { hasText: 'Chapter 1 quiz' })).toContainText('Students’ answers');
+  expect(await latestEmailText(delta.ownerEmail, 'classroom_retention')).toContain('• 7A — “Read chapter 1”: students’ work, on or after');
+
+  // The test is under appeal: keep it.
+  await page.getByRole('button', { name: 'Keep “Chapter 1 quiz”' }).click();
+  await expect(page.getByText('Kept: Chapter 1 quiz')).toBeVisible();
+  const kept = page.locator('section.card', { has: page.getByRole('heading', { name: 'Kept whatever the periods say' }) });
+  await expect(kept).toContainText('Chapter 1 quiz');
+  await expect(due.locator('tbody tr')).toHaveCount(1);
+
+  // Fourteen days after the notice the worker deletes the homework work; the kept test is untouched.
+  expect(await runRetentionPass(new Date(Date.now() + 15 * 86_400_000))).toMatchObject({ removed: 1, failed: 0 });
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('link', { name: 'Read chapter 1' }).click();
+  await expect(page.getByText(/^Students’ work was deleted on .+, under your school’s retention periods\. Hand-in times, marks and comments are kept\.$/)).toBeVisible();
+  await page.getByRole('button', { name: 'Open the work of Laila Hassan' }).click();
+  const work = page.getByRole('dialog');
+  await expect(work).toContainText('The answer and files were deleted under the school’s retention periods.');
+  await expect(work.getByLabel('Mark (out of 10)')).toHaveValue('9');
+  await work.getByRole('button', { name: 'Cancel' }).click();
+
+  // Laila still has her mark; her answer and photo are gone, and she is told why.
+  const studentCtx = await browser.newContext();
+  const student = await studentCtx.newPage();
+  await student.goto(`/student-login?school=${delta.schoolCode}`);
+  await student.getByLabel('Username').fill('laila.e2e');
+  await student.getByLabel('Password').fill(delta.lailaPassword);
+  await student.getByRole('button', { name: 'Sign in' }).click();
+  await student.getByRole('link', { name: 'Grades' }).click();
+  const card = student.locator('section.card', { has: student.getByRole('heading', { name: `${delta.subject} · 7A` }) });
+  await expect(card.locator('tbody tr', { hasText: 'Read chapter 1' })).toContainText('9 / 10');
+  await card.getByRole('link', { name: 'Read chapter 1' }).click();
+  await expect(student.getByText(/^Your answer and files were deleted on .+, because your school keeps work for a limited time\./)).toBeVisible();
+  await expect(student.locator('.mark-big')).toHaveText('9 / 10');
   await studentCtx.close();
 });

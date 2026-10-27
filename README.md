@@ -12,7 +12,9 @@ Schools can also create student accounts, organize **classes** with their teache
 **homework** that students hand in online (text, photos, PDFs) and teachers mark and return. Teachers
 give **online tests and exams** with a server-kept clock, watch them live (more time, retakes, closing
 early), mark written answers and release results. A **gradebook** gathers each class's marks by
-subject (with a CSV download), and students see their own under **Grades**.
+subject (with a CSV download), and students see their own under **Grades**. Each school decides how
+long it keeps students' work, marks and test monitoring records; nothing is deleted until it does, and
+owners and admins are told 14 days before anything is.
 English and Arabic (RTL).
 
 > **Status: not production ready.** Functionally complete and tested locally; blocked on

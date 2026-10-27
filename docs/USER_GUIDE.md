@@ -653,6 +653,43 @@ shown.
 
 ![Omar's grades: the Unit 2 quiz 5.5 / 6, the homework 9 / 10, average 90.6%](user-guide/images/student-grades.png)
 
+### Keeping classroom data
+
+Owners and admins choose how long the school keeps classroom data: **Classes**
+→ **Keeping data**. There are three periods, each counted from a homework's due
+time or a test's end:
+
+- **Test monitoring records**: when students left the test page, pasted, lost
+  the connection or used another device;
+- **Students' work**: homework answers and files, and test answers. Hand-in
+  times, marks and comments stay;
+- **Homework and tests, with their marks**: the whole homework or test. It
+  leaves the gradebook.
+
+Every period starts as **Keep (no automatic deletion)**, and nothing is deleted
+until you choose one. How long to keep each kind is your school's decision: ask
+your legal adviser.
+
+Before saving, the page says how many homework and tests are already past the
+new periods. Owners and admins are told, in the app and by email, at least 14
+days before anything is deleted.
+
+**Due to be deleted** lists each homework or test, what will go and the date.
+Before that date you can:
+
+- open the class's **Gradebook** from the list and download it;
+- **Keep** an item whatever the periods say, for example during an appeal. It
+  moves to **Kept whatever the periods say**, where **Let the periods apply**
+  undoes it;
+- change the periods. A longer period cancels the deletions it no longer
+  covers.
+
+![Keeping classroom data: test monitoring records 7 days, students' work 1 year, homework and tests 3 years; the Unit 2 quiz's monitoring records are due to be deleted](user-guide/images/retention.png)
+
+Homework and test pages say what is due to be deleted and when, and afterwards
+what was deleted. A student whose answer was deleted reads that the school
+keeps work for a limited time; their mark and the teacher's comments stay.
+
 > **Before real use.** Classes, homework, tests and marks hold children's
 > personal data. The school needs legal advice under Egypt's data protection
 > law before it enters real students' work and marks.
@@ -889,6 +926,8 @@ The system also sends:
 - ownership transfers;
 - catalogue entries flagged for review;
 - the daily summary of assigned books;
+- classroom data due to be deleted (to owners and admins, at least 14 days
+  ahead);
 - the trial-ending reminder and the end of the trial;
 - renewal invoices, failed payments and overdue renewals;
 - the end of a subscription.
@@ -1028,6 +1067,9 @@ failed), for checking payments.
 - **Classroom files**: photos and PDFs only, up to 5 MB each and 5 per
   piece of work, within the school's storage limit (1 GB unless the platform
   sets more). A test has at most 100 questions.
+- **Classroom data** is kept until the school sets how long to keep it
+  (section 12, Keeping classroom data). Classes and student accounts are not
+  deleted by those periods.
 - **Integrations**: the read API and webhooks are part of the Professional
   plan and above. Single sign-on (Google, Microsoft) is not available yet.
 

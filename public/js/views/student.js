@@ -195,12 +195,14 @@ export async function homeworkDetailView(ctx) {
       sub.points !== null ? h('p', { class: 'mark-big' }, t('hw.markOf', { points: sub.points, max: hw.maxPoints })) : null,
       sub.feedback ? [h('h3', {}, t('hw.feedback')), h('div', { class: 'answer', dir: 'auto' }, sub.feedback)] : h('p', { class: 'muted' }, t('portal.noFeedback')),
       h('p', { class: 'muted' }, t('hw.returnedAt', { when: fmtDate(sub.returnedAt, true) })),
+      hw.workRemovedAt ? h('p', { class: 'notice' }, t('ret.student.workGone', { date: fmtDate(hw.workRemovedAt) })) : null,
       sub.body || sub.files.length ? [h('h3', {}, t('portal.yourWork')), sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : null,
         sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/student/files/${f.id}`, f))) : null] : null);
   } else if (sub.status === 'submitted') {
     work = h('section', { class: 'card', 'aria-labelledby': 'work-h' },
       h('h2', { id: 'work-h' }, t('portal.yourWork')),
       h('p', { class: 'notice', role: 'status' }, t('portal.handedInAt', { when: fmtDate(sub.submittedAt, true) }), sub.late ? [' ', h('span', { class: 'pill bad' }, t('hw.status.late'))] : null),
+      hw.workRemovedAt ? h('p', { class: 'notice' }, t('ret.student.workGone', { date: fmtDate(hw.workRemovedAt) })) : null,
       sub.body ? h('div', { class: 'answer', dir: 'auto' }, sub.body) : null,
       sub.files.length ? h('ul', { class: 'files' }, sub.files.map((f) => fileItem(`/api/student/files/${f.id}`, f))) : null,
       data.closed ? null : h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => act(async () => {

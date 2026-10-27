@@ -169,6 +169,17 @@ DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `un
 columns, one row per student with each cell's status and points, average and missing count; `format=csv`
 downloads it in the member's language (formula-guarded) and is audited (`class.gradebook_exported`).
 
+### Keeping classroom data (`/api/orgs/:orgId/classroom-retention`) — owners and admins
+Rules in docs/CLASSROOM.md §11. `GET`: `{periods:{monitoringDays, workDays, recordsDays}, updatedAt, updatedBy,
+noticeDays, upcoming:[{noticeId, kind, id, title, classId, className, subjectEn, subjectAr, date, stage,
+deleteAfter, notifiedAt}], held:[…]}`. `POST …/preview` with the periods: `{homework, tests, counts, deleteFrom}`
+(what saving would announce now). `PUT` with the periods (each 1–3,650 days or `null` to keep): saves,
+drops notices no longer covered, announces what is now within 14 days to owners and admins, returns the
+`GET` body and `noticesSent`; work and monitoring longer than records: `400 RETENTION_ORDER`. `PUT …/hold`
+`{kind: "homework"|"test", id, keep}`: keeps one item whatever the periods say, or lets them apply again
+(`404` for another school's item). Audited as `classroom.retention_updated`, `classroom.retention_hold`
+and, by the worker, `classroom.retention_applied`.
+
 ### Scopes
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |

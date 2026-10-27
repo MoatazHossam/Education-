@@ -41,9 +41,20 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   e2e:
-    name: End-to-end (Playwright)
+    # The journeys in each browser; the accessibility tests run in the Chromium job.
+    name: End-to-end (Playwright, ${{ matrix.browser }})
     runs-on: ubuntu-24.04
     needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            script: test:e2e
+          - browser: firefox
+            script: test:e2e:firefox
+          - browser: webkit
+            script: test:e2e:webkit
     services:
       postgres:
         image: postgres:16-alpine
@@ -59,15 +70,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run ${{ matrix.script }}
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: |
-            playwright-report
-            test-results
+            playwright-report*
+            test-results*
           retention-days: 7
 
   docker:

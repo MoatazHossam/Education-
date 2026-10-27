@@ -7,7 +7,9 @@
 #
 # Options (environment):
 #   CI_PG_PORT               host port for the Postgres service container (default 5432)
-#   CI_SKIP_BROWSER_INSTALL  set to 1 if Playwright's Chromium is already installed
+#   CI_SKIP_BROWSER_INSTALL  set to 1 if Playwright's browsers are already installed
+#   CI_E2E_BROWSERS          browsers for the journeys (default "chromium firefox webkit"; the
+#                            accessibility tests run with Chromium)
 #   DOCKER_BUILD_ARGS        extra `docker build` arguments (e.g. proxy settings)
 #
 # Run it from a clean checkout (e.g. `git clone --branch main …`) to mirror CI exactly.
@@ -61,10 +63,18 @@ if [[ "$JOBS" == *checks* ]]; then
 fi
 
 if [[ "$JOBS" == *e2e* ]]; then
+  E2E_BROWSERS="${CI_E2E_BROWSERS:-chromium firefox webkit}"
   if [[ -z "${CI_SKIP_BROWSER_INSTALL:-}" ]]; then
-    step "e2e: install Chromium" npx playwright install --with-deps chromium
+    # shellcheck disable=SC2086 # the browser list is intentionally word-split
+    step "e2e: install browsers ($E2E_BROWSERS)" npx playwright install --with-deps $E2E_BROWSERS
   fi
-  step "e2e: Playwright journeys and accessibility" npm run test:e2e
+  for browser in $E2E_BROWSERS; do
+    if [[ "$browser" == chromium ]]; then
+      step "e2e: Playwright journeys and accessibility (Chromium)" npm run test:e2e
+    else
+      step "e2e: Playwright journeys ($browser)" npm run "test:e2e:$browser"
+    fi
+  done
 fi
 
 if [[ "$JOBS" == *docker* ]]; then

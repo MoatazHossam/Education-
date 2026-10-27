@@ -28,6 +28,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
+    "test:e2e:firefox": "playwright test -c playwright.firefox.config.ts",
+    "test:e2e:webkit": "playwright test -c playwright.webkit.config.ts",
     "check": "npm run typecheck && npm run lint && npm test",
     "docs:screenshots": "playwright test -c playwright.guide.config.ts",
     "docs:screenshots:ar": "playwright test -c playwright.guide-ar.config.ts"

@@ -7,7 +7,7 @@
 | Unit | Vitest | `tests/unit` | pure functions | Billing maths (effective plan, proration), time helpers, crypto envelope, password hashing, TOTP replay, webhook signatures (sandbox, Paymob), export formats (text layout, CSV injection), configuration guards, translation completeness, **fidelity of the catalogue to the original artifact** |
 | Integration | Vitest + `app.inject` | `tests/integration` | real PostgreSQL with production-like roles | API behaviour end to end inside the server, including database constraints and RLS |
 | Provider contract | Vitest + local HTTP simulator | `tests/integration/paymob-contract.test.ts`, `tests/helpers/paymob-simulator.ts` | simulator of Paymob's documented API | The real Paymob adapter's requests, callbacks, signatures and invoice binding |
-| End-to-end | Playwright (Chromium) | `tests/e2e/journeys.spec.ts` | real server process + real browser | User journeys, UI, crash recovery |
+| End-to-end | Playwright (Chromium, Firefox, WebKit) | `tests/e2e/journeys.spec.ts` | real server process + real browser, one browser per run on a fresh database | User journeys, UI, crash recovery, in the three engines students' and teachers' devices use |
 | Accessibility | Playwright + axe-core | `tests/e2e/accessibility.spec.ts` (runs after the journeys) | the same server, with the journeys' data | WCAG 2.2 A/AA rules on every screen and the main dialogs in English and Arabic, light and dark, desktop and phone; keyboard-only use of the picker and dialogs |
 | Security (cross-cutting) | Vitest | `tenancy`, `authz-coverage`, `auth`, `billing` | | BOLA/IDOR, privilege escalation, CSRF, brute force, webhook forgery/replay, plan-limit bypass |
 | Performance smoke | `scripts/perf-smoke.mjs` | — | running server | Latency/throughput of key endpoints |
@@ -67,14 +67,19 @@ staging host sized like production before launch; sandbox numbers are not capaci
 export TEST_PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres   # superuser for creating test DBs/roles
 npm run lint && npm run typecheck
 npm test                 # unit + integration (creates curriculum_scope_test)
-npm run test:e2e         # Playwright (creates curriculum_scope_e2e, server on :3100)
+npm run test:e2e         # Playwright, Chromium: journeys + accessibility (creates curriculum_scope_e2e, server on :3100)
+npm run test:e2e:firefox # the journeys in Firefox (fresh database)
+npm run test:e2e:webkit  # the journeys in WebKit, Safari's engine (fresh database)
 ```
-CI runs the same commands (`.github/workflows/ci.yml`) plus `npm audit --omit=dev` and a Docker
+The browsers come from `npx playwright install --with-deps chromium firefox webkit`. Every page the
+journeys open goes through `navigable()` in `tests/e2e/helpers.ts`, which works around two faults of
+Playwright 1.56's Firefox and WebKit builds (TEST_REPORT §3, cross-browser runs); Chromium is left as it is.
+CI runs the same commands (`.github/workflows/ci.yml`, one end-to-end job per browser) plus `npm audit --omit=dev` and a Docker
 build with a production-guard smoke test.
 
 ## 6. Gaps
 
-- Accessibility is checked automatically (axe-core finds roughly a third to a half of WCAG issues) plus one keyboard journey, a check of what screen readers are given (accessible names and descriptions, page titles), and a simulated screen reader (Guidepup's Virtual Screen Reader) that reads every audited screen and listens to announcements (SCREEN_READER_PRECHECK.md); no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet: SCREEN_READER_REVIEW.md is the checklist for it. No cross-browser E2E (Firefox/WebKit).
+- Accessibility is checked automatically (axe-core finds roughly a third to a half of WCAG issues) plus one keyboard journey, a check of what screen readers are given (accessible names and descriptions, page titles), and a simulated screen reader (Guidepup's Virtual Screen Reader) that reads every audited screen and listens to announcements (SCREEN_READER_PRECHECK.md); no manual review with a screen reader (NVDA, VoiceOver, TalkBack) yet: SCREEN_READER_REVIEW.md is the checklist for it. The accessibility tests run in Chromium only.
 - Paymob adapter tested against a simulator and an independent HMAC vector, not against Paymob; run `npm run paymob:check` with test-mode keys, then the staging checklist.
 - No load test on production-sized infrastructure; no chaos testing of PostgreSQL failover.
-- E2E runs Chromium only.
+- The journeys run in Playwright's Linux builds of Chromium, Firefox and WebKit, not in branded browsers (Safari on macOS and iOS, Firefox and Chrome on Windows and Android) or on real phones and tablets.

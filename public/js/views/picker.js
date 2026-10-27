@@ -98,9 +98,12 @@ export async function pickerView(ctx) {
 
   function scheduleFlush() {
     clearTimeout(flushTimer);
-    flushTimer = setTimeout(() => { flushing = flushing.then(flush); }, FLUSH_MS);
+    flushTimer = setTimeout(() => { flushTimer = null; flushing = flushing.then(flush); }, FLUSH_MS);
   }
 
+  // Saves are keepalive requests, which the browser completes after the page is gone (a reload or a
+  // closed tab); an ordinary request would be cancelled with the page. "Saved" is said once nothing
+  // is left to send.
   async function flush() {
     if (!pending.add.size && !pending.remove.size) return;
     const add = [...pending.add];
@@ -109,10 +112,11 @@ export async function pickerView(ctx) {
     pending.remove.clear();
     try {
       for (let i = 0; i < Math.max(add.length, remove.length); i += 2000) {
-        const res = await post(`/api/orgs/${orgId}/scopes/${scope.id}/items`, { add: add.slice(i, i + 2000), remove: remove.slice(i, i + 2000) });
+        const body = { add: add.slice(i, i + 2000), remove: remove.slice(i, i + 2000) };
+        const res = await post(`/api/orgs/${orgId}/scopes/${scope.id}/items`, body, { keepalive: JSON.stringify(body).length < 60_000 });
         scope.itemCount = res.itemCount;
       }
-      say(t('picker.saved'));
+      if (!flushTimer && !pending.add.size && !pending.remove.size) say(t('picker.saved'));
     } catch (err) {
       // Roll back the optimistic change so the screen matches the server.
       for (const id of add) { sel.delete(id); setPressed(id); }
@@ -148,7 +152,12 @@ export async function pickerView(ctx) {
     else toast(t('picker.scopeReadOnly'));
   }
 
-  window.addEventListener('beforeunload', () => { if (pending.add.size || pending.remove.size) void flush(); }, { once: true });
+  // Leaving the page sends what is waiting at once. pagehide, not beforeunload: Safari does not always fire the latter.
+  window.addEventListener('pagehide', () => {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+    void flush();
+  }, { once: true });
 
   // ------------------------------------------------------------ controls
   const mkBtn = (cls, label, pressed, on, extra = {}) => h('button', { type: 'button', class: cls, 'aria-pressed': String(pressed), onclick: on, ...extra }, label);

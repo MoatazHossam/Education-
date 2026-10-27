@@ -5,8 +5,8 @@ coverage/
 .env.*
 !.env.example
 !.env.docker.example
-test-results/
-playwright-report/
+test-results*/
+playwright-report*/
 backups/
 *.log
 .DS_Store

@@ -38,7 +38,7 @@ Phases 0–5 below were executed in this repository; their status is in PROJECT_
 | P1 | ~~Catalogue change notifications (subjects/editions changed since your scope was made)~~ — done (PROJECT_STATUS: catalogue change notifications) | — | Core value: freshness |
 | P1 | ~~Verification badges and source per subject/material~~ — done (PROJECT_STATUS: catalogue verification marks) | — | Trust |
 | P1 | ~~Shared rate-limit store and second app instance~~ — done (PROJECT_STATUS: shared rate limits; two app instances behind Caddy) | — | Availability |
-| P1 | ~~Automated accessibility audit (axe)~~ — done (PROJECT_STATUS: accessibility audit); still open: manual screen-reader review (checklist ready: SCREEN_READER_REVIEW.md), Firefox/WebKit E2E | 1–2 | NFR-7/8 |
+| P1 | ~~Automated accessibility audit (axe)~~ — done (PROJECT_STATUS: accessibility audit); still open: manual screen-reader review (checklist ready: SCREEN_READER_REVIEW.md). Firefox/WebKit E2E done (PROJECT_STATUS: journeys in Firefox and WebKit) | 1–2 | NFR-7/8 |
 | P2 | ~~Bulk catalogue import/export (CSV) for editors~~ — done (PROJECT_STATUS: catalogue spreadsheet export and import) | — | Editorial efficiency |
 | P2 | ~~Scope comparison~~ and ~~per-item notes and assignees~~ — done (PROJECT_STATUS: scope comparison; notes and assignees) | — | Team workflow |
 | P2 | ~~Webhooks to customer systems on scope change~~ — done (PROJECT_STATUS: webhooks to customer systems) | — | Integrations |

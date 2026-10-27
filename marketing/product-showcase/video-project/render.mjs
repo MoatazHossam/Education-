@@ -1,8 +1,10 @@
 // Renders a cut to video: the player draws every frame in Chromium, frames are piped to FFmpeg
 // (H.264), in parallel chunks that are joined without re-encoding. Audio is added by build.mjs.
+// An interrupted render resumes: finished chunks are kept and only the missing ones are drawn.
 //   node render.mjs <20|3> <1080|2160> [--from s] [--to s] [--workers n] [--out file]
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -29,8 +31,9 @@ const fps = tl.fps;
 const from = Math.round(Number(opt('from', 0)) * fps);
 const to = Math.min(Math.round(Number(opt('to', tl.duration)) * fps), Math.round(tl.duration * fps));
 const total = to - from;
-const work = join(ROOT, 'build', `.chunks-${cut}-${height}`);
-rmSync(work, { recursive: true, force: true });
+// Chunks are kept per timeline and encoder settings, so a re-run reuses only chunks of the same picture.
+const key = createHash('sha1').update(JSON.stringify({ v: 2, tl: { ...tl, shots: undefined }, crf, scale })).digest('hex').slice(0, 12);
+const work = join(ROOT, 'build', `.chunks-${cut}-${height}-${key}`);
 mkdirSync(work, { recursive: true });
 mkdirSync(dirname(out), { recursive: true });
 console.log(`${cut}: ${(tl.duration / 60).toFixed(2)} min, frames ${from}–${to} (${total}) at ${height}p, ${workers} workers`);
@@ -48,41 +51,48 @@ async function renderChunk(browser, i, f0, f1) {
   await page.waitForFunction(() => typeof window.__init === 'function');
   await page.evaluate((t) => window.__init(t), tl);
   const cdp = await page.context().newCDPSession(page);
-  const file = join(work, `${String(i).padStart(3, '0')}.mp4`);
+  const file = chunkFile(i);
   const ff = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
     '-c:v', 'libx264', '-preset', height > 1080 ? 'medium' : 'slow', '-crf', crf, '-pix_fmt', 'yuv420p', '-profile:v', 'high',
-    '-x264-params', 'threads=2', '-r', String(fps), '-movflags', '+faststart', file], { stdio: ['pipe', 'inherit', 'inherit'] });
+    '-x264-params', 'threads=2', '-r', String(fps), '-movflags', '+faststart', '-f', 'mp4', `${file}.part`], { stdio: ['pipe', 'inherit', 'inherit'] });
   const exited = new Promise((res, rej) => ff.on('exit', (c) => (c === 0 ? res() : rej(new Error(`ffmpeg ${c}`)))));
   for (let f = f0; f < f1; f++) {
     await page.evaluate((t) => window.__seek(t), f / fps);
     // CDP's capture directly: Playwright's screenshot adds waits this deterministic player does not need.
-    const { data } = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 94, optimizeForSpeed: true, captureBeyondViewport: false });
+    // Without a clip scale the capture is taken at 1920 × 1080 whatever the device scale factor.
+    const { data } = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 94, optimizeForSpeed: true, captureBeyondViewport: false, clip: { x: 0, y: 0, width: 1920, height: 1080, scale } });
     const buf = Buffer.from(data, 'base64');
     if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once('drain', r));
     done++;
     if (done % 300 === 0) {
       const el = (Date.now() - started) / 1000;
-      console.log(`  ${done}/${total} frames, ${(done / el).toFixed(1)} fps, eta ${((total - done) / (done / el) / 60).toFixed(1)} min`);
+      const rate = (done - skipped) / el;
+      console.log(`  ${done}/${total} frames, ${rate.toFixed(1)} fps, eta ${((total - done) / rate / 60).toFixed(1)} min`);
     }
   }
   ff.stdin.end();
   await exited;
+  renameSync(`${file}.part`, file);
   await page.close();
   return file;
 }
 
-// Chunks of ~20 s, handed to the workers in order.
+// Chunks of ~20 s, handed to the workers in order; those finished by an earlier run are skipped.
 const CH = fps * 20;
+const chunkFile = (i) => join(work, `${String(from)}-${String(i).padStart(3, '0')}.mp4`);
 const chunks = [];
-for (let f = from, i = 0; f < to; f += CH, i++) chunks.push([i, f, Math.min(to, f + CH)]);
-const files = new Array(chunks.length);
+const files = [];
+for (let f = from, i = 0; f < to; f += CH, i++) {
+  files.push(chunkFile(i));
+  if (existsSync(chunkFile(i))) done += Math.min(to, f + CH) - f;
+  else chunks.push([i, f, Math.min(to, f + CH)]);
+}
+if (done) console.log(`  resuming: ${done} frames already rendered`);
+const skipped = done;
 let next = 0;
 await Promise.all(Array.from({ length: workers }, async () => {
   const browser = await chromium.launch(LAUNCH);
-  while (next < chunks.length) {
-    const c = chunks[next++];
-    files[c[0]] = await renderChunk(browser, ...c);
-  }
+  while (next < chunks.length) await renderChunk(browser, ...chunks[next++]);
   await browser.close();
 }));
 server.close();

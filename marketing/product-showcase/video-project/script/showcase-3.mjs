@@ -90,7 +90,7 @@ export const scenes = [
     lines: [
       L('دَلِيلٌ يَضُمُّ اثْنَيْ عَشَرَ صَفًّا، وَ231 مَادَّةً دِرَاسِيَّةً، وَأَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.',
         'A catalogue of twelve grades, 231 subjects and more than a thousand books and references.',
-        'دَلِيلٌ يَضُمُّ اثْنَيْ عَشَرَ صَفًّا، وَمِئَتَيْنِ وَوَاحِدًا وَثَلَاثِينَ مَادَّةً دِرَاسِيَّةً، وَأَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.'),
+        'دَلِيلٌ يَضُمُّ اثْنَيْ عَشَرَ صَفًّا، وَمِئَتَيْنِ وَإِحْدَى وَثَلَاثِينَ مَادَّةً دِرَاسِيَّةً، وَأَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.'),
       L('يَخْتَارُ الْفَرِيقُ الْكُتُبَ لِكُلِّ صَفٍّ وَمَسَارٍ، فَيُحْفَظُ الْقَرَارُ نِطَاقًا مُشْتَرَكًا،', 'The team picks the books for each grade and track, and the decision is kept as a shared scope,'),
       L('يُصَدَّرُ، وَيُقَارَنُ، وَيُنْقَلُ إِلَى الْعَامِ التَّالِي بِخُطْوَةٍ وَاحِدَةٍ.', 'exported, compared, and carried to the next year in one step.'),
     ],
@@ -114,7 +114,7 @@ export const scenes = [
     id: 'm-tests', ch: 2, t: 'demo', music: 'classroom', lead: 0.3, tail: 0.5,
     p: { caption: { ar: 'الاختبارات والمتابعة المباشرة', en: 'Online tests & live monitoring' }, status: 'now', segments: [{ shot: 'monitor', from: 3, to: 5, zoom: { 3: MONITOR_ROWS, 4: MONITOR_ROWS, 5: MONITOR_ROWS } }, { shot: 'gradebook', sync: { 0: 1 }, zoom: { 0: { x: 640, y: 230, w: 680, h: 330 } } }] },
     lines: [
-      L('وَيُدِيرُ اخْتِبَارَاتٍ إِلِكْتُرُونِيَّةً بِوَقْتٍ يَحْسُبُهُ الْخَادِمُ، وَمُتَابَعَةٍ مُبَاشِرَةٍ، وَتَصْحِيحٍ آلِيٍّ يَبْقَى فِيهِ الْقَرَارُ لَهُ.',
+      L('وَيُدِيرُ اخْتِبَارَاتٍ إِلِكْتْرُونِيَّةً بِوَقْتٍ يَحْسُبُهُ الْخَادِمُ، وَمُتَابَعَةٍ مُبَاشِرَةٍ، وَتَصْحِيحٍ آلِيٍّ يَبْقَى فِيهِ الْقَرَارُ لَهُ.',
         'Online tests run on time kept by the server, with live monitoring and automatic marking — the final say stays with the teacher.'),
       L('ثُمَّ تَجْتَمِعُ الدَّرَجَاتُ فِي سِجِلٍّ وَاحِدٍ.', 'Then the marks come together in one gradebook.'),
     ],

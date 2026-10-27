@@ -1,22 +1,26 @@
-// Generates the narration with an open-source voice (Piper): one WAV per line, written where the timeline
-// looks for recorded takes (audio/narration/<cut>/<sceneId>-NN.wav). A human recording can replace any file.
-//   node narrate.mjs <20|3> --voice <model.onnx> [--length-scale 1.12] [--sentence-silence 0.3] [--tempo 1]
-//                    [--force] [--only sceneId] [--tashkeel]
-// The text is the diacritized line (or its spoken form, `say`); synthesis is in audio/narrate.py.
-// PIPER_PYTHON points at the Python that has piper-tts installed (default: python3).
+// Generates the narration with a synthetic voice: one WAV per line, written where the timeline looks for
+// recorded takes (audio/narration/<cut>/<sceneId>-NN.wav). A human recording can replace any file.
+//
+//   node narrate.mjs <20|3> --engine azure [--voice ar-SA-ZariyahNeural] [--rate 0%] [--force] [--only sceneId]
+//   node narrate.mjs <20|3> --engine piper --voice <model.onnx> [--length-scale 1.12] [--sentence-silence 0.3]
+//                    [--tempo 1] [--tashkeel] [--force] [--only sceneId]
+//   node narrate.mjs samples --engine azure --voices ar-SA-ZariyahNeural,ar-EG-SalmaNeural,...
+//
+// The text is the diacritized line (or its spoken form, `say`), read in pausal form at each pause. Azure needs
+// AZURE_SPEECH_KEY and AZURE_SPEECH_REGION in the environment; Piper runs in audio/narrate.py with the Python
+// named by PIPER_PYTHON (default: python3).
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { azureConfig, synthesize } from './lib/azure-tts.mjs';
 import { narrationFile } from './lib/timeline.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : dflt; };
-const cut = `showcase-${args[0]}`;
-const voice = opt('voice');
-if (!voice || !existsSync(voice)) { console.error('usage: node narrate.mjs <20|3> --voice <model.onnx> [--length-scale n] [--force] [--only sceneId] [--tashkeel]'); process.exit(1); }
+const engine = opt('engine', 'azure');
 const only = opt('only');
 const force = args.includes('--force');
 
@@ -39,6 +43,45 @@ const speakable = (t) => {
   return words.map((w, i) => (PAUSE.test(w) || i === words.length - 1 ? waqf(w) : w)).join(' ');
 };
 
+// Trims the voice's own leading and trailing silence; the timeline sets the gaps between lines.
+function trim(raw, out) {
+  const filter = 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05,areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.12,areverse';
+  const f = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', filter, '-c:a', 'pcm_s16le', `${out}.tmp.wav`]);
+  if (f.status !== 0) throw new Error(String(f.stderr));
+  renameSync(`${out}.tmp.wav`, out);
+  rmSync(raw, { force: true });
+}
+
+function speakAzure(items, voice, rate) {
+  const conf = azureConfig();
+  items.forEach((it, n) => {
+    synthesize({ text: it.text, voice, rate, out: `${it.out}.raw.wav` }, conf);
+    trim(`${it.out}.raw.wav`, it.out);
+    process.stdout.write(`\r${n + 1}/${items.length}`);
+  });
+  console.log();
+}
+
+// Voice samples: two lines of the 20-minute script in each voice, to choose one by ear.
+if (args[0] === 'samples') {
+  const { scenes } = await import('./script/showcase-20.mjs');
+  const lines = [scenes.find((s) => s.id === 'c1-open').lines[0], scenes.find((s) => s.id === 'c2-layers').lines[1]];
+  const dir = join(ROOT, 'audio', 'voice-samples');
+  mkdirSync(dir, { recursive: true });
+  for (const voice of opt('voices', 'ar-SA-ZariyahNeural,ar-EG-SalmaNeural,ar-AE-FatimaNeural').split(',')) {
+    const parts = lines.map((l, i) => ({ text: speakable(l.say ?? l.ar), out: join(dir, `${voice}-${i + 1}.wav`) }));
+    speakAzure(parts, voice, opt('rate', '0%'));
+    const list = join(dir, `${voice}.txt`);
+    writeFileSync(list, parts.map((p) => `file '${p.out}'`).join('\n'));
+    spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-af', 'apad=pad_dur=0.6', join(dir, `${voice}.wav`)]);
+    for (const p of parts) rmSync(p.out, { force: true });
+    rmSync(list, { force: true });
+    console.log(`→ audio/voice-samples/${voice}.wav`);
+  }
+  process.exit(0);
+}
+
+const cut = `showcase-${args[0]}`;
 const { scenes } = await import(`./script/${cut}.mjs`);
 const todo = [];
 let kept = 0;
@@ -53,9 +96,19 @@ for (const s of scenes) {
 }
 console.log(`${cut}: ${todo.length} lines to speak, ${kept} already present`);
 if (!todo.length) process.exit(0);
-const list = join(ROOT, 'build', cut, 'narration-lines.json');
-mkdirSync(dirname(list), { recursive: true });
-writeFileSync(list, JSON.stringify(todo));
-const py = ['-I', join(HERE, 'audio', 'narrate.py'), list, '--voice', voice, '--length-scale', opt('length-scale', '1.12'), '--sentence-silence', opt('sentence-silence', '0.3'), '--tempo', opt('tempo', '1'), ...(args.includes('--tashkeel') ? ['--tashkeel'] : [])];
-const r = spawnSync(process.env.PIPER_PYTHON ?? 'python3', py, { stdio: 'inherit' });
-process.exit(r.status ?? 1);
+
+if (engine === 'azure') {
+  speakAzure(todo, opt('voice', 'ar-SA-ZariyahNeural'), opt('rate', '0%'));
+} else if (engine === 'piper') {
+  const voice = opt('voice');
+  if (!voice || !existsSync(voice)) { console.error('--engine piper needs --voice <model.onnx>'); process.exit(1); }
+  const list = join(ROOT, 'build', cut, 'narration-lines.json');
+  mkdirSync(dirname(list), { recursive: true });
+  writeFileSync(list, JSON.stringify(todo));
+  const py = ['-I', join(HERE, 'audio', 'narrate.py'), list, '--voice', voice, '--length-scale', opt('length-scale', '1.12'), '--sentence-silence', opt('sentence-silence', '0.3'), '--tempo', opt('tempo', '1'), ...(args.includes('--tashkeel') ? ['--tashkeel'] : [])];
+  const r = spawnSync(process.env.PIPER_PYTHON ?? 'python3', py, { stdio: 'inherit' });
+  process.exit(r.status ?? 1);
+} else {
+  console.error(`unknown engine ${engine}`);
+  process.exit(1);
+}

@@ -48,7 +48,7 @@ export const scenes = [
     lines: [
       L('مَعَ بِدَايَةِ كُلِّ عَامٍ دِرَاسِيٍّ، تَتَكَرَّرُ الْأَسْئِلَةُ نَفْسُهَا فِي الْمَدَارِسِ وَالْمُؤَسَّسَاتِ التَّعْلِيمِيَّةِ.',
         'At the start of every academic year, schools and educational institutions face the same questions.'),
-      L('أَيُّ الْكُتُبِ سَنُدَرِّسُ؟ وَبِأَيِّ طَبْعَةٍ؟ وَلِأَيِّ الصُّفُوفِ وَالْمَسَارَاتِ؟',
+      L('أَيَّ الْكُتُبِ سَنُدَرِّسُ؟ وَبِأَيِّ طَبْعَةٍ؟ وَلِأَيِّ الصُّفُوفِ وَالْمَسَارَاتِ؟',
         'Which books will we teach? Which edition? For which grades and tracks?'),
       L('وَمَنْ يُتَابِعُ الْوَاجِبَاتِ وَالِاخْتِبَارَاتِ وَالدَّرَجَاتِ؟ وَأَيْنَ تُحْفَظُ الْإِجَابَاتُ؟',
         'Who follows up on homework, tests and grades? And where are the answers kept?'),
@@ -140,7 +140,7 @@ export const scenes = [
       L('تَقُومُ الْمِنَصَّةُ عَلَى ثَلَاثِ طَبَقَاتٍ مُتَرَابِطَةٍ.', 'The platform rests on three connected layers.'),
       L('الْأُولَى هِيَ الْمَنْهَجُ: دَلِيلٌ مُحَدَّثٌ لِلْمَنَاهِجِ الْمِصْرِيَّةِ، تُقَرِّرُ فِيهِ الْمُؤَسَّسَةُ مَا تُغَطِّيهِ، وَتَحْفَظُ قَرَارَهَا.',
         'The first is the curriculum: an up-to-date catalogue of Egypt’s curricula, where the institution decides what it covers and keeps a record of that decision.'),
-      L('وَالثَّانِيَةُ هِيَ الْفَصْلُ: فُصُولٌ، وَوَاجِبَاتٌ، وَاخْتِبَارَاتٌ إِلِكْتُرُونِيَّةٌ، وَسِجِلُّ دَرَجَاتٍ، مَبْنِيَّةٌ عَلَى ذَلِكَ الْمَنْهَجِ.',
+      L('وَالثَّانِيَةُ هِيَ الْفَصْلُ: فُصُولٌ، وَوَاجِبَاتٌ، وَاخْتِبَارَاتٌ إِلِكْتْرُونِيَّةٌ، وَسِجِلُّ دَرَجَاتٍ، مَبْنِيَّةٌ عَلَى ذَلِكَ الْمَنْهَجِ.',
         'The second is the classroom: classes, homework, online tests and a gradebook, built on that curriculum.'),
       L('وَالثَّالِثَةُ هِيَ الْمُؤَسَّسَةُ: الْأَدْوَارُ، وَالصَّلَاحِيَّاتُ، وَالِاشْتِرَاكَاتُ، وَسِجِلُّ التَّدْقِيقِ، وَالْحِمَايَةُ.',
         'The third is the institution: roles, permissions, subscriptions, the audit log and protection.'),
@@ -353,7 +353,7 @@ export const scenes = [
     lines: [
       L('قَلْبُ الْمِنَصَّةِ هُوَ دَلِيلُ الْمَنَاهِجِ: اثْنَا عَشَرَ صَفًّا، وَخَمْسَةُ مَسَارَاتٍ، وَ231 مَادَّةً دِرَاسِيَّةً، تَضُمُّ أَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.',
         'At the heart of the platform is the curriculum catalogue: twelve grades, five tracks and 231 subjects, with more than a thousand books and references.',
-        'قَلْبُ الْمِنَصَّةِ هُوَ دَلِيلُ الْمَنَاهِجِ: اثْنَا عَشَرَ صَفًّا، وَخَمْسَةُ مَسَارَاتٍ، وَمِئَتَانِ وَوَاحِدٌ وَثَلَاثُونَ مَادَّةً دِرَاسِيَّةً، تَضُمُّ أَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.'),
+        'قَلْبُ الْمِنَصَّةِ هُوَ دَلِيلُ الْمَنَاهِجِ: اثْنَا عَشَرَ صَفًّا، وَخَمْسَةُ مَسَارَاتٍ، وَمِئَتَانِ وَإِحْدَى وَثَلَاثُونَ مَادَّةً دِرَاسِيَّةً، تَضُمُّ أَكْثَرَ مِنْ أَلْفِ كِتَابٍ وَمَرْجِعٍ.'),
       L('مِنْ مَدَارِسِ الْوِزَارَةِ، إِلَى الْبَكَالُورِيَا الْمِصْرِيَّةِ الْجَدِيدَةِ، وَالثَّانَوِيَّةِ الْعَامَّةِ، وَالْبَرَامِجِ الدَّوْلِيَّةِ.',
         'From Ministry schools to the new Egyptian Bakaloria, Thanaweya Amma and international programmes.'),
       L('يَخْتَارُ الْفَرِيقُ الصُّفُوفَ، ثُمَّ يُحَدِّدُ الْكُتُبَ بِنَقْرَةٍ، وَيُحْفَظُ كُلُّ اخْتِيَارٍ تِلْقَائِيًّا.',
@@ -432,7 +432,7 @@ export const scenes = [
         'Now to the classroom. The school creates its students’ accounts itself, one by one or from a roster file.'),
       L('وَتَكْشِفُ الْمُعَايَنَةُ أَخْطَاءَ الْمَلَفِّ قَبْلَ الِاسْتِيرَادِ بِرَسَائِلَ عَرَبِيَّةٍ وَاضِحَةٍ، ثُمَّ تُعْطِي كَلِمَاتِ مُرُورٍ لِمَرَّةٍ وَاحِدَةٍ.',
         'A preview catches the file’s mistakes before import, with clear Arabic messages, then gives out one-time passwords.'),
-      L('لَا يَحْتَاجُ الطَّالِبُ إِلَى بَرِيدٍ إِلِكْتُرُونِيٍّ، وَلَا يُسَجِّلُ نَفْسَهُ؛ فَالْمَدْرَسَةُ هِيَ الْمَسْؤُولَةُ عَنِ الْحِسَابِ.',
+      L('لَا يَحْتَاجُ الطَّالِبُ إِلَى بَرِيدٍ إِلِكْتْرُونِيٍّ، وَلَا يُسَجِّلُ نَفْسَهُ؛ فَالْمَدْرَسَةُ هِيَ الْمَسْؤُولَةُ عَنِ الْحِسَابِ.',
         'Students need no email address and cannot sign themselves up: the school is responsible for the account.'),
     ],
   },
@@ -464,7 +464,7 @@ export const scenes = [
     id: 'c5-tests', ch: 5, t: 'demo', music: 'classroom', lead: 0.3, tail: 0.8,
     p: { caption: { ar: 'الاختبارات الإلكترونية', en: 'Online tests' }, status: 'now', segments: [{ shot: 'test-create', sync: { 9: 1 } }] },
     lines: [
-      L('وَلِلِاخْتِبَارَاتِ الْإِلِكْتُرُونِيَّةِ أَدَوَاتٌ كَامِلَةٌ: اخْتِيَارٌ مِنْ مُتَعَدِّدٍ، وَصَوَابٌ وَخَطَأٌ، وَإِجَابَاتٌ قَصِيرَةٌ، وَأَسْئِلَةٌ مَقَالِيَّةٌ.',
+      L('وَلِلِاخْتِبَارَاتِ الْإِلِكْتْرُونِيَّةِ أَدَوَاتٌ كَامِلَةٌ: اخْتِيَارٌ مِنْ مُتَعَدِّدٍ، وَصَوَابٌ وَخَطَأٌ، وَإِجَابَاتٌ قَصِيرَةٌ، وَأَسْئِلَةٌ مَقَالِيَّةٌ.',
         'Online tests come with complete tools: multiple choice, true or false, short answers and written questions.'),
       L('يُحَدِّدُ الْمُعَلِّمُ الْمُدَّةَ، وَعَدَدَ الْمُحَاوَلَاتِ، وَرَمْزَ بَدْءٍ يُعْلِنُهُ فِي الْقَاعَةِ. وَالْخَادِمُ هُوَ الَّذِي يَحْسُبُ الْوَقْتَ، لَا جِهَازُ الطَّالِبِ.',
         'The teacher sets the time, the number of attempts and a start code read out in the room. The server keeps the time — not the student’s device.'),
@@ -565,7 +565,7 @@ export const scenes = [
       points: [{ ar: 'المطلوب', at: 0 }, { ar: 'ما فاته', at: 0 }, { ar: 'ما أُعيد مصحّحًا', at: 0 }, { ar: 'الاختبارات المتاحة الآن', at: 0 }],
     },
     lines: [
-      L('تَفْتَحُ بَوَّابَةُ الطَّالِبِ عَلَى صَفْحَةِ «الْيَوْمَ»: مَا عَلَيْهِ إِنْجَازُهُ، وَمَا فَاتَهُ، وَمَا أُعِيدَ إِلَيْهِ مُصَحَّحًا، وَالِاخْتِبَارَاتُ الْمُتَاحَةُ الْآنَ.',
+      L('تَفْتَحُ بَوَّابَةُ الطَّالِبِ عَلَى صَفْحَةِ «الْيَوْم»: مَا عَلَيْهِ إِنْجَازُهُ، وَمَا فَاتَهُ، وَمَا أُعِيدَ إِلَيْهِ مُصَحَّحًا، وَالِاخْتِبَارَاتُ الْمُتَاحَةُ الْآنَ.',
         'The Student Portal opens on “Today”: what he has to do, what he missed, what came back marked, and the tests open right now.'),
     ],
   },

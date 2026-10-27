@@ -57,26 +57,36 @@ text from ARABIC_NARRATION_SCRIPT.md (the "يُقرأ" lines where given). The t
 length instead of the estimate; scenes, pointer, camera, music cues and subtitles follow automatically. Lines
 without a take keep the estimate, and `prepare` reports how many are recorded.
 
-Or generate the takes with an open-source voice (Piper, `pip install piper-tts` in a virtual environment; the
-voice model comes from Hugging Face):
+Or generate the takes with a synthetic voice. The chosen voice is a **female neural voice from Azure AI Speech**
+(`ar-SA-ZariyahNeural` by default). It needs a Speech resource (the free F0 tier covers both cuts, about
+12,600 characters), its key and region as environment secrets `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`
+(never in the repository or the chat), and `*.tts.speech.microsoft.com` allowed by the network policy:
 
 ```sh
-PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-medium.onnx
-PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx
+node narrate.mjs samples                       # → ../audio/voice-samples/<voice>.wav, two lines per voice
+node narrate.mjs samples --voices ar-SA-ZariyahNeural,ar-EG-SalmaNeural --rate -5%
+node narrate.mjs 20 --voice ar-SA-ZariyahNeural --rate 0%
+node narrate.mjs 3 --voice ar-SA-ZariyahNeural --rate 0%
 ```
 
-It speaks the diacritized text as written (Piper's own diacritizer is off; `--tashkeel` turns it on), in
-pausal form at each pause as a narrator reads (the final short vowel or tanween of the word before a comma or
-full stop is not voiced), trims each take, and skips lines that already have a file, so a human take placed
-first is kept. `--force` regenerates, `--only <sceneId>` limits to one scene, `--length-scale` and
-`--sentence-silence` set the pace, and `--tempo` speeds the takes up without changing the pitch.
+The requests go through curl (which uses the environment's HTTPS proxy and CA bundle); the key is passed to
+curl on its standard input, never on the command line or on disk. Throttling and server errors are retried.
+Each take is 48 kHz mono, trimmed of the voice's own leading and trailing silence. `--rate` is the SSML
+speaking rate (e.g. `-5%`, `+4%`), used to land each cut in its target length (20-minute cut 19:30–20:30,
+3-minute cut 2:50–3:10).
 
-The current takes (2026-10-27) use the Arabic voice `ar_JO-kareem-medium` as packaged by the k2-fsa
-sherpa-onnx project (GitHub release `tts-models`, `vits-piper-ar_JO-kareem-medium.tar.bz2`, sha256
-`9ebbcea3…3dbce`), with `--length-scale 0.8 --sentence-silence 0.2`, and `--tempo 1.14` (20-minute cut) or
-`--tempo 1.10` (3-minute cut) so each cut lands in its target length. **The voice's licence could not be
-confirmed**: its model card refers to a training-data repository that states no licence. Treat these takes as
-a guide voice for review until the licence is confirmed or a human or licensed voice replaces them.
+The voice is given the diacritized text as written, so the script's tashkeel guides the pronunciation (numbers
+and foreign terms have a spoken form, `say`); a line that still comes out wrong is fixed in the script, found
+with `lib/asr_check.py` and by listening. At each pause it reads in pausal form, as a narrator does: the
+final short vowel or tanween of the word before a comma or full stop is not voiced, and tanween al-fath on alif
+becomes a long "aa". Lines that already have a file are skipped, so a human take placed first is kept;
+`--force` regenerates, `--only <sceneId>` limits to one scene.
+
+`--engine piper --voice <model.onnx>` uses an open-source Piper voice instead (`pip install piper-tts` in a
+virtual environment, `PIPER_PYTHON` pointing to its Python; `--length-scale`, `--sentence-silence`, `--tempo`
+and `--tashkeel` as in `audio/narrate.py`). The only Arabic Piper voice, `ar_JO-kareem-medium` (male), was
+tried on 2026-10-27 and **rejected by the owner** (quality; a female voice was asked for); its licence could
+not be confirmed either. Those takes are not used.
 
 `lib/asr_check.py` transcribes the takes with Whisper (small, sherpa-onnx `asr-models` release) and reports a
 character error rate per line against the script, to find lines worth listening to.

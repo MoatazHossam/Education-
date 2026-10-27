@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { authenticator } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { encryptSecret } from '../../src/lib/crypto.js';
@@ -8,6 +8,31 @@ import { E2E_ENV, latestEmailText, ownerQuery } from './server.js';
 export const PASSWORD = 'e2e-correct-horse-battery';
 export const uid = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 export const token = (text: string) => /[?&]token=([A-Za-z0-9_-]+)/.exec(text)![1]!;
+
+/**
+ * Works around two faults of Playwright 1.56's browser builds, not of the app. Every page the journeys
+ * open goes through here (the built-in `page` in a beforeEach). Chromium is left as it is.
+ * - Firefox sometimes loses a navigation's "load" event although the page has loaded, and page.goto
+ *   then waits until the test times out: 11 of 100 fresh pages in a probe, none of 100 when waiting
+ *   for DOMContentLoaded, which its navigations do here. The app needs nothing that arrives in
+ *   between: it draws from its module script and API calls, which the assertions wait for.
+ * - WebKit's Linux build aborts the page (an assertion on an empty std::optional) on the second
+ *   reload after a history.pushState, which every in-app link makes; a bare page with one pushState
+ *   does the same. Its reloads are made as a new load of the same address, which never failed.
+ */
+export function navigable(page: Page): Page {
+  const browser = page.context().browser()?.browserType().name();
+  const [goto, reload, waitForURL] = [page.goto.bind(page), page.reload.bind(page), page.waitForURL.bind(page)];
+  if (browser === 'firefox') {
+    page.goto = (url, options) => goto(url, { waitUntil: 'domcontentloaded', ...options });
+    page.reload = (options) => reload({ waitUntil: 'domcontentloaded', ...options });
+    page.waitForURL = (url, options) => waitForURL(url, { waitUntil: 'domcontentloaded', ...options });
+  }
+  if (browser === 'webkit') page.reload = (options) => goto(page.url(), options);
+  return page;
+}
+
+export const openPage = async (ctx: BrowserContext) => navigable(await ctx.newPage());
 
 export async function registerAndVerify(page: Page, email: string, org: string) {
   await page.goto('/register');

@@ -9,7 +9,7 @@ Only results that were actually executed are reported here.
 | Date | 2026-10-22 (final full run started 11:06 UTC) |
 | Machine | Cloud development container, Ubuntu 24.04, 4 vCPU, 15 GB RAM |
 | Runtime | Node.js 22.22.0; PostgreSQL 16.15 (local cluster); Docker 29.9.1 / Compose 5.6.0 |
-| Browser | Chromium 1194 via Playwright 1.56.1 |
+| Browsers | Playwright 1.56.1: Chromium 141 (build 1194), Firefox 142.0.1 (build 1495), WebKit 26.0 (build 2215). Firefox and WebKit were copied from Playwright's official image `mcr.microsoft.com/playwright:v1.56.1-noble`, as the download site is blocked here, with their system libraries from Ubuntu's archive |
 | Commit | latest on branch `claude/friendly-rubin-hmemjl` (see `git log`) |
 
 ## 1. Static checks
@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**46 files, 308 tests, 308 passed, 0 failed** (2026-10-27, with the Arabic import messages). Integration tests ran against a real
+**46 files, 308 tests, 308 passed, 0 failed** (2026-10-27, with the journeys in Firefox and WebKit). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -398,8 +398,11 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**28 tests, 28 passed** (8.9 min, 2026-10-27, with the Arabic import messages), Chromium, real server process on port 3100: 24 journeys,
-then the accessibility project (4 tests), which reuses the journeys' data. Journey 24's first run
+**Chromium: 28 tests, 28 passed** (8.0 min, 2026-10-27, with the journeys in Firefox and WebKit), real server process on port 3100: 24 journeys,
+then the accessibility project (4 tests), which reuses the journeys' data.
+**Firefox: 24 journeys, 24 passed** (3.1 min; again 2.9 min) with `npm run test:e2e:firefox`, and
+**WebKit: 24 journeys, 24 passed** (3.9 min; again 3.6 min) with `npm run test:e2e:webkit`, each on a fresh
+database (see "Cross-browser runs" below). Journey 24's first run
 stopped in its own setup: it left the question editor's third choice empty, which the editor refuses;
 the test now fills it.
 The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 screens it takes about
@@ -407,7 +410,7 @@ The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 sc
 
 | # | Journey | Result |
 | --- | --- | --- |
-| 1 | Owner registers, verifies email, signs in and builds a content scope that persists | Pass |
+| 1 | Owner registers, verifies email, signs in and builds a content scope that persists; a book removed just before a reload stays removed (sent as the page goes) | Pass |
 | 2 | Owner invites an editor, changes the role to viewer, and the viewer becomes read-only | Pass |
 | 3 | Another organization cannot reach the first organization's data | Pass |
 | 4 | Owner subscribes, upgrades with proration, schedules a downgrade and cancels | Pass |
@@ -431,6 +434,19 @@ The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 sc
 | 22 | Gradebook (journeys 20 and 21's class 7A): the owner opens **Gradebook** from the class page; the subject is preselected; Laila's row shows 9 (homework) and 5.5 (test) and an average of 90.6%, Omar's shows the test as Missing; **Download CSV** saves `gradebook-7A-….csv` whose header starts with "Student" and whose Laila row ends with 90.6 and 0 missing. Laila signs in, opens **Grades** and sees her subject in 7A with "Average: 90.6%", the homework 9 / 10 and the test 5.5 / 6 | Pass |
 | 23 | Keeping classroom data (journeys 20–22's class 7A, its homework and test moved 40 days back): the owner opens **Keeping data** from Classes (nothing due), sets 30 days for students' work; saving asks first ("homework: 1, tests: 1"); both are listed as due and the owner's email lists the homework; **Keep** moves the test to the kept list. One worker pass 15 days later deletes the homework's work: the homework page says so, the teacher's view of Laila's work says the answer and files were deleted and the mark is still 9; Laila's grades still show 9 / 10 and her homework page says why her work is gone | Pass |
 | 24 | Saving on a weak connection (journey 20's class 7A): the owner writes and publishes "Weak Wi-Fi quiz" with one choice question; Laila starts it. Her first save is answered 503 by the test (the network stands in for a busy server): the bar says "Not saved yet (1): trying again", and the page saves it by itself 5 s later ("Saved"). With every save failing she changes her answer; the bar says so again, and **Submit** first shows "Some answers are not saved" ("Answers not saved yet: 1."), which she cancels. Once saves go through, the page saves the answer by itself, she submits, and the database holds her latest answer | Pass |
+
+### Cross-browser runs (Firefox and WebKit), 2026-10-27
+
+The first runs in Firefox and WebKit found one fault in the app and two in Playwright's browser builds.
+
+| Found | Cause | What changed | Checked |
+| --- | --- | --- | --- |
+| WebKit: journey 1 kept 1 of 3 chosen books after a reload | The picker saved in batches 0.4 s after the last change, said "Saved" after the first batch while more were waiting, and sent what was left on leaving as an ordinary request, which the browser cancels with the page | Saves are keepalive requests; what is waiting is sent on `pagehide`; "Saved" only when nothing is left (`public/js/views/picker.js`, `public/js/api.js`). Journey 1 now removes a book and reloads at once | With the previous picker the new step fails in Firefox and WebKit (the removal is lost) and passes in Chromium; with the new one it passes in all three |
+| Firefox: a journey now and then waited 90 s for a page that had loaded (journeys 17, 20, 4 on different runs) | Playwright's Firefox loses the navigation's "load" event: 11 of 100 fresh pages in a probe against the E2E server (Chromium and WebKit: 0 of 80) | In Firefox the journeys' navigations wait for DOMContentLoaded (`navigable()` in `tests/e2e/helpers.ts`) | 0 of 100 in the same probe; two full runs pass. Waiting for the new page's blank document first was not enough (7 of 100) |
+| WebKit: "Page crashed" on a reload | Playwright's WebKit Linux build aborts the page (assertion `_M_is_engaged()` on an empty `std::optional`) on the second reload after a `history.pushState`; a bare page with one `pushState` does the same, without one it does not | In WebKit the journeys' reloads are a new load of the same address (same helper) | No crash in two full runs. Real Safari is a different build and was not available to test |
+
+Neither browser fault involves the app's code; both work-arounds are in the test helpers only, and
+Chromium runs as before.
 
 Note from journey 2's first run: the test toggled a material and immediately demoted the user; the
 batched save then arrived after the demotion, the server answered 403, and the UI rolled the toggle
@@ -706,6 +722,6 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 
 - CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
-- Cross-browser E2E (Firefox, WebKit), manual screen-reader review, external penetration test.
+- Branded browsers and devices (Safari on macOS and iOS, Firefox and Chrome on Windows and Android, phones and tablets); the accessibility tests in Firefox and WebKit; manual screen-reader review; external penetration test.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).

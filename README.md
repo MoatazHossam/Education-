@@ -45,7 +45,8 @@ npm run dev:worker      # emails + billing lifecycle
 | --- | --- |
 | `npm run lint` / `npm run typecheck` | Static checks |
 | `npm test` | Unit + integration tests (needs `TEST_PG_ADMIN_URL`, a PostgreSQL superuser URL) |
-| `npm run test:e2e` | Playwright end-to-end journeys |
+| `npm run test:e2e` | Playwright end-to-end journeys and accessibility tests (Chromium) |
+| `npm run test:e2e:firefox`, `npm run test:e2e:webkit` | The journeys in Firefox and in WebKit (Safari's engine) |
 | `npm run docs:screenshots` / `npm run docs:screenshots:ar` | Retake the screenshots of `docs/USER_GUIDE.md` / `docs/USER_GUIDE.ar.md` (Arabic interface) from a demo school on a fresh test database |
 | `npm run keys:check` / `npm run keys:rotate` | Report, then re-encrypt, the secrets kept encrypted at rest after changing `DATA_ENCRYPTION_KEY` (DEPLOYMENT_GUIDE §4) |
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |

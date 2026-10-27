@@ -3,10 +3,14 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
-import { createScope, login, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
+import { createScope, login, navigable, openPage, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
 import { latestEmailText, ownerQuery, runDigestPass, runFileCheckPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
+// The built-in page navigates like the others (helpers.ts, navigable).
+test.beforeEach(({ page }) => {
+  navigable(page);
+});
 
 let ownerEmail = '';
 let orgAId = '';
@@ -31,6 +35,19 @@ test('owner registers, verifies email, signs in and builds a content scope that 
   await expect(page.locator('.tray .count')).toHaveText(/Selected: 3 items/);
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
 
+  // A change made just before the page is reloaded is kept: what is waiting is sent as the page goes.
+  // It can reach the server just after the reloaded page has asked; then a second reload shows it.
+  await mats.nth(2).click();
+  await page.reload();
+  const count = page.locator('.tray .count');
+  await expect(count).toHaveText(/Selected: [23] items/);
+  if ((await count.textContent())?.includes('3')) await page.reload();
+  await expect(count).toHaveText(/Selected: 2 items/);
+  await page.getByRole('button', { name: 'Grade 4' }).click();
+  await mats.nth(2).click();
+  await expect(page.locator('.tray .count')).toHaveText(/Selected: 3 items/);
+  await expect(page.locator('.tray .toast')).toHaveText('Saved');
+
   // Persistence: reload and a brand-new browser session see the same selection.
   await page.reload();
   await expect(page.locator('.tray .count')).toHaveText(/Selected: 3 items/);
@@ -48,7 +65,7 @@ test('owner invites an editor, changes the role to viewer, and the viewer become
   await expect(page.getByText(`Invitation sent to ${editorEmail}`)).toBeVisible();
 
   const editorCtx = await browser.newContext();
-  const editor = await editorCtx.newPage();
+  const editor = await openPage(editorCtx);
   await editor.goto(`/invite?token=${token(await latestEmailText(editorEmail, 'invitation'))}`);
   await expect(editor.getByText('invited you to Nile Learning as Editor')).toBeVisible();
   await editor.getByLabel('Your name').fill('E2E Editor');
@@ -76,7 +93,7 @@ test('owner invites an editor, changes the role to viewer, and the viewer become
 
 test('another organization cannot reach the first organization’s data', async ({ browser }) => {
   const ctx = await browser.newContext();
-  const page = await ctx.newPage();
+  const page = await openPage(ctx);
   const email = `other.${uid()}@e2e.test`;
   await registerAndVerify(page, email, 'Rival Academy');
   await login(page, email);
@@ -165,7 +182,7 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByRole('button', { name: 'Restore organization' })).toBeVisible();
 
   const ownerCtx = await browser.newContext();
-  const owner = await ownerCtx.newPage();
+  const owner = await openPage(ownerCtx);
   await login(owner, ownerEmail);
   await owner.goto(`/org/${orgAId}`);
   await expect(owner.getByRole('heading', { name: 'Organization suspended' })).toBeVisible();
@@ -193,7 +210,7 @@ test('platform admin verifies a subject against a decree; customers see the mark
   await expect(page.locator('.verif.ok summary').first()).toHaveText('Verified');
 
   const ownerCtx = await browser.newContext();
-  const owner = await ownerCtx.newPage();
+  const owner = await openPage(ownerCtx);
   await login(owner, ownerEmail);
   await owner.goto(`/org/${orgAId}`);
   await expect(owner.locator('.vcoverage')).toContainText('1 of 231 subjects verified');
@@ -209,17 +226,18 @@ test('platform admin verifies a subject against a decree; customers see the mark
 
 test('Arabic interface switches to right-to-left and the picker fits a phone screen', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const page = await ctx.newPage();
+  const page = await openPage(ctx);
   await login(page, ownerEmail);
   await page.goto(`/org/${orgAId}`);
   await expect(page.locator('.picker h1')).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  // Measured with the fonts in place, however far the page's own loading has got.
+  const overflow = await page.evaluate(async () => { await document.fonts.ready; return document.documentElement.scrollWidth - window.innerWidth; });
   expect(overflow).toBeLessThanOrEqual(1);
   await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('link', { name: 'دليل المناهج' })).toBeVisible();
   await expect(page.locator('.verif.ok summary').first()).toHaveText('تم التحقق');
-  const overflowAr = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  const overflowAr = await page.evaluate(async () => { await document.fonts.ready; return document.documentElement.scrollWidth - window.innerWidth; });
   expect(overflowAr).toBeLessThanOrEqual(1);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
@@ -253,7 +271,7 @@ test('a newer catalogue is published and the owner carries a scope forward after
   await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
 
   const ownerCtx = await browser.newContext();
-  const owner = await ownerCtx.newPage();
+  const owner = await openPage(ownerCtx);
   await login(owner, ownerEmail);
   await owner.goto(`/org/${orgAId}`);
   await expect(owner.locator('.carry-banner')).toContainText('A newer catalogue (2027/2028) has been published.');
@@ -392,7 +410,7 @@ test('a platform admin turns on student accounts; the school adds students; a st
   await expect(page.getByRole('heading', { name: 'Student accounts are not turned on' })).toBeVisible();
 
   const adminCtx = await browser.newContext();
-  const admin = await adminCtx.newPage();
+  const admin = await openPage(adminCtx);
   await signInAsPlatformAdmin(admin);
   await admin.goto(`/admin/orgs/${orgId}`);
   await admin.getByLabel('Student accounts (override)').fill('30');
@@ -435,7 +453,7 @@ test('a platform admin turns on student accounts; the school adds students; a st
 
   // The student signs in from the staff sign-in page's link and sees only their grade's books.
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto('/login');
   await student.getByRole('link', { name: 'Student? Sign in with your school account' }).click();
   await student.getByLabel('School code').fill(schoolCode);
@@ -500,7 +518,7 @@ test('the team notes and assigns selected books; the assignee is notified and fi
   await page.getByRole('button', { name: 'Send invitation' }).click();
   await expect(page.getByText(`Invitation sent to ${editorEmail}`)).toBeVisible();
   const editorCtx = await browser.newContext();
-  const editor = await editorCtx.newPage();
+  const editor = await openPage(editorCtx);
   await editor.goto(`/invite?token=${token(await latestEmailText(editorEmail, 'invitation'))}`);
   await editor.getByLabel('Your name').fill('Hana Editor');
   await editor.getByLabel('Password').fill(PASSWORD);
@@ -572,7 +590,7 @@ test('status and due dates: the owner plans the work, the assignee gets an email
   for (let i = 0; i < 3; i++) await page.locator('.mat').nth(i).click();
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
   const viewerCtx = await browser.newContext();
-  const viewer = await viewerCtx.newPage();
+  const viewer = await openPage(viewerCtx);
   await login(viewer, notesTeam.editorEmail);
 
   // The owner assigns two books with a status and a due date in one go, then moves one date later.
@@ -654,7 +672,7 @@ test('due-date reminders: a book due tomorrow is marked due soon and its assigne
 
   // Hana sees the reminder, the book due soon on My assignments, and turns reminder emails off.
   const ctx = await browser.newContext();
-  const hana = await ctx.newPage();
+  const hana = await openPage(ctx);
   await login(hana, notesTeam.editorEmail);
   await hana.goto(`/org/${orgId}/assignments`);
   await expect(hana.locator('.stat', { hasText: 'Due soon' }).locator('.v')).toHaveText('1');
@@ -676,7 +694,7 @@ test('daily summary: the assignee chooses one email each morning; a new assignme
   // Journey 15's school. Hana switches assignment emails from none to one summary each morning.
   const orgId = notesTeam.orgId;
   const ctx = await browser.newContext();
-  const hana = await ctx.newPage();
+  const hana = await openPage(ctx);
   await login(hana, notesTeam.editorEmail);
   await hana.goto('/account');
   await hana.getByLabel('Emails when books are assigned to me').selectOption({ label: 'One summary each morning' });
@@ -895,7 +913,7 @@ test('classes and homework: the school sets up a class, a student hands in work 
 
   // Laila sees it on her Today page and in a notification, writes an answer, attaches a photo and hands it in.
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto(`/student-login?school=${delta.schoolCode}`);
   await student.getByLabel('Username').fill('laila.e2e');
   await student.getByLabel('Password').fill(delta.lailaPassword);
@@ -993,7 +1011,7 @@ test('online test: the teacher writes and publishes it, watches it live, the stu
 
   // Laila starts from Today with the code, answers, leaves the page once and pastes once.
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto(`/student-login?school=${delta.schoolCode}`);
   await student.getByLabel('Username').fill('laila.e2e');
   await student.getByLabel('Password').fill(delta.lailaPassword);
@@ -1090,7 +1108,7 @@ test('gradebook: the teacher sees the class’s marks for a subject and download
 
   // Laila's own grades.
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto(`/student-login?school=${delta.schoolCode}`);
   await student.getByLabel('Username').fill('laila.e2e');
   await student.getByLabel('Password').fill(delta.lailaPassword);
@@ -1149,7 +1167,7 @@ test('keeping classroom data: the owner sets how long work is kept, keeps a test
 
   // Laila still has her mark; her answer and photo are gone, and she is told why.
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto(`/student-login?school=${delta.schoolCode}`);
   await student.getByLabel('Username').fill('laila.e2e');
   await student.getByLabel('Password').fill(delta.lailaPassword);
@@ -1189,7 +1207,7 @@ test('online test: an answer that does not reach the server is saved again, and 
   await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();
 
   const studentCtx = await browser.newContext();
-  const student = await studentCtx.newPage();
+  const student = await openPage(studentCtx);
   await student.goto(`/student-login?school=${delta.schoolCode}`);
   await student.getByLabel('Username').fill('laila.e2e');
   await student.getByLabel('Password').fill(delta.lailaPassword);

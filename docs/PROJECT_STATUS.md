@@ -40,7 +40,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Implemented:** catalogue service/API with ETag and caching; content scopes (CRUD, batched items, duplicate, clear); TXT/CSV/JSON export; read API with API keys; picker UI faithful to the original backed by scopes; fixes for original defects D-01–D-07.
 - **Files:** `src/catalog/*`, `src/scopes/*`, `src/api-v1/*`, `public/js/views/picker.js`, `public/js/views/scopes.js`.
 - **Tests:** `scopes.test.ts` (10), API tests in `admin-api-ops.test.ts`, E2E 1, 6 — pass.
-- **Next:** manual screen-reader review (`docs/SCREEN_READER_REVIEW.md`); Firefox/WebKit E2E (Roadmap P1); set alert channels and an external uptime check when the host exists (B-4).
+- **Next:** manual screen-reader review (`docs/SCREEN_READER_REVIEW.md`); set alert channels and an external uptime check when the host exists (B-4).
 
 ### Notes and assignees on selected books · COMPLETE
 - **Implemented:** a short note (up to 500 characters) on any selected book of a scope, and the organization member responsible for it, e.g. "waiting for the 2027 edition", assigned to whoever follows it up.
@@ -284,6 +284,19 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Left for the human tester, as checks:** how the timer and Arabic-Indic digits sound; whether the reading position holds while the monitor refreshes; where focus lands after attaching a file (the page is drawn again); whether moving through the gradebook's subject list with the arrow keys loads each subject at once (WCAG 3.2.2; the organization switcher works the same way).
 - **Files:** `docs/SCREEN_READER_REVIEW.md`, `docs/SCREEN_READER_PRECHECK.md`, `public/js/countdown.js` (+ `.d.ts`), `public/js/views/{student-tests,tests}.js`, `public/js/i18n.js`, `tests/unit/countdown.test.ts`, `tests/e2e/accessibility.spec.ts`; the results page (artifact).
 - **Tests:** `tests/unit/countdown.test.ts` (4); the accessibility audit's new listening checks (handing in, saving failures, the monitor, marking) and field names.
+
+### Journeys in Firefox and WebKit · COMPLETE
+
+- **Asked:** "start on item 6" of the next priorities (§4.2): end-to-end tests in Firefox and WebKit as well as Chromium.
+- **Implemented:**
+  - **A run per browser:** `npm run test:e2e:firefox` and `npm run test:e2e:webkit` run the 24 journeys in Firefox 142 and in WebKit 26 (Safari's engine), each on a fresh database, since the journeys build on each other's data. `npm run test:e2e` stays Chromium, with the accessibility tests. `playwright.config.ts` builds the configuration for a browser; CI runs one end-to-end job per browser, and `scripts/ci-local.sh` runs all three.
+  - **Bug found and fixed in the picker:** a book chosen or removed less than half a second before the page was reloaded or closed could be lost. In WebKit, journey 1 kept 1 of 3 books after a reload; in Firefox a change made just before a reload was lost; Chromium happened to deliver it. The picker saves in batches 0.4 s after the last change, said "Saved" after the first batch even when more were waiting, and sent what was left on leaving as an ordinary request, which the browser cancels with the page. Now every save is a keepalive request (the browser completes it after the page is gone), what is waiting is sent on `pagehide` (which Safari fires; it does not always fire `beforeunload`), and "Saved" is said only when nothing is left to send. Journey 1 now changes a selection and reloads at once: with the old picker this fails in Firefox and WebKit, with the new one it passes in all three.
+  - **Two faults of Playwright's browser builds, worked around in the tests only** (`navigable()` in `tests/e2e/helpers.ts`; Chromium is left as it is):
+    - Firefox sometimes loses a navigation's "load" event although the page has loaded, and the test then waits until it times out: 11 of 100 fresh pages in a probe, none of 100 when waiting for DOMContentLoaded, which its navigations now do.
+    - WebKit's Linux build aborts the page on the second reload after a `history.pushState` (an internal assertion on an empty `std::optional`), which every in-app link makes; a bare page with one `pushState` does the same. Its reloads are made as a new load of the same address, which never failed.
+- **Tests:** Chromium: 28 passed (24 journeys, 4 accessibility). Firefox: 24 passed. WebKit: 24 passed. Firefox and WebKit ran twice with the same result (TEST_REPORT §3).
+- **Files:** `playwright.config.ts`, `playwright.firefox.config.ts`, `playwright.webkit.config.ts`, `package.json`, `.github/workflows/ci.yml`, `scripts/ci-local.sh`, `tests/e2e/helpers.ts`, `tests/e2e/journeys.spec.ts`, `public/js/api.js`, `public/js/views/picker.js`, `.gitignore`, `.dockerignore`, `eslint.config.js`, docs.
+- **Not done:** the accessibility tests run in Chromium only. These are Playwright's Linux builds, not Safari on macOS or iOS, Firefox or Chrome on Windows or Android, or real phones and tablets. Whether real Safari has WebKit's reload fault is not known; the manual review can try it (open a page from the menu, then reload twice). Playwright's download site is blocked in this environment, so Firefox and WebKit were copied from Playwright's official Docker image of the same version (`mcr.microsoft.com/playwright:v1.56.1-noble`); CI downloads them as usual. CI on GitHub still waits on the billing lock (B-7).
 
 ### Arabic messages in the import previews · COMPLETE
 
@@ -571,7 +584,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 ### Front end and localization · COMPLETE
 - Vanilla ES-module SPA (strict CSP), original visual identity, English/Arabic with RTL, responsive.
 - **Tests:** E2E 1–11, `i18n.test.ts`; visual QA screenshots reviewed (layout bugs fixed).
-- **Limitations:** Arabic copy not reviewed by a professional translator; Chromium-only E2E; accessibility checked automatically and by keyboard, not yet with a screen reader (checklist: `docs/SCREEN_READER_REVIEW.md`).
+- **Limitations:** Arabic copy not reviewed by a professional translator; end-to-end journeys in Chromium, Firefox and WebKit since 2026-10-27 (Chromium only before), the accessibility tests in Chromium only; accessibility checked automatically and by keyboard, not yet with a screen reader (checklist: `docs/SCREEN_READER_REVIEW.md`).
 
 ### Phase 5 — Production hardening · PARTIALLY COMPLETE
 | Deliverable | Status | Evidence |
@@ -595,7 +608,7 @@ All 16 documents in `docs/` plus `README.md`, written against the code as commit
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (308 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility) |
+| Core workflows function correctly | ✓ (308 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility; the 24 journeys also pass in Firefox and WebKit) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -618,11 +631,13 @@ Where things stand (2026-10-27): the teacher and student portal is complete and 
 It covers classes, daily homework, online tests and exams with live monitoring, the gradebook and the
 students' grades. It was merged in PR #23 at `6837f1a`. Both user guides describe it, and the web
 pages and offline copies (PDF and HTML, English and Arabic) were republished on 2026-10-27. Of 4.2,
-items 1 to 5 are done the same day: schools set how long they keep classroom data (PR #24), one exam
+items 1 to 6 are done the same day: schools set how long they keep classroom data (PR #24), one exam
 for a whole grade on one school network was load-tested and its limits fixed (PR #25), homework files
 are scanned for viruses and photos resized before anyone opens them (PR #26), the screen-reader
-checklist covers the portal (PR #27), and the problems listed by the two import previews are shown in
-Arabic (see above). Nothing else below is started.
+checklist covers the portal (PR #27), the problems listed by the two import previews are shown in
+Arabic (PR #28), and the journeys run in Firefox and WebKit as well as Chromium, which found and fixed a
+way to lose picker changes (see above). The list below is done; what remains waits on the owner (4.1) or
+on the pilot's feedback.
 
 ### 4.1 Needed from the owner or from outside the team
 
@@ -650,7 +665,7 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 | 3 | ~~**Safer uploads.**~~ **Done 2026-10-27** (Safer uploads, above): ClamAV scans every file in the worker before anyone opens it, photos are made at most 2,000 px without their metadata, and an alert fires when files wait | — | — |
 | 4 | ~~**Screen-reader checklist for the portal.**~~ **Done 2026-10-27** (Screen-reader checklist for the teacher and student portal, above): tasks 23–32 in both languages and on the results page; three problems the simulated reader found are fixed | — | — |
 | 5 | ~~**Arabic import messages.**~~ **Done 2026-10-27** (Arabic messages in the import previews, above): every problem in the roster and catalogue sheet previews has a code, and the Arabic interface says it in Arabic | — | — |
-| 6 | **E2E in Firefox and WebKit** as well as Chromium | Open item from roadmap P1. Students and teachers use whatever browser their device has; E2E runs only in Chromium today | 1–2 |
+| 6 | ~~**E2E in Firefox and WebKit**~~ **Done 2026-10-27** (Journeys in Firefox and WebKit, above): the 24 journeys pass in all three engines; a picker change made just before leaving the page is no longer lost | — | — |
 
 **After the pilot's feedback, not before:**
 - weighting between homework and tests, term reports and grade scales;
@@ -658,7 +673,8 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #27 (the screen-reader checklist for the portal) is merged. On
-`claude/friendly-rubin-hmemjl` (from `main` at `252485d`): 4.2 item 5 (Arabic import messages). The next
-development step is 4.2 item 6 (E2E in Firefox and WebKit), unless the owner picks otherwise. Waiting on the owner: legal advice before real student use (B-5,
+**Resume point (2026-10-27).** PR #28 (Arabic import messages) is merged. On
+`claude/friendly-rubin-hmemjl` (from `main` at `751ea84`): 4.2 item 6 (the journeys in Firefox and WebKit).
+That finishes 4.2; the next development work is for the owner to choose, from the items after the pilot
+or from 4.1 once its blockers clear. Waiting on the owner: legal advice before real student use (B-5,
 B-9), the GitHub billing lock (B-7), Paymob keys (B-2), access to Wise (B-8) and an AI provider (B-10).

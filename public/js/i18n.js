@@ -367,6 +367,22 @@ const en = {
   'admin.aiError.bad_request': 'the provider rejected the request (check AI_MODEL)', 'admin.aiError.other': 'an unexpected error (see the server log)',
   'admin.overrideAi': 'AI requests per month (override)', 'admin.overrideAiHint': 'Turns AI assistance on for this school, up to this many requests a month. Empty: the plan’s value (no plan includes AI yet).',
   'billing.meter.ai': 'AI requests this month',
+  // Questions suggested by AI (docs/ONLINE_TESTS.md §14)
+  'tests.suggest': 'Suggest questions with AI', 'tests.suggestTitle': 'Suggest questions with AI',
+  'tests.suggestNote': 'AI writes suggestions from your topic and lesson text. It can make mistakes: you read and choose every question before it is added, and can edit it afterwards.',
+  'tests.suggestLeft': 'AI requests left for your school this month: {n}',
+  'tests.suggestTopic': 'Topic or lesson', 'tests.suggestTopicHint': 'For example: The water cycle (unit 2, lesson 3)',
+  'tests.suggestLesson': 'Lesson text (optional)', 'tests.suggestLessonHint': 'Paste the part of the lesson the questions should come from, and they will keep to it. Do not paste students’ names or work.',
+  'tests.suggestTypes': 'Question types', 'tests.suggestCount': 'How many questions (1–10)', 'tests.suggestDifficulty': 'Difficulty',
+  'tests.difficulty.mixed': 'Mixed', 'tests.difficulty.easy': 'Easy', 'tests.difficulty.medium': 'Medium', 'tests.difficulty.hard': 'Hard',
+  'tests.suggestLanguage': 'Language of the questions', 'tests.suggestLang.ar': 'Arabic', 'tests.suggestLang.en': 'English',
+  'tests.suggestGo': 'Suggest', 'tests.suggestWorking': 'Writing questions… this can take up to a minute.',
+  'tests.suggestNeedTopic': 'Write the topic (at least 3 characters).', 'tests.suggestNeedType': 'Choose at least one question type.',
+  'tests.suggestions': 'Suggested questions', 'tests.suggestReview': 'Read each question and its answer. Untick the ones you do not want; the others are added to the test, and you can still edit them.',
+  'tests.suggestionsDropped': '{n} suggestions were left out because they did not follow the question rules.',
+  'tests.suggestionsNone': 'No usable questions came back. Try again with a more precise topic, or paste the lesson text.',
+  'tests.suggestionAdd': 'Add question {n}', 'tests.suggestionWhy': 'Why', 'tests.addSelected': 'Add selected',
+  'tests.suggestNonePicked': 'Choose at least one question, or cancel.', 'tests.addedN': 'Questions added: {n}', 'tests.addedSome': '{added} added; {failed} could not be added.',
 };
 
 const ar = {
@@ -778,6 +794,26 @@ const ar = {
   'admin.aiError.bad_request': 'رفض المزوّد الطلب (راجع AI_MODEL)', 'admin.aiError.other': 'خطأ غير متوقع (راجع سجل الخادم)',
   'admin.overrideAi': 'طلبات الذكاء الاصطناعي شهريًا (استثناء)', 'admin.overrideAiHint': 'يفعّل المساعدة بالذكاء الاصطناعي لهذه المدرسة حتى هذا العدد من الطلبات شهريًا. فارغ: قيمة الخطة (لا تتضمن أي خطة الذكاء الاصطناعي حتى الآن).',
   'billing.meter.ai': 'طلبات الذكاء الاصطناعي هذا الشهر',
+  // الأسئلة المقترحة بالذكاء الاصطناعي (docs/ONLINE_TESTS.md §14)
+  'tests.suggest': 'اقتراح أسئلة بالذكاء الاصطناعي', 'tests.suggestTitle': 'اقتراح أسئلة بالذكاء الاصطناعي',
+  'tests.suggestNote': 'يكتب الذكاء الاصطناعي اقتراحات من الموضوع ونص الدرس. قد يخطئ: تقرأ كل سؤال وتختاره قبل إضافته، ويمكنك تعديله بعد ذلك.',
+  'tests.suggestLeft': 'طلبات الذكاء الاصطناعي المتبقية لمدرستك هذا الشهر: {n}',
+  'tests.suggestTopic': 'الموضوع أو الدرس', 'tests.suggestTopicHint': 'مثال: دورة الماء (الوحدة الثانية، الدرس الثالث)',
+  'tests.suggestLesson': 'نص الدرس (اختياري)', 'tests.suggestLessonHint': 'الصق الجزء الذي تريد الأسئلة منه، فتلتزم الأسئلة به. لا تلصق أسماء الطلاب أو أعمالهم.',
+  'tests.suggestTypes': 'أنواع الأسئلة', 'tests.suggestCount': 'عدد الأسئلة (1–10)', 'tests.suggestDifficulty': 'مستوى الصعوبة',
+  'tests.difficulty.mixed': 'متنوع', 'tests.difficulty.easy': 'سهل', 'tests.difficulty.medium': 'متوسط', 'tests.difficulty.hard': 'صعب',
+  'tests.suggestLanguage': 'لغة الأسئلة', 'tests.suggestLang.ar': 'العربية', 'tests.suggestLang.en': 'الإنجليزية',
+  'tests.suggestGo': 'اقترح', 'tests.suggestWorking': 'تُكتب الأسئلة… قد يستغرق ذلك دقيقة.',
+  'tests.suggestNeedTopic': 'اكتب الموضوع (3 أحرف على الأقل).', 'tests.suggestNeedType': 'اختر نوعًا واحدًا من الأسئلة على الأقل.',
+  'tests.suggestions': 'الأسئلة المقترحة', 'tests.suggestReview': 'اقرأ كل سؤال وإجابته. ألغِ تحديد ما لا تريده؛ وتُضاف البقية إلى الاختبار، ويمكنك تعديلها بعد ذلك.',
+  'tests.suggestionsDropped': 'استُبعد {n} من الاقتراحات لأنها لم تتبع قواعد الأسئلة.',
+  'tests.suggestionsNone': 'لم تصل أسئلة صالحة للاستخدام. حاول مرة أخرى بموضوع أدق، أو الصق نص الدرس.',
+  'tests.suggestionAdd': 'إضافة السؤال {n}', 'tests.suggestionWhy': 'السبب', 'tests.addSelected': 'إضافة المحدد',
+  'tests.suggestNonePicked': 'اختر سؤالًا واحدًا على الأقل، أو ألغِ.', 'tests.addedN': 'أُضيفت الأسئلة: {n}', 'tests.addedSome': 'أُضيف {added}؛ وتعذّرت إضافة {failed}.',
+  'err.AI_NOT_CONFIGURED': 'المساعدة بالذكاء الاصطناعي غير مُعدّة على هذا الخادم.', 'err.AI_BUSY': 'خدمة الذكاء الاصطناعي مشغولة. حاول بعد دقيقة.',
+  'err.AI_UNAVAILABLE': 'لم تُجب خدمة الذكاء الاصطناعي. حاول لاحقًا.', 'err.AI_FAILED': 'تعذّر على خدمة الذكاء الاصطناعي تنفيذ الطلب. حاول لاحقًا، وإن تكرر ذلك فتواصل مع الدعم.',
+  'err.AI_REFUSED': 'رفضت خدمة الذكاء الاصطناعي هذا الطلب.', 'err.AI_REPLY_TOO_LONG': 'كان رد الذكاء الاصطناعي أطول من المسموح. اطلب أسئلة أقل في كل مرة.',
+  'err.AI_INVALID_REPLY': 'تعذّر استخدام رد الذكاء الاصطناعي. حاول مرة أخرى.',
 };
 
 const DICTS = { en, ar };

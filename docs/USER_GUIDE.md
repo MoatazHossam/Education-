@@ -588,6 +588,16 @@ take marks away, never below zero.
 
 ![Add question: one correct choice among ب, أ and ت; B is correct; 2 points](user-guide/images/test-question-dialog.png)
 
+**Suggest questions with AI** appears next to **Add question** when your school
+has AI requests (a platform administrator turns them on and sets how many a
+month). Give the topic and, if you like, paste the part of the lesson the
+questions should come from; choose how many (up to 10), the kinds, the
+difficulty and the language. The suggestions come back with their answers and
+a short reason for each. Untick the ones you do not want and choose
+**Add selected**: they become ordinary questions, which you can edit, move or
+delete. Nothing is added until you choose it. AI can be wrong, so read each
+question and its answer first. Do not paste students' names or work.
+
 The test page shows the settings, the start code, and the questions with their
 answers. **Publish** tells the class's students.
 

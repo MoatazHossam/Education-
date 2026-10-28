@@ -175,7 +175,12 @@ DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `un
 `tests/:testId/students/:studentId/extra-time` (`{minutes}`) · `extra-attempt`,
 `tests/:testId/attempts/:attemptId/submit` · `allow-device`, `tests/:testId/close` · `new-code`,
 `tests/:testId/results`, `tests/:testId/attempts/:attemptId` (GET; PATCH `answers/:questionId`
-`{points?, feedback?}`), `tests/:testId/release`.
+`{points?, feedback?}`), `tests/:testId/release`, and `tests/:testId/suggest-questions` (POST
+`{topic, lessonText?, count?, types, difficulty?, language}`: questions suggested by AI, returned as
+`{suggestions: [{type, prompt, options, points, key, explanation}], dropped, model}` and never saved; the
+subject's teachers and admins until a student starts; uses one of the school's AI requests; 30 an hour;
+ONLINE_TESTS.md §14). `GET tests/:testId` returns `ai: {left}` (null: no monthly cap) to those who can change
+the test when the school has AI requests, else `ai: null`.
 
 ### Gradebook (`/api/orgs/:orgId/classes/:classId/gradebook`) — any teacher of the class and admins
 `?subject=<English subject name>&format=json|csv`: the class's homework with marks and published tests as

@@ -37,6 +37,8 @@ export class AiSimulator {
   url = '';
   /** Text of the reply to unscripted requests. */
   defaultText = DEFAULT_REPLY;
+  /** For unscripted requests: a reply chosen from the request, or undefined for `defaultText`. */
+  respond: ((provider: SimProvider, body: Record<string, unknown>) => string | undefined) | null = null;
 
   constructor(readonly apiKey: string) {}
 
@@ -48,6 +50,7 @@ export class AiSimulator {
   reset(): void {
     this.requests.length = 0;
     this.defaultText = DEFAULT_REPLY;
+    this.respond = null;
     for (const q of Object.values(this.queue)) q.length = 0;
   }
 
@@ -83,7 +86,7 @@ export class AiSimulator {
     this.requests.push({ provider, path, headers: req.headers, body });
 
     if (!this.authorized(provider, req)) return this.error(res, provider, 401);
-    const reply = this.queue[provider].shift() ?? { kind: 'ok', text: this.defaultText };
+    const reply = this.queue[provider].shift() ?? { kind: 'ok', text: this.respond?.(provider, body) ?? this.defaultText };
     if (reply.kind === 'hang') return; // never answers: the client's timeout must fire
     if (reply.kind === 'error') return this.error(res, provider, reply.status, reply.retryAfterMs);
     const model = (provider === 'gemini' ? gemini![1] : String(body.model)) ?? 'unknown';

@@ -21,11 +21,26 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 | B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
 | B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts), and since 2026-10-26 the teacher and student portal on the same switch (classes, homework, online tests with monitoring, gradebook). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7). The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 | No school should use student accounts or the portal with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
-| B-10 | No AI provider chosen. **Since 2026-10-28 the provider-independent AI layer is built** (docs/AI_LAYER.md): Gemini, Claude or OpenAI by configuration, off for every school until given an allowance | No AI feature can run, and the layer has not been checked against a real provider | Owner: provider and model, the key as an environment secret (never in a chat), who pays, and the monthly allowance per school or plan; then `npm run ai:check` |
+| B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and its first feature (questions suggested for online tests) are built (docs/AI_LAYER.md). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
 
-### AI layer, independent of the provider · COMPLETE (not yet run against a real provider; no feature uses it yet)
+### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
+- **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic
+  and, optionally, the lesson text, choosing the kinds, difficulty and language (Arabic or English). The suggestions
+  come back with answers and a reason; the teacher picks the ones to add, which become ordinary questions. Nothing
+  is saved before that, nothing about students is sent, and every suggestion passes the same question rules as one
+  typed by hand. Each request uses one of the school's AI requests (docs/ONLINE_TESTS.md §14).
+- **Provider:** the owner chose Google Gemini (2026-10-28). It needs `AI_PROVIDER=gemini`, the key and the model as
+  environment secrets, then `npm run ai:check` (docs/AI_LAYER.md).
+- **Files:** `src/classroom/question-suggestions.ts`, `src/classroom/tests-routes.ts`, `public/js/views/tests.js`,
+  `public/js/i18n.js`; docs ONLINE_TESTS §14, AI_LAYER §6a, USER_GUIDE (EN, AR), API_DOCUMENTATION, TEST_REPORT.
+- **Tests:** unit 6, integration 6 (Gemini simulator), E2E journey 25, accessibility audit of both dialogs; full
+  suite 52 files, 371 tests; E2E 29/29.
+- **Not done:** a run against the real Gemini API and a teacher's review of real suggestions in both languages; the
+  published copies of the user guides (web pages and offline files) do not have the new paragraph yet.
+
+### AI layer, independent of the provider · COMPLETE (not yet run against a real provider)
 - **What:** one way for every AI feature to call an AI provider, chosen by configuration: Google Gemini, Anthropic
   Claude or OpenAI, each through its official SDK (pinned). Off on the server until `AI_PROVIDER` is set, and off for
   every school until a platform administrator gives it a monthly allowance (`ai_requests_per_month`, 0 on every
@@ -752,9 +767,10 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-28).** The provider-independent AI layer is built and tested (AI layer, above). Next, once
-the owner sets a provider and key (B-10): `npm run ai:check`, then the first feature, questions for online tests
-that the teacher reviews before saving.
+**Resume point (2026-10-28).** The provider-independent AI layer and questions suggested by AI for online tests are
+built and tested against simulators (above). Next, once the owner sets the Gemini key and model (B-10):
+`npm run ai:check`, a sample of real suggestions reviewed by a teacher in Arabic and English, then the guides'
+published copies.
 
 **Earlier resume point (2026-10-27).** PR #32 (the deployment guide in Arabic) is merged, and both deployment guides
 are published as web pages with offline copies (Documentation, above). On `claude/friendly-rubin-hmemjl`

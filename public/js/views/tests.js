@@ -224,6 +224,115 @@ async function questionDialog(orgId, testId, initial = null) {
   return saved;
 }
 
+// ------------------------------------------------------------ questions suggested by AI (docs/ONLINE_TESTS.md §14)
+
+const SUGGEST_DEFAULT_TYPES = ['single', 'true_false', 'short'];
+
+/** Asks for suggestions, then lets the teacher choose the ones to add. True when questions were added. */
+async function suggestDialog(orgId, testId, ai) {
+  const err = h('div', { class: 'alert error', role: 'alert' });
+  const status = h('p', { class: 'muted', role: 'status' });
+  const topic = h('input', { id: 'sg-topic', type: 'text', maxlength: 300, dir: 'auto', required: true, 'aria-describedby': 'sg-topic-hint' });
+  const lesson = h('textarea', { id: 'sg-lesson', rows: 6, maxlength: 12000, dir: 'auto', 'aria-describedby': 'sg-lesson-hint' });
+  const count = h('input', { id: 'sg-count', type: 'number', min: '1', max: '10', step: '1', inputmode: 'numeric', value: '5' });
+  const types = TYPES.map((k) => ({ k, box: h('input', { type: 'checkbox', id: `sg-type-${k}`, checked: SUGGEST_DEFAULT_TYPES.includes(k) }) }));
+  const difficulty = h('select', { id: 'sg-difficulty' }, ['mixed', 'easy', 'medium', 'hard'].map((d) => h('option', { value: d }, t(`tests.difficulty.${d}`))));
+  const language = h('select', { id: 'sg-language' }, ['ar', 'en'].map((l) => h('option', { value: l, selected: locale() === l ? 'selected' : null }, t(`tests.suggestLang.${l}`))));
+  const body = h('div', { class: 'stack' },
+    h('p', { class: 'notice' }, t('tests.suggestNote')),
+    ai.left !== null ? h('p', { class: 'muted' }, t('tests.suggestLeft', { n: fmtNum(ai.left) })) : null,
+    err,
+    h('div', { class: 'field' }, h('label', { for: 'sg-topic' }, t('tests.suggestTopic')), topic, h('span', { class: 'hint', id: 'sg-topic-hint' }, t('tests.suggestTopicHint'))),
+    h('div', { class: 'field' }, h('label', { for: 'sg-lesson' }, t('tests.suggestLesson')), lesson, h('span', { class: 'hint', id: 'sg-lesson-hint' }, t('tests.suggestLessonHint'))),
+    h('fieldset', { class: 'stack' }, h('legend', {}, t('tests.suggestTypes')), types.map(({ k, box }) => h('label', { class: 'check', for: box.id }, box, t(`tests.type.${k}`)))),
+    h('div', { class: 'grid2' },
+      h('div', { class: 'field' }, h('label', { for: 'sg-count' }, t('tests.suggestCount')), count),
+      h('div', { class: 'field' }, h('label', { for: 'sg-difficulty' }, t('tests.suggestDifficulty')), difficulty)),
+    h('div', { class: 'field' }, h('label', { for: 'sg-language' }, t('tests.suggestLanguage')), language),
+    status);
+  let busy = false;
+  let reply = null;
+  await dialog({
+    title: t('tests.suggestTitle'),
+    body,
+    actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }, {
+      label: t('tests.suggestGo'), value: true, validate: async () => {
+        if (busy) return false;
+        err.textContent = '';
+        const chosen = types.filter((x) => x.box.checked).map((x) => x.k);
+        if (topic.value.trim().length < 3) { err.textContent = t('tests.suggestNeedTopic'); topic.focus(); return false; }
+        if (!chosen.length) { err.textContent = t('tests.suggestNeedType'); types[0].box.focus(); return false; }
+        busy = true;
+        status.textContent = t('tests.suggestWorking');
+        try {
+          reply = await post(`/api/orgs/${orgId}/tests/${testId}/suggest-questions`, {
+            topic: topic.value.trim(), lessonText: lesson.value.trim(), count: Math.min(10, Math.max(1, Math.round(Number(count.value) || 5))),
+            types: chosen, difficulty: difficulty.value, language: language.value,
+          });
+          return true;
+        } catch (e) {
+          err.textContent = errorMessage(e);
+          return false;
+        } finally {
+          busy = false;
+          status.textContent = '';
+        }
+      },
+    }],
+  });
+  return reply ? reviewSuggestions(orgId, testId, reply) : false;
+}
+
+async function reviewSuggestions(orgId, testId, { suggestions, dropped }) {
+  const err = h('div', { class: 'alert error', role: 'alert' });
+  const picks = suggestions.map((q, i) => ({ q, box: h('input', { type: 'checkbox', id: `sg-pick-${i}`, checked: true }) }));
+  const body = h('div', { class: 'stack' },
+    h('p', { class: 'notice' }, t('tests.suggestReview')),
+    dropped ? h('p', { class: 'muted' }, t('tests.suggestionsDropped', { n: fmtNum(dropped) })) : null,
+    err,
+    suggestions.length
+      ? h('ol', { class: 'questions' }, picks.map(({ q, box }, i) => h('li', { class: 'question' },
+        h('div', { class: 'row spread' },
+          h('label', { class: 'check', for: box.id }, box, t('tests.suggestionAdd', { n: i + 1 })),
+          h('span', { class: 'muted' }, t(`tests.type.${q.type}`), ' · ', pointsText(q.points))),
+        h('div', { class: 'prompt', dir: 'auto' }, q.prompt),
+        q.options.length ? h('ul', { class: 'opts' }, q.options.map((o) => h('li', { class: q.key.includes(o.id) ? 'right' : '' }, h('span', { dir: 'auto' }, o.text), q.key.includes(o.id) ? [' ', h('span', { class: 'pill ok' }, t('tests.correct'))] : null))) : null,
+        q.type !== 'single' && q.type !== 'multiple' && keyText(q) ? h('p', { class: 'muted' }, q.type === 'essay' ? t('tests.guide') : t('tests.answerIs'), ': ', h('span', { dir: 'auto' }, keyText(q))) : null,
+        q.explanation ? h('p', { class: 'muted' }, t('tests.suggestionWhy'), ': ', h('span', { dir: 'auto' }, q.explanation)) : null)))
+      : h('p', { class: 'empty' }, t('tests.suggestionsNone')));
+  let added = 0;
+  await dialog({
+    title: t('tests.suggestions'),
+    body,
+    actions: suggestions.length
+      ? [{ label: t('common.cancel'), value: null, kind: 'ghost' }, {
+        label: t('tests.addSelected'), value: true, validate: async () => {
+          err.textContent = '';
+          const chosen = picks.filter((p) => p.box.checked);
+          if (!chosen.length) { err.textContent = t('tests.suggestNonePicked'); return false; }
+          let failed = 0;
+          // In order, so the questions keep the order they were suggested in.
+          for (const { q, box } of chosen) {
+            try {
+              await post(`/api/orgs/${orgId}/tests/${testId}/questions`, { type: q.type, prompt: q.prompt, options: q.options, points: q.points, key: q.key });
+              added++;
+              box.checked = false;
+              box.disabled = true;
+            } catch (e) {
+              failed++;
+              err.textContent = errorMessage(e);
+            }
+          }
+          if (failed) { err.textContent = t('tests.addedSome', { added: fmtNum(added), failed: fmtNum(failed) }); return false; }
+          return true;
+        },
+      }]
+      : [{ label: t('common.close'), value: null, kind: 'ghost' }],
+  });
+  if (added) toast(t('tests.addedN', { n: fmtNum(added) }));
+  return added > 0;
+}
+
 function crumbs(orgId, cls) {
   return h('p', { class: 'crumbs' }, link(`/org/${orgId}/classes`, t('classes.title')), ' › ', link(`/org/${orgId}/classes/${cls.id}`, cls.name, { dir: 'auto' }));
 }
@@ -284,7 +393,10 @@ export async function testView(ctx) {
   };
   const questions = h('section', { class: 'card', 'aria-labelledby': 'q-h' },
     h('div', { class: 'row spread' }, h('h2', { id: 'q-h' }, t('tests.questionsCount', { n: data.questions.length, points: pointsText(total) })),
-      editableQuestions ? h('button', { type: 'button', class: 'btn', onclick: () => act(async () => { if (await questionDialog(orgId, testId)) refresh(); }) }, t('tests.addQuestion')) : null),
+      editableQuestions ? h('div', { class: 'row' },
+        // Offered when the school has AI requests (docs/ONLINE_TESTS.md §14).
+        data.ai ? h('button', { type: 'button', class: 'btn ghost', onclick: () => act(async () => { if (await suggestDialog(orgId, testId, data.ai)) refresh(); }) }, t('tests.suggest')) : null,
+        h('button', { type: 'button', class: 'btn', onclick: () => act(async () => { if (await questionDialog(orgId, testId)) refresh(); }) }, t('tests.addQuestion'))) : null),
     data.started && data.canEdit ? h('p', { class: 'muted' }, t('tests.lockedQuestions')) : null,
     data.questions.length
       ? h('ol', { class: 'questions' }, data.questions.map((q, i) => h('li', { class: 'question' },

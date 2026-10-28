@@ -335,6 +335,19 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await td.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
   await audit(page, 'test (draft with questions)');
+  // Questions suggested by AI (docs/ONLINE_TESTS.md §14), with AI requests given to this school: the request and
+  // review dialogs. Cancelled, so the test keeps its two questions.
+  await ownerQuery(`UPDATE subscriptions SET limit_overrides = limit_overrides || '{"ai_requests_per_month": 5}'::jsonb WHERE org_id = $1`, [orgId]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Suggest questions with AI' }).click();
+  await audit(page, 'suggest questions dialog');
+  td = page.getByRole('dialog');
+  await td.getByLabel('Topic or lesson').fill('The alphabet');
+  await td.getByRole('button', { name: 'Suggest' }).click();
+  await expect(page.getByRole('dialog', { name: 'Suggested questions' })).toBeVisible();
+  await audit(page, 'suggested questions dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
   await page.getByRole('button', { name: 'Publish' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();

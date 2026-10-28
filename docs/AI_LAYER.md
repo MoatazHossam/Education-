@@ -1,10 +1,14 @@
 # AI layer
 
-**Status (2026-10-28): the provider-independent layer is built and tested; no product feature uses it
-yet, and it has not been run against a real provider (no key in this environment).** The first feature
-planned on it is question generation for online tests (a teacher reviews every question before it is
-saved). The Wise EduAgent integration and any AI that students use stay blocked (PROJECT_STATUS B-8,
-B-9).
+**Status (2026-10-28): the provider-independent layer is built and tested, and the owner chose Google
+Gemini. The first feature on it is built: questions suggested for online tests, which a teacher reviews
+before adding (docs/ONLINE_TESTS.md §14). Neither has run against the real Gemini API yet: no key is set
+in this environment.** The Wise EduAgent integration and any AI that students use stay blocked
+(PROJECT_STATUS B-8, B-9).
+
+**To turn it on with Gemini:** set `AI_PROVIDER=gemini`, `AI_API_KEY` (a Gemini API key from Google AI
+Studio, on a paid tier) and `AI_MODEL` (the Gemini model to use) as environment secrets; run
+`npm run ai:check`; then give schools their monthly allowance (§5).
 
 ## 1. What it is
 
@@ -130,6 +134,12 @@ app.post('/api/orgs/:orgId/tests/:testId/suggested-questions', async (req) => {
 
 Keep the provider call out of database transactions (`runAiTask` does its own short ones), show the
 result to the teacher for review before anything is saved, and add the feature to §3's review.
+
+## 6a. Features built on it
+
+| Feature (`feature` in the log) | Who | What is sent | Docs |
+| --- | --- | --- | --- |
+| `test_questions`: questions suggested for an online test | the subject's teachers and the school's admins, before a student starts | the topic, the teacher's lesson text, the grade, subject, the subject's book titles, the test's title and kind | ONLINE_TESTS.md §14 |
 
 ## 7. Tests
 

@@ -66,7 +66,7 @@ Short answers are compared after normalising both sides, so spelling variants a 
 count: case, spaces and edge punctuation; Arabic diacritics and tatweel; أ إ آ ٱ → ا, ى → ي, ة → ه; and
 Arabic-Indic digits. Points are up to 2 decimals.
 
-Marking is plain rules in `marking.ts`; **no AI marks or changes marks**. An attempt's score is the sum
+Marking is plain rules in `marking.ts`; **no AI marks or changes marks** (AI only suggests questions, §14). An attempt's score is the sum
 of the teacher's mark where there is one, else the computer's. It "needs marking" while any answered
 written question has no teacher mark. Teachers can override any automatic mark (or remove the override)
 and leave a comment per answer. A student's best marked attempt is their result.
@@ -158,6 +158,7 @@ Staff (session + CSRF, role at least viewer, then the class rules in §1):
 | `PATCH /api/orgs/:orgId/tests/:testId` | change settings (§3 for what is fixed after a start) |
 | `DELETE /api/orgs/:orgId/tests/:testId` | delete with its attempts |
 | `POST /api/orgs/:orgId/tests/:testId/questions` | add a question |
+| `POST /api/orgs/:orgId/tests/:testId/suggest-questions` | questions suggested by AI (§14); saves nothing; 30 an hour |
 | `PATCH`, `DELETE /api/orgs/:orgId/tests/:testId/questions/:questionId` | change or delete one |
 | `PUT /api/orgs/:orgId/tests/:testId/questions/order` | reorder (`{ids}`, every question once) |
 | `POST /api/orgs/:orgId/tests/:testId/publish`, `/unpublish` | publish (notifies students) or back to draft |
@@ -240,6 +241,7 @@ Nothing is deleted until the school sets a period, and owners and admins are tol
 - The **gradebook** (docs/CLASSROOM.md §10) shows each student's best marked attempt next to their
   homework; the user guides (English and Arabic) describe these pages.
 - No question bank or import, no images or formulas in questions, no partial credit on short answers.
+- AI suggestions are not yet checked against the real Gemini API (no key in the development environment, §14).
 - No parent accounts, email or SMS to students.
 
 ## 13. Tests
@@ -269,3 +271,40 @@ Nothing is deleted until the school sets a period, and owners and admins are tol
 - `scripts/load-exam.mjs`: the load test of one exam (TEST_REPORT §5).
 - `tests/e2e/accessibility.spec.ts`: every test page and dialog for teachers and students in English,
   Arabic, dark and on a phone: 0 axe findings, 0 simulated screen-reader findings.
+
+## 14. Questions suggested by AI
+
+When the school has AI requests (docs/AI_LAYER.md: off for every school until a platform administrator gives it a
+monthly allowance) and the server has an AI provider, the test page offers **Suggest questions with AI** to those
+who can change the test (the subject's teachers and the school's admins), until a student starts.
+
+- **The teacher gives** a topic (3–300 characters), optionally the lesson text (up to 12,000 characters), how many
+  questions (1–10, and no more than the test has room for), the kinds, the difficulty and the language (Arabic or
+  English).
+- **What is sent** to the provider: that, the test's title and kind, the class's grade, the subject's names, and the
+  titles of the subject's books in the class's curriculum scope. Nothing about the students: no names, answers,
+  marks or work. The page asks teachers not to paste students' names or work.
+- **The instructions** (`src/classroom/question-suggestions.ts`) ask for questions that keep to the lesson text when
+  one is given, suit the grade, check one idea each and have one defensible answer, in Modern Standard Arabic with
+  correct spelling or in simple English, with set rules per kind (3–4 choices with exactly one correct, plausible
+  wrong choices, no "all of the above"; clear true-or-false statements; every accepted form of a short answer; a
+  marking guide for written answers) and a short reason for the teacher.
+- **The reply** is checked twice: against the reply schema (one more request if it does not match, AI_LAYER §3), then
+  each question against the same rules as a question typed by hand (`questionProblem`). Questions that break them,
+  or of kinds that were not asked for, are left out and counted (`dropped`).
+- **Nothing is saved.** The page lists the suggestions with their answers and reasons; the teacher unticks the ones
+  they do not want and **Add selected** adds the others through the normal question route, in order. They are then
+  ordinary questions (no mark that AI wrote them). The reason is not kept.
+- **Counting and errors:** one request of the school's monthly allowance per suggestion request, given back if the
+  provider fails without answering; the page shows how many are left. Errors (`AI_BUSY`, `AI_UNAVAILABLE`,
+  `AI_FAILED`, `AI_REFUSED`, `AI_REPLY_TOO_LONG`, `AI_INVALID_REPLY`, `FEATURE_NOT_IN_PLAN`, `TEST_STARTED`,
+  `TOO_MANY_QUESTIONS`) are shown in the dialog, in Arabic in the Arabic interface.
+- **Log:** each request is in `ai_requests` and the audit log as `ai.request` with feature `test_questions`, who asked,
+  the outcome and tokens, never the text.
+
+Tests: `tests/unit/question-suggestions.test.ts` (6: the instructions and task, the reply schema, each kind's
+conversion, what is left out), `tests/integration/test-question-suggestions.test.ts` (6, against the Gemini simulator:
+off without AI requests, what is sent and returned, nothing saved, only the subject's teachers and admins, not after a
+start, the test's room for questions, request checks, errors and the request given back), E2E journey 25 (the
+platform gives the school AI requests; the teacher asks, keeps two, edits one) and the accessibility audit of both
+dialogs.

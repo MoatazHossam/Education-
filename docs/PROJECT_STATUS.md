@@ -37,8 +37,9 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   `public/js/i18n.js`; docs ONLINE_TESTS §14, AI_LAYER §6a, USER_GUIDE (EN, AR), API_DOCUMENTATION, TEST_REPORT.
 - **Tests:** unit 6, integration 6 (Gemini simulator), E2E journey 25, accessibility audit of both dialogs; full
   suite 52 files, 371 tests; E2E 29/29.
-- **Not done:** a run against the real Gemini API and a teacher's review of real suggestions in both languages; the
-  published copies of the user guides (web pages and offline files) do not have the new paragraph yet.
+- **Not done:** a run against the real Gemini API and a teacher's review of real suggestions in both languages; a
+  screenshot of the two dialogs in the user guides (one now would show the simulator's questions, not Gemini's).
+  The guides' published copies (web pages and offline files) were republished with the new paragraph on 2026-10-28.
 
 ### AI layer, independent of the provider · COMPLETE (not yet run against a real provider)
 - **What:** one way for every AI feature to call an AI provider, chosen by configuration: Google Gemini, Anthropic
@@ -685,8 +686,8 @@ user guides.
 
 | Guide | Web page | Offline copies | Built from |
 | --- | --- | --- | --- |
-| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF, HTML | `docs/USER_GUIDE.md`, republished 2026-10-27 |
-| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF, HTML | `docs/USER_GUIDE.ar.md`, republished 2026-10-27 |
+| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` at `b0ea3ff`, republished 2026-10-28 |
+| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` at `b0ea3ff`, republished 2026-10-28 |
 | Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` on `main` at `fdc3f80`, 2026-10-27 |
 | دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (23 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` on `main` at `fdc3f80`, 2026-10-27 |
 
@@ -769,8 +770,8 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 
 **Resume point (2026-10-28).** The provider-independent AI layer and questions suggested by AI for online tests are
 built and tested against simulators (above). Next, once the owner sets the Gemini key and model (B-10):
-`npm run ai:check`, a sample of real suggestions reviewed by a teacher in Arabic and English, then the guides'
-published copies.
+`npm run ai:check`, then a sample of real suggestions reviewed by a teacher in Arabic and English. The user guides'
+published copies carry the feature (republished 2026-10-28).
 
 **Earlier resume point (2026-10-27).** PR #32 (the deployment guide in Arabic) is merged, and both deployment guides
 are published as web pages with offline copies (Documentation, above). On `claude/friendly-rubin-hmemjl`

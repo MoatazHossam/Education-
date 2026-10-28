@@ -1,27 +1,27 @@
 # Video QA report
 
-Checks of the narrated cuts on 2026-10-28. The narration is a synthetic voice with rule-based Arabic
-pronunciation (PRODUCTION_STATUS.md, "The narration voice"); the earlier preview cuts without narration are
-superseded.
+Checks of the final films on 2026-10-28: synthetic narration with rule-based Arabic pronunciation
+(PRODUCTION_STATUS.md, "The narration voice"), the recorded-instrument score, and full pauses at the end of every
+sentence. Earlier review and preview cuts are superseded.
 
 ## 1. Technical checks
 
 Measured with `video-project/lib/qa.py` (FFmpeg `blackdetect` d ≥ 0.5 s, `freezedetect` d ≥ 8 s,
 `silencedetect` −50 dB for ≥ 1.5 s, `ebur128` with true peak), and a full decode with FFmpeg.
 
-| | 20-minute, 1080p | 20-minute, 4K | 3-minute, 1080p |
+| | 20-minute, 4K | 20-minute, 1080p | 3-minute, 1080p |
 | --- | --- | --- | --- |
-| File | Education_SaaS_Product_Showcase_1080p.mp4 | Education_SaaS_Product_Showcase_20min.mp4 | Education_SaaS_Product_Showcase_3min.mp4 |
-| Duration | 20:41.8 (1,241.77 s) (target about 20 minutes; see §5) | 20:41.8 (1,241.77 s) | 3:04.9 (184.93 s; target 2:50–3:10) |
-| Picture | H.264 High, 1920 × 1080, 30 fps, yuv420p, 37,253 frames | H.264 High, 3840 × 2160, 30 fps, yuv420p, 37,253 frames; native 4K detail checked on a frame | H.264 High, 1920 × 1080, 30 fps, yuv420p, 5,548 frames |
+| File | Education_SaaS_Product_Showcase_20min.mp4 | Education_SaaS_Product_Showcase_1080p.mp4 | Education_SaaS_Product_Showcase_3min.mp4 |
+| Duration | 21:11.1 (1,271.07 s; see §5) | 21:11.1 (1,271.07 s) | 3:07.8 (187.8 s; target 2:50–3:10) |
+| Picture | H.264 High, 3840 × 2160, 30 fps, yuv420p, 38,132 frames; rendered natively at 4K | H.264 High, 1920 × 1080, 30 fps, yuv420p, 38,132 frames | H.264 High, 1920 × 1080, 30 fps, yuv420p, 5,634 frames |
 | Sound | AAC, 48 kHz, stereo | AAC, 48 kHz, stereo | AAC, 48 kHz, stereo |
-| Size / bitrate | 212.3 MB / 1.37 Mb/s | 388.3 MB / 2.5 Mb/s | 37.9 MB / 1.64 Mb/s |
+| Size / bitrate | 395.8 MB / 2.49 Mb/s | 217.4 MB / 1.37 Mb/s | 38.6 MB / 1.64 Mb/s |
 | Integrated loudness | −16.0 LUFS (target −16) | −16.0 LUFS | −16.0 LUFS |
-| Loudness range | 2.9 LU | 2.9 LU | 3.6 LU |
-| True peak | −1.8 dBTP (limit −1.5) | −1.8 dBTP | −1.8 dBTP |
+| Loudness range | 3.1 LU | 3.1 LU | 3.6 LU |
+| True peak | −1.6 dBTP (limit −1.5) | −1.6 dBTP | −1.7 dBTP |
 | Black segments | none | none | none |
 | Frozen picture (≥ 8 s) | none | none | none |
-| Silences | none | none | none |
+| Silences (≥ 1.5 s) | none | none | none |
 | Full decode | no errors | no errors | no errors |
 
 ## 2. Narration
@@ -29,15 +29,17 @@ Measured with `video-project/lib/qa.py` (FFmpeg `blackdetect` d ≥ 0.5 s, `free
 | Check | Result |
 | --- | --- |
 | Pronunciation follows the diacritized script | The voice is given phonemes, not text: `audio/arabic_g2p.py` applies the reading rules (vowels, shadda, tanween, sukun, long vowels, hidden alif, hamzat al-wasl, sun letters, iqlab, ta marbuta, pausal forms, stress); 15 rule tests pass; the rules were compared with espeak-ng on all 2,087 words of the scripts and every difference reviewed |
-| Speech recognition (Whisper small) on every take | 162 lines: character error rate 4.7 % (20-minute 4.7 %, median 4.1 %; 3-minute 5.0 %); 7 lines above 10 %, 2 above 15 % |
-| Speech recognition on the finished 3-minute soundtrack (voice under music and effects) | 5.1 % over 28 lines: the music does not mask the voice |
-| Pace | About 9 letters a second including pauses (the pace the script was written for); no time-stretching |
+| Every take matches the reviewed script | Yes: the text each take was spoken from was compared with the script; the 7 lines changed in the tashkeel review were spoken again |
+| Speech recognition (Whisper small) on the takes | 162 lines at 4.7 % character error rate when the voice was set up; the 7 new takes 5.1 % |
+| Speech recognition on the finished soundtrack (voice under music and effects) | 20-minute: running at the time of writing; 3-minute: 5.1 % over 28 lines |
+| Pauses | 0.8 s after every sentence, 0.45 s after a comma or colon, at least 0.6 s at the end of a scene; no silence of 1.5 s or more anywhere (§1) |
+| Pace | About 9 letters a second including pauses; no time-stretching |
+| Egyptian accent | Not achievable with this voice: ج as a hard g was heard as ك by speech recognition (PRODUCTION_STATUS.md); the voice reads MSA in a neutral accent |
 
 The recognition rate counts recognition errors too: Whisper writes numbers as digits ("2026", "14", "300"),
-drops or adds the article, and confuses emphatic and plain letters in synthetic speech. The highest line
-(c2-origin-2, 39 %) is the academic year said in words, transcribed as digits. The lines above 10 % were read
-against their phonemes: the phonemes are right; what remains is the voice's articulation of some sounds
-(emphatic ص/ط, ع at the end of a question) and recognition noise.
+drops or adds the article, and confuses emphatic and plain letters in synthetic speech. The lines above 10 %
+were read against their phonemes: the phonemes are right; what remains is the voice's articulation of some
+sounds (emphatic ص/ط, ع at the end of a question) and recognition noise.
 
 **Not done: a listening review by an Arabic speaker.** The checks above show that what the voice is asked to
 say is correct and that it is understood; how natural it sounds can only be judged by ear.
@@ -46,15 +48,16 @@ say is correct and that it is understood; how natural it sounds can only be judg
 
 | File | Cues | Ends at | Overlaps | Longest line | Lines per cue | Shortest cue | Fastest cue |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| arabic.srt (diacritized) | 202 | 1,237.7 s | 0 | 77 characters incl. diacritics | ≤ 2 | 2.33 s | 19.5 chars/s incl. diacritics |
-| arabic-plain.srt | 202 | 1,237.7 s | 0 | 44 | ≤ 2 | 2.33 s | 11.7 chars/s |
-| english.srt | 245 | 1,237.7 s | 0 | 54 | ≤ 2 | 2.22 s | 18.7 chars/s |
-| arabic-3min.srt | 31 | 180.5 s | 0 | 79 incl. diacritics | ≤ 2 | 1.90 s | 19.2 incl. diacritics |
-| arabic-3min-plain.srt | 31 | 180.5 s | 0 | 46 | ≤ 2 | 1.90 s | 11.4 |
-| english-3min.srt | 40 | 180.5 s | 0 | 44 | ≤ 2 | 1.90 s | 18.0 |
+| arabic.srt (diacritized) | 201 | 1,267.0 s | 0 | 77 characters incl. diacritics | ≤ 2 | 2.33 s | 19.5 chars/s incl. diacritics |
+| arabic-plain.srt | 201 | 1,267.0 s | 0 | 44 | ≤ 2 | 2.33 s | 11.9 chars/s |
+| english.srt | 245 | 1,267.0 s | 0 | 54 | ≤ 2 | 2.22 s | 18.9 chars/s |
+| arabic-3min.srt | 31 | 183.4 s | 0 | 79 incl. diacritics | ≤ 2 | 1.90 s | 19.4 incl. diacritics |
+| arabic-3min-plain.srt | 31 | 183.4 s | 0 | 46 | ≤ 2 | 1.90 s | 11.6 |
+| english-3min.srt | 40 | 183.4 s | 0 | 44 | ≤ 2 | 1.90 s | 18.3 |
 
-All files are numbered in order, UTF-8, timed to the recorded narration, and end inside their video. Every cue is
-now under 20 characters a second. The subtitles were validated as files, not tried in a particular player.
+All files are numbered in order, UTF-8, timed to the narration of the final films, and end inside their video.
+Every cue is under 20 characters a second. The subtitles were validated as files, not tried in a particular
+player.
 
 ## 4. Content checks (honesty and claims)
 
@@ -72,19 +75,12 @@ now under 20 characters a second. The subtitles were validated as files, not tri
 ## 5. Visual checks
 
 - Contact sheets of the final files reviewed (one frame every 30 s for the 20-minute cut, every 10 s for the
-  3-minute cut); frames of the scenes changed in this round checked at 1080p.
+  3-minute cut).
 - Arabic text, diacritics and right-to-left layout render correctly; English and numbers stay left-to-right.
-- The 20-minute cut is 20:42, 12 s over the 20:30 aimed for: the narration was kept at the pace where it was
-  clearest in the speech-recognition check rather than sped up.
-
-**Found and fixed in this round**
-
-- Two 8.3 s stretches of unchanging picture in the 20-minute cut (the audience board while one segment is
-  described; a demo holding its last frame). Demo windows now push in by about 1 % across the scene and the
-  board drifts slowly closer; the re-rendered files have no frozen stretch.
-- True peak −1.3 dBTP (AAC encoding adds about 0.2 dB). Normalisation now aims at −2 dBTP.
-- A resumed render could reuse chunks drawn by an older version of a scene template: the chunk key now
-  includes the player code.
+- Demo windows push in slowly across each scene and the audience board drifts, so no stretch of picture is
+  still for 8 s or more.
+- The 20-minute cut is 21:11: the full pauses after every sentence added 29 s to the 20:42 of the earlier cut.
+  The narration was kept at the pace where it was clearest in the speech-recognition check rather than sped up.
 
 **Known, accepted**
 
@@ -93,9 +89,11 @@ now under 20 characters a second. The subtitles were validated as files, not tri
 
 ## 6. Audio checks
 
-- Loudness, peaks, silences: §1. The music ducks under the voice (−10 dB) and the cues follow the chapters.
-- **Not listened to by a person**: neither the generated score nor the voice. Before release, a listening pass
-  on headphones and on laptop speakers is needed.
+- Loudness, peaks, silences: §1. The music ducks under the voice (−10 dB) and its cues follow the chapters.
+- The score is played by sampled acoustic instruments (FluidR3 soundfont, MIT licence) and mastered with a bus
+  compressor and limiter; its peaks stay below the film's limit (§1).
+- **Not listened to by a person**: neither the score nor the voice. Before release, a listening pass on
+  headphones and on laptop speakers is needed.
 
 ## 7. Not tested
 

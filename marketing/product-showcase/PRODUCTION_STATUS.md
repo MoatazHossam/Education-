@@ -1,6 +1,6 @@
 # Production status
 
-State on 2026-10-28. **The final films are being built: 20-minute 4K and 1080p, 3-minute 1080p (done).** At the owner's
+State on 2026-10-28. **The three films are finished: 20-minute 4K and 1080p (21:11), 3-minute 1080p (3:08).** At the owner's
 instruction («قم أنت باصدار الفيديو و أتم العمل بشكل كامل») they carry the synthetic narration voice, with the
 recorded-instrument score and full pauses at the end of every sentence. The Egyptian narrator's recordings
 could not be reached from the production environment (below); the recording pack and the ingest stay ready, so
@@ -23,10 +23,10 @@ neither the voice nor the music has been listened to by a person.**
 | screenshots/, graphics/, Education_SaaS_Thumbnail.png | Done |
 | Music | Done: recorded instruments (piano, strings, cello, harp, celesta, pad, bass, soft percussion; FluidR3 soundfont, MIT), arranged per chapter, ducked under the voice |
 | Narration | Done with the synthetic voice (next section); every take matches the reviewed script |
-| **Education_SaaS_Product_Showcase_20min.mp4** (4K) | Rendering (final build) |
-| **Education_SaaS_Product_Showcase_1080p.mp4** (20-minute, 1080p) | Rendering (final build) |
+| **Education_SaaS_Product_Showcase_20min.mp4** (4K) | **Final** |
+| **Education_SaaS_Product_Showcase_1080p.mp4** (20-minute, 1080p) | **Final** |
 | **Education_SaaS_Product_Showcase_3min.mp4** (1080p) | **Final** |
-| VIDEO_QA_REPORT.md | Repeated on the final files once rendered |
+| VIDEO_QA_REPORT.md | Done on the final files: no technical fault found; −16 LUFS; full decode clean |
 | Narrator_Recording_Pack.pdf, NARRATOR_RECORDING_PACK.md | Ready for a human narrator (formal Egyptian MSA, full tashkeel, notes per line) |
 
 ## The narration voice

@@ -31,7 +31,7 @@ Measured with `video-project/lib/qa.py` (FFmpeg `blackdetect` d ≥ 0.5 s, `free
 | Pronunciation follows the diacritized script | The voice is given phonemes, not text: `audio/arabic_g2p.py` applies the reading rules (vowels, shadda, tanween, sukun, long vowels, hidden alif, hamzat al-wasl, sun letters, iqlab, ta marbuta, pausal forms, stress); 15 rule tests pass; the rules were compared with espeak-ng on all 2,087 words of the scripts and every difference reviewed |
 | Every take matches the reviewed script | Yes: the text each take was spoken from was compared with the script; the 7 lines changed in the tashkeel review were spoken again |
 | Speech recognition (Whisper small) on the takes | 162 lines at 4.7 % character error rate when the voice was set up; the 7 new takes 5.1 % |
-| Speech recognition on the finished soundtrack (voice under music and effects) | 20-minute: running at the time of writing; 3-minute: 5.1 % over 28 lines |
+| Speech recognition on the finished soundtrack (voice under music and effects) | 20-minute: 4.6 % over 134 lines; 3-minute: 5.1 % over 28 lines. The music does not mask the voice |
 | Pauses | 0.8 s after every sentence, 0.45 s after a comma or colon, at least 0.6 s at the end of a scene; no silence of 1.5 s or more anywhere (§1) |
 | Pace | About 9 letters a second including pauses; no time-stretching |
 | Egyptian accent | Not achievable with this voice: ج as a hard g was heard as ك by speech recognition (PRODUCTION_STATUS.md); the voice reads MSA in a neutral accent |

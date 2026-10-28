@@ -1,7 +1,7 @@
 # Production status
 
-State on 2026-10-28. **The narration is generated with correct, rule-based Arabic pronunciation; the narrated cuts
-are being rendered.** Nothing has been published.
+State on 2026-10-28. **The narrated cuts are finished at 1080p (20-minute and 3-minute) with rule-based Arabic
+pronunciation; the 4K file is rendering.** Nothing has been published.
 
 ## Deliverables
 
@@ -17,10 +17,11 @@ are being rendered.** Nothing has been published.
 | screenshots/, graphics/, Education_SaaS_Thumbnail.png | Done |
 | Music | Done: original generated score (`music/`, rebuilt by `build.mjs audio`); not yet reviewed by ear |
 | Narration | Done (generated; takes kept out of git, `node narrate.mjs` recreates them) — see below |
-| Education_SaaS_Product_Showcase_3min.mp4 (1920 × 1080, 3:05) | Rendering |
-| Education_SaaS_Product_Showcase_1080p.mp4, Education_SaaS_Product_Showcase_20min.mp4 (3840 × 2160), 20:42 | Rendering after the 3-minute cut |
+| Education_SaaS_Product_Showcase_3min.mp4 | Done: 3:04.9, 1920 × 1080, 37.9 MB |
+| Education_SaaS_Product_Showcase_1080p.mp4 | Done: 20:41.8, 1920 × 1080, 212.3 MB |
+| Education_SaaS_Product_Showcase_20min.mp4 (3840 × 2160) | Rendering |
 | Preview cuts without narration (…_PREVIEW_no-narration.mp4) | Superseded by the narrated cuts |
-| VIDEO_QA_REPORT.md | Preview cuts done; repeated on the narrated cuts |
+| VIDEO_QA_REPORT.md | Done for the narrated 1080p cuts (technical, narration, subtitles, content, visual, audio); the 4K column follows its render |
 
 ## The narration voice
 

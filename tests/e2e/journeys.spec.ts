@@ -164,7 +164,7 @@ test('service recovers after a server crash: sessions and saved selections survi
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
 });
 
-test('platform admin signs in with two-factor authentication, sends a test alert, and suspends then restores an organization', async ({ page, browser }) => {
+test('platform admin signs in with two-factor authentication, sends a test alert, tests the AI provider, turns AI on for a school, and suspends then restores it', async ({ page, browser }) => {
   await signInAsPlatformAdmin(page);
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
@@ -173,8 +173,20 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByText(/No alert channel is configured/)).toBeVisible();
   await page.getByRole('button', { name: 'Send test alert' }).click();
   await expect(page.getByText('Test alert: email not configured, webhook not configured')).toBeVisible();
+  // AI assistance: the E2E server's provider is the local simulator (tests/e2e/server.ts).
+  await expect(page.getByRole('heading', { name: 'AI assistance' })).toBeVisible();
+  await expect(page.getByText('Provider: Google Gemini · model gemini-2.5-pro')).toBeVisible();
+  await expect(page.getByText(/No school has an AI allowance yet/)).toBeVisible();
+  await page.getByRole('button', { name: 'Test the connection' }).click();
+  await expect(page.getByText(/^The AI provider answered: gemini-2\.5-pro, \d+ ms$/)).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByRole('heading', { name: 'Nile Learning' })).toBeVisible();
+  await page.getByLabel('AI requests per month (override)').fill('100');
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await expect(page.getByText('Saved')).toBeVisible();
+  await page.goto('/admin');
+  await expect(page.getByRole('region', { name: /^Schools with AI assistance/ }).getByRole('row', { name: /Nile Learning/ })).toContainText('0 / 100');
+  await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByText('No active grant. Customer business data is not accessible.')).toBeVisible();
   await page.getByRole('button', { name: 'Suspend organization' }).click();
   await page.getByRole('dialog').getByLabel(/Reason/).fill('E2E suspension check');
@@ -191,6 +203,9 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByRole('button', { name: 'Suspend organization' })).toBeVisible();
   await owner.reload();
   await expect(owner.locator('.picker h1')).toBeVisible();
+  // The school sees its AI allowance on the billing page.
+  await owner.goto(`/org/${orgAId}/billing`);
+  await expect(owner.getByRole('meter', { name: 'AI requests this month' })).toHaveAttribute('aria-valuetext', '0 / 100');
   await ownerCtx.close();
 });
 

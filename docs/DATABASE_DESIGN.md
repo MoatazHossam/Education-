@@ -80,6 +80,7 @@ erDiagram
 | `assignment_digest_items` | Assignments waiting for the member's morning summary | PK `(user_id, scope_id, material_id)`; `assigned_by`, `assigned_at`; foreign keys to the selected book, the scope (with its org) and the membership, all `ON DELETE CASCADE`. The worker deletes the rows it sends. RLS: the organization, or the member themselves (read and delete only, so they can drop their own queue) | ✓ |
 | `webhook_endpoints` | Customer systems told about scope changes | `url` (≤ 500), `description`, `events text[]`, `secret_enc` (AES-GCM with `DATA_ENCRYPTION_KEY`) and `secret_prefix` for display, `enabled`, `disabled_reason` (`failing`), `consecutive_failures`; unique `(id, org_id)` | ✓ |
 | `webhook_deliveries` | Outbox of events per endpoint | `event_id` (the same for every endpoint and for redeliveries), `event_type`, `payload json` (kept as sent, since it is signed), `status` pending/delivered/failed, `attempts`, `next_attempt_at` (also the worker's 10-minute lease), `last_status_code`, `last_error`; FK `(endpoint_id, org_id)` → `webhook_endpoints` `ON DELETE CASCADE`; partial unique index on `(endpoint_id, coalesce_key)` while waiting for the first attempt, which merges quick changes to one scope | ✓ |
+| `ai_requests` | One row per request to the AI provider (docs/AI_LAYER.md) | `user_id` (set null when the user is deleted), `feature`, `provider` gemini/anthropic/openai, `model` (the one that answered), `status` ok/refused/invalid_output/too_long/failed, `error_kind` (only when failed), `attempts`, `input_tokens`, `output_tokens`, `duration_ms`. Never the text of the request or reply. The month's count is `usage_counters` metric `ai_requests` (migration 0017) | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
 | `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
@@ -180,6 +181,7 @@ are never created when `NODE_ENV=production`.
 | Due-date reminder records | 60 d after the due date | worker hourly |
 | Assignments waiting for a daily summary | until the next morning's summary; 30 d at most | worker |
 | Webhook deliveries (delivered or failed) | 30 d | worker hourly |
+| AI usage log (`ai_requests`: who, feature, provider, model, outcome, tokens; never text) | 400 d | worker hourly |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |
 | Deleted organizations | Tenant rows removed immediately (cascade), student accounts included; the deletion audit entry is kept | API |

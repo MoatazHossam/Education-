@@ -75,6 +75,17 @@ const EnvSchema = z
     FILE_SCAN: z.enum(['clamav', 'off']).optional(),
     CLAMAV_HOST: z.string().min(1).optional(),
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+
+    // AI assistance (docs/AI_LAYER.md): one provider for the whole server, used
+    // only by schools a platform administrator has enabled. "none" turns it off.
+    // AI_API_BASE replaces the provider's endpoint (a regional endpoint, a
+    // compatible service, or a local simulator in tests).
+    AI_PROVIDER: z.enum(['none', 'gemini', 'anthropic', 'openai']).default('none'),
+    AI_API_KEY: z.string().min(8).optional(),
+    AI_MODEL: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/, 'AI_MODEL must be a model id such as gemini-2.5-pro or claude-opus-5-5').optional(),
+    AI_API_BASE: z.url().regex(/^https?:\/\//, 'AI_API_BASE must be an http(s) URL').optional(),
+    AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(600_000).default(120_000),
+    AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(64_000).default(16_000),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {
@@ -93,6 +104,9 @@ const EnvSchema = z
       if (env.WEBHOOK_ALLOW_INSECURE_TARGETS) {
         ctx.addIssue({ code: 'custom', path: ['WEBHOOK_ALLOW_INSECURE_TARGETS'], message: 'WEBHOOK_ALLOW_INSECURE_TARGETS cannot be used in production' });
       }
+      if (env.AI_API_BASE && !env.AI_API_BASE.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['AI_API_BASE'], message: 'AI_API_BASE must use https in production' });
+      }
       if (!env.FILE_SCAN) {
         ctx.addIssue({ code: 'custom', path: ['FILE_SCAN'], message: 'FILE_SCAN must be set in production: clamav (scan homework files for viruses) or off' });
       }
@@ -108,6 +122,11 @@ const EnvSchema = z
     }
     if (env.BILLING_PROVIDER === 'sandbox' && !env.SANDBOX_WEBHOOK_SECRET) {
       ctx.addIssue({ code: 'custom', path: ['SANDBOX_WEBHOOK_SECRET'], message: 'SANDBOX_WEBHOOK_SECRET is required for the sandbox provider' });
+    }
+    if (env.AI_PROVIDER !== 'none') {
+      for (const key of ['AI_API_KEY', 'AI_MODEL'] as const) {
+        if (!env[key]) ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when AI_PROVIDER=${env.AI_PROVIDER}` });
+      }
     }
     if (env.BILLING_PROVIDER === 'paymob') {
       for (const key of ['PAYMOB_SECRET_KEY', 'PAYMOB_PUBLIC_KEY', 'PAYMOB_HMAC_SECRET', 'PAYMOB_INTEGRATION_IDS'] as const) {

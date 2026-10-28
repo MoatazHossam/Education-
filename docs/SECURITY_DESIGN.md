@@ -65,6 +65,7 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 | `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets and customer webhook signing secrets | No downtime: the old key moves to `DATA_ENCRYPTION_KEYS_PREVIOUS`, `rotate-data-key` re-encrypts every value, then the old key is removed (DEPLOYMENT_GUIDE §4, "Rotating `DATA_ENCRYPTION_KEY`"). Keep the old key with backups made before the rotation |
 | Database passwords (owner/app/backup) | DB access | Standard role password rotation |
 | `PAYMOB_*`, `SANDBOX_WEBHOOK_SECRET` | Provider API and webhook verification | Rotate in provider dashboard + env |
+| `AI_API_KEY` | The AI provider's API (docs/AI_LAYER.md) | Create a new key in the provider's console, set it, restart, then delete the old key; check with `npm run ai:check` |
 | SMTP credentials | Email | Provider dashboard |
 
 Secrets come only from the environment (or Docker env files kept out of git — `.gitignore`
@@ -89,6 +90,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
 `api_key.created/revoked`, `admin.data_key_rotated` (counts and the key id, never key material), `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled/deliveries_exported` (URLs, events and row counts, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
+`ai.request` (feature, provider, model that answered, outcome and tokens; never the text) and `admin.ai_tested`,
 `student.created/imported/updated/password_reset/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`), which go to the school's
 own audit log with the username, never a password.
@@ -106,6 +108,14 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
 8. Student accounts are a new category of personal data (minors). Their use with real students is
    subject to the legal assessment in §7.
 9. Customer webhooks are the application's only outbound requests to addresses chosen by customers. The address checks are in the application; in production, also run the worker with an egress firewall that blocks private ranges and the cloud metadata address, as a second layer.
+10. **AI provider (docs/AI_LAYER.md).** When `AI_PROVIDER` is set, what a school's staff send through an AI feature
+   (curriculum material and their own instructions) leaves for the provider. Students never reach it (refused in
+   `runAiTask` whatever the route), features must not put students' data in prompts (reviewed per feature), and
+   no school uses it until a platform administrator gives it an allowance. Neither the request nor the reply is
+   stored; the log keeps who, which feature, the outcome and tokens. Replies are untrusted text: features show them
+   to the teacher for review and check structured replies against a schema before use. Before enabling a provider,
+   choose a paid tier whose terms exclude training on requests, and name the provider and its region in the privacy
+   notice and in the agreement with schools (§7).
 
 ## 7. Privacy and regulatory notes (not legal advice)
 

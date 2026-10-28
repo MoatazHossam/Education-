@@ -4,6 +4,7 @@ import { withSystemContext, type Database } from '../db/index.js';
 import type { Mailer } from '../notifications/mailer.js';
 import { addDays } from '../lib/time.js';
 import { DELIVERY_RETENTION_DAYS } from '../webhooks/service.js';
+import { AI_REQUEST_RETENTION_DAYS } from '../ai/service.js';
 
 const MAX_ATTEMPTS = 8;
 
@@ -67,6 +68,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     // Daily summaries take their rows each morning; anything older was never going to be sent.
     const digestItems = await trx.deleteFrom('assignment_digest_items').where('assigned_at', '<=', addDays(now, -30)).executeTakeFirst();
     const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -DELIVERY_RETENTION_DAYS)).executeTakeFirst();
+    // The AI usage log is kept for a year of cost reporting (ai/service.ts).
+    const aiRequests = await trx.deleteFrom('ai_requests').where('created_at', '<=', addDays(now, -AI_REQUEST_RETENTION_DAYS)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -79,6 +82,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       itemReminders: Number(reminders.numDeletedRows),
       digestItems: Number(digestItems.numDeletedRows),
       webhookDeliveries: Number(webhookDeliveries.numDeletedRows),
+      aiRequests: Number(aiRequests.numDeletedRows),
     };
   });
 }

@@ -357,6 +357,16 @@ const en = {
   'ptests.submittedToast': 'Submitted.', 'ptests.timeUp': 'Time is up. Your answers were submitted.', 'ptests.endedByTeacher': 'Your teacher ended this attempt.', 'ptests.moreTime': 'Your teacher gave you more time.',
   'ptests.submittedTitle': 'Submitted', 'ptests.resultsLater': 'Your answers are saved. Your teacher will show the results later.',
   'ptests.resultTitle': 'Your result', 'ptests.partlyMarked': 'Some answers are still being marked by your teacher.', 'ptests.answersHidden': 'Your teacher has not shown the correct answers.',
+  // AI assistance (docs/AI_LAYER.md)
+  'admin.ai': 'AI assistance', 'admin.aiOff': 'Not set up on this server. Set AI_PROVIDER, AI_API_KEY and AI_MODEL (docs/AI_LAYER.md).',
+  'admin.aiProvider': 'Provider: {name} · model {model}', 'admin.aiProviderName.gemini': 'Google Gemini', 'admin.aiProviderName.anthropic': 'Anthropic Claude', 'admin.aiProviderName.openai': 'OpenAI',
+  'admin.aiSchools': 'Schools with AI assistance, {period}', 'admin.aiNoSchools': 'No school has an AI allowance yet. Set one on the school’s page (AI requests per month).',
+  'admin.aiCol.used': 'Requests used', 'admin.aiCol.failed': 'Failed', 'admin.aiCol.tokens': 'Tokens', 'admin.aiTokens': '{input} in · {output} out', 'admin.aiUnlimited': '{n} (no limit)',
+  'admin.aiTest': 'Test the connection', 'admin.aiTestOk': 'The AI provider answered: {model}, {ms} ms', 'admin.aiTestFailed': 'The test failed: {reason}', 'admin.aiTestBadReply': 'the reply was not in the expected form',
+  'admin.aiError.auth': 'the key was refused', 'admin.aiError.rate_limited': 'the provider’s rate limit', 'admin.aiError.unavailable': 'the provider did not answer', 'admin.aiError.timeout': 'no answer in time',
+  'admin.aiError.bad_request': 'the provider rejected the request (check AI_MODEL)', 'admin.aiError.other': 'an unexpected error (see the server log)',
+  'admin.overrideAi': 'AI requests per month (override)', 'admin.overrideAiHint': 'Turns AI assistance on for this school, up to this many requests a month. Empty: the plan’s value (no plan includes AI yet).',
+  'billing.meter.ai': 'AI requests this month',
 };
 
 const ar = {
@@ -758,6 +768,16 @@ const ar = {
   'err.OTHER_DEVICE': 'يُكمل هذا الاختبار على الجهاز الذي بدأت عليه فقط. اطلب من معلمك السماح بهذا الجهاز.', 'err.ANSWER_INVALID': 'لم تُحفظ هذه الإجابة. حاول مرة أخرى.', 'err.TIME_UP': 'انتهى الوقت وسُلِّمت إجاباتك.',
   'err.ATTEMPT_SUBMITTED': 'سُلِّمت هذه المحاولة بالفعل.', 'err.ATTEMPT_IN_PROGRESS': 'ما زال الطالب يعمل على هذه المحاولة.', 'err.RESULTS_NOT_YET': 'لم يعرض معلمك نتائج هذا الاختبار بعد.',
   'err.RESULTS_AUTOMATIC': 'نتائج هذا الاختبار تظهر تلقائيًا.', 'err.NO_START_CODE': 'لا يستخدم هذا الاختبار رمز بدء.', 'err.TOO_MANY_ATTEMPTS': 'عشر محاولات إضافية على الأكثر.',
+  // المساعدة بالذكاء الاصطناعي (docs/AI_LAYER.md)
+  'admin.ai': 'المساعدة بالذكاء الاصطناعي', 'admin.aiOff': 'غير مُعدّة على هذا الخادم. اضبط AI_PROVIDER وAI_API_KEY وAI_MODEL (docs/AI_LAYER.md).',
+  'admin.aiProvider': 'المزوّد: {name} · النموذج {model}', 'admin.aiProviderName.gemini': 'Google Gemini', 'admin.aiProviderName.anthropic': 'Anthropic Claude', 'admin.aiProviderName.openai': 'OpenAI',
+  'admin.aiSchools': 'المدارس التي لديها المساعدة بالذكاء الاصطناعي، {period}', 'admin.aiNoSchools': 'لا توجد مدرسة لديها حصة من الذكاء الاصطناعي بعد. حدّدها في صفحة المدرسة (طلبات الذكاء الاصطناعي شهريًا).',
+  'admin.aiCol.used': 'الطلبات المستخدمة', 'admin.aiCol.failed': 'الفاشلة', 'admin.aiCol.tokens': 'الرموز', 'admin.aiTokens': '{input} داخلة · {output} خارجة', 'admin.aiUnlimited': '{n} (بلا حد)',
+  'admin.aiTest': 'اختبار الاتصال', 'admin.aiTestOk': 'أجاب مزوّد الذكاء الاصطناعي: {model}، ‏{ms} ملّي ثانية', 'admin.aiTestFailed': 'فشل الاختبار: {reason}', 'admin.aiTestBadReply': 'لم يكن الرد بالشكل المتوقع',
+  'admin.aiError.auth': 'رُفض المفتاح', 'admin.aiError.rate_limited': 'حدّ الطلبات لدى المزوّد', 'admin.aiError.unavailable': 'لم يُجب المزوّد', 'admin.aiError.timeout': 'لم يصل رد في الوقت المحدد',
+  'admin.aiError.bad_request': 'رفض المزوّد الطلب (راجع AI_MODEL)', 'admin.aiError.other': 'خطأ غير متوقع (راجع سجل الخادم)',
+  'admin.overrideAi': 'طلبات الذكاء الاصطناعي شهريًا (استثناء)', 'admin.overrideAiHint': 'يفعّل المساعدة بالذكاء الاصطناعي لهذه المدرسة حتى هذا العدد من الطلبات شهريًا. فارغ: قيمة الخطة (لا تتضمن أي خطة الذكاء الاصطناعي حتى الآن).',
+  'billing.meter.ai': 'طلبات الذكاء الاصطناعي هذا الشهر',
 };
 
 const DICTS = { en, ar };

@@ -14,7 +14,7 @@ const openGrades = new Map();
 let verifFilter = 'all';
 
 export async function overviewView() {
-  const [o, health, alerts] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health'), get('/api/admin/alerts')]);
+  const [o, health, alerts, ai] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health'), get('/api/admin/alerts'), get('/api/admin/ai')]);
   const worker = health.workers.find((w) => w.name === 'worker');
   return h('div', {},
     pageHead(t('admin.overview'), t('admin.overviewSub')),
@@ -37,7 +37,38 @@ export async function overviewView() {
           h('li', {}, `${t('admin.failedWebhooks')}: ${fmtNum(o.operations.failedWebhooksLast7Days)}`),
           h('li', {}, `${t('admin.billingProvider')}: ${health.billingProvider}`),
           h('li', {}, `Node ${health.process.node} · RSS ${health.process.rssMb} MB · up ${Math.round(health.process.uptimeSeconds / 60)} min`)))),
-    alertsCard(alerts));
+    alertsCard(alerts),
+    aiCard(ai));
+}
+
+/** AI assistance (docs/AI_LAYER.md): the provider, the schools with an allowance and their use this month, a connection test. */
+function aiCard({ provider, period, schools }) {
+  const title = h('h2', {}, t('admin.ai'));
+  if (!provider) return h('div', { class: 'card' }, title, h('p', { class: 'notice' }, t('admin.aiOff')));
+  const test = h('button', {
+    type: 'button', class: 'btn ghost', onclick: async () => {
+      test.disabled = true;
+      await safe(async () => {
+        const r = (await post('/api/admin/ai/test')).result;
+        if (r.ok) toast(t('admin.aiTestOk', { model: r.model, ms: fmtNum(r.ms) }));
+        else toast(t('admin.aiTestFailed', { reason: r.errorKind ? t(`admin.aiError.${r.errorKind}`) : t('admin.aiTestBadReply') }), 'error');
+      });
+      test.disabled = false;
+    },
+  }, t('admin.aiTest'));
+  const limit = (s) => (s.limit === null ? t('admin.aiUnlimited', { n: fmtNum(s.used) }) : `${fmtNum(s.used)} / ${fmtNum(s.limit)}`);
+  return h('div', { class: 'card' },
+    title,
+    h('p', {}, t('admin.aiProvider', { name: t(`admin.aiProviderName.${provider.name}`), model: provider.model })),
+    schools.length
+      ? tableCard(t('admin.aiSchools', { period }),
+        h('table', {},
+          h('thead', {}, h('tr', {}, th(t('admin.col.org')), th(t('admin.col.plan')), th(t('admin.aiCol.used')), th(t('admin.aiCol.failed')), th(t('admin.aiCol.tokens')))),
+          h('tbody', {}, schools.map((s) => h('tr', {},
+            h('td', {}, link(`/admin/orgs/${s.orgId}`, s.name)), h('td', {}, s.planName), h('td', {}, limit(s)), h('td', {}, fmtNum(s.failed)),
+            h('td', {}, t('admin.aiTokens', { input: fmtNum(s.inputTokens), output: fmtNum(s.outputTokens) })))))))
+      : h('p', { class: 'muted' }, t('admin.aiNoSchools')),
+    h('p', {}, test));
 }
 
 /** Operational alerts (src/ops/alerts.ts): what is failing now, what recently cleared, where alerts are sent. */
@@ -109,6 +140,7 @@ export async function orgDetailView(ctx) {
       { name: 'maxMembers', label: t('admin.overrideMembers'), type: 'number', value: s?.limitOverrides?.max_members ?? '' },
       { name: 'maxStudents', label: t('admin.overrideStudents'), type: 'number', value: s?.limitOverrides?.max_students ?? '', hint: t('admin.overrideStudentsHint') },
       { name: 'maxStorage', label: t('admin.overrideStorage'), type: 'number', value: s?.limitOverrides?.max_storage_mb ?? '', hint: t('admin.overrideStorageHint') },
+      { name: 'maxAi', label: t('admin.overrideAi'), type: 'number', value: s?.limitOverrides?.ai_requests_per_month ?? '', hint: t('admin.overrideAiHint') },
     ],
     submitLabel: t('admin.applyPlan'),
     onSubmit: async (v) => {
@@ -116,7 +148,7 @@ export async function orgDetailView(ctx) {
       if (v.status === 'trialing') body.trialEndsAt = new Date(v.periodEnd || Date.now() + 14 * 86_400_000).toISOString();
       // Overrides replace the stored set: keep the ones this form does not show; an empty field removes one.
       const overrides = { ...(s?.limitOverrides ?? {}) };
-      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students'], ['maxStorage', 'max_storage_mb']]) {
+      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students'], ['maxStorage', 'max_storage_mb'], ['maxAi', 'ai_requests_per_month']]) {
         if (v[field] === '') delete overrides[key];
         else overrides[key] = Number(v[field]);
       }

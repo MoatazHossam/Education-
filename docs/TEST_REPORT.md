@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**47 files, 311 tests, 311 passed, 0 failed** (2026-10-27, with the operations scripts). Integration tests ran against a real
+**50 files, 359 tests, 359 passed, 0 failed** (2026-10-28, with the AI layer). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -38,6 +38,9 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
+| unit/ai-layer | 7 | Pass — AI reply schemas in the form all three providers accept (limits dropped from what is sent, every object closed, optional fields refused); JSON replies checked against the full schema, Markdown fences removed; provider error kinds; configuration (off by default, key and model required, https endpoint in production) |
+| integration/ai-providers-contract | 24 | Pass — the Gemini, Anthropic and OpenAI adapters against a local simulator of each documented API (`tests/helpers/ai-simulator.ts`): instructions, task and JSON schema in the documented fields with the key in the right header; reply, tokens and model read; refusals and truncated replies reported; a refused key not retried and never echoed; 429, 5xx and 400 mapped; a temporary failure retried; timeouts; Anthropic's server-side fallback requested on the models that have it |
+| integration/ai | 17 | Pass — the AI layer end to end against the simulator: off for every school until a platform administrator sets an allowance, nothing sent before; off without a provider; student accounts refused; the usage log and audit entry with no text; a second attempt on an unusable reply; refusals and truncated replies; the unit given back when the provider fails; the monthly limit held under 8 concurrent requests; an unlimited allowance; row-level security between schools; retention; the platform administration endpoints and the connection test |
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors (with their codes), encoding, semicolons |
 | unit/import-problems | 2 | Pass — a problem in an imported file carries its code, parameters and English text; every code has an Arabic text with the same placeholders, and no Arabic text is left without a code |
 | unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
@@ -402,7 +405,7 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**Chromium: 28 tests, 28 passed** (8.0 min, 2026-10-27, with the journeys in Firefox and WebKit), real server process on port 3100: 24 journeys,
+**Chromium: 28 tests, 28 passed** (8.1 min, 2026-10-28, with the AI layer: the platform administrator's journey now also tests the AI provider, which in E2E is the simulator in a process of its own, gives a school an allowance and the school sees it on its billing page), real server process on port 3100: 24 journeys,
 then the accessibility project (4 tests), which reuses the journeys' data.
 **Firefox: 24 journeys, 24 passed** (3.1 min; again 2.9 min) with `npm run test:e2e:firefox`, and
 **WebKit: 24 journeys, 24 passed** (3.9 min; again 3.6 min) with `npm run test:e2e:webkit`, each on a fresh
@@ -780,6 +783,7 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 
 - CI workflow on GitHub-hosted runners: both attempts were refused before starting because the GitHub account is locked for billing (PROJECT_STATUS.md B-7).
 - Paymob checkout/webhook against Paymob's servers (no keys; §7 lists what was verified instead, and `npm run paymob:check` is the next step).
+- The AI adapters against the providers' real APIs (no key in this environment; the simulator follows the documented APIs, and `npm run ai:check` with a real key is the next step). No product feature uses the AI layer yet.
 - Branded browsers and devices (Safari on macOS and iOS, Firefox and Chrome on Windows and Android, phones and tablets); the accessibility tests in Firefox and WebKit; manual screen-reader review; external penetration test.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).

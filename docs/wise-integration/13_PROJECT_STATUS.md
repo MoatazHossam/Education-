@@ -16,7 +16,8 @@ features would mean inventing them.
 | Decision on students | DECIDED (owner, 2026-10-25) | School-created accounts |
 | Phase 2: student experience design (`04`) | PARTIALLY COMPLETE | Foundation designed and built; Wise features wait for the inventory |
 | Student portal foundation: accounts, sign-in, staff management, curriculum view, entitlement switch | COMPLETE (off for every school; legal assessment pending before real use) | `../STUDENT_ACCOUNTS.md`; 25 integration tests, E2E journey 13, 12 more accessibility screens with 0 findings |
-| Phases 3–5: functionality, AI architecture, SaaS integration (`05`–`10`) | BLOCKED | Needs the Wise inventory (B-8) and an AI provider (B-10) |
+| AI layer, independent of the provider (part of the AI architecture) | COMPLETE (2026-10-28; not yet run against a real provider) | `../AI_LAYER.md`: Gemini, Claude or OpenAI by configuration, per-school allowance, usage log, staff only; 48 tests |
+| Phases 3–5: functionality, the rest of the AI architecture, SaaS integration (`05`–`10`) | BLOCKED | Needs the Wise inventory (B-8) and an AI provider with its key (B-10) |
 | Phase 6: implementation of Wise features | BLOCKED | Same |
 | Phase 7: tests (`12`) | PARTIALLY COMPLETE | Tests of the foundation done (above); Wise features not built |
 | Roadmap (`11`) | NOT STARTED | Written with the design |
@@ -30,7 +31,8 @@ them.
    `wise-eduagent.ai.studio` with an authorized account.
 2. ~~Whether to add students~~ — **decided: school-created accounts.** Still needed: the legal
    assessment (age range, parental consent, terms with schools) before real students use it.
-3. The AI provider and model, and who holds the key and pays for usage.
+3. The AI provider and model, and who holds the key and pays for usage. The layer that uses them is built
+   (`../AI_LAYER.md`); with a key, `npm run ai:check` checks it.
 
 ## Branch
 

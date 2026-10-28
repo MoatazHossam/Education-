@@ -14,6 +14,10 @@ import { ADMIN_URL } from '../helpers/env.js';
 export const E2E_PORT = 3100;
 export const E2E_DB = 'curriculum_scope_e2e';
 const PID_FILE = join(process.cwd(), 'test-results', '.e2e-server.pid');
+// The AI provider of the E2E server is the local simulator (tests/helpers/ai-simulator.ts), run as its own process.
+export const E2E_AI_PORT = 3199;
+export const E2E_AI_KEY = 'e2e-ai-key-0123456789';
+const AI_PID_FILE = join(process.cwd(), 'test-results', '.e2e-ai-simulator.pid');
 
 function dbUrl(user: string, password: string): string {
   const u = new URL(ADMIN_URL);
@@ -40,7 +44,42 @@ export const E2E_ENV: Record<string, string> = {
   SANDBOX_WEBHOOK_SECRET: 'e2e-sandbox-secret-123456',
   // Customer webhooks are delivered to a local receiver in the journeys (refused in production).
   WEBHOOK_ALLOW_INSECURE_TARGETS: 'true',
+  AI_PROVIDER: 'gemini',
+  AI_API_KEY: E2E_AI_KEY,
+  AI_MODEL: 'gemini-2.5-pro',
+  AI_API_BASE: `http://127.0.0.1:${E2E_AI_PORT}`,
 };
+
+/** Starts the AI provider simulator in a process of its own, ready before the server needs it. */
+export async function startAiSimulator(): Promise<void> {
+  const child = spawn(process.execPath, ['--import', 'tsx', 'tests/e2e/ai-simulator-server.ts'], {
+    env: { ...process.env, E2E_AI_PORT: String(E2E_AI_PORT), E2E_AI_KEY },
+    stdio: ['ignore', 'inherit', 'inherit'],
+    detached: true,
+  });
+  child.unref();
+  writeFileSync(AI_PID_FILE, String(child.pid));
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    try {
+      await fetch(`http://127.0.0.1:${E2E_AI_PORT}/`);
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
+  throw new Error('AI simulator did not start');
+}
+
+export async function stopAiSimulator(): Promise<void> {
+  if (!existsSync(AI_PID_FILE)) return;
+  const pid = Number(readFileSync(AI_PID_FILE, 'utf8'));
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch {
+    try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ }
+  }
+}
 
 export async function startServer(): Promise<number> {
   const child = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {

@@ -1,4 +1,4 @@
-"""Audio for a cut: an original generated score, sound effects and the narration, mixed.
+"""Audio for a cut: an original score, sound effects and the narration, mixed.
 
     python3 audio/mix.py <events.json> <out.wav> [--music-stem <file.wav>]
 
@@ -6,16 +6,21 @@ events.json comes from build.mjs: the cut's duration, its music cues (one per sc
 clips with their start times (absent until narration is recorded), and the sound-effect events
 (transitions, reveals, clicks in the product demonstrations).
 
-The score is synthesised here — no samples or third-party music — so it carries no licence terms:
-one chord progression on a steady grid (D major, 84 BPM) whose instruments (pad, bass, arpeggio,
-bells, a soft pulse) are faded in and out by the scene's cue. Under narration the music is ducked.
+The score is composed in audio/score.py and played on recorded instruments (FluidSynth with the MIT-licensed
+FluidR3 soundfont): piano, strings, cello, harp, celesta, a warm pad, bass and soft percussion, brought in and out
+by the scene's cue. Without FluidSynth or the soundfont (or with SYNTH_SCORE=1) the older synthesised score below
+is used. Under narration the music is ducked.
 """
 import json
+import os
 import sys
 
 import numpy as np
 from scipy.io import wavfile
 from scipy.signal import butter, oaconvolve, sosfilt
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import score as sampled  # noqa: E402
 
 SR = 48000
 BPM = 84
@@ -320,7 +325,9 @@ def main():
         music = np.zeros((n, 2), dtype=np.float32)
         music[: min(n, len(data))] = data[:n] / (np.max(np.abs(data)) + 1e-9)
     else:
-        music = score(events['cues'], duration)
+        music = None if os.environ.get('SYNTH_SCORE') else sampled.render(events['cues'], duration)
+        if music is None:
+            music = score(events['cues'], duration)
     if stem:
         wavfile.write(stem, SR, (music / (np.max(np.abs(music)) + 1e-9) * 0.89).astype(np.float32))
 

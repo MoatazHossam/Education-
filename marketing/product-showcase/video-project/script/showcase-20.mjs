@@ -75,7 +75,7 @@ export const scenes = [
         'Each department may work its own way, so a unified picture of what is really happening is hard to get.'),
       L('وَتَسْتَهْلِكُ الْمُتَابَعَةُ الْيَدَوِيَّةُ وَقْتَ الْمُعَلِّمِينَ وَالْإِدَارَةِ، بَدَلًا مِنْ أَنْ يَذْهَبَ إِلَى التَّعْلِيمِ نَفْسِهِ.',
         'Manual follow-up takes up teachers’ and administrators’ time, instead of it going to teaching itself.'),
-      L('أَمَّا الطَّالِبُ، فَقَدْ لَا يَجِدُ مَكَانًا وَاحِدًا يَرَى فِيهِ مَا عَلَيْهِ، وَمَا أَنْجَزَهُ، وَكَيْفَ يَتَقَدَّمُ.',
+      L('أَمَّا الطَّالِبُ، فَرُبَّمَا لَا يَجِدُ مَكَانًا وَاحِدًا يَرَى فِيهِ مَا عَلَيْهِ، وَمَا أَنْجَزَهُ، وَكَيْفَ يَتَقَدَّمُ.',
         'And the student may have no single place to see what is due, what they have done, and how they are progressing.'),
       L('هَذِهِ لَيْسَتْ أَحْكَامًا عَلَى كُلِّ مُؤَسَّسَةٍ، بَلْ أَسْئِلَةٌ نَسْمَعُهَا كَثِيرًا، وَتَسْتَحِقُّ إِجَابَةً أَفْضَلَ.',
         'These are not verdicts on every institution, but questions we hear often — and they deserve a better answer.'),
@@ -99,7 +99,7 @@ export const scenes = [
     lines: [
       L('نُقَدِّمُ لَكُمْ: نِطَاقَ الْمَنَاهِجِ — Curriculum Scope.',
         'Introducing: Curriculum Scope — نطاق المناهج.',
-        'نُقَدِّمُ لَكُمْ: نِطَاقَ الْمَنَاهِجِ — كَارِيكْيُولَم سْكُوب.'),
+        'نُقَدِّمُ لَكُمْ: نِطَاقَ الْمَنَاهِجِ — كَرِيكْيُولَمْ سْكُوب.'),
     ],
   },
 
@@ -216,7 +216,7 @@ export const scenes = [
         'The platform gives them shared content scopes, comparison between campuses, classes, homework and tests, a gradebook, and a student portal.'),
       L('ثَانِيًا: شَرِكَاتُ التِّكْنُولُوجْيَا التَّعْلِيمِيَّةِ، وَمُنْتِجُو الْمُحْتَوَى، وَدُورُ النَّشْرِ.',
         'Second: education technology companies, content producers and publishers.'),
-      L('سُؤَالُهُمُ الْأَهَمُّ: أَيُّ جُزْءٍ مِنَ الْمَنْهَجِ نُغَطِّيهِ هَذَا الْعَامَ؟ وَالْمِنَصَّةُ تَحْفَظُ الْإِجَابَةَ، وَتُرْسِلُهَا إِلَى أَنْظِمَتِهِمْ عَبْرَ API، وَإِشْعَارَاتِ Webhooks مُوَقَّعَةٍ.',
+      L('سُؤَالُهُمُ الْأَهَمُّ: أَيُّ جُزْءٍ مِنَ الْمَنْهَجِ نُغَطِّيهِ هَذَا الْعَامَ؟ وَالْمِنَصَّةُ تَحْفَظُ الْإِجَابَةَ، وَتُرْسِلُهَا إِلَى أَنْظِمَتِهِمْ عَبْرَ وَاجِهَةِ API، وَإِشْعَارَاتِ Webhooks مُوَقَّعَةٍ.',
         'Their key question: which part of the curriculum do we cover this year? The platform keeps the answer and sends it to their systems through an API and signed webhooks.',
         'سُؤَالُهُمُ الْأَهَمُّ: أَيُّ جُزْءٍ مِنَ الْمَنْهَجِ نُغَطِّيهِ هَذَا الْعَامَ؟ وَالْمِنَصَّةُ تَحْفَظُ الْإِجَابَةَ، وَتُرْسِلُهَا إِلَى أَنْظِمَتِهِمْ عَبْرَ وَاجِهَةِ إِيه بِي آي، وَإِشْعَارَاتِ وِيب هُوكْس مُوَقَّعَةٍ.'),
       L('ثَالِثًا: مَرَاكِزُ الدُّرُوسِ وَمُسْتَشَارُو الْمَنَاهِجِ، الَّذِينَ يُعِدُّونَ خُطَطَ تَغْطِيَةٍ وَاضِحَةً، يُصَدِّرُونَهَا وَيُقَارِنُونَ بَيْنَهَا.',
@@ -375,7 +375,7 @@ export const scenes = [
     lines: [
       L('وَيُحْفَظُ كُلُّ اخْتِيَارٍ فِي نِطَاقِ مُحْتَوًى بِاسْمٍ وَاضِحٍ، يُشَارِكُهُ الْفَرِيقُ كُلُّهُ، وَيُمْكِنُ نَسْخُهُ لِفَرْعٍ آخَرَ.',
         'Each selection is saved as a named content scope, shared by the whole team, and it can be copied for another campus.'),
-      L('وَيُصَدَّرُ النِّطَاقُ نَصًّا، أَوْ جَدْوَلَ CSV، أَوْ مَلَفَّ JSON، أَوْ يُقْرَأُ مُبَاشَرَةً عَبْرَ الْـ API.',
+      L('وَيُصَدَّرُ النِّطَاقُ نَصًّا، أَوْ جَدْوَلَ CSV، أَوْ مَلَفَّ JSON، أَوْ يُقْرَأُ مُبَاشَرَةً عَبْرَ وَاجِهَةِ API.',
         'A scope can be exported as text, a CSV table or a JSON file, or read directly through the API.',
         'وَيُصَدَّرُ النِّطَاقُ نَصًّا، أَوْ جَدْوَلَ سِي إِس فِي، أَوْ مَلَفَّ جَيْسُون، أَوْ يُقْرَأُ مُبَاشَرَةً عَبْرَ وَاجِهَةِ إِيه بِي آي.'),
     ],
@@ -394,7 +394,7 @@ export const scenes = [
     lines: [
       L('وَلِكُلِّ كِتَابٍ مُخْتَارٍ مُلَاحَظَةٌ، وَمَسْؤُولٌ عَنْ مُتَابَعَتِهِ، وَحَالَةٌ، وَتَارِيخُ اسْتِحْقَاقٍ.',
         'Each selected book can have a note, a person responsible for following it up, a status and a due date.'),
-      L('وَتُوَزِّعُ مُنَى الْمَهَامَّ عَلَى فَرِيقِهَا دُفْعَةً وَاحِدَةً، فَتَصِلُ كُلَّ عُضْوٍ إِشْعَارَاتٌ بِلُغَتِهِ.',
+      L('وَتُوَزِّعُ مُنَى الْمَهَامَّ عَلَى فَرِيقِهَا دَفْعَةً وَاحِدَةً، فَتَصِلُ كُلَّ عُضْوٍ إِشْعَارَاتٌ بِلُغَتِهِ.',
         'Mona assigns tasks to her team in one go, and each member is notified in their own language.'),
     ],
   },
@@ -428,7 +428,7 @@ export const scenes = [
       notes: [{ at: 2, ar: 'تُفعَّل لكل مدرسة بعد المراجعة القانونية لبيانات الطلاب', en: 'Switched on per school after the legal review of student data', kind: 'dev' }],
     },
     lines: [
-      L('نَنْتَقِلُ إِلَى الْفَصْلِ الدِّرَاسِيِّ. تُنْشِئُ الْمَدْرَسَةُ حِسَابَاتِ طُلَّابِهَا بِنَفْسِهَا، وَاحِدًا وَاحِدًا، أَوْ مِنْ مَلَفِّ قَائِمَةٍ.',
+      L('نَنْتَقِلُ إِلَى الْفَصْلِ. تُنْشِئُ الْمَدْرَسَةُ حِسَابَاتِ طُلَّابِهَا بِنَفْسِهَا، وَاحِدًا وَاحِدًا، أَوْ مِنْ مَلَفِّ قَائِمَةٍ.',
         'Now to the classroom. The school creates its students’ accounts itself, one by one or from a roster file.'),
       L('وَتَكْشِفُ الْمُعَايَنَةُ أَخْطَاءَ الْمَلَفِّ قَبْلَ الِاسْتِيرَادِ بِرَسَائِلَ عَرَبِيَّةٍ وَاضِحَةٍ، ثُمَّ تُعْطِي كَلِمَاتِ مُرُورٍ لِمَرَّةٍ وَاحِدَةٍ.',
         'A preview catches the file’s mistakes before import, with clear Arabic messages, then gives out one-time passwords.'),
@@ -565,7 +565,7 @@ export const scenes = [
       points: [{ ar: 'المطلوب', at: 0 }, { ar: 'ما فاته', at: 0 }, { ar: 'ما أُعيد مصحّحًا', at: 0 }, { ar: 'الاختبارات المتاحة الآن', at: 0 }],
     },
     lines: [
-      L('تَفْتَحُ بَوَّابَةُ الطَّالِبِ عَلَى صَفْحَةِ «الْيَوْم»: مَا عَلَيْهِ إِنْجَازُهُ، وَمَا فَاتَهُ، وَمَا أُعِيدَ إِلَيْهِ مُصَحَّحًا، وَالِاخْتِبَارَاتُ الْمُتَاحَةُ الْآنَ.',
+      L('تُفْتَحُ بَوَّابَةُ الطَّالِبِ عَلَى صَفْحَةِ «الْيَوْمِ»: مَا عَلَيْهِ إِنْجَازُهُ، وَمَا فَاتَهُ، وَمَا أُعِيدَ إِلَيْهِ مُصَحَّحًا، وَالِاخْتِبَارَاتُ الْمُتَاحَةُ الْآنَ.',
         'The Student Portal opens on “Today”: what he has to do, what he missed, what came back marked, and the tests open right now.'),
     ],
   },
@@ -594,7 +594,7 @@ export const scenes = [
       L('وَفِي الِاخْتِبَارِ، يُدْخِلُ رَمْزَ الْبَدْءِ، فَيَبْدَأُ الْعَدُّ التَّنَازُلِيُّ، وَتُحْفَظُ كُلُّ إِجَابَةٍ لَحْظَةَ كِتَابَتِهَا.',
         'In a test, he enters the start code, the countdown begins, and every answer is saved as he writes it.'),
       L('وَإِنْ ضَعُفَ الِاتِّصَالُ، تُعِيدُ الصَّفْحَةُ الْمُحَاوَلَةَ تِلْقَائِيًّا، وَتُخْبِرُهُ بِمَا لَمْ يُحْفَظْ بَعْدُ.', 'If the connection weakens, the page retries by itself and tells him what is not saved yet.'),
-      L('وَتُوَضِّحُ لَهُ الصَّفْحَةُ بِصَرَاحَةٍ مَا يَسْتَطِيعُ الْمُعَلِّمُ أَنْ يَرَاهُ أَثْنَاءَ الِاخْتِبَارِ.', 'And the page tells him plainly what the teacher can see during the test.'),
+      L('وَتُوَضِّحُ لَهُ الصَّفْحَةُ بِصَرَاحَةٍ مَا يَسْتَطِيعُ الْمُعَلِّمُ أَنْ يَرَاهُ فِي أَثْنَاءِ الِاخْتِبَارِ.', 'And the page tells him plainly what the teacher can see during the test.'),
     ],
   },
   {
@@ -711,7 +711,7 @@ export const scenes = [
       L('تَعْمَلُ الْمِنَصَّةُ بِنَمُوذَجِ اشْتِرَاكٍ مُؤَسَّسِيٍّ: خُطَّةٌ مَجَّانِيَّةٌ، وَخُطَطٌ مَدْفُوعَةٌ، وَخُطَّةٌ لِلْمُؤَسَّسَاتِ الْكُبْرَى بِعَقْدٍ خَاصٍّ.',
         'The platform runs on an institutional subscription model: a free plan, paid plans, and an enterprise plan under a custom contract.'),
       L('وَالْأَسْعَارُ الظَّاهِرَةُ مُقْتَرَحَاتٌ لِلْإِطْلَاقِ، قَابِلَةٌ لِلْمُرَاجَعَةِ.', 'The prices shown are launch proposals, open to review.'),
-      L('حُدُودُ كُلِّ خُطَّةٍ تُطَبَّقُ عَلَى الْخَادِمِ: عَدَدُ الْأَعْضَاءِ، وَالنِّطَاقَاتُ، وَالتَّصْدِيرُ، وَطَلَبَاتُ الْـ API، وَالْمَزَايَا الْمُتَاحَةُ.',
+      L('حُدُودُ كُلِّ خُطَّةٍ تُطَبَّقُ عَلَى الْخَادِمِ: عَدَدُ الْأَعْضَاءِ، وَالنِّطَاقَاتُ، وَالتَّصْدِيرُ، وَطَلَبَاتُ وَاجِهَةِ API، وَالْمَزَايَا الْمُتَاحَةُ.',
         'Each plan’s limits are enforced on the server: members, scopes, exports, API requests and the features available.',
         'حُدُودُ كُلِّ خُطَّةٍ تُطَبَّقُ عَلَى الْخَادِمِ: عَدَدُ الْأَعْضَاءِ، وَالنِّطَاقَاتُ، وَالتَّصْدِيرُ، وَطَلَبَاتُ وَاجِهَةِ إِيه بِي آي، وَالْمَزَايَا الْمُتَاحَةُ.'),
       L('وَيُدِيرُ النِّظَامُ دَوْرَةَ الِاشْتِرَاكِ كَامِلَةً: التَّجْرِبَةَ، وَالتَّرْقِيَةَ، وَالتَّجْدِيدَ، وَالْفَوَاتِيرَ، وَفَتْرَةَ سَمَاحٍ عِنْدَ تَأَخُّرِ الدَّفْعِ.',
@@ -727,7 +727,7 @@ export const scenes = [
     lines: [
       L('تِقْنِيًّا، تَعْمَلُ كُلُّ الْمُؤَسَّسَاتِ عَلَى نِظَامٍ وَاحِدٍ، لَكِنَّ بَيَانَاتِ كُلٍّ مِنْهَا مَعْزُولَةٌ بِسِيَاسَاتِ أَمَانٍ دَاخِلَ قَاعِدَةِ الْبَيَانَاتِ.',
         'Technically, all organizations run on one system, but each one’s data is isolated by security policies inside the database.'),
-      L('فَحَتَّى لَوْ أَخْطَأَ جُزْءٌ مِنَ الْكُودِ، تَرْفُضُ قَاعِدَةُ الْبَيَانَاتِ أَنْ تُظْهِرَ بَيَانَاتِ مُؤَسَّسَةٍ لِأُخْرَى.',
+      L('فَقَاعِدَةُ الْبَيَانَاتِ تَرْفُضُ أَنْ تُظْهِرَ بَيَانَاتِ مُؤَسَّسَةٍ لِأُخْرَى، حَتَّى لَوْ أَخْطَأَ جُزْءٌ مِنَ الْكُودِ.',
         'So even if a piece of code were wrong, the database would refuse to show one organization’s data to another.'),
       L('وَتُشَفَّرُ الْأَسْرَارُ الْمَحْفُوظَةُ، مَعَ أَدَوَاتٍ لِتَدْوِيرِ مَفَاتِيحِ التَّشْفِيرِ، وَحُدُودٍ لِلطَّلَبَاتِ تَحْمِي مِنْ إِسَاءَةِ الِاسْتِخْدَامِ.',
         'Stored secrets are encrypted, with tools to rotate the encryption keys, and request limits that protect against abuse.'),

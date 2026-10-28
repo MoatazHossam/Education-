@@ -4,7 +4,7 @@ The English translation used for the English subtitles (english.srt, english-3mi
 
 ## Curriculum Scope — Product Showcase
 
-Duration 20:41.8 · 1819 Arabic words · 59 scenes · 134 lines
+Duration 20:41.8 · 1820 Arabic words · 59 scenes · 134 lines
 
 ### 1. The education challenge
 

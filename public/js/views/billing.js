@@ -113,7 +113,9 @@ export async function billingView(ctx) {
       meter(t('billing.meter.members'), b.usage.members + b.usage.pendingInvites, b.limits.max_members),
       meter(t('billing.meter.scopes'), b.usage.scopes, b.limits.max_scopes),
       meter(t('billing.meter.exports'), b.usage.exports, b.limits.exports_per_month),
-      b.features.api_access ? meter(t('billing.meter.api'), b.usage.api_requests, b.limits.api_requests_per_month) : null));
+      b.features.api_access ? meter(t('billing.meter.api'), b.usage.api_requests, b.limits.api_requests_per_month) : null,
+      // AI assistance: shown once a platform administrator has given the school an allowance.
+      b.limits.ai_requests_per_month !== 0 ? meter(t('billing.meter.ai'), b.usage.ai_requests, b.limits.ai_requests_per_month ?? null) : null));
 
   const plansWrap = h('div', { class: 'plans' });
   function drawPlans() {

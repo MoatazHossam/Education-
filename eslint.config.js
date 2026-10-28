@@ -33,4 +33,16 @@ export default tseslint.config(
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { process: 'readonly', fetch: 'readonly', performance: 'readonly', console: 'readonly' } },
   },
+  {
+    // The showcase video: Node build scripts, and the player that runs in the rendering browser.
+    files: ['marketing/product-showcase/video-project/**/*.{js,mjs,ts}'],
+    languageOptions: {
+      globals: {
+        process: 'readonly', console: 'readonly', Buffer: 'readonly', setTimeout: 'readonly', performance: 'readonly',
+        window: 'readonly', document: 'readonly', Node: 'readonly', Image: 'readonly', requestAnimationFrame: 'readonly',
+        getComputedStyle: 'readonly', HTMLElement: 'readonly', DataTransfer: 'readonly', File: 'readonly',
+      },
+    },
+    rules: { 'no-console': 'off' },
+  },
 );

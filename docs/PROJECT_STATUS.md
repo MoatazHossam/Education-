@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-27. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-28. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -21,9 +21,47 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 | B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
 | B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts), and since 2026-10-26 the teacher and student portal on the same switch (classes, homework, online tests with monitoring, gradebook). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7). The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 | No school should use student accounts or the portal with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
-| B-10 | No AI provider chosen | The Wise EduAgent features (assistant etc.) cannot be built | Owner: provider and model, who holds the key and pays for usage |
+| B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and its first feature (questions suggested for online tests) are built (docs/AI_LAYER.md). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
+- **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic
+  and, optionally, the lesson text, choosing the kinds, difficulty and language (Arabic or English). The suggestions
+  come back with answers and a reason; the teacher picks the ones to add, which become ordinary questions. Nothing
+  is saved before that, nothing about students is sent, and every suggestion passes the same question rules as one
+  typed by hand. Each request uses one of the school's AI requests (docs/ONLINE_TESTS.md §14).
+- **Provider:** the owner chose Google Gemini (2026-10-28). It needs `AI_PROVIDER=gemini`, the key and the model as
+  environment secrets, then `npm run ai:check` (docs/AI_LAYER.md).
+- **Files:** `src/classroom/question-suggestions.ts`, `src/classroom/tests-routes.ts`, `public/js/views/tests.js`,
+  `public/js/i18n.js`; docs ONLINE_TESTS §14, AI_LAYER §6a, USER_GUIDE (EN, AR), API_DOCUMENTATION, TEST_REPORT.
+- **Tests:** unit 6, integration 6 (Gemini simulator), E2E journey 25, accessibility audit of both dialogs; full
+  suite 52 files, 371 tests; E2E 29/29.
+- **Not done:** a run against the real Gemini API and a teacher's review of real suggestions in both languages; a
+  screenshot of the two dialogs in the user guides (one now would show the simulator's questions, not Gemini's).
+  The guides' published copies (web pages and offline files) were republished with the new paragraph on 2026-10-28.
+
+### AI layer, independent of the provider · COMPLETE (not yet run against a real provider)
+- **What:** one way for every AI feature to call an AI provider, chosen by configuration: Google Gemini, Anthropic
+  Claude or OpenAI, each through its official SDK (pinned). Off on the server until `AI_PROVIDER` is set, and off for
+  every school until a platform administrator gives it a monthly allowance (`ai_requests_per_month`, 0 on every
+  plan, like student accounts). Only staff use it; student accounts are refused whatever the route, and features
+  must not send students' data. Each request takes one unit of the allowance first (concurrent requests cannot
+  overrun it) and gives it back if the provider fails without answering. Structured replies are checked against the
+  feature's schema, with one more attempt if they do not match. Each request is logged (`ai_requests`, row-level
+  security, 400 days) and audited, without the text.
+- **Platform admin:** an AI card on the overview (provider, model, schools with their use and tokens this month,
+  "Test the connection"), the per-school override on the school's page, and the school's billing page shows the
+  meter. `npm run ai:check` checks a key and model against the real provider.
+- **Files:** `src/ai/` (types, schema, service, routes, `providers/`), `src/cli/ai-check.ts`, migration
+  `0017_ai_requests`, `src/billing/entitlements.ts` (allowance, `releaseUsage`), `src/config.ts` (`AI_*`),
+  `public/js/views/admin.js`, `billing.js`, `i18n.js`, `docker-compose.yml`, env examples; docs AI_LAYER.md,
+  SECURITY_DESIGN §3, §5, §6, DEPLOYMENT_GUIDE §3.2 (EN, AR), API_DOCUMENTATION, DATABASE_DESIGN, TEST_REPORT.
+- **Tests:** unit 7, provider contract 24 (against a simulator of each provider's documented API), integration 17;
+  the platform administrator's E2E journey; accessibility of the admin pages; the full suite 50 files, 359 tests.
+- **Not done:** a run against a real provider (no key here: `npm run ai:check` once the owner sets one); the first
+  feature (questions for online tests, reviewed by the teacher before saving); the Wise EduAgent integration (B-8)
+  and any AI that students use (B-9).
 
 ### Phase 0 — Discovery · COMPLETE
 - **Implemented:** artifact source obtained and preserved; executed its data code; feature inventory; 7 defects identified.
@@ -648,8 +686,8 @@ user guides.
 
 | Guide | Web page | Offline copies | Built from |
 | --- | --- | --- | --- |
-| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF, HTML | `docs/USER_GUIDE.md`, republished 2026-10-27 |
-| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF, HTML | `docs/USER_GUIDE.ar.md`, republished 2026-10-27 |
+| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` at `b0ea3ff`, republished 2026-10-28 |
+| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` at `b0ea3ff`, republished 2026-10-28 |
 | Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` on `main` at `fdc3f80`, 2026-10-27 |
 | دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (23 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` on `main` at `fdc3f80`, 2026-10-27 |
 
@@ -707,7 +745,7 @@ These block release; development cannot do them.
 | 4 | Production host, SMTP and alert channels, then the scheduled backup with an off-site copy and a restore drill there (scripts ready: DEPLOYMENT_GUIDE §8) | Nothing can be deployed | B-4 |
 | 5 | Catalogue verification by a curriculum specialist (0 of 231 subjects so far) | Product value and liability | B-6 |
 | 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist now has 32 tasks, 23–32 for the portal (4.2 item 4, done), and the results page holds them | — |
-| 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8) and an AI provider (B-10) | Needed before selling the portal, and before any AI feature | B-8, B-10 |
+| 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8); the AI provider, model and key, who pays, and each school's or plan's monthly AI allowance (B-10; the layer is built and waits for them) | Needed before selling the portal, and before any AI feature runs | B-8, B-10 |
 | 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
 | 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\cs.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
 
@@ -730,7 +768,12 @@ In the recommended order. None of these items waits on a blocker. Sizes are esti
 - parent accounts with email or SMS to parents. These depend on the legal advice, and could also be how parents give consent;
 - card-on-file renewals (after B-2) and SSO for school groups (roadmap P2).
 
-**Resume point (2026-10-27).** PR #32 (the deployment guide in Arabic) is merged, and both deployment guides
+**Resume point (2026-10-28).** The provider-independent AI layer and questions suggested by AI for online tests are
+built and tested against simulators (above). Next, once the owner sets the Gemini key and model (B-10):
+`npm run ai:check`, then a sample of real suggestions reviewed by a teacher in Arabic and English. The user guides'
+published copies carry the feature (republished 2026-10-28).
+
+**Earlier resume point (2026-10-27).** PR #32 (the deployment guide in Arabic) is merged, and both deployment guides
 are published as web pages with offline copies (Documentation, above). On `claude/friendly-rubin-hmemjl`
 (from `main` at `fdc3f80`): the published guide links recorded in this file.
 4.2 is finished; the next development work is for the owner to choose, from the items after the pilot

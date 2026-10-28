@@ -164,7 +164,7 @@ test('service recovers after a server crash: sessions and saved selections survi
   await expect(page.locator('.tray .toast')).toHaveText('Saved');
 });
 
-test('platform admin signs in with two-factor authentication, sends a test alert, and suspends then restores an organization', async ({ page, browser }) => {
+test('platform admin signs in with two-factor authentication, sends a test alert, tests the AI provider, turns AI on for a school, and suspends then restores it', async ({ page, browser }) => {
   await signInAsPlatformAdmin(page);
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
@@ -173,8 +173,20 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByText(/No alert channel is configured/)).toBeVisible();
   await page.getByRole('button', { name: 'Send test alert' }).click();
   await expect(page.getByText('Test alert: email not configured, webhook not configured')).toBeVisible();
+  // AI assistance: the E2E server's provider is the local simulator (tests/e2e/server.ts).
+  await expect(page.getByRole('heading', { name: 'AI assistance' })).toBeVisible();
+  await expect(page.getByText('Provider: Google Gemini · model gemini-2.5-pro')).toBeVisible();
+  await expect(page.getByText(/No school has an AI allowance yet/)).toBeVisible();
+  await page.getByRole('button', { name: 'Test the connection' }).click();
+  await expect(page.getByText(/^The AI provider answered: gemini-2\.5-pro, \d+ ms$/)).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByRole('heading', { name: 'Nile Learning' })).toBeVisible();
+  await page.getByLabel('AI requests per month (override)').fill('100');
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await expect(page.getByText('Saved')).toBeVisible();
+  await page.goto('/admin');
+  await expect(page.getByRole('region', { name: /^Schools with AI assistance/ }).getByRole('row', { name: /Nile Learning/ })).toContainText('0 / 100');
+  await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByText('No active grant. Customer business data is not accessible.')).toBeVisible();
   await page.getByRole('button', { name: 'Suspend organization' }).click();
   await page.getByRole('dialog').getByLabel(/Reason/).fill('E2E suspension check');
@@ -191,6 +203,9 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByRole('button', { name: 'Suspend organization' })).toBeVisible();
   await owner.reload();
   await expect(owner.locator('.picker h1')).toBeVisible();
+  // The school sees its AI allowance on the billing page.
+  await owner.goto(`/org/${orgAId}/billing`);
+  await expect(owner.getByRole('meter', { name: 'AI requests this month' })).toHaveAttribute('aria-valuetext', '0 / 100');
   await ownerCtx.close();
 });
 
@@ -1249,4 +1264,62 @@ test('online test: an answer that does not reach the server is saved again, and 
   );
   expect(stored).toEqual([{ answer: 'b' }]);
   await studentCtx.close();
+});
+
+test('questions suggested by AI: the platform gives the school AI requests; the teacher asks for questions, keeps two, and they are ordinary questions', async ({ page, browser }) => {
+  // AI requests for Delta Prep School. The E2E server's AI provider is the simulator (tests/e2e/server.ts).
+  const adminCtx = await browser.newContext();
+  const admin = await openPage(adminCtx);
+  await signInAsPlatformAdmin(admin);
+  await admin.goto(`/admin/orgs/${delta.orgId}`);
+  await admin.getByLabel('AI requests per month (override)').fill('20');
+  await admin.getByRole('button', { name: 'Apply' }).click();
+  await expect(admin.getByText('Saved')).toBeVisible();
+  await adminCtx.close();
+
+  // Journey 20's class 7A, where the owner teaches delta.subject.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('button', { name: 'New test' }).click();
+  let dlg = page.getByRole('dialog', { name: 'New test for 7A' });
+  await dlg.getByLabel('Title').fill('Forces practice');
+  await dlg.getByRole('button', { name: 'Create test' }).click();
+  await expect(page.getByRole('heading', { name: 'Forces practice', level: 1 })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Suggest questions with AI' }).click();
+  dlg = page.getByRole('dialog', { name: 'Suggest questions with AI' });
+  await expect(dlg.getByText('AI requests left for your school this month: 20')).toBeVisible();
+  await expect(dlg.getByLabel('Language of the questions')).toHaveValue('en');
+  // Without a topic, the form says so before anything is sent.
+  await dlg.getByRole('button', { name: 'Suggest' }).click();
+  await expect(dlg.getByRole('alert')).toHaveText('Write the topic (at least 3 characters).');
+  await dlg.getByLabel('Topic or lesson').fill('Forces and motion');
+  await dlg.getByLabel('Lesson text (optional)').fill('A force is a push or a pull. Friction slows things down. Gravity pulls objects towards the Earth.');
+  await dlg.getByLabel('How many questions (1–10)').fill('3');
+  await dlg.getByRole('button', { name: 'Suggest' }).click();
+
+  dlg = page.getByRole('dialog', { name: 'Suggested questions' });
+  await expect(dlg.getByText('Which of these is a force?')).toBeVisible();
+  await expect(dlg.getByText('Why: A force is a push or a pull.')).toBeVisible();
+  await expect(dlg.getByText('Correct answer: gravity · the force of gravity')).toBeVisible();
+  await dlg.getByLabel('Add question 2').uncheck();
+  await dlg.getByRole('button', { name: 'Add selected' }).click();
+  await expect(page.getByText('Questions added: 2')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Questions (2, 3 points)' })).toBeVisible();
+  const questions = page.locator('ol.questions > li');
+  await expect(questions.nth(0)).toContainText('Which of these is a force?');
+  await expect(questions.nth(1)).toContainText('What pulls objects towards the Earth?');
+
+  // A kept suggestion is an ordinary question: the teacher edits it like any other.
+  await page.getByRole('button', { name: 'Edit question 2' }).click();
+  dlg = page.getByRole('dialog', { name: 'Edit question' });
+  await dlg.getByLabel('Points').fill('1');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
+
+  // One request was used.
+  await page.getByRole('button', { name: 'Suggest questions with AI' }).click();
+  await expect(page.getByRole('dialog').getByText('AI requests left for your school this month: 19')).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
 });

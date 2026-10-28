@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
+import type { AiProvider } from '../ai/types.js';
 import type { PaymentProvider } from '../billing/providers/types.js';
 import type { AppConfig } from '../config.js';
 import type { Database } from '../db/index.js';
@@ -10,6 +11,8 @@ export interface AppContext {
   db: Database;
   log: FastifyBaseLogger;
   payments: PaymentProvider | null;
+  /** The AI provider (docs/AI_LAYER.md), or null when AI_PROVIDER=none. */
+  ai: AiProvider | null;
 }
 
 export type AuthState =

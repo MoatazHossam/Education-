@@ -5,11 +5,12 @@ import { createDatabase } from '../../src/db/index.js';
 import { grantAppRole, migrateToLatest } from '../../src/db/migrator.js';
 import { seedCatalog, seedPlans } from '../../src/db/seed.js';
 import { ADMIN_URL } from '../helpers/env.js';
-import { E2E_DB, E2E_ENV, E2E_OWNER_URL, startServer, stopServer } from './server.js';
+import { E2E_DB, E2E_ENV, E2E_OWNER_URL, startAiSimulator, startServer, stopAiSimulator, stopServer } from './server.js';
 
 export default async function globalSetup(): Promise<void> {
   mkdirSync('test-results', { recursive: true });
   await stopServer();
+  await stopAiSimulator();
   const admin = new pg.Client({ connectionString: ADMIN_URL });
   await admin.connect();
   try {
@@ -33,5 +34,6 @@ export default async function globalSetup(): Promise<void> {
   } finally {
     await db.destroy();
   }
+  await startAiSimulator();
   await startServer();
 }

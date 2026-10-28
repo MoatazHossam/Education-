@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import type { Executor } from '../db/index.js';
-import type { PlanFeatures, PlanLimits, Subscription } from '../db/types.js';
+import type { PlanFeatures, PlanLimits, Subscription, UsageMetric } from '../db/types.js';
 import { featureUnavailable, limitReached } from '../lib/errors.js';
 import { addDays, periodKey } from '../lib/time.js';
 import { FREE_PLAN_ID } from './plans.js';
@@ -46,6 +46,8 @@ export async function getEntitlements(exec: Executor, orgId: string, graceDays: 
   // A plan row saved without max_students keeps the student portal off.
   if (limits.max_students === undefined) limits.max_students = 0;
   if (limits.max_storage_mb === undefined) limits.max_storage_mb = DEFAULT_STORAGE_MB;
+  // AI assistance stays off until a platform administrator sets an allowance (docs/AI_LAYER.md).
+  if (limits.ai_requests_per_month === undefined) limits.ai_requests_per_month = 0;
   return {
     planId,
     planName: plan.name,
@@ -127,7 +129,7 @@ export async function assertScopeEditable(exec: Executor, orgId: string, scopeId
 export async function consumeUsage(
   exec: Executor,
   orgId: string,
-  metric: 'exports' | 'api_requests',
+  metric: UsageMetric,
   limit: number | null,
   label: string,
 ): Promise<number> {
@@ -145,9 +147,24 @@ export async function consumeUsage(
   return row.quantity;
 }
 
-export async function usageFor(exec: Executor, orgId: string): Promise<Record<'exports' | 'api_requests', number>> {
+/**
+ * Gives back one unit taken by consumeUsage in the same period, when the work it
+ * paid for did not happen (an AI provider that failed before answering).
+ */
+export async function releaseUsage(exec: Executor, orgId: string, metric: UsageMetric, period: string): Promise<void> {
+  await exec
+    .updateTable('usage_counters')
+    .set((eb) => ({ quantity: eb('quantity', '-', 1), updated_at: new Date() }))
+    .where('org_id', '=', orgId)
+    .where('metric', '=', metric)
+    .where('period', '=', period)
+    .where('quantity', '>', 0)
+    .execute();
+}
+
+export async function usageFor(exec: Executor, orgId: string): Promise<Record<UsageMetric, number>> {
   const rows = await exec.selectFrom('usage_counters').select(['metric', 'quantity']).where('org_id', '=', orgId).where('period', '=', periodKey()).execute();
-  const out = { exports: 0, api_requests: 0 };
+  const out = { exports: 0, api_requests: 0, ai_requests: 0 };
   for (const r of rows) out[r.metric] = r.quantity;
   return out;
 }

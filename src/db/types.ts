@@ -34,6 +34,8 @@ export interface PlanLimits {
   max_students: number | null;
   /** Classroom files (homework and submissions) per school, in MB. Not set on a plan: 1024. */
   max_storage_mb?: number | null;
+  /** Requests to the AI provider per month (docs/AI_LAYER.md). Not set on a plan: 0, AI off. */
+  ai_requests_per_month?: number | null;
 }
 
 export interface PlanFeatures {
@@ -388,12 +390,30 @@ export interface BillingEventsTable {
   processed_at: NullableTimestamp;
 }
 
+export type UsageMetric = 'exports' | 'api_requests' | 'ai_requests';
+
 export interface UsageCountersTable {
   org_id: string;
-  metric: 'exports' | 'api_requests';
+  metric: UsageMetric;
   period: string;
   quantity: Generated<number>;
   updated_at: Generated<Date>;
+}
+
+export interface AiRequestsTable {
+  id: Generated<string>;
+  org_id: string;
+  user_id: string | null;
+  feature: string;
+  provider: 'gemini' | 'anthropic' | 'openai';
+  model: string;
+  status: 'ok' | 'refused' | 'invalid_output' | 'too_long' | 'failed';
+  error_kind: 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'bad_request' | 'other' | null;
+  attempts: Generated<number>;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  duration_ms: number;
+  created_at: Generated<Date>;
 }
 
 export interface BillingNoticesTable {
@@ -777,6 +797,7 @@ export interface DB {
   catalog_notices: CatalogNoticesTable;
   billing_events: BillingEventsTable;
   usage_counters: UsageCountersTable;
+  ai_requests: AiRequestsTable;
   billing_notices: BillingNoticesTable;
   audit_logs: AuditLogsTable;
   support_access_grants: SupportAccessGrantsTable;

@@ -7,6 +7,8 @@ import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerAdminRoutes } from './admin/routes.js';
+import { createAiProvider } from './ai/providers/index.js';
+import { registerAiAdminRoutes } from './ai/routes.js';
 import { registerApiV1Routes, resolveApiKey } from './api-v1/routes.js';
 import { csrfTokenFor, resolveSession, sessionCookieName } from './auth/sessions.js';
 import { registerAuthRoutes } from './auth/routes.js';
@@ -55,7 +57,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
     genReqId: () => crypto.randomUUID(),
   });
 
-  const ctx: AppContext = { config, db, log: app.log, payments: createPaymentProvider(config) };
+  const ctx: AppContext = { config, db, log: app.log, payments: createPaymentProvider(config), ai: createAiProvider(config) };
 
   // Only JSON bodies are accepted (webhooks register their own raw parser).
   // Cross-site HTML forms cannot send application/json, which blocks login CSRF.
@@ -192,6 +194,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   registerRetentionRoutes(app, ctx);
   await registerBillingRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
+  registerAiAdminRoutes(app, ctx);
   registerApiV1Routes(app, ctx);
 
   // Front end: static files, self-hosted fonts, SPA fallback for client routes.

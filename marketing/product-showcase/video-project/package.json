@@ -1,0 +1,20 @@
+{
+  "name": "curriculum-scope-showcase-video",
+  "private": true,
+  "type": "module",
+  "description": "Programmatic production of the Curriculum Scope product showcase video (capture, graphics, audio, render).",
+  "scripts": {
+    "capture": "cd ../../.. && ALERT_CHECK_INTERVAL_MS=900000 npx playwright test -c marketing/product-showcase/video-project/capture/playwright.capture.config.ts",
+    "docs": "node docs.mjs",
+    "stills": "node stills.mjs",
+    "video:20": "node build.mjs all 20 2160 && node build.mjs all 20 1080",
+    "video:3": "node build.mjs all 3 1080",
+    "preview:20": "node build.mjs all 20 1080 --captions",
+    "preview:3": "node build.mjs all 3 1080 --captions"
+  },
+  "dependencies": {
+    "@expo-google-fonts/ibm-plex-mono": "0.4.1",
+    "@expo-google-fonts/readex-pro": "0.4.1",
+    "@fontsource/amiri": "5.3.0"
+  }
+}

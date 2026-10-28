@@ -81,9 +81,15 @@ Create `.env.production` from `.env.docker.example`:
   `FILE_SCAN=off` turns scanning off; photos are still resized. Outside Docker Compose, set
   `FILE_SCAN=clamav`, `CLAMAV_HOST` and `CLAMAV_PORT` (3310) for the worker and run `clamd` with a TCP
   socket reachable only from it.
+- AI assistance (optional, docs/AI_LAYER.md): `AI_PROVIDER` (`gemini`, `anthropic` or `openai`; `none`
+  by default), `AI_API_KEY` and `AI_MODEL`. Use a paid API tier whose terms exclude training on your
+  requests. Check the key and model with `npm run ai:check` (same variables) before enabling AI for any
+  school; then a platform administrator gives each school its monthly allowance. The app makes outbound
+  HTTPS requests to the provider: with an egress firewall, allow its API host (`generativelanguage.googleapis.com`,
+  `api.anthropic.com` or `api.openai.com`).
 
 The app refuses to start in production with the sandbox provider, a non-SMTP mailer, a non-HTTPS
-`APP_URL`, `FILE_SCAN` unset, or a database role that bypasses RLS.
+`APP_URL`, `FILE_SCAN` unset, an AI provider without its key and model, or a database role that bypasses RLS.
 
 ### 3.3 Start
 `ops/start.sh --env prod` (Linux) or `ops\start.bat --env prod` (Windows) checks the settings, builds

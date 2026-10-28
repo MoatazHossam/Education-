@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { inOrg, type OrgAccess } from '../auth/guards.js';
-import { getEntitlements } from '../billing/entitlements.js';
+import { runAiTask } from '../ai/service.js';
+import { getEntitlements, usageFor } from '../billing/entitlements.js';
 import type { Executor } from '../db/index.js';
 import type { AnswerKey, Test } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
@@ -10,8 +11,9 @@ import { rateLimited } from '../http/rate-limit.js';
 import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { attemptDeadline, newAccessCode, questionProblem } from './marking.js';
+import { SuggestBody, SuggestedQuestions, suggestionPrompt, toSuggestion, type Suggestion } from './question-suggestions.js';
 import { itemRetention } from './retention.js';
-import { assertClassroomEnabled, assertTeachesSubject, classAccess, num, teachesSubject, zPoints, zSubjectName, type ClassAccess } from './service.js';
+import { assertClassroomEnabled, assertTeachesSubject, classAccess, classSubjects, num, teachesSubject, zPoints, zSubjectName, type ClassAccess } from './service.js';
 import {
   giveExtraTime,
   markAttempt,
@@ -96,6 +98,10 @@ async function editable(exec: Executor, access: OrgAccess, testId: string): Prom
   return ta;
 }
 
+async function questionCount(exec: Executor, testId: string): Promise<number> {
+  return Number((await exec.selectFrom('test_questions').select((e) => e.fn.countAll<string>().as('n')).where('test_id', '=', testId).executeTakeFirstOrThrow()).n);
+}
+
 async function hasAttempts(exec: Executor, testId: string): Promise<boolean> {
   return Boolean(await exec.selectFrom('test_attempts').select('id').where('test_id', '=', testId).limit(1).executeTakeFirst());
 }
@@ -111,6 +117,14 @@ function checkQuestion(body: z.infer<typeof QuestionBody>): void {
 
 export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void {
   const grace = ctx.config.GRACE_DAYS;
+
+  /** AI requests the school has left this month (null: no cap), or null when it has none at all. */
+  async function aiAllowance(exec: Executor, orgId: string): Promise<{ left: number | null } | null> {
+    if (!ctx.ai) return null;
+    const limit = (await getEntitlements(exec, orgId, grace)).limits.ai_requests_per_month;
+    if (limit === 0 || limit === undefined) return null;
+    return { left: limit === null ? null : Math.max(0, limit - (await usageFor(exec, orgId)).ai_requests) };
+  }
 
   app.post('/api/orgs/:orgId/classes/:classId/tests', rateLimited(300, '1 hour'), async (req, reply) => {
     const { orgId, classId } = parse(ClassParams, req.params);
@@ -161,6 +175,8 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
         class: { id: acc.cls.id, name: acc.cls.name, grade: acc.cls.grade },
         canEdit,
         started: await hasAttempts(trx, testId),
+        // Question suggestions (§14): for those who can change the test, when the school has AI requests.
+        ai: canEdit ? await aiAllowance(trx, orgId) : null,
         questions: await testQuestions(trx, testId, canEdit),
         retention: await itemRetention(trx, 'test', test),
       };
@@ -230,8 +246,7 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
     const q = await inOrg(ctx, req, orgId, 'viewer', async (trx, access) => {
       await editable(trx, access, testId);
       await assertNotStarted(trx, testId);
-      const count = Number((await trx.selectFrom('test_questions').select((e) => e.fn.countAll<string>().as('n')).where('test_id', '=', testId).executeTakeFirstOrThrow()).n);
-      if (count >= 100) throw conflict('A test can have at most 100 questions', 'TOO_MANY_QUESTIONS');
+      if ((await questionCount(trx, testId)) >= 100) throw conflict('A test can have at most 100 questions', 'TOO_MANY_QUESTIONS');
       const top = await trx.selectFrom('test_questions').select((e) => e.fn.max('position').as('p')).where('test_id', '=', testId).executeTakeFirst();
       const row = await trx
         .insertInto('test_questions')
@@ -242,6 +257,30 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
       return row;
     });
     return reply.status(201).send({ question: { id: q.id } });
+  });
+
+  // Questions suggested by the AI provider from a topic and, optionally, the lesson text (§14). Nothing is
+  // saved: the teacher reviews the suggestions and adds the ones they keep with the route above.
+  app.post('/api/orgs/:orgId/tests/:testId/suggest-questions', rateLimited(30, '1 hour'), async (req) => {
+    const { orgId, testId } = parse(TestParams, req.params);
+    const body = parse(SuggestBody, req.body);
+    const { user, context, room } = await inOrg(ctx, req, orgId, 'viewer', async (trx, access) => {
+      const { test, acc } = await editable(trx, access, testId);
+      await assertNotStarted(trx, testId);
+      const room = 100 - (await questionCount(trx, testId));
+      if (room <= 0) throw conflict('A test can have at most 100 questions', 'TOO_MANY_QUESTIONS');
+      const subject = (await classSubjects(trx, acc.cls)).subjects.find((s) => s.nameEn === test.subject_en);
+      return {
+        user: access.user,
+        room,
+        context: { grade: acc.cls.grade, subjectEn: test.subject_en, subjectAr: test.subject_ar, books: subject?.materials.map((m) => m.title) ?? [], testTitle: test.title, kind: test.kind },
+      };
+    });
+    const request = { ...body, count: Math.min(body.count, room) };
+    const result = await runAiTask(ctx, { orgId, user, meta: requestMeta(req) }, { feature: 'test_questions', ...suggestionPrompt(context, request), output: SuggestedQuestions });
+    const usable = result.value.questions.map((q) => toSuggestion(q, request.types)).filter((q): q is Suggestion => q !== null);
+    // Suggestions that break the question rules are left out and counted, so the page can say so.
+    return { suggestions: usable.slice(0, request.count), dropped: result.value.questions.length - usable.length, model: result.model };
   });
 
   app.patch('/api/orgs/:orgId/tests/:testId/questions/:questionId', async (req) => {

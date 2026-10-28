@@ -175,7 +175,12 @@ DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `un
 `tests/:testId/students/:studentId/extra-time` (`{minutes}`) · `extra-attempt`,
 `tests/:testId/attempts/:attemptId/submit` · `allow-device`, `tests/:testId/close` · `new-code`,
 `tests/:testId/results`, `tests/:testId/attempts/:attemptId` (GET; PATCH `answers/:questionId`
-`{points?, feedback?}`), `tests/:testId/release`.
+`{points?, feedback?}`), `tests/:testId/release`, and `tests/:testId/suggest-questions` (POST
+`{topic, lessonText?, count?, types, difficulty?, language}`: questions suggested by AI, returned as
+`{suggestions: [{type, prompt, options, points, key, explanation}], dropped, model}` and never saved; the
+subject's teachers and admins until a student starts; uses one of the school's AI requests; 30 an hour;
+ONLINE_TESTS.md §14). `GET tests/:testId` returns `ai: {left}` (null: no monthly cap) to those who can change
+the test when the school has AI requests, else `ai: null`.
 
 ### Gradebook (`/api/orgs/:orgId/classes/:classId/gradebook`) — any teacher of the class and admins
 `?subject=<English subject name>&format=json|csv`: the class's homework with marks and published tests as
@@ -247,7 +252,14 @@ and writes nothing; each error and warning is `{row, code, params, message}`, ro
 published versions, content and new materials on drafts only; `409 VERSION_ARCHIVED`; audited as `admin.catalog_imported`),
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited),
 `GET /alerts` (`{channels: {emails, emailTransport, webhook}, alerts: [...]}`: firing alerts and those resolved in the last 30 days),
-`POST /alerts/test` (sends a test alert to every configured channel; returns `{result: {email, webhook}}`, each `sent`, `failed` or `off`; 5/h; audited as `admin.alert_test`).
+`POST /alerts/test` (sends a test alert to every configured channel; returns `{result: {email, webhook}}`, each `sent`, `failed` or `off`; 5/h; audited as `admin.alert_test`),
+`GET /ai` (AI assistance, docs/AI_LAYER.md: `{provider: {name, model, customEndpoint} | null, settings: {timeoutMs, maxOutputTokens}, period, schools: [{orgId, name, planName, limit, used, requests, ok, failed, inputTokens, outputTokens}]}`
+for schools with an allowance or with use this month; `limit` null means no cap),
+`POST /ai/test` (one small request to the configured provider, outside any school's allowance; returns `{provider, result}` with
+`result.ok`, `finish`, `model`, `ms`, tokens and the reply, or `errorKind`, `status` and the provider's message; `503 AI_NOT_CONFIGURED`
+without a provider; 10/h; audited as `admin.ai_tested`). A school's monthly AI allowance is `ai_requests_per_month` in `limitOverrides`
+of `PATCH /orgs/:orgId/subscription` (0 on every plan; null for no cap); `GET /api/orgs/:orgId` and the billing endpoint report it in
+`limits` and the month's use as `usage.ai_requests`.
 
 ## 3. Public API v1 (for customer integrations)
 

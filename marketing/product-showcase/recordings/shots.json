@@ -1,0 +1,5526 @@
+{
+ "legacy": {
+  "id": "legacy",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "legacy/000.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/001.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/002.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/003.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/004.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/005.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/006.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/007.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/008.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/009.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/010.jpg",
+    "title": "Egypt Curriculum Picker"
+   },
+   {
+    "file": "legacy/011.jpg",
+    "title": "Egypt Curriculum Picker"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   }
+  ]
+ },
+ "pricing": {
+  "id": "pricing",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "pricing/000.jpg",
+    "title": "الأسعار · نطاق المناهج"
+   },
+   {
+    "file": "pricing/001.jpg",
+    "title": "الأسعار · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1
+    ]
+   }
+  ]
+ },
+ "register": {
+  "id": "register",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "register/000.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/001.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/002.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/003.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/004.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/005.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/006.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/007.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/008.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/009.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/010.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/011.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/012.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/013.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/014.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/015.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/016.jpg",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   },
+   {
+    "file": "register/017.jpg",
+    "label": "check email",
+    "title": "ابدأ فترتك التجريبية المجانية · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 270.921875,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 345.53125,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ],
+    "label": "email"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 420.140625,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     9,
+     10,
+     11,
+     12
+    ],
+    "label": "password"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 518.125,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     13,
+     14,
+     15,
+     16
+    ],
+    "label": "school"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 801.078125,
+     "y": 591.1875,
+     "w": 111.921875,
+     "h": 36.921875
+    },
+    "frame": 17,
+    "label": "check email"
+   }
+  ]
+ },
+ "email-confirmed": {
+  "id": "email-confirmed",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "email-confirmed/000.jpg",
+    "title": "تأكيد البريد الإلكتروني · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "sign-in": {
+  "id": "sign-in",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "sign-in/000.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/001.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/002.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/003.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/004.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/005.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/006.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/007.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/008.jpg",
+    "title": "تسجيل الدخول · نطاق المناهج"
+   },
+   {
+    "file": "sign-in/009.jpg",
+    "label": "picker",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 343.6875,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "label": "email"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 418.296875,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     6,
+     7,
+     8
+    ],
+    "label": "password"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 794.125,
+     "y": 467.984375,
+     "w": 118.875,
+     "h": 36.921875
+    },
+    "frame": 9,
+    "label": "picker"
+   }
+  ]
+ },
+ "first-scope": {
+  "id": "first-scope",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "first-scope/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/001.jpg",
+    "label": "dialog",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/002.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/003.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/004.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/005.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/006.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/007.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/008.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/009.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/010.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/011.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "first-scope/012.jpg",
+    "label": "created",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1133.328125,
+     "y": 247.359375,
+     "w": 137.671875,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 301.171875,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 375.78125,
+     "w": 478,
+     "h": 70
+    },
+    "frames": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "label": "description"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 534.703125,
+     "w": 60.625,
+     "h": 36.921875
+    },
+    "frame": 12,
+    "label": "created"
+   }
+  ]
+ },
+ "pick-books": {
+  "id": "pick-books",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "pick-books/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/001.jpg",
+    "label": "grade 1",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/002.jpg",
+    "label": "grade 2",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/003.jpg",
+    "label": "grade 3",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/004.jpg",
+    "label": "book",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/005.jpg",
+    "label": "book",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/006.jpg",
+    "label": "book",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/007.jpg",
+    "label": "book",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/008.jpg",
+    "label": "book",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/009.jpg",
+    "label": "saved",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/010.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/011.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/012.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/013.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/014.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/015.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/016.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/017.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/018.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/019.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/020.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/021.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/022.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/023.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/024.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/025.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "pick-books/026.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1126.25,
+     "y": 593.765625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 1,
+    "label": "grade 1"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1037.5,
+     "y": 593.765625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 2,
+    "label": "grade 2"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 948.75,
+     "y": 593.765625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 3,
+    "label": "grade 3"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 743.796875,
+     "y": 391.375,
+     "w": 263.203125,
+     "h": 26.890625
+    },
+    "frame": 4,
+    "label": "book"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 440.03125,
+     "y": 391.375,
+     "w": 297.765625,
+     "h": 26.890625
+    },
+    "frame": 5,
+    "label": "book"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 856.796875,
+     "y": 424.265625,
+     "w": 150.203125,
+     "h": 26.890625
+    },
+    "frame": 6,
+    "label": "book"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 737.71875,
+     "y": 507.9375,
+     "w": 269.28125,
+     "h": 26.890625
+    },
+    "frame": 7,
+    "label": "book"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 433.953125,
+     "y": 507.9375,
+     "w": 297.765625,
+     "h": 26.890625
+    },
+    "frame": 8,
+    "label": "book"
+   },
+   {
+    "kind": "state",
+    "frame": 9,
+    "label": "saved"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26
+    ],
+    "label": "scroll"
+   }
+  ]
+ },
+ "admin-2fa": {
+  "id": "admin-2fa",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-2fa/000.jpg",
+    "title": "التحقق بخطوتين · نطاق المناهج"
+   },
+   {
+    "file": "admin-2fa/001.jpg",
+    "title": "التحقق بخطوتين · نطاق المناهج"
+   },
+   {
+    "file": "admin-2fa/002.jpg",
+    "title": "التحقق بخطوتين · نطاق المناهج"
+   },
+   {
+    "file": "admin-2fa/003.jpg",
+    "title": "التحقق بخطوتين · نطاق المناهج"
+   },
+   {
+    "file": "admin-2fa/004.jpg",
+    "label": "signed in",
+    "title": "حسابك · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 394.578125,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "code"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 849.71875,
+     "y": 444.265625,
+     "w": 63.28125,
+     "h": 36.921875
+    },
+    "frame": 4,
+    "label": "signed in"
+   }
+  ]
+ },
+ "verify-subject": {
+  "id": "verify-subject",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "verify-subject/000.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/001.jpg",
+    "label": "grade 1",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/002.jpg",
+    "label": "dialog",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/003.jpg",
+    "label": "verified",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/004.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/005.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/006.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/007.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/008.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/009.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/010.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/011.jpg",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   },
+   {
+    "file": "verify-subject/012.jpg",
+    "label": "saved",
+    "title": "2026/2027 — Egypt K-12 curriculum — academic year 2026/2027 · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 374.109375,
+     "w": 1102,
+     "h": 23.25
+    },
+    "frame": 1,
+    "label": "grade 1"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1189.140625,
+     "y": 576.671875,
+     "w": 67.859375,
+     "h": 29.375
+    },
+    "frame": 2,
+    "label": "dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 202,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 3,
+    "label": "verified"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 274.921875,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "label": "source"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 349.53125,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     8,
+     9,
+     10,
+     11
+    ],
+    "label": "url"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 633.890625,
+     "w": 59.5625,
+     "h": 36.921875
+    },
+    "frame": 12,
+    "label": "saved"
+   }
+  ]
+ },
+ "picker-verified": {
+  "id": "picker-verified",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "picker-verified/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/001.jpg",
+    "label": "grade 1",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/002.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/003.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/004.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/005.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/006.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/007.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/008.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/009.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/010.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/011.jpg",
+    "label": "verified details",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/012.jpg",
+    "label": "list",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-verified/013.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1126.25,
+     "y": 593.765625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 1,
+    "label": "grade 1"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "label": "to grade"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1188.453125,
+     "y": 505.5625,
+     "w": 86.546875,
+     "h": 24
+    },
+    "frame": 11,
+    "label": "verified details"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 330.5625,
+     "y": 763.078125,
+     "w": 107.9375,
+     "h": 36.921875
+    },
+    "frame": 12,
+    "label": "list"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     13
+    ],
+    "label": "tray"
+   }
+  ]
+ },
+ "filters": {
+  "id": "filters",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "filters/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/001.jpg",
+    "label": "bakaloria",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/002.jpg",
+    "label": "grade 10",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/003.jpg",
+    "label": "international",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/004.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/005.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/006.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/007.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/008.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/009.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/010.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/011.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/012.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/013.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/014.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "filters/015.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 746.65625,
+     "y": 553.625,
+     "w": 74.171875,
+     "h": 30.140625
+    },
+    "frame": 1,
+    "label": "bakaloria"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 327.5,
+     "y": 593.765625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 2,
+    "label": "grade 10"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 572.765625,
+     "y": 553.625,
+     "w": 62.296875,
+     "h": 30.140625
+    },
+    "frame": 3,
+    "label": "international"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 423.71875,
+     "y": 652.625,
+     "w": 340,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "label": "search"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15
+    ],
+    "label": "results"
+   }
+  ]
+ },
+ "members-invite": {
+  "id": "members-invite",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "members-invite/000.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/001.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/002.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/003.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/004.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/005.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/006.jpg",
+    "label": "editor",
+    "title": "الأعضاء · نطاق المناهج"
+   },
+   {
+    "file": "members-invite/007.jpg",
+    "label": "invited",
+    "title": "الأعضاء · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 169,
+     "y": 502.578125,
+     "w": 1102,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "label": "email"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 577.1875,
+     "w": 1102,
+     "h": 36
+    },
+    "frame": 6,
+    "label": "editor"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1164.359375,
+     "y": 625.1875,
+     "w": 106.640625,
+     "h": 36.921875
+    },
+    "frame": 7,
+    "label": "invited"
+   }
+  ]
+ },
+ "invitation": {
+  "id": "invitation",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "invitation/000.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/001.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/002.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/003.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/004.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/005.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/006.jpg",
+    "title": "دعوة · نطاق المناهج"
+   },
+   {
+    "file": "invitation/007.jpg",
+    "label": "joined",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 354,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 525,
+     "y": 503.21875,
+     "w": 388,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "label": "password"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 749.015625,
+     "y": 576.28125,
+     "w": 163.984375,
+     "h": 36.921875
+    },
+    "frame": 7,
+    "label": "joined"
+   }
+  ]
+ },
+ "members": {
+  "id": "members",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "members/000.jpg",
+    "title": "الأعضاء · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "viewer": {
+  "id": "viewer",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "viewer/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "viewer/001.jpg",
+    "label": "read only",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 743.8125,
+     "y": 348.421875,
+     "w": 263.1875,
+     "h": 26.890625
+    },
+    "frame": 1
+   }
+  ]
+ },
+ "notes": {
+  "id": "notes",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "notes/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "notes/001.jpg",
+    "label": "notes page",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/002.jpg",
+    "label": "dialog",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/003.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/004.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/005.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/006.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/007.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/008.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/009.jpg",
+    "label": "assignee",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/010.jpg",
+    "label": "status",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/011.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/012.jpg",
+    "label": "saved",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/013.jpg",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/014.jpg",
+    "label": "pick",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   },
+   {
+    "file": "notes/015.jpg",
+    "label": "pick",
+    "title": "الملاحظات والمسؤولون · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 661.109375,
+     "y": 510.9375,
+     "w": 149.859375,
+     "h": 29.375
+    },
+    "frame": 1,
+    "label": "notes page"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 221.75,
+     "y": 780.125,
+     "w": 54.0625,
+     "h": 29.375
+    },
+    "frame": 2,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 248.5,
+     "w": 478,
+     "h": 70
+    },
+    "frames": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8
+    ],
+    "label": "note"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 378.796875,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 9,
+    "label": "assignee"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 451.71875,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 10,
+    "label": "status"
+   },
+   {
+    "kind": "state",
+    "frame": 11
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 899.4375,
+     "y": 599.703125,
+     "w": 59.5625,
+     "h": 36.921875
+    },
+    "frame": 12,
+    "label": "saved"
+   },
+   {
+    "kind": "state",
+    "frame": 13
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1245,
+     "y": 664.125,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 14,
+    "label": "pick"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1245,
+     "y": 764.5625,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 15,
+    "label": "pick"
+   },
+   {
+    "kind": "focus",
+    "box": {
+     "x": 150,
+     "y": 21.09375,
+     "w": 1140,
+     "h": 132.953125
+    },
+    "label": "bulk bar"
+   }
+  ]
+ },
+ "karim-bell": {
+  "id": "karim-bell",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "karim-bell/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "karim-bell/001.jpg",
+    "label": "notifications",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "karim-bell/002.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "karim-bell/003.jpg",
+    "label": "my assignments",
+    "title": "مهامي · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 425.125,
+     "y": 8.921875,
+     "w": 56.234375,
+     "h": 34.140625
+    },
+    "frame": 1,
+    "label": "notifications"
+   },
+   {
+    "kind": "state",
+    "frame": 2
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 785.375,
+     "y": 9.53125,
+     "w": 75.484375,
+     "h": 32.921875
+    },
+    "frame": 3,
+    "label": "my assignments"
+   }
+  ]
+ },
+ "assignments-all": {
+  "id": "assignments-all",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "assignments-all/000.jpg",
+    "title": "مهامي في كل مؤسساتي · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "org-switch": {
+  "id": "org-switch",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "org-switch/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "org-switch/001.jpg",
+    "label": "school",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "org-switch/002.jpg",
+    "label": "school picker",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 474.640625,
+     "y": 23.921875,
+     "w": 198,
+     "h": 36
+    },
+    "frame": 1,
+    "label": "school"
+   },
+   {
+    "kind": "state",
+    "frame": 2,
+    "label": "school picker"
+   }
+  ]
+ },
+ "duplicate": {
+  "id": "duplicate",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "duplicate/000.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/001.jpg",
+    "label": "dialog",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/002.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/003.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/004.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/005.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "duplicate/006.jpg",
+    "label": "copy",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 246.28125,
+     "y": 298.21875,
+     "w": 47.078125,
+     "h": 29.375
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 391.09375,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 444.78125,
+     "w": 58.140625,
+     "h": 36.921875
+    },
+    "frame": 6,
+    "label": "copy"
+   }
+  ]
+ },
+ "scopes": {
+  "id": "scopes",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "scopes/000.jpg",
+    "title": "نطاقات المحتوى · نطاق المناهج"
+   },
+   {
+    "file": "scopes/001.jpg",
+    "label": "compare",
+    "title": "مقارنة النطاقات · نطاق المناهج"
+   },
+   {
+    "file": "scopes/002.jpg",
+    "title": "مقارنة النطاقات · نطاق المناهج"
+   },
+   {
+    "file": "scopes/003.jpg",
+    "title": "مقارنة النطاقات · نطاق المناهج"
+   },
+   {
+    "file": "scopes/004.jpg",
+    "title": "مقارنة النطاقات · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 150,
+     "y": 224.40625,
+     "w": 1119,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "compare"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     2,
+     3,
+     4
+    ],
+    "label": "differences"
+   }
+  ]
+ },
+ "exports": {
+  "id": "exports",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "exports/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "exports/001.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1
+    ],
+    "label": "tray"
+   }
+  ]
+ },
+ "new-year": {
+  "id": "new-year",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "new-year/000.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/001.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/002.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/003.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/004.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/005.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/006.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/007.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/008.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/009.jpg",
+    "label": "draft",
+    "title": "2027/2028 — مناهج مصر من الروضة حتى الثانوي — العام الدراسي 2027/2028 · نطاق المناهج"
+   },
+   {
+    "file": "new-year/010.jpg",
+    "label": "editor",
+    "title": "2027/2028 — مناهج مصر من الروضة حتى الثانوي — العام الدراسي 2027/2028 · نطاق المناهج"
+   },
+   {
+    "file": "new-year/011.jpg",
+    "label": "sheet preview",
+    "title": "2027/2028 — مناهج مصر من الروضة حتى الثانوي — العام الدراسي 2027/2028 · نطاق المناهج"
+   },
+   {
+    "file": "new-year/012.jpg",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/013.jpg",
+    "label": "publish dialog",
+    "title": "الدليل · نطاق المناهج"
+   },
+   {
+    "file": "new-year/014.jpg",
+    "label": "published",
+    "title": "الدليل · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 169,
+     "y": 525.109375,
+     "w": 1102,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "year"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 169,
+     "y": 599.71875,
+     "w": 1102,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ],
+    "label": "label"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1156.546875,
+     "y": 649.40625,
+     "w": 114.453125,
+     "h": 36.921875
+    },
+    "frame": 9,
+    "label": "draft"
+   },
+   {
+    "kind": "state",
+    "frame": 10,
+    "label": "editor"
+   },
+   {
+    "kind": "state",
+    "frame": 11,
+    "label": "sheet preview"
+   },
+   {
+    "kind": "state",
+    "frame": 12
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 253.125,
+     "y": 260.296875,
+     "w": 44.578125,
+     "h": 29.375
+    },
+    "frame": 13,
+    "label": "publish dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 439.234375,
+     "w": 58.140625,
+     "h": 36.921875
+    },
+    "frame": 14,
+    "label": "published"
+   }
+  ]
+ },
+ "carry": {
+  "id": "carry",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "carry/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "carry/001.jpg",
+    "label": "notification",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "carry/002.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "carry/003.jpg",
+    "label": "review",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/004.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/005.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/006.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/007.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/008.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/009.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/010.jpg",
+    "title": "نقل «الكتب الأساسية للصفوف 1–3 — الفرع ب» إلى إصدار أحدث · نطاق المناهج"
+   },
+   {
+    "file": "carry/011.jpg",
+    "label": "carried",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 428.40625,
+     "y": 42.296875,
+     "w": 56.234375,
+     "h": 34.140625
+    },
+    "frame": 1,
+    "label": "notification"
+   },
+   {
+    "kind": "state",
+    "frame": 2
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 958.8125,
+     "y": 508.625,
+     "w": 116.03125,
+     "h": 17
+    },
+    "frame": 3,
+    "label": "review"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "label": "details"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1218.84375,
+     "y": 620.125,
+     "w": 52.15625,
+     "h": 36.921875
+    },
+    "frame": 11,
+    "label": "carried"
+   }
+  ]
+ },
+ "billing": {
+  "id": "billing",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "billing/000.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/001.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/002.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/003.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/004.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/005.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/006.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/007.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/008.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/009.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/010.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/011.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/012.jpg",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/013.jpg",
+    "label": "checkout",
+    "title": "صفحة دفع تجريبية · نطاق المناهج"
+   },
+   {
+    "file": "billing/014.jpg",
+    "label": "paid",
+    "title": "الفوترة · نطاق المناهج"
+   },
+   {
+    "file": "billing/015.jpg",
+    "label": "subscribed",
+    "title": "الفوترة · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "label": "plans"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 462.5,
+     "y": 476.0625,
+     "w": 236.5,
+     "h": 36.921875
+    },
+    "frame": 13,
+    "label": "checkout"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 801.40625,
+     "y": 489.90625,
+     "w": 111.59375,
+     "h": 36.921875
+    },
+    "frame": 14,
+    "label": "paid"
+   },
+   {
+    "kind": "state",
+    "frame": 15,
+    "label": "subscribed"
+   }
+  ]
+ },
+ "student-add": {
+  "id": "student-add",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "student-add/000.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/001.jpg",
+    "label": "dialog",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/002.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/003.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/004.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/005.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/006.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/007.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/008.jpg",
+    "label": "grade",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/009.jpg",
+    "label": "curriculum",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-add/010.jpg",
+    "label": "one-time password (blurred)",
+    "title": "الطلاب · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 590.640625,
+     "y": 375.25,
+     "w": 102.359375,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 233.03125,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3,
+     4
+    ],
+    "label": "username"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 331.015625,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 405.625,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 8,
+    "label": "grade"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 478.546875,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 9,
+    "label": "curriculum"
+   },
+   {
+    "kind": "state",
+    "frame": 10,
+    "label": "one-time password (blurred)"
+   }
+  ]
+ },
+ "student-import": {
+  "id": "student-import",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "student-import/000.jpg",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-import/001.jpg",
+    "label": "dialog",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-import/002.jpg",
+    "label": "problems",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-import/003.jpg",
+    "label": "fixed",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-import/004.jpg",
+    "label": "passwords (blurred)",
+    "title": "الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-import/005.jpg",
+    "label": "students",
+    "title": "الطلاب · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 439.59375,
+     "y": 375.25,
+     "w": 143.046875,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "state",
+    "frame": 2,
+    "label": "problems"
+   },
+   {
+    "kind": "state",
+    "frame": 3,
+    "label": "fixed"
+   },
+   {
+    "kind": "state",
+    "frame": 4,
+    "label": "passwords (blurred)"
+   },
+   {
+    "kind": "state",
+    "frame": 5,
+    "label": "students"
+   }
+  ]
+ },
+ "class-create": {
+  "id": "class-create",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "class-create/000.jpg",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/001.jpg",
+    "label": "dialog",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/002.jpg",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/003.jpg",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/004.jpg",
+    "label": "grade",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/005.jpg",
+    "label": "curriculum",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "class-create/006.jpg",
+    "label": "class",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/007.jpg",
+    "label": "choose students",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/008.jpg",
+    "label": "عمر خالد",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/009.jpg",
+    "label": "هنا سمير",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/010.jpg",
+    "label": "آدم طارق",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/011.jpg",
+    "label": "students",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/012.jpg",
+    "label": "teacher dialog",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/013.jpg",
+    "label": "teacher",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/014.jpg",
+    "label": "subject",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-create/015.jpg",
+    "label": "teacher added",
+    "title": "الأول أ · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1194.96875,
+     "y": 235.40625,
+     "w": 95.03125,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 270.34375,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3
+    ],
+    "label": "name"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 368.328125,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 4,
+    "label": "grade"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 441.25,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 5,
+    "label": "curriculum"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 855.328125,
+     "y": 512.625,
+     "w": 103.671875,
+     "h": 36.921875
+    },
+    "frame": 6,
+    "label": "class"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 747,
+     "y": 780.421875,
+     "w": 93.390625,
+     "h": 29.375
+    },
+    "frame": 7,
+    "label": "choose students"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 928,
+     "y": 446.359375,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 8,
+    "label": "عمر خالد"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 928,
+     "y": 417.109375,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 9,
+    "label": "هنا سمير"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 928,
+     "y": 387.859375,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 10,
+    "label": "آدم طارق"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 524.734375,
+     "w": 59.5625,
+     "h": 36.921875
+    },
+    "frame": 11,
+    "label": "students"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 780.421875,
+     "w": 85.5625,
+     "h": 29.375
+    },
+    "frame": 12,
+    "label": "teacher dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 343.796875,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 13,
+    "label": "teacher"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 440.09375,
+     "w": 478,
+     "h": 36
+    },
+    "frame": 14,
+    "label": "subject"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 492.09375,
+     "w": 98.640625,
+     "h": 36.921875
+    },
+    "frame": 15,
+    "label": "teacher added"
+   }
+  ]
+ },
+ "homework-set": {
+  "id": "homework-set",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "homework-set/000.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/001.jpg",
+    "label": "dialog",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/002.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/003.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/004.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/005.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/006.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/007.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/008.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/009.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/010.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/011.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/012.jpg",
+    "label": "book",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/013.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-set/014.jpg",
+    "label": "set",
+    "title": "الأول أ · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 277.78125,
+     "w": 103.5,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 174.734375,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "label": "title"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 249.34375,
+     "w": 478,
+     "h": 102.75
+    },
+    "frames": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "label": "instructions"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 927.75,
+     "y": 399.53125,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 12,
+    "label": "book"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 657.421875,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     13
+    ],
+    "label": "points"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 753.734375,
+     "w": 103.5,
+     "h": 36.921875
+    },
+    "frame": 14,
+    "label": "set"
+   }
+  ]
+ },
+ "test-create": {
+  "id": "test-create",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "test-create/000.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/001.jpg",
+    "label": "dialog",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/002.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/003.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/004.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/005.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/006.jpg",
+    "label": "start code",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "test-create/007.jpg",
+    "label": "test page",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/008.jpg",
+    "label": "question dialog",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/009.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/010.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/011.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/012.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/013.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/014.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/015.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/016.jpg",
+    "label": "correct",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/017.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/018.jpg",
+    "label": "saved",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/019.jpg",
+    "label": "short answer with spelling variants",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/020.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/021.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/022.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/023.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/024.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/025.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/026.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/027.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/028.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/029.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/030.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/031.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/032.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/033.jpg",
+    "label": "publish dialog",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-create/034.jpg",
+    "label": "published",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 494.4375,
+     "w": 97.34375,
+     "h": 36.921875
+    },
+    "frame": 1,
+    "label": "dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 174.734375,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3,
+     4
+    ],
+    "label": "title"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 581.46875,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     5
+    ],
+    "label": "minutes"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 927.75,
+     "y": 618.5625,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 6,
+    "label": "start code"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 734.5625,
+     "w": 104.828125,
+     "h": 36.921875
+    },
+    "frame": 7,
+    "label": "test page"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 742.6875,
+     "w": 103.109375,
+     "h": 36.921875
+    },
+    "frame": 8,
+    "label": "question dialog"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 253.40625,
+     "w": 478,
+     "h": 81.0625
+    },
+    "frames": [
+     9,
+     10,
+     11,
+     12
+    ],
+    "label": "prompt"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 556.03125,
+     "y": 374.96875,
+     "w": 238.53125,
+     "h": 37.6875
+    },
+    "frames": [
+     13
+    ],
+    "label": "choice"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 556.03125,
+     "y": 424.65625,
+     "w": 238.59375,
+     "h": 37.6875
+    },
+    "frames": [
+     14
+    ],
+    "label": "choice"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 556.03125,
+     "y": 474.34375,
+     "w": 238.6875,
+     "h": 37.6875
+    },
+    "frames": [
+     15
+    ],
+    "label": "choice"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 927.75,
+     "y": 438.5,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 16,
+    "label": "correct"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 601.703125,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     17
+    ],
+    "label": "points"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 655.390625,
+     "w": 59.5625,
+     "h": 36.921875
+    },
+    "frame": 18,
+    "label": "saved"
+   },
+   {
+    "kind": "state",
+    "frame": 19,
+    "label": "short answer with spelling variants"
+   },
+   {
+    "kind": "state",
+    "frame": 20
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32
+    ],
+    "label": "questions"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1214.609375,
+     "y": 240.65625,
+     "w": 54.390625,
+     "h": 36.921875
+    },
+    "frame": 33,
+    "label": "publish dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 439.234375,
+     "w": 54.390625,
+     "h": 36.921875
+    },
+    "frame": 34,
+    "label": "published"
+   }
+  ]
+ },
+ "student-sign-in": {
+  "id": "student-sign-in",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "student-sign-in/000.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/001.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/002.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/003.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/004.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/005.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/006.jpg",
+    "title": "دخول الطلاب · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/007.jpg",
+    "label": "today",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-sign-in/008.jpg",
+    "title": "اليوم · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 41,
+     "y": 446.515625,
+     "w": 306,
+     "h": 37.6875
+    },
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "username"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 41,
+     "y": 521.125,
+     "w": 306,
+     "h": 37.6875
+    },
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "label": "password"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 228.125,
+     "y": 570.8125,
+     "w": 118.875,
+     "h": 36.921875
+    },
+    "frame": 7,
+    "label": "today"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     8
+    ],
+    "label": "today"
+   }
+  ]
+ },
+ "student-homework": {
+  "id": "student-homework",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "student-homework/000.jpg",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/001.jpg",
+    "label": "homework",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/002.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/003.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/004.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/005.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/006.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/007.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/008.jpg",
+    "label": "photo being checked",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/009.jpg",
+    "label": "photo checked",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "student-homework/010.jpg",
+    "label": "handed in",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 172.171875,
+     "y": 566.984375,
+     "w": 182.828125,
+     "h": 19
+    },
+    "frame": 1,
+    "label": "homework"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 35,
+     "y": 695.09375,
+     "w": 320,
+     "h": 146.125
+    },
+    "frames": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "label": "answer"
+   },
+   {
+    "kind": "state",
+    "frame": 8,
+    "label": "photo being checked"
+   },
+   {
+    "kind": "state",
+    "frame": 9,
+    "label": "photo checked"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 289.75,
+     "y": 654.390625,
+     "w": 65.25,
+     "h": 36.921875
+    },
+    "frame": 10,
+    "label": "handed in"
+   }
+  ]
+ },
+ "student-today-desktop": {
+  "id": "student-today-desktop",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "student-today-desktop/000.jpg",
+    "title": "اليوم · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "monitor": {
+  "id": "monitor",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "monitor/000.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/001.jpg",
+    "label": "Omar working",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/002.jpg",
+    "label": "Hana started",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/003.jpg",
+    "label": "both working",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/004.jpg",
+    "label": "extra time dialog",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/005.jpg",
+    "label": "submitted",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/006.jpg",
+    "label": "close dialog",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "monitor/007.jpg",
+    "label": "closed",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "state",
+    "frame": 1,
+    "label": "Omar working"
+   },
+   {
+    "kind": "state",
+    "frame": 2,
+    "label": "Hana started"
+   },
+   {
+    "kind": "state",
+    "frame": 3,
+    "label": "both working"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 306.265625,
+     "y": 612.234375,
+     "w": 87.515625,
+     "h": 29.375
+    },
+    "frame": 4,
+    "label": "extra time dialog"
+   },
+   {
+    "kind": "state",
+    "frame": 5,
+    "label": "submitted"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1156.515625,
+     "y": 265.03125,
+     "w": 112.484375,
+     "h": 29.375
+    },
+    "frame": 6,
+    "label": "close dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 439.234375,
+     "w": 127.71875,
+     "h": 36.921875
+    },
+    "frame": 7,
+    "label": "closed"
+   }
+  ]
+ },
+ "student-test": {
+  "id": "student-test",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "student-test/000.jpg",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-test/001.jpg",
+    "label": "start page",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/002.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/003.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/004.jpg",
+    "label": "confirm",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/005.jpg",
+    "label": "started",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/006.jpg",
+    "label": "choice",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/007.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/008.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/009.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/010.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/011.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/012.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/013.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/014.jpg",
+    "label": "saved",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/015.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/016.jpg",
+    "label": "submit dialog",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-test/017.jpg",
+    "label": "submitted",
+    "title": "تم التسليم · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 142.546875,
+     "y": 429.265625,
+     "w": 40.015625,
+     "h": 29.375
+    },
+    "frame": 1,
+    "label": "start page"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 187,
+     "y": 738.46875,
+     "w": 168,
+     "h": 37.6875
+    },
+    "frames": [
+     2,
+     3
+    ],
+    "label": "code"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 305.53125,
+     "y": 799.53125,
+     "w": 49.46875,
+     "h": 36.921875
+    },
+    "frame": 4,
+    "label": "confirm"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 37,
+     "y": 456.234375,
+     "w": 49.46875,
+     "h": 36.921875
+    },
+    "frame": 5,
+    "label": "started"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 341,
+     "y": 548.84375,
+     "w": 13,
+     "h": 13
+    },
+    "frame": 6,
+    "label": "choice"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 33,
+     "y": 731.53125,
+     "w": 324,
+     "h": 37.6875
+    },
+    "frames": [
+     7,
+     8
+    ],
+    "label": "short"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 33,
+     "y": 490.40625,
+     "w": 324,
+     "h": 146.125
+    },
+    "frames": [
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "label": "essay"
+   },
+   {
+    "kind": "state",
+    "frame": 14,
+    "label": "saved"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     15
+    ],
+    "label": "to submit"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 308.75,
+     "y": 663.53125,
+     "w": 65.25,
+     "h": 36.921875
+    },
+    "frame": 16,
+    "label": "submit dialog"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 37,
+     "y": 444.609375,
+     "w": 65.25,
+     "h": 36.921875
+    },
+    "frame": 17,
+    "label": "submitted"
+   }
+  ]
+ },
+ "homework-mark": {
+  "id": "homework-mark",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "homework-mark/000.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/001.jpg",
+    "label": "roster",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/002.jpg",
+    "label": "work",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/003.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/004.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/005.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/006.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/007.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/008.jpg",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   },
+   {
+    "file": "homework-mark/009.jpg",
+    "label": "returned",
+    "title": "اقرأ قصة «البذرة الصغيرة» · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1086.234375,
+     "y": 383.515625,
+     "w": 155.765625,
+     "h": 17
+    },
+    "frame": 1,
+    "label": "roster"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 286.171875,
+     "y": 539.84375,
+     "w": 62.046875,
+     "h": 29.375
+    },
+    "frame": 2,
+    "label": "work"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 451.359375,
+     "w": 478,
+     "h": 37.6875
+    },
+    "frames": [
+     3
+    ],
+    "label": "mark"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 481,
+     "y": 525.96875,
+     "w": 478,
+     "h": 81.0625
+    },
+    "frames": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ],
+    "label": "feedback"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 623.03125,
+     "w": 125.28125,
+     "h": 36.921875
+    },
+    "frame": 9,
+    "label": "returned"
+   }
+  ]
+ },
+ "test-results": {
+  "id": "test-results",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "test-results/000.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "test-results/001.jpg",
+    "label": "attempt",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/002.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/003.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/004.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/005.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/006.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/007.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/008.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/009.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/010.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/011.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/012.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/013.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/014.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/015.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/016.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/017.jpg",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   },
+   {
+    "file": "test-results/018.jpg",
+    "label": "saved",
+    "title": "عمر خالد · المحاولة 1 · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 632.796875,
+     "y": 407.765625,
+     "w": 57.671875,
+     "h": 17
+    },
+    "frame": 1,
+    "label": "attempt"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "label": "written answer"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 1061,
+     "y": 565.21875,
+     "w": 210,
+     "h": 37.6875
+    },
+    "frames": [
+     12
+    ],
+    "label": "mark"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 169,
+     "y": 565.21875,
+     "w": 876,
+     "h": 70
+    },
+    "frames": [
+     13,
+     14,
+     15,
+     16,
+     17
+    ],
+    "label": "comment"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1182.078125,
+     "y": 643.21875,
+     "w": 88.921875,
+     "h": 29.375
+    },
+    "frame": 18,
+    "label": "saved"
+   }
+  ]
+ },
+ "gradebook": {
+  "id": "gradebook",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "gradebook/000.jpg",
+    "title": "دفتر الدرجات · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "class-page": {
+  "id": "class-page",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "class-page/000.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-page/001.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-page/002.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   },
+   {
+    "file": "class-page/003.jpg",
+    "title": "الأول أ · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "label": "class"
+   }
+  ]
+ },
+ "student-result": {
+  "id": "student-result",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "student-result/000.jpg",
+    "title": "اختبار الوحدة الثانية · نطاق المناهج"
+   },
+   {
+    "file": "student-result/001.jpg",
+    "label": "review",
+    "title": "نتيجتك · نطاق المناهج"
+   },
+   {
+    "file": "student-result/002.jpg",
+    "title": "نتيجتك · نطاق المناهج"
+   },
+   {
+    "file": "student-result/003.jpg",
+    "title": "نتيجتك · نطاق المناهج"
+   },
+   {
+    "file": "student-result/004.jpg",
+    "title": "نتيجتك · نطاق المناهج"
+   },
+   {
+    "file": "student-result/005.jpg",
+    "title": "نتيجتك · نطاق المناهج"
+   },
+   {
+    "file": "student-result/006.jpg",
+    "title": "نتيجتك · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 119.765625,
+     "y": 769.96875,
+     "w": 90.453125,
+     "h": 19
+    },
+    "frame": 1,
+    "label": "review"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "label": "answers"
+   }
+  ]
+ },
+ "student-grades": {
+  "id": "student-grades",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "student-grades/000.jpg",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/001.jpg",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/002.jpg",
+    "title": "اليوم · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/003.jpg",
+    "label": "grades",
+    "title": "درجاتي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/004.jpg",
+    "label": "books",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/005.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/006.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/007.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/008.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/009.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/010.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/011.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/012.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/013.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/014.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/015.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/016.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/017.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/018.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/019.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/020.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/021.jpg",
+    "title": "منهجي · نطاق المناهج"
+   },
+   {
+    "file": "student-grades/022.jpg",
+    "label": "english",
+    "title": "My curriculum · Curriculum Scope"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1
+    ],
+    "label": "returned"
+   },
+   {
+    "kind": "state",
+    "frame": 2
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 192.734375,
+     "y": 42.921875,
+     "w": 63.75,
+     "h": 32.921875
+    },
+    "frame": 3,
+    "label": "grades"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 145.953125,
+     "y": 42.921875,
+     "w": 43.734375,
+     "h": 32.921875
+    },
+    "frame": 4,
+    "label": "books"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "label": "books"
+   },
+   {
+    "kind": "state",
+    "frame": 21
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 246.765625,
+     "y": 83.84375,
+     "w": 67,
+     "h": 34.140625
+    },
+    "frame": 22,
+    "label": "english"
+   }
+  ]
+ },
+ "student-grades-desktop": {
+  "id": "student-grades-desktop",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "student-grades-desktop/000.jpg",
+    "title": "درجاتي · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "retention": {
+  "id": "retention",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "retention/000.jpg",
+    "title": "الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/001.jpg",
+    "label": "page",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/002.jpg",
+    "label": "monitoring",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/003.jpg",
+    "label": "work",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/004.jpg",
+    "label": "records",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/005.jpg",
+    "label": "confirm",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/006.jpg",
+    "label": "saved",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/007.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/008.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/009.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/010.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/011.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/012.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/013.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   },
+   {
+    "file": "retention/014.jpg",
+    "title": "الاحتفاظ ببيانات الفصول · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 905.96875,
+     "y": 242.234375,
+     "w": 112.1875,
+     "h": 23.25
+    },
+    "frame": 1,
+    "label": "page"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 405.09375,
+     "w": 1102,
+     "h": 36
+    },
+    "frame": 2,
+    "label": "monitoring"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 501.390625,
+     "w": 1102,
+     "h": 36
+    },
+    "frame": 3,
+    "label": "work"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 169,
+     "y": 597.6875,
+     "w": 1102,
+     "h": 36
+    },
+    "frame": 4,
+    "label": "records"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1176.890625,
+     "y": 669.0625,
+     "w": 94.109375,
+     "h": 36.921875
+    },
+    "frame": 5,
+    "label": "confirm"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 481,
+     "y": 450.859375,
+     "w": 94.109375,
+     "h": 36.921875
+    },
+    "frame": 6,
+    "label": "saved"
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14
+    ],
+    "label": "due"
+   }
+  ]
+ },
+ "settings": {
+  "id": "settings",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "settings/000.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/001.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/002.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/003.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/004.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/005.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/006.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/007.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/008.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/009.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/010.jpg",
+    "label": "deliveries",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/011.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/012.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/013.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/014.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/015.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/016.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/017.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/018.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/019.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/020.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/021.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/022.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/023.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/024.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/025.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/026.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/027.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/028.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/029.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/030.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/031.jpg",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   },
+   {
+    "file": "settings/032.jpg",
+    "label": "granted",
+    "title": "إعدادات المؤسسة · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ],
+    "label": "webhooks"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 282.0625,
+     "y": 277.65625,
+     "w": 70.390625,
+     "h": 29.375
+    },
+    "frame": 10,
+    "label": "deliveries"
+   },
+   {
+    "kind": "state",
+    "frame": 11
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26
+    ],
+    "label": "support"
+   },
+   {
+    "kind": "type",
+    "at": {
+     "x": 169,
+     "y": 330.625,
+     "w": 1102,
+     "h": 37.6875
+    },
+    "frames": [
+     27,
+     28,
+     29,
+     30,
+     31
+    ],
+    "label": "reason"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 1116.828125,
+     "y": 453.234375,
+     "w": 154.171875,
+     "h": 36.921875
+    },
+    "frame": 32,
+    "label": "granted"
+   }
+  ]
+ },
+ "audit": {
+  "id": "audit",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "audit/000.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/001.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/002.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/003.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/004.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/005.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/006.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/007.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/008.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/009.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/010.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/011.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/012.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   },
+   {
+    "file": "audit/013.jpg",
+    "title": "سجل التدقيق · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "label": "entries"
+   }
+  ]
+ },
+ "account": {
+  "id": "account",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "account/000.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/001.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/002.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/003.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/004.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/005.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/006.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/007.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/008.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/009.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/010.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/011.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/012.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/013.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/014.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/015.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/016.jpg",
+    "title": "حسابك · نطاق المناهج"
+   },
+   {
+    "file": "account/017.jpg",
+    "title": "حسابك · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "state",
+    "frame": 1
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17
+    ],
+    "label": "two-factor (QR blurred)"
+   }
+  ]
+ },
+ "language": {
+  "id": "language",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "language/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "language/001.jpg",
+    "label": "english",
+    "title": "Egypt Curriculum Picker · دليل المناهج · Curriculum Scope"
+   },
+   {
+    "file": "language/002.jpg",
+    "label": "grade 1",
+    "title": "Egypt Curriculum Picker · دليل المناهج · Curriculum Scope"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 353.40625,
+     "y": 42.296875,
+     "w": 67,
+     "h": 34.140625
+    },
+    "frame": 1,
+    "label": "english"
+   },
+   {
+    "kind": "click",
+    "at": {
+     "x": 228,
+     "y": 642.015625,
+     "w": 85.75,
+     "h": 48.859375
+    },
+    "frame": 2,
+    "label": "grade 1"
+   }
+  ]
+ },
+ "picker-phone": {
+  "id": "picker-phone",
+  "device": "phone",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "scale": 3,
+  "frames": [
+   {
+    "file": "picker-phone/000.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/001.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/002.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/003.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/004.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/005.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/006.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/007.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/008.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/009.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/010.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/011.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/012.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/013.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/014.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/015.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/016.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/017.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   },
+   {
+    "file": "picker-phone/018.jpg",
+    "title": "Egypt Curriculum Picker · دليل المناهج · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18
+    ],
+    "label": "books"
+   }
+  ]
+ },
+ "admin-overview": {
+  "id": "admin-overview",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-overview/000.jpg",
+    "title": "نظرة عامة على المنصة · نطاق المناهج"
+   },
+   {
+    "file": "admin-overview/001.jpg",
+    "title": "نظرة عامة على المنصة · نطاق المناهج"
+   },
+   {
+    "file": "admin-overview/002.jpg",
+    "title": "نظرة عامة على المنصة · نطاق المناهج"
+   },
+   {
+    "file": "admin-overview/003.jpg",
+    "title": "نظرة عامة على المنصة · نطاق المناهج"
+   },
+   {
+    "file": "admin-overview/004.jpg",
+    "title": "نظرة عامة على المنصة · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   },
+   {
+    "kind": "scroll",
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "label": "alerts"
+   }
+  ]
+ },
+ "admin-orgs": {
+  "id": "admin-orgs",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-orgs/000.jpg",
+    "title": "المؤسسات · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "admin-org": {
+  "id": "admin-org",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-org/000.jpg",
+    "title": "مدرسة وادي النيل للغات · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "admin-users": {
+  "id": "admin-users",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-users/000.jpg",
+    "title": "المستخدمون · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "admin-plans": {
+  "id": "admin-plans",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-plans/000.jpg",
+    "title": "الخطط · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ },
+ "admin-audit": {
+  "id": "admin-audit",
+  "device": "desktop",
+  "viewport": {
+   "width": 1440,
+   "height": 810
+  },
+  "scale": 2.5,
+  "frames": [
+   {
+    "file": "admin-audit/000.jpg",
+    "title": "التدقيق · نطاق المناهج"
+   }
+  ],
+  "steps": [
+   {
+    "kind": "start",
+    "frame": 0
+   }
+  ]
+ }
+}

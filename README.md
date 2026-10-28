@@ -50,6 +50,7 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run docs:screenshots` / `npm run docs:screenshots:ar` | Retake the screenshots of `docs/USER_GUIDE.md` / `docs/USER_GUIDE.ar.md` (Arabic interface) from a demo school on a fresh test database |
 | `npm run keys:check` / `npm run keys:rotate` | Report, then re-encrypt, the secrets kept encrypted at rest after changing `DATA_ENCRYPTION_KEY` (DEPLOYMENT_GUIDE §4) |
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |
+| `npm run ai:check` | With an AI provider's key (`AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`): one real request with a JSON schema, to check the key and model (docs/AI_LAYER.md) |
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
 | `ops/cs.sh` (Linux), `ops\cs.bat` (Windows) | Start, stop, status, back up (encrypted; copies to a folder or USB drive, an SFTP server or an S3 bucket), restore and test a backup, interactively or scheduled (DEPLOYMENT_GUIDE §8) |
 | `scripts/rolling-restart.sh [--build]` | Upgrade or restart production one app instance at a time (DEPLOYMENT_GUIDE §4) |
@@ -88,6 +89,7 @@ docs/           product, architecture, security, API, billing, deployment, testi
 [Student accounts](docs/STUDENT_ACCOUNTS.md) ·
 [Classes, homework and gradebook](docs/CLASSROOM.md) ·
 [Online tests and exams](docs/ONLINE_TESTS.md) ·
+[AI layer](docs/AI_LAYER.md) ·
 [Wise EduAgent integration](docs/wise-integration/13_PROJECT_STATUS.md) ·
 [Deployment](docs/DEPLOYMENT_GUIDE.md) ·
 [دليل النشر والتشغيل (عربي)](docs/DEPLOYMENT_GUIDE.ar.md) ·

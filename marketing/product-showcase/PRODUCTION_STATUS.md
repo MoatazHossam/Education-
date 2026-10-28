@@ -1,7 +1,7 @@
 # Production status
 
-State on 2026-10-28. **The narrated cuts are finished at 1080p (20-minute and 3-minute) with rule-based Arabic
-pronunciation; the 4K file is rendering.** Nothing has been published.
+State on 2026-10-28. **The narrated cuts are finished: 20-minute in 4K and 1080p, 3-minute in 1080p, with
+rule-based Arabic pronunciation.** Nothing has been published.
 
 ## Deliverables
 
@@ -19,9 +19,9 @@ pronunciation; the 4K file is rendering.** Nothing has been published.
 | Narration | Done (generated; takes kept out of git, `node narrate.mjs` recreates them) — see below |
 | Education_SaaS_Product_Showcase_3min.mp4 | Done: 3:04.9, 1920 × 1080, 37.9 MB |
 | Education_SaaS_Product_Showcase_1080p.mp4 | Done: 20:41.8, 1920 × 1080, 212.3 MB |
-| Education_SaaS_Product_Showcase_20min.mp4 (3840 × 2160) | Rendering |
+| Education_SaaS_Product_Showcase_20min.mp4 | Done: 20:41.8, 3840 × 2160, 388.3 MB |
 | Preview cuts without narration (…_PREVIEW_no-narration.mp4) | Superseded by the narrated cuts |
-| VIDEO_QA_REPORT.md | Done for the narrated 1080p cuts (technical, narration, subtitles, content, visual, audio); the 4K column follows its render |
+| VIDEO_QA_REPORT.md | Done for the three narrated files (technical, narration, subtitles, content, visual, audio) |
 
 ## The narration voice
 

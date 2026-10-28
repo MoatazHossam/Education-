@@ -12,17 +12,17 @@ Measured with `video-project/lib/qa.py` (FFmpeg `blackdetect` d ≥ 0.5 s, `free
 | | 20-minute, 1080p | 20-minute, 4K | 3-minute, 1080p |
 | --- | --- | --- | --- |
 | File | Education_SaaS_Product_Showcase_1080p.mp4 | Education_SaaS_Product_Showcase_20min.mp4 | Education_SaaS_Product_Showcase_3min.mp4 |
-| Duration | 20:41.8 (1,241.77 s) (target about 20 minutes; see §5) | rendering | 3:04.9 (184.93 s; target 2:50–3:10) |
-| Picture | H.264 High, 1920 × 1080, 30 fps, yuv420p, 37,253 frames | rendering | H.264 High, 1920 × 1080, 30 fps, yuv420p, 5,548 frames |
-| Sound | AAC, 48 kHz, stereo | rendering | AAC, 48 kHz, stereo |
-| Size / bitrate | 212.3 MB / 1.37 Mb/s | rendering | 37.9 MB / 1.64 Mb/s |
-| Integrated loudness | −16.0 LUFS (target −16) | rendering | −16.0 LUFS |
-| Loudness range | 2.9 LU | rendering | 3.6 LU |
-| True peak | −1.8 dBTP (limit −1.5) | rendering | −1.8 dBTP |
-| Black segments | none | rendering | none |
-| Frozen picture (≥ 8 s) | none | rendering | none |
-| Silences | none | rendering | none |
-| Full decode | no errors | rendering | no errors |
+| Duration | 20:41.8 (1,241.77 s) (target about 20 minutes; see §5) | 20:41.8 (1,241.77 s) | 3:04.9 (184.93 s; target 2:50–3:10) |
+| Picture | H.264 High, 1920 × 1080, 30 fps, yuv420p, 37,253 frames | H.264 High, 3840 × 2160, 30 fps, yuv420p, 37,253 frames; native 4K detail checked on a frame | H.264 High, 1920 × 1080, 30 fps, yuv420p, 5,548 frames |
+| Sound | AAC, 48 kHz, stereo | AAC, 48 kHz, stereo | AAC, 48 kHz, stereo |
+| Size / bitrate | 212.3 MB / 1.37 Mb/s | 388.3 MB / 2.5 Mb/s | 37.9 MB / 1.64 Mb/s |
+| Integrated loudness | −16.0 LUFS (target −16) | −16.0 LUFS | −16.0 LUFS |
+| Loudness range | 2.9 LU | 2.9 LU | 3.6 LU |
+| True peak | −1.8 dBTP (limit −1.5) | −1.8 dBTP | −1.8 dBTP |
+| Black segments | none | none | none |
+| Frozen picture (≥ 8 s) | none | none | none |
+| Silences | none | none | none |
+| Full decode | no errors | no errors | no errors |
 
 ## 2. Narration
 

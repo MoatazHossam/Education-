@@ -20,7 +20,7 @@ export default function segments(scene, ctx) {
       h('div', { style: { fontSize: '25px', color: later ? 'var(--violet)' : 'var(--amber)', lineHeight: '1.5', borderInlineStart: '3px solid currentColor', paddingInlineStart: '14px' } }, `«${s.need}»`),
       h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: 'auto' } }, ...s.offer.map((o) => h('span', { class: 'chip', style: { fontSize: '21px', padding: '6px 13px', ...(later ? { background: 'rgba(201,162,230,0.08)', borderColor: 'rgba(201,162,230,0.3)' } : {}) } }, o))));
   });
-  const grid = h('div', { class: 'abs', style: { right: '200px', left: '200px', top: '260px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '26px', direction: 'rtl' } }, ...cards);
+  const grid = h('div', { class: 'abs', style: { right: '200px', left: '200px', top: '260px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '26px', direction: 'rtl', transformOrigin: '50% 40%' } }, ...cards);
   const el = h('div', { class: 'scene dark' }, bg.el, head, grid, progress.el);
   const beats = p.beats;
   return {
@@ -29,6 +29,8 @@ export default function segments(scene, ctx) {
       bg.update(t);
       progress.update(t);
       enter(head, t, 0.1, { dy: 18, d: 0.7 });
+      // The board drifts slowly closer through the scene: no long still picture while a segment is described.
+      grid.style.transform = `scale(${(1 + 0.025 * ease.inOutSine(prog(t, 0, scene.dur))).toFixed(4)})`;
       // Which segment is being described now.
       let k = -1;
       scene.lines.forEach((l, i) => { if (t >= l.t - 0.2) k = i; });

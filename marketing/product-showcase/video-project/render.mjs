@@ -4,7 +4,7 @@
 //   node render.mjs <20|3> <1080|2160> [--from s] [--to s] [--workers n] [--out file]
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -31,8 +31,14 @@ const fps = tl.fps;
 const from = Math.round(Number(opt('from', 0)) * fps);
 const to = Math.min(Math.round(Number(opt('to', tl.duration)) * fps), Math.round(tl.duration * fps));
 const total = to - from;
-// Chunks are kept per timeline and encoder settings, so a re-run reuses only chunks of the same picture.
-const key = createHash('sha1').update(JSON.stringify({ v: 2, tl: { ...tl, shots: undefined }, crf, scale })).digest('hex').slice(0, 12);
+// Chunks are kept per timeline, player code and encoder settings, so a re-run reuses only chunks of the same
+// picture (a change to any scene template, style or font under render/ starts the chunks afresh).
+const playerHash = createHash('sha1');
+for (const f of readdirSync(join(HERE, 'render'), { recursive: true }).map(String).sort()) {
+  const file = join(HERE, 'render', f);
+  try { playerHash.update(f).update(readFileSync(file)); } catch { /* a directory */ }
+}
+const key = createHash('sha1').update(JSON.stringify({ v: 3, player: playerHash.digest('hex'), tl: { ...tl, shots: undefined }, crf, scale })).digest('hex').slice(0, 12);
 const work = join(ROOT, 'build', `.chunks-${cut}-${height}-${key}`);
 mkdirSync(work, { recursive: true });
 mkdirSync(dirname(out), { recursive: true });

@@ -13,7 +13,7 @@ export default function demo(scene, ctx) {
   const bg = ctx.bgPaper();
   const progress = ctx.progress(scene);
   const win = browserWindow({ x: X, y: Y, w: W });
-  const player = screenPlayer(scene.plan, win, ctx);
+  const player = screenPlayer(scene.plan, win, ctx, { drift: scene.dur });
   const cap = caption(p);
   const overlays = [];
   const lineT = (k) => scene.lines[Math.min(k, scene.lines.length - 1)]?.t ?? 0;

@@ -69,7 +69,7 @@ function video() {
 }
 
 function loudness(file, target) {
-  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', `loudnorm=I=${target}:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-'], { encoding: 'utf8' });
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', `loudnorm=I=${target}:TP=-2:LRA=11:print_format=json`, '-f', 'null', '-'], { encoding: 'utf8' });
   const json = r.stderr.slice(r.stderr.lastIndexOf('{'));
   return JSON.parse(json.slice(0, json.indexOf('}') + 1));
 }
@@ -79,7 +79,7 @@ async function mux() {
   const voiced = tl.narration.recorded > 0;
   const target = voiced ? -16 : -18;
   const m = loudness(join(work, 'mix.wav'), target);
-  const af = `loudnorm=I=${target}:TP=-1.5:LRA=11:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true,aresample=48000`;
+  const af = `loudnorm=I=${target}:TP=-2:LRA=11:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true,aresample=48000`;
   let name = NAMES[cut][height];
   if (!voiced) name = name.replace(/\.mp4$/, '_PREVIEW_no-narration.mp4');
   const out = join(ROOT, name);

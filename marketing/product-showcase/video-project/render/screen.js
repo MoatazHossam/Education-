@@ -19,7 +19,9 @@ export function camAt(cams, t) {
   return { cx: lerp(a.cx, b.cx, k), cy: lerp(a.cy, b.cy, k), z: lerp(a.z, b.z, k) };
 }
 
-export function screenPlayer(plan, holder, ctx, { phone = false } = {}) {
+// drift: the scene's duration, for a slow push-in of about 1 % across the scene, so a held frame never stands
+// completely still (desktop windows only; a zoomed phone would cut the right-aligned labels).
+export function screenPlayer(plan, holder, ctx, { phone = false, drift = 0 } = {}) {
   const { imgA, imgB, view } = holder;
   const scale = holder.vw / plan.W;
   const cursor = phone ? null : cursorEl();
@@ -31,7 +33,8 @@ export function screenPlayer(plan, holder, ctx, { phone = false } = {}) {
     scale,
     update(t) {
       const waits = [];
-      const c = camAt(plan.cams, t);
+      const c = { ...camAt(plan.cams, t) };
+      if (drift > 0) c.z *= 1 + 0.012 * ease.inOutSine(prog(t, 0, drift));
       view.style.transform = `translate(${(holder.vw / 2 - c.z * c.cx * scale).toFixed(2)}px, ${(holder.vh / 2 - c.z * c.cy * scale).toFixed(2)}px) scale(${c.z.toFixed(4)})`;
       // Frames
       const i = Math.max(0, at(plan.frames, t));

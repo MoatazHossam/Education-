@@ -7,7 +7,7 @@ to listen to. Recognition errors count too, so the rate is an upper bound on the
 import json
 import re
 import sys
-import wave
+import subprocess
 
 import numpy as np
 import sherpa_onnx
@@ -37,9 +37,10 @@ def main():
         tokens=f'{model}/small-tokens.txt', language='ar', task='transcribe', num_threads=4)
     results, errors, total = [], 0, 0
     for line in lines:
-        with wave.open(line['file']) as w:
-            x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
-            sr = w.getframerate()
+        # Any WAV depth or format (the narrator's prepared takes are 24-bit), as mono float at 16 kHz.
+        sr = 16000
+        x = np.frombuffer(subprocess.run(['ffmpeg', '-v', 'error', '-i', line['file'], '-ac', '1', '-ar', str(sr), '-f', 'f32le', '-'],
+                                         capture_output=True, check=True).stdout, np.float32)
         stream = rec.create_stream()
         # Half a second of silence on each side: without it Whisper tends to drop the last word of a take.
         pad = np.zeros(sr // 2, np.float32)

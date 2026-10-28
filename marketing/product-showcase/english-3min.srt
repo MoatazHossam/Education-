@@ -9,184 +9,184 @@ follow-up get spread
 across separate tools.
 
 3
-00:00:09,100 --> 00:00:12,355
+00:00:09,480 --> 00:00:12,735
 Which books? Who follows up?
 And where are the grades?
 
 4
-00:00:14,400 --> 00:00:17,230
+00:00:14,967 --> 00:00:17,796
 Curriculum Scope: one
 platform that connects the
 
 5
-00:00:17,270 --> 00:00:19,993
+00:00:17,836 --> 00:00:20,560
 curriculum, the classroom
 and the institution.
 
 6
-00:00:22,033 --> 00:00:23,934
+00:00:22,600 --> 00:00:24,501
 Three connected layers:
 
 7
-00:00:24,394 --> 00:00:27,169
+00:00:24,991 --> 00:00:27,765
 an up-to-date catalogue
 of Egypt’s curricula,
 
 8
-00:00:27,209 --> 00:00:29,707
+00:00:27,805 --> 00:00:30,304
 where the school decides what it covers;
 
 9
-00:00:30,167 --> 00:00:33,845
+00:00:30,794 --> 00:00:34,472
 classes, homework and tests built on it;
 
 10
-00:00:34,305 --> 00:00:38,865
+00:00:34,962 --> 00:00:39,521
 and secure institutional
 management, in Arabic and English.
 
 11
-00:00:39,900 --> 00:00:44,493
+00:00:40,567 --> 00:00:45,160
 It is built for private and
 international schools and school groups,
 
 12
-00:00:44,533 --> 00:00:49,126
+00:00:45,200 --> 00:00:49,793
 education technology companies and
 publishers, and tutoring centres.
 
 13
-00:00:49,586 --> 00:00:52,036
+00:00:50,633 --> 00:00:53,083
 Universities are a later expansion.
 
 14
-00:00:53,267 --> 00:00:57,672
+00:00:54,333 --> 00:00:58,739
 A catalogue of twelve
 grades, 231 subjects and
 
 15
-00:00:57,712 --> 00:01:01,776
+00:00:58,779 --> 00:01:02,842
 more than a thousand books and references.
 
 16
-00:01:02,236 --> 00:01:05,236
+00:01:03,682 --> 00:01:06,683
 The team picks the books
 for each grade and track,
 
 17
-00:01:05,276 --> 00:01:07,896
+00:01:06,723 --> 00:01:09,343
 and the decision is
 kept as a shared scope,
 
 18
-00:01:08,356 --> 00:01:12,865
+00:01:09,833 --> 00:01:14,342
 exported, compared, and carried
 to the next year in one step.
 
 19
-00:01:13,700 --> 00:01:16,901
+00:01:15,267 --> 00:01:18,468
 Every book has an owner,
 a due date and a reminder,
 
 20
-00:01:16,941 --> 00:01:19,403
+00:01:18,508 --> 00:01:20,970
 so nothing gets lost between messages.
 
 21
-00:01:23,633 --> 00:01:27,941
+00:01:25,200 --> 00:01:29,508
 The teacher sets homework
 linked to the curriculum,
 
 22
-00:01:28,401 --> 00:01:31,184
+00:01:29,998 --> 00:01:32,781
 then marks it and
 returns it with comments.
 
 23
-00:01:34,733 --> 00:01:39,432
+00:01:36,300 --> 00:01:40,999
 Online tests run on time kept by
 the server, with live monitoring
 
 24
-00:01:39,472 --> 00:01:43,905
+00:01:41,039 --> 00:01:45,471
 and automatic marking — the
 final say stays with the teacher.
 
 25
-00:01:44,365 --> 00:01:47,163
+00:01:46,311 --> 00:01:49,110
 Then the marks come
 together in one gradebook.
 
 26
-00:01:48,000 --> 00:01:53,148
+00:01:50,033 --> 00:01:55,181
 Students find their school day on
 their phone: homework and tests,
 
 27
-00:01:53,608 --> 00:01:57,269
+00:01:55,671 --> 00:01:59,333
 their grades and their books, with
 an account their school manages.
 
 28
-00:01:58,867 --> 00:02:03,596
+00:02:00,900 --> 00:02:05,629
 Teachers get lighter manual
 follow-up, students find everything
 
 29
-00:02:03,636 --> 00:02:07,950
+00:02:05,669 --> 00:02:09,984
 in one place, and the institution
 sees the whole picture.
 
 30
-00:02:09,400 --> 00:02:13,796
+00:02:11,433 --> 00:02:15,829
 Each institution’s data is
 isolated inside the database,
 
 31
-00:02:13,836 --> 00:02:17,874
+00:02:15,869 --> 00:02:19,907
 with roles, two-step
 verification and an audit log,
 
 32
-00:02:18,334 --> 00:02:22,835
+00:02:20,397 --> 00:02:24,898
 and the platform team sees a school’s
 work only with its permission.
 
 33
-00:02:24,067 --> 00:02:29,159
+00:02:26,133 --> 00:02:31,226
 The intelligent educational assistant
 is a future vision, not built yet;
 
 34
-00:02:29,619 --> 00:02:35,249
+00:02:31,716 --> 00:02:37,346
 it will work under clear rules: it never
 changes a grade, and the teacher decides.
 
 35
-00:02:36,500 --> 00:02:40,568
+00:02:38,600 --> 00:02:42,668
 The platform is functionally
 complete and tested locally,
 
 36
-00:02:40,608 --> 00:02:44,807
+00:02:42,708 --> 00:02:46,907
 and is getting ready for a
 pilot with partner institutions.
 
 37
-00:02:46,033 --> 00:02:51,114
+00:02:48,133 --> 00:02:53,214
 We invite schools and education and
 publishing companies to the pilot programme.
 
 38
-00:02:51,574 --> 00:02:55,055
+00:02:54,054 --> 00:02:57,535
 Curriculum Scope: a clear
 curriculum, a connected classroom,
 
 39
-00:02:55,095 --> 00:02:57,883
+00:02:57,575 --> 00:03:00,363
 and an institution that
 sees the whole picture.
 
 40
-00:02:58,343 --> 00:03:00,505
+00:03:01,203 --> 00:03:03,365
 Contact us for a live demo.

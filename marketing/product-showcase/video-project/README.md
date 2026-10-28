@@ -24,7 +24,9 @@ docs.mjs     the generated documents (storyboard, narration, translation, scene 
   Chromium for Playwright 1.56 (`/opt/pw-browsers` in the cloud environment; otherwise
   `npx playwright install chromium`).
 - `npm install` here (the fonts: Readex Pro, the application's font, and IBM Plex Mono).
-- ffmpeg and ffprobe; Python 3 with numpy and scipy (the score).
+- ffmpeg and ffprobe; Python 3 with numpy and scipy.
+- For the score: FluidSynth and the FluidR3 General MIDI soundfont (`apt install fluidsynth fluid-soundfont-gm`;
+  MIT licence). Without them `mix.py` falls back to the older synthesised score.
 - For the capture only: PostgreSQL 16 reachable through `TEST_PG_ADMIN_URL`, as for the end-to-end tests.
 
 ## 1. Capture the product
@@ -51,13 +53,34 @@ node build.mjs prepare 20 && node build.mjs prepare 3     # also writes the SRT 
 
 ## 3. Narration
 
-Put one WAV per narration line in `../audio/narration/<cut>/<sceneId>-NN.wav` (e.g.
-`showcase-20/c1-open-01.wav`; numbering from 01 in script order; any sample rate, mono or stereo). Read the
-text from ARABIC_NARRATION_SCRIPT.md (the "يُقرأ" lines where given). The timeline then uses each take's real
-length instead of the estimate; scenes, pointer, camera, music cues and subtitles follow automatically. Lines
-without a take keep the estimate, and `prepare` reports how many are recorded.
+The narration is recorded by an Egyptian narrator in formal MSA. `node narrator-pack.mjs` writes the recording
+pack (`../Narrator_Recording_Pack.pdf`, `../NARRATOR_RECORDING_PACK.md`): reading style, recording
+specification, file names and delivery, English terms, and every line with its full tashkeel, approximate length,
+the hamzat al-wasl joins that are easy to misread and the reading notes of `script/narrator-notes.mjs` (from the
+independent tashkeel review of 2026-10-28).
 
-Or generate the takes with a synthetic voice. The current takes (2026-10-28) use the open-source Piper voice
+The recordings go to `../audio/recorded/<cut>/`, one file per line (`<sceneId>-NN.wav`) or one per scene
+(`<sceneId>.wav`, lines in order with about two seconds between them). Then:
+
+```sh
+node ingest.mjs all          # → ../audio/narration/<cut>/…, report in ../build/ingest/report.json
+python3 lib/asr_check.py ../build/ingest/asr-lines.json <whisper-dir> ../build/ingest/asr.json
+node build.mjs all 20 2160 && node build.mjs all 20 1080 && node build.mjs all 3 1080
+```
+
+`ingest.mjs` splits scene files at their pauses, cleans every take as a broadcast editor would (rumble filter,
+noise reduction only in a noisy room, de-essing, gentle compression), keeps the breath before and the natural
+decay after each line with short fades, and writes 48 kHz 24-bit takes where the timeline reads them. Its report
+flags clipping, a noisy room, a quiet recording and a pace far from the other lines; the speech-recognition check
+catches a misread or misplaced line. Tested on stand-in recordings of the 3-minute cut (scene files and line
+files, with room noise): all 28 lines split and prepared, recognition error unchanged (5.0 %).
+
+The timeline uses each take's real length; scenes, pointer, camera, music cues and subtitles follow. After a
+line that ends a sentence it leaves 0.8 s of silence, after a colon or comma 0.45 s. Lines without a take keep
+the estimate, and `prepare` reports how many are recorded.
+
+Until the recordings arrive, the films can be built with a synthetic guide voice. The guide takes (2026-10-28)
+use the open-source Piper voice
 `ar_JO-kareem-medium` (sherpa-onnx GitHub release `tts-models`), **with our own pronunciation**: the voice is not
 given the text. `audio/arabic_g2p.py` turns each diacritized line into phonemes by the reading rules, and the
 phoneme ids go straight to the model, so nothing re-reads or guesses the vowels:
@@ -120,8 +143,15 @@ Add `--captions` while there is no narration: the narration is burned in as Arab
 number of parallel browsers (default 4). On 4 cores, 1080p renders at about 22 frames per second (the
 20-minute cut in about 27 minutes); 2160p takes roughly three times as long.
 
-Loudness is normalised in two passes to −16 LUFS with narration (−18 without), true peak −1.5 dBTP. To use a
-licensed music track instead of the generated score, put it at `../music/<cut>-override.wav`.
+Loudness is normalised in two passes to −16 LUFS with narration (−18 without), aiming at −2 dBTP so the AAC
+file stays under −1.5 dBTP.
+
+The score (`audio/score.py`) is composed for the cut and played on recorded instruments with FluidSynth and the
+FluidR3 soundfont: piano, strings, cello, harp, celesta, a warm pad, bass and soft percussion, in D major at
+84 BPM, four related chord progressions, the instrumentation set by each scene's music cue and changing over
+three seconds, the last chords resolving home. The music bus is filtered (no rumble, a small dip where speech is
+most intelligible), gently compressed, and set to the loudness the mix was balanced for; under the narration it is
+ducked by 10 dB. To use a licensed track instead, put it at `../music/<cut>-override.wav`.
 
 ## 5. Review
 

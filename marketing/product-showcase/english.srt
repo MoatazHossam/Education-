@@ -8,1197 +8,1197 @@ schools and educational institutions
 face the same questions.
 
 3
-00:00:10,275 --> 00:00:15,276
+00:00:10,655 --> 00:00:15,656
 Which books will we teach? Which
 edition? For which grades and tracks?
 
 4
-00:00:15,736 --> 00:00:21,164
+00:00:16,496 --> 00:00:21,924
 Who follows up on homework, tests and
 grades? And where are the answers kept?
 
 5
-00:00:22,300 --> 00:00:27,979
+00:00:23,067 --> 00:00:28,746
 In many institutions, those answers are
 spread across separate spreadsheets,
 
 6
-00:00:28,019 --> 00:00:32,303
+00:00:28,786 --> 00:00:33,070
 chat groups and tools that
 do not connect to each other.
 
 7
-00:00:32,763 --> 00:00:35,321
+00:00:33,910 --> 00:00:36,467
 Each department may work its own way,
 
 8
-00:00:35,361 --> 00:00:39,549
+00:00:36,507 --> 00:00:40,696
 so a unified picture of what is
 really happening is hard to get.
 
 9
-00:00:40,009 --> 00:00:43,927
+00:00:41,536 --> 00:00:45,454
 Manual follow-up takes up
 teachers’ and administrators’
 
 10
-00:00:43,967 --> 00:00:47,237
+00:00:45,494 --> 00:00:48,764
 time, instead of it
 going to teaching itself.
 
 11
-00:00:47,697 --> 00:00:51,579
+00:00:49,604 --> 00:00:53,485
 And the student may have no
 single place to see what is due,
 
 12
-00:00:51,619 --> 00:00:54,906
+00:00:53,525 --> 00:00:56,813
 what they have done, and
 how they are progressing.
 
 13
-00:00:55,366 --> 00:00:58,539
+00:00:57,653 --> 00:01:00,825
 These are not verdicts
 on every institution,
 
 14
-00:00:58,579 --> 00:01:02,972
+00:01:00,865 --> 00:01:05,259
 but questions we hear often —
 and they deserve a better answer.
 
 15
-00:01:04,400 --> 00:01:08,362
+00:01:06,700 --> 00:01:10,662
 So how can an educational
 institution connect its people,
 
 16
-00:01:08,402 --> 00:01:13,127
+00:01:10,702 --> 00:01:15,427
 its processes and the learning
 experience in one integrated platform?
 
 17
-00:01:16,367 --> 00:01:19,960
+00:01:18,667 --> 00:01:22,260
 Introducing: Curriculum
 Scope — نطاق المناهج.
 
 18
-00:01:26,800 --> 00:01:31,748
+00:01:29,100 --> 00:01:34,048
 The idea began with a simple
 tool: a single page for choosing
 
 19
-00:01:31,788 --> 00:01:35,917
+00:01:34,088 --> 00:01:38,217
 Egypt’s curriculum, from
 Primary 1 to Secondary 3.
 
 20
-00:01:36,377 --> 00:01:41,829
+00:01:39,057 --> 00:01:44,509
 It was designed to define the
 content scope of an education
 
 21
-00:01:41,869 --> 00:01:45,716
+00:01:44,549 --> 00:01:48,396
 product for the 2026/2027 academic year.
 
 22
-00:01:46,176 --> 00:01:53,733
+00:01:49,236 --> 00:01:56,793
 But it worked in one browser only — no
 accounts, no sharing, no record of decisions.
 
 23
-00:01:54,193 --> 00:01:57,399
+00:01:57,633 --> 00:02:00,839
 Today it is an integrated cloud platform,
 
 24
-00:01:57,439 --> 00:02:02,718
+00:02:00,879 --> 00:02:06,158
 delivered as SaaS, for school teams,
 their teachers and their students.
 
 25
-00:02:04,067 --> 00:02:07,380
+00:02:07,500 --> 00:02:10,813
 The platform rests on
 three connected layers.
 
 26
-00:02:07,840 --> 00:02:11,875
+00:02:11,653 --> 00:02:15,688
 The first is the curriculum: an
 up-to-date catalogue of Egypt’s curricula,
 
 27
-00:02:11,915 --> 00:02:16,307
+00:02:15,728 --> 00:02:20,120
 where the institution decides what it
 covers and keeps a record of that decision.
 
 28
-00:02:16,767 --> 00:02:20,046
+00:02:20,960 --> 00:02:24,239
 The second is the classroom: classes,
 
 29
-00:02:20,086 --> 00:02:25,526
+00:02:24,279 --> 00:02:29,720
 homework, online tests and a
 gradebook, built on that curriculum.
 
 30
-00:02:25,986 --> 00:02:28,792
+00:02:30,560 --> 00:02:33,365
 The third is the institution: roles,
 
 31
-00:02:28,832 --> 00:02:33,060
+00:02:33,405 --> 00:02:37,633
 permissions, subscriptions,
 the audit log and protection.
 
 32
-00:02:34,600 --> 00:02:38,071
+00:02:39,167 --> 00:02:42,638
 The value of integration is
 that information is entered
 
 33
-00:02:38,111 --> 00:02:40,776
+00:02:42,678 --> 00:02:45,343
 once, then travels to where it is needed.
 
 34
-00:02:41,236 --> 00:02:45,064
+00:02:46,183 --> 00:02:50,010
 The books the school chooses
 become the class’s curriculum;
 
 35
-00:02:45,104 --> 00:02:51,787
+00:02:50,050 --> 00:02:56,734
 from them the teacher picks the homework material, and
 the mark then reaches the gradebook and the student.
 
 36
-00:02:52,247 --> 00:02:59,947
+00:02:57,574 --> 00:03:05,274
 All with one account, one sign-in and
 one interface, in Arabic and English.
 
 37
-00:03:01,400 --> 00:03:09,799
+00:03:06,700 --> 00:03:15,099
 And it is built on clear principles: Arabic
 first, with full right-to-left support;
 
 38
-00:03:10,259 --> 00:03:14,458
+00:03:15,589 --> 00:03:19,788
 privacy by design,
 accessibility for everyone,
 
 39
-00:03:14,498 --> 00:03:19,431
+00:03:19,828 --> 00:03:24,761
 and automated tests that
 check every main user journey.
 
 40
-00:03:24,767 --> 00:03:27,879
+00:03:30,100 --> 00:03:33,212
 Who is this platform for?
 Groups with different
 
 41
-00:03:27,919 --> 00:03:30,734
+00:03:33,252 --> 00:03:36,067
 needs, brought together by the curriculum.
 
 42
-00:03:31,194 --> 00:03:35,742
+00:03:36,907 --> 00:03:41,455
 First: private and international
 schools, and school groups.
 
 43
-00:03:36,202 --> 00:03:40,280
+00:03:42,295 --> 00:03:46,374
 They need to coordinate what is
 taught in every grade and every
 
 44
-00:03:40,320 --> 00:03:44,340
+00:03:46,414 --> 00:03:50,433
 campus, and to follow the daily
 work of teachers and students.
 
 45
-00:03:44,800 --> 00:03:50,810
+00:03:51,273 --> 00:03:57,284
 The platform gives them shared content
 scopes, comparison between campuses,
 
 46
-00:03:50,850 --> 00:03:55,965
+00:03:57,324 --> 00:04:02,438
 classes, homework and tests, a
 gradebook, and a student portal.
 
 47
-00:03:56,425 --> 00:04:01,829
+00:04:03,278 --> 00:04:08,682
 Second: education technology companies,
 content producers and publishers.
 
 48
-00:04:02,289 --> 00:04:07,845
+00:04:09,522 --> 00:04:15,079
 Their key question: which part of
 the curriculum do we cover this year?
 
 49
-00:04:07,885 --> 00:04:15,186
+00:04:15,119 --> 00:04:22,419
 The platform keeps the answer and sends it to
 their systems through an API and signed webhooks.
 
 50
-00:04:15,646 --> 00:04:19,734
+00:04:23,259 --> 00:04:27,347
 Third: tutoring centres
 and curriculum consultants,
 
 51
-00:04:19,774 --> 00:04:24,730
+00:04:27,387 --> 00:04:32,344
 who prepare clear coverage plans,
 export them and compare them.
 
 52
-00:04:25,190 --> 00:04:29,498
+00:04:33,184 --> 00:04:37,491
 Universities and higher
 education are a later expansion
 
 53
-00:04:29,538 --> 00:04:33,347
+00:04:37,531 --> 00:04:41,340
 opportunity; they are not
 fully supported today.
 
 54
-00:04:33,807 --> 00:04:41,353
+00:04:42,180 --> 00:04:49,727
 Classes, tests and the gradebook can be used,
 but the catalogue is designed for pre-university
 
 55
-00:04:41,393 --> 00:04:46,967
+00:04:49,767 --> 00:04:55,341
 education, and there are no credit
 hours or course registration yet.
 
 56
-00:04:47,427 --> 00:04:50,952
+00:04:56,181 --> 00:04:59,705
 In every case, the
 intended value is the same:
 
 57
-00:04:50,992 --> 00:04:56,093
+00:04:59,745 --> 00:05:04,846
 a clear, documented decision, less
 repeated work, and a clearer view.
 
 58
-00:04:56,553 --> 00:05:00,176
+00:05:05,686 --> 00:05:09,310
 It is value that partner
 institutions will measure
 
 59
-00:05:00,216 --> 00:05:03,643
+00:05:09,350 --> 00:05:12,777
 in the pilot — not figures
 we claim in advance.
 
 60
-00:05:08,900 --> 00:05:13,666
+00:05:18,033 --> 00:05:22,799
 Let’s start the tour at the beginning.
 Mona creates an account for her
 
 61
-00:05:13,706 --> 00:05:17,966
+00:05:22,839 --> 00:05:27,099
 school in one step: her name,
 her email and the school’s name.
 
 62
-00:05:18,426 --> 00:05:22,219
+00:05:27,939 --> 00:05:31,733
 She receives an email
 to confirm her address,
 
 63
-00:05:22,259 --> 00:05:27,856
+00:05:31,773 --> 00:05:37,370
 then signs in, and her first
 organization starts with a 14-day trial.
 
 64
-00:05:29,100 --> 00:05:33,410
+00:05:38,600 --> 00:05:42,910
 To protect accounts, the platform
 supports two-step verification:
 
 65
-00:05:33,450 --> 00:05:36,473
+00:05:42,950 --> 00:05:45,973
 it is mandatory for
 platform administrators,
 
 66
-00:05:36,513 --> 00:05:40,517
+00:05:46,013 --> 00:05:50,017
 and an organization can require
 it for its owner and admins.
 
 67
-00:05:41,667 --> 00:05:46,003
+00:05:51,167 --> 00:05:55,503
 From the account page, each user
 turns on two-step verification,
 
 68
-00:05:46,043 --> 00:05:51,443
+00:05:55,543 --> 00:06:00,943
 sees their active sessions, and downloads
 their personal data whenever they like.
 
 69
-00:05:52,667 --> 00:05:59,996
+00:06:02,167 --> 00:06:09,496
 Next, Mona invites her team. Each member
 has a role: owner, admin, editor or viewer.
 
 70
-00:06:00,456 --> 00:06:05,730
+00:06:10,336 --> 00:06:15,610
 Karim receives the invitation link,
 chooses his password and joins right away.
 
 71
-00:06:06,190 --> 00:06:09,177
+00:06:16,450 --> 00:06:19,437
 Permissions are enforced
 on the server itself,
 
 72
-00:06:09,217 --> 00:06:13,719
+00:06:19,477 --> 00:06:23,979
 not only in the interface: a viewer
 can see, but cannot change anything.
 
 73
-00:06:14,967 --> 00:06:19,104
+00:06:25,233 --> 00:06:29,371
 One person can belong to more
 than one organization and switch
 
 74
-00:06:19,144 --> 00:06:22,545
+00:06:29,411 --> 00:06:32,811
 between them from the menu
 at the top of the page.
 
 75
-00:06:23,400 --> 00:06:29,021
+00:06:33,867 --> 00:06:39,488
 This is multi-tenancy at work: every
 organization is isolated from the
 
 76
-00:06:29,061 --> 00:06:34,533
+00:06:39,528 --> 00:06:45,000
 others inside the database itself,
 with row-level security policies.
 
 77
-00:06:35,967 --> 00:06:39,413
+00:06:46,433 --> 00:06:49,880
 Navigation is clear: the curriculum guide,
 
 78
-00:06:39,453 --> 00:06:45,079
+00:06:49,920 --> 00:06:55,545
 scopes, classes, students, members,
 billing, settings and the audit log.
 
 79
-00:06:45,539 --> 00:06:50,095
+00:06:56,385 --> 00:07:00,941
 The notifications bell tells each member
 what concerns them, in their own language.
 
 80
-00:06:50,555 --> 00:06:54,490
+00:07:01,781 --> 00:07:05,716
 With one click, the whole
 interface switches from Arabic
 
 81
-00:06:54,530 --> 00:06:58,208
+00:07:05,756 --> 00:07:09,435
 to English, and from
 right-to-left to left-to-right.
 
 82
-00:06:59,433 --> 00:07:05,283
+00:07:10,667 --> 00:07:16,517
 The same interface works on a phone,
 and it is designed to be accessible:
 
 83
-00:07:05,323 --> 00:07:12,068
+00:07:16,557 --> 00:07:23,302
 149 screens were checked automatically
 against the WCAG guidelines, with no findings.
 
 84
-00:07:12,528 --> 00:07:18,159
+00:07:24,142 --> 00:07:29,773
 A manual review with a screen reader
 is still a step ahead of the launch.
 
 85
-00:07:19,400 --> 00:07:24,723
+00:07:31,000 --> 00:07:36,323
 Every important action is recorded in
 the audit log: who did what, and when.
 
 86
-00:07:25,183 --> 00:07:30,190
+00:07:37,163 --> 00:07:42,170
 At platform level, the operations
 team has an admin dashboard showing
 
 87
-00:07:30,230 --> 00:07:34,295
+00:07:42,210 --> 00:07:46,275
 organizations, subscriptions,
 system health and alerts.
 
 88
-00:07:34,755 --> 00:07:39,764
+00:07:47,115 --> 00:07:52,124
 But it cannot see a school’s work
 unless the school grants temporary
 
 89
-00:07:39,804 --> 00:07:44,199
+00:07:52,164 --> 00:07:56,559
 access, and every access is
 logged in the school’s own log.
 
 90
-00:07:46,433 --> 00:07:51,016
+00:07:58,800 --> 00:08:03,383
 Now to the features in detail, as
 they actually work in the platform.
 
 91
-00:07:52,067 --> 00:07:56,690
+00:08:04,433 --> 00:08:09,056
 At the heart of the platform
 is the curriculum catalogue:
 
 92
-00:07:56,730 --> 00:08:03,944
+00:08:09,096 --> 00:08:16,310
 twelve grades, five tracks and 231 subjects,
 with more than a thousand books and references.
 
 93
-00:08:04,404 --> 00:08:08,343
+00:08:17,150 --> 00:08:21,090
 From Ministry schools to
 the new Egyptian Bakaloria,
 
 94
-00:08:08,383 --> 00:08:11,773
+00:08:21,130 --> 00:08:24,520
 Thanaweya Amma and
 international programmes.
 
 95
-00:08:12,233 --> 00:08:15,642
+00:08:25,360 --> 00:08:28,768
 The team picks grades, then
 ticks books with a click,
 
 96
-00:08:15,682 --> 00:08:18,330
+00:08:28,808 --> 00:08:31,457
 and every choice is saved automatically.
 
 97
-00:08:19,467 --> 00:08:23,841
+00:08:32,600 --> 00:08:36,974
 The platform team records the
 review of each subject and its
 
 98
-00:08:23,881 --> 00:08:27,854
+00:08:37,014 --> 00:08:40,987
 source, and schools see a
 verification mark beside it.
 
 99
-00:08:28,314 --> 00:08:31,797
+00:08:41,827 --> 00:08:45,311
 So everyone knows what has been
 checked, and against which source.
 
 100
-00:08:32,933 --> 00:08:36,361
+00:08:46,467 --> 00:08:49,894
 Each selection is saved
 as a named content scope,
 
 101
-00:08:36,401 --> 00:08:40,900
+00:08:49,934 --> 00:08:54,434
 shared by the whole team, and it
 can be copied for another campus.
 
 102
-00:08:41,360 --> 00:08:45,463
+00:08:55,274 --> 00:08:59,377
 A scope can be exported
 as text, a CSV table or
 
 103
-00:08:45,503 --> 00:08:49,528
+00:08:59,417 --> 00:09:03,442
 a JSON file, or read
 directly through the API.
 
 104
-00:08:50,667 --> 00:08:54,442
+00:09:04,567 --> 00:09:08,342
 On the comparison page, two
 scopes sit side by side —
 
 105
-00:08:54,482 --> 00:08:59,486
+00:09:08,382 --> 00:09:13,386
 even from different academic years —
 and only the differences are shown.
 
 106
-00:09:00,633 --> 00:09:04,250
+00:09:14,533 --> 00:09:18,150
 Each selected book can have
 a note, a person responsible
 
 107
-00:09:04,290 --> 00:09:07,258
+00:09:18,190 --> 00:09:21,158
 for following it up, a
 status and a due date.
 
 108
-00:09:07,718 --> 00:09:10,690
+00:09:21,998 --> 00:09:24,970
 Mona assigns tasks to her team in one go,
 
 109
-00:09:10,730 --> 00:09:14,279
+00:09:25,010 --> 00:09:28,559
 and each member is notified
 in their own language.
 
 110
-00:09:15,433 --> 00:09:18,872
+00:09:29,700 --> 00:09:33,139
 On “My assignments”, each
 member sees what they owe
 
 111
-00:09:18,912 --> 00:09:22,046
+00:09:33,179 --> 00:09:36,313
 across all their
 organizations, overdue first.
 
 112
-00:09:22,506 --> 00:09:27,378
+00:09:37,153 --> 00:09:42,025
 Reminders go out as a due date
 approaches and once it has passed,
 
 113
-00:09:27,418 --> 00:09:33,742
+00:09:42,065 --> 00:09:48,389
 and each member chooses to get assignment
 emails right away or in one morning summary.
 
 114
-00:09:34,867 --> 00:09:39,644
+00:09:49,533 --> 00:09:54,311
 With each new academic year, the
 platform team publishes an updated
 
 115
-00:09:39,684 --> 00:09:43,933
+00:09:54,351 --> 00:09:58,600
 edition of the catalogue, and
 schools are notified at once.
 
 116
-00:09:44,393 --> 00:09:47,947
+00:09:59,440 --> 00:10:02,994
 In one step, the scope is
 carried to the new year,
 
 117
-00:09:47,987 --> 00:09:53,273
+00:10:03,034 --> 00:10:08,320
 with a review showing what changed, what
 was removed and what can be carried.
 
 118
-00:09:53,733 --> 00:09:58,814
+00:10:09,160 --> 00:10:14,240
 Notes and responsibilities move with it,
 so the team does not start from zero.
 
 119
-00:10:00,267 --> 00:10:04,628
+00:10:15,667 --> 00:10:20,028
 Now to the classroom. The
 school creates its students’
 
 120
-00:10:04,668 --> 00:10:08,736
+00:10:20,068 --> 00:10:24,136
 accounts itself, one by
 one or from a roster file.
 
 121
-00:10:09,196 --> 00:10:13,285
+00:10:24,976 --> 00:10:29,065
 A preview catches the file’s
 mistakes before import,
 
 122
-00:10:13,325 --> 00:10:18,127
+00:10:29,105 --> 00:10:33,907
 with clear Arabic messages, then
 gives out one-time passwords.
 
 123
-00:10:18,587 --> 00:10:22,624
+00:10:34,747 --> 00:10:38,784
 Students need no email address
 and cannot sign themselves
 
 124
-00:10:22,664 --> 00:10:25,989
+00:10:38,824 --> 00:10:42,149
 up: the school is
 responsible for the account.
 
 125
-00:10:27,133 --> 00:10:31,224
+00:10:43,300 --> 00:10:47,391
 Then the class is created: its name,
 its grade and its curriculum from the
 
 126
-00:10:31,264 --> 00:10:34,994
+00:10:47,431 --> 00:10:51,160
 school’s scope — then its students,
 and a teacher for each subject.
 
 127
-00:10:46,167 --> 00:10:50,591
+00:11:02,333 --> 00:11:06,758
 The teacher sets homework linked
 to the curriculum’s books,
 
 128
-00:10:50,631 --> 00:10:54,162
+00:11:06,798 --> 00:11:10,329
 with instructions, a due
 time and a full mark.
 
 129
-00:10:54,622 --> 00:10:58,282
+00:11:11,169 --> 00:11:14,828
 They see who handed in, who
 was late and who has not,
 
 130
-00:10:58,322 --> 00:11:02,734
+00:11:14,868 --> 00:11:19,280
 then mark it, write a comment and
 return the work to the student.
 
 131
-00:11:03,194 --> 00:11:07,988
+00:11:20,120 --> 00:11:24,914
 Every file a student uploads is
 scanned for viruses before anyone opens
 
 132
-00:11:08,028 --> 00:11:12,131
+00:11:24,954 --> 00:11:29,058
 it, and photos are resized with
 their location data removed.
 
 133
-00:11:13,267 --> 00:11:16,976
+00:11:30,200 --> 00:11:33,909
 Online tests come with complete tools:
 
 134
-00:11:17,016 --> 00:11:23,282
+00:11:33,949 --> 00:11:40,215
 multiple choice, true or false,
 short answers and written questions.
 
 135
-00:11:23,742 --> 00:11:28,417
+00:11:41,055 --> 00:11:45,730
 The teacher sets the time, the number
 of attempts and a start code read
 
 136
-00:11:28,457 --> 00:11:33,071
+00:11:45,770 --> 00:11:50,384
 out in the room. The server keeps
 the time — not the student’s device.
 
 137
-00:11:35,467 --> 00:11:39,682
+00:11:52,400 --> 00:11:56,616
 On the live monitoring screen,
 the teacher sees each student’s
 
 138
-00:11:39,722 --> 00:11:42,999
+00:11:56,656 --> 00:11:59,932
 state, the time left and
 the number of answers.
 
 139
-00:11:43,459 --> 00:11:48,021
+00:12:00,772 --> 00:12:05,334
 And sees what the page noticed:
 leaving it, pasting into it,
 
 140
-00:11:48,061 --> 00:11:54,087
+00:12:05,374 --> 00:12:11,400
 or losing the connection — with no camera,
 no microphone and no screen recording.
 
 141
-00:11:54,547 --> 00:12:00,164
+00:12:12,240 --> 00:12:17,858
 They can give extra time or another
 attempt, or close the test at once.
 
 142
-00:12:01,300 --> 00:12:05,116
+00:12:19,000 --> 00:12:22,816
 Every question is marked
 automatically with fixed rules —
 
 143
-00:12:05,156 --> 00:12:10,686
+00:12:22,856 --> 00:12:28,386
 accepting Arabic spelling variants — except
 written answers, which the teacher marks.
 
 144
-00:12:11,146 --> 00:12:16,379
+00:12:29,226 --> 00:12:34,459
 No AI sets any mark: the decision
 always rests with the teacher.
 
 145
-00:12:17,533 --> 00:12:22,023
+00:12:35,600 --> 00:12:40,089
 Marks come together in the
 gradebook: a row per student,
 
 146
-00:12:22,063 --> 00:12:27,428
+00:12:40,129 --> 00:12:45,495
 a column per homework and test,
 with the average and a CSV download.
 
 147
-00:12:28,767 --> 00:12:33,361
+00:12:46,833 --> 00:12:51,427
 So what does the teacher
 gain? Their class’s homework,
 
 148
-00:12:33,401 --> 00:12:38,767
+00:12:51,467 --> 00:12:56,834
 tests and marks in one place,
 tied to the curriculum they teach.
 
 149
-00:12:39,227 --> 00:12:43,602
+00:12:57,674 --> 00:13:02,049
 Manual follow-up gets lighter:
 hand-ins and late work show up by
 
 150
-00:12:43,642 --> 00:12:47,828
+00:13:02,089 --> 00:13:06,274
 themselves, and objective
 questions are marked automatically.
 
 151
-00:12:48,288 --> 00:12:51,478
+00:13:07,114 --> 00:13:10,304
 And the educational decision
 stays in their hands:
 
 152
-00:12:51,518 --> 00:12:56,668
+00:13:10,344 --> 00:13:15,495
 they review, adjust, write their comments,
 and decide when students see the results.
 
 153
-00:12:58,200 --> 00:13:02,879
+00:13:17,033 --> 00:13:21,712
 Around all of this are tools
 for integration and governance:
 
 154
-00:13:02,919 --> 00:13:06,954
+00:13:21,752 --> 00:13:25,787
 API keys, and webhooks with
 their delivery history;
 
 155
-00:13:07,414 --> 00:13:11,746
+00:13:26,277 --> 00:13:30,609
 retention periods for classroom
 data that each school sets,
 
 156
-00:13:11,786 --> 00:13:17,934
+00:13:30,649 --> 00:13:36,797
 with notice fourteen days before anything
 is deleted — and an audit log for all of it.
 
 157
-00:13:23,067 --> 00:13:25,398
+00:13:41,933 --> 00:13:44,264
 Now, let’s look from the student’s side.
 
 158
-00:13:25,858 --> 00:13:28,788
+00:13:45,104 --> 00:13:48,035
 Omar signs in with his school code,
 
 159
-00:13:28,828 --> 00:13:32,846
+00:13:48,075 --> 00:13:52,093
 username and password,
 from a computer or a phone.
 
 160
-00:13:33,800 --> 00:13:38,282
+00:13:53,033 --> 00:13:57,515
 The Student Portal opens on
 “Today”: what he has to do,
 
 161
-00:13:38,322 --> 00:13:43,768
+00:13:57,555 --> 00:14:03,001
 what he missed, what came back
 marked, and the tests open right now.
 
 162
-00:13:44,900 --> 00:13:48,202
+00:14:04,133 --> 00:14:07,436
 He opens the homework, writes
 his answer or photographs
 
 163
-00:13:48,242 --> 00:13:50,942
+00:14:07,476 --> 00:14:10,175
 his sheet and attaches
 it, then hands it in.
 
 164
-00:13:51,402 --> 00:13:55,027
+00:14:11,015 --> 00:14:14,641
 He can take his work back to
 change it until it is marked,
 
 165
-00:13:55,067 --> 00:13:59,151
+00:14:14,681 --> 00:14:18,764
 and when the teacher returns it,
 he sees his mark and the comment.
 
 166
-00:14:00,300 --> 00:14:02,973
+00:14:19,900 --> 00:14:22,573
 In a test, he enters the start code,
 
 167
-00:14:03,013 --> 00:14:07,495
+00:14:22,613 --> 00:14:27,095
 the countdown begins, and every
 answer is saved as he writes it.
 
 168
-00:14:07,955 --> 00:14:11,303
+00:14:27,935 --> 00:14:31,283
 If the connection weakens,
 the page retries by
 
 169
-00:14:11,343 --> 00:14:14,495
+00:14:31,323 --> 00:14:34,475
 itself and tells him
 what is not saved yet.
 
 170
-00:14:14,955 --> 00:14:20,548
+00:14:35,315 --> 00:14:40,908
 And the page tells him plainly what
 the teacher can see during the test.
 
 171
-00:14:21,700 --> 00:14:25,587
+00:14:42,033 --> 00:14:45,920
 After he submits, the result
 appears when the teacher decides,
 
 172
-00:14:25,627 --> 00:14:29,630
+00:14:45,960 --> 00:14:49,963
 with the correct answers if the
 teacher allows them to be shown.
 
 173
-00:14:30,767 --> 00:14:34,165
+00:14:51,100 --> 00:14:54,498
 In “My grades” Omar sees
 his marks in each subject,
 
 174
-00:14:34,205 --> 00:14:37,965
+00:14:54,538 --> 00:14:58,299
 and in “My books” his curriculum,
 as his school chose it.
 
 175
-00:14:38,425 --> 00:14:43,755
+00:14:59,139 --> 00:15:04,468
 A clear portal, in Arabic or
 English, designed to be accessible to
 
 176
-00:14:43,795 --> 00:14:48,752
+00:15:04,508 --> 00:15:09,465
 all, bringing the student’s
 school day together in one place.
 
 177
-00:14:50,300 --> 00:14:54,855
+00:15:11,000 --> 00:15:15,555
 And what does the student gain?
 One place for the school day,
 
 178
-00:14:54,895 --> 00:15:00,409
+00:15:15,595 --> 00:15:21,109
 showing what is due and when, without
 searching through scattered messages.
 
 179
-00:15:00,869 --> 00:15:04,919
+00:15:21,949 --> 00:15:25,999
 And a fair test experience:
 time kept by the server,
 
 180
-00:15:04,959 --> 00:15:11,547
+00:15:26,039 --> 00:15:32,627
 equally for everyone, answers saved as they
 go, and clarity about what the teacher sees.
 
 181
-00:15:12,007 --> 00:15:16,946
+00:15:33,467 --> 00:15:38,406
 All in their own language, from their
 phone, with an account their school manages.
 
 182
-00:15:18,800 --> 00:15:23,314
+00:15:40,233 --> 00:15:44,748
 And what about artificial intelligence?
 We want to be precise here.
 
 183
-00:15:23,774 --> 00:15:27,745
+00:15:45,588 --> 00:15:49,558
 Today the platform includes no
 artificial-intelligence feature,
 
 184
-00:15:27,785 --> 00:15:33,208
+00:15:49,598 --> 00:15:55,021
 and its integration with the Wise EduAgent
 educational assistant has not been built yet.
 
 185
-00:15:33,668 --> 00:15:36,973
+00:15:55,861 --> 00:15:59,167
 Inspecting the Wise
 application and choosing
 
 186
-00:15:37,013 --> 00:15:40,185
+00:15:59,207 --> 00:16:02,378
 an AI provider are both steps still ahead.
 
 187
-00:15:41,833 --> 00:15:46,953
+00:16:04,033 --> 00:16:09,153
 What we show now is a future
 vision, not a feature ready to sell.
 
 188
-00:15:47,413 --> 00:15:50,980
+00:16:09,993 --> 00:16:13,560
 An educational assistant
 inside the same student portal,
 
 189
-00:15:51,020 --> 00:15:55,460
+00:16:13,600 --> 00:16:18,040
 with the same account, that knows
 the curriculum the school has chosen.
 
 190
-00:15:55,920 --> 00:15:59,100
+00:16:18,880 --> 00:16:22,060
 It could help a student
 understand a lesson,
 
 191
-00:15:59,140 --> 00:16:04,059
+00:16:22,100 --> 00:16:27,019
 organize their study and practise
 questions, and help teachers prepare.
 
 192
-00:16:04,519 --> 00:16:09,736
+00:16:27,859 --> 00:16:33,076
 Its rules are set in advance: every
 answer is labelled as machine-generated,
 
 193
-00:16:09,776 --> 00:16:13,134
+00:16:33,116 --> 00:16:36,474
 it never changes an
 official record or a grade,
 
 194
-00:16:13,174 --> 00:16:17,558
+00:16:36,514 --> 00:16:40,898
 and it is subject to usage limits
 within the same subscription.
 
 195
-00:16:18,018 --> 00:16:23,756
+00:16:41,738 --> 00:16:47,476
 AI here is meant to support teachers and
 students — not to replace the teacher.
 
 196
-00:16:25,200 --> 00:16:29,613
+00:16:48,900 --> 00:16:53,313
 The foundation it needs is
 ready today: student identity,
 
 197
-00:16:29,653 --> 00:16:34,844
+00:16:53,353 --> 00:16:58,544
 curriculum context, subscriptions,
 usage metering and the audit log.
 
 198
-00:16:40,200 --> 00:16:44,532
+00:17:03,900 --> 00:17:08,232
 The platform runs on an
 institutional subscription model:
 
 199
-00:16:44,572 --> 00:16:49,944
+00:17:08,272 --> 00:17:13,644
 a free plan, paid plans, and an
 enterprise plan under a custom contract.
 
 200
-00:16:50,404 --> 00:16:55,066
+00:17:14,484 --> 00:17:19,146
 The prices shown are launch
 proposals, open to review.
 
 201
-00:16:55,526 --> 00:16:59,679
+00:17:19,986 --> 00:17:24,139
 Each plan’s limits are
 enforced on the server:
 
 202
-00:16:59,719 --> 00:17:05,486
+00:17:24,179 --> 00:17:29,946
 members, scopes, exports, API
 requests and the features available.
 
 203
-00:17:05,946 --> 00:17:09,541
+00:17:30,786 --> 00:17:34,381
 The system runs the
 whole subscription cycle:
 
 204
-00:17:09,581 --> 00:17:15,457
+00:17:34,421 --> 00:17:40,297
 trial, upgrade, renewal, invoices, and
 a grace period when a payment is late.
 
 205
-00:17:15,917 --> 00:17:21,119
+00:17:41,137 --> 00:17:46,339
 The Paymob payment integration is
 built and tested against a simulation
 
 206
-00:17:21,159 --> 00:17:26,021
+00:17:46,379 --> 00:17:51,241
 of its interface, and awaits the
 merchant account keys to go live.
 
 207
-00:17:27,367 --> 00:17:31,573
+00:17:52,567 --> 00:17:56,773
 Technically, all organizations
 run on one system,
 
 208
-00:17:31,613 --> 00:17:37,672
+00:17:56,813 --> 00:18:02,872
 but each one’s data is isolated by
 security policies inside the database.
 
 209
-00:17:38,132 --> 00:17:40,723
+00:18:03,712 --> 00:18:06,303
 So even if a piece of code were wrong,
 
 210
-00:17:40,763 --> 00:17:45,209
+00:18:06,343 --> 00:18:10,789
 the database would refuse to show
 one organization’s data to another.
 
 211
-00:17:45,669 --> 00:17:50,572
+00:18:11,629 --> 00:18:16,532
 Stored secrets are encrypted, with
 tools to rotate the encryption
 
 212
-00:17:50,612 --> 00:17:54,609
+00:18:16,572 --> 00:18:20,569
 keys, and request limits
 that protect against abuse.
 
 213
-00:17:56,133 --> 00:18:00,553
+00:18:22,100 --> 00:18:26,520
 The platform is containerized, with
 two application instances behind
 
 214
-00:18:00,593 --> 00:18:04,953
+00:18:26,560 --> 00:18:30,920
 a load balancer, so it can be
 updated without stopping the service.
 
 215
-00:18:05,413 --> 00:18:10,186
+00:18:31,760 --> 00:18:36,533
 In a load test on a local environment,
 three hundred students took one
 
 216
-00:18:10,226 --> 00:18:14,809
+00:18:36,573 --> 00:18:41,156
 test from a single network, without
 a single request being refused.
 
 217
-00:18:15,269 --> 00:18:20,366
+00:18:41,996 --> 00:18:47,093
 Encrypted backups are taken, and
 restoring them has been rehearsed
 
 218
-00:18:20,406 --> 00:18:25,003
+00:18:47,133 --> 00:18:51,730
 — including rebuilding a lost
 server from an off-site copy.
 
 219
-00:18:26,533 --> 00:18:31,132
+00:18:53,267 --> 00:18:57,865
 And because it is SaaS, every update
 to the catalogue or the system
 
 220
-00:18:31,172 --> 00:18:35,325
+00:18:57,905 --> 00:19:02,059
 reaches every institution
 together, with nothing to install.
 
 221
-00:18:35,785 --> 00:18:40,591
+00:19:02,899 --> 00:19:07,704
 When AI is added, it can be
 offered as an add-on module within
 
 222
-00:18:40,631 --> 00:18:45,151
+00:19:07,744 --> 00:19:12,264
 the existing subscriptions,
 with no second billing system.
 
 223
-00:18:46,900 --> 00:18:51,753
+00:19:14,000 --> 00:19:18,853
 And what does the institution gain?
 A documented curriculum decision the
 
 224
-00:18:51,793 --> 00:18:56,144
+00:19:18,893 --> 00:19:23,244
 team shares, and a unified view
 of classes, homework and grades.
 
 225
-00:18:56,604 --> 00:19:01,920
+00:19:24,084 --> 00:19:29,400
 Clear governance: roles, an audit
 log, retention periods it decides
 
 226
-00:19:01,960 --> 00:19:06,909
+00:19:29,440 --> 00:19:34,389
 itself, and privacy that even
 the platform team cannot bypass.
 
 227
-00:19:07,369 --> 00:19:09,587
+00:19:35,229 --> 00:19:37,447
 And a platform that grows with it,
 
 228
-00:19:09,627 --> 00:19:12,749
+00:19:37,487 --> 00:19:40,609
 with no servers to run and
 no software to install.
 
 229
-00:19:18,100 --> 00:19:22,471
+00:19:45,933 --> 00:19:50,304
 Where do we stand today? The
 platform is functionally complete
 
 230
-00:19:22,511 --> 00:19:27,012
+00:19:50,344 --> 00:19:54,845
 and tested locally with more than
 three hundred automated tests,
 
 231
-00:19:27,052 --> 00:19:30,515
+00:19:54,885 --> 00:19:58,348
 and full user journeys
 in three browser engines.
 
 232
-00:19:30,975 --> 00:19:34,479
+00:19:59,188 --> 00:20:02,693
 Before the commercial
 launch, clear steps remain:
 
 233
-00:19:34,519 --> 00:19:37,766
+00:20:02,733 --> 00:20:05,980
 activating payments,
 the hosting environment,
 
 234
-00:19:37,806 --> 00:19:43,051
+00:20:06,020 --> 00:20:11,265
 the legal review of student data, and
 the editorial review of the catalogue.
 
 235
-00:19:44,600 --> 00:19:49,912
+00:20:12,800 --> 00:20:18,112
 The next stage starts with a pilot
 with a few partner institutions,
 
 236
-00:19:49,952 --> 00:19:53,211
+00:20:18,152 --> 00:20:21,411
 whose feedback will set the priorities.
 
 237
-00:19:53,671 --> 00:19:59,770
+00:20:22,251 --> 00:20:28,350
 On the roadmap: the intelligent
 educational assistant, parent accounts,
 
 238
-00:19:59,810 --> 00:20:07,344
+00:20:28,390 --> 00:20:35,924
 a question bank, term reports, single sign-on,
 and the curricula of other Arab countries.
 
 239
-00:20:09,000 --> 00:20:14,671
+00:20:37,567 --> 00:20:43,237
 So we invite schools, school groups,
 and education and publishing companies
 
 240
-00:20:14,711 --> 00:20:19,394
+00:20:43,277 --> 00:20:47,961
 to join the pilot programme and
 build the next stage with us.
 
 241
-00:20:19,854 --> 00:20:23,385
+00:20:48,801 --> 00:20:52,332
 And we welcome partners
 and investors who believe
 
 242
-00:20:23,425 --> 00:20:26,176
+00:20:52,372 --> 00:20:55,123
 in more connected, clearer education.
 
 243
-00:20:26,636 --> 00:20:30,038
+00:20:55,963 --> 00:20:59,365
 Curriculum Scope: a clear
 curriculum, a connected classroom,
 
 244
-00:20:30,078 --> 00:20:32,801
+00:20:59,405 --> 00:21:02,128
 and an institution that
 sees the whole picture.
 
 245
-00:20:33,261 --> 00:20:37,733
+00:21:02,968 --> 00:21:07,440
 Contact us for a live
 demo, or to join the pilot.

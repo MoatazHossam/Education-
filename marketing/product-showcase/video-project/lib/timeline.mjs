@@ -8,7 +8,10 @@ import { estimateSeconds } from './estimate.mjs';
 import { wavDuration } from './wav.mjs';
 
 export const FPS = 30;
-const GAP = 0.42;
+// The silence after a line: a full breath after a sentence, a short one after a colon or comma.
+const GAP_SENTENCE = 0.8;
+const GAP_PHRASE = 0.45;
+const gapAfter = (l) => (/[.؟?!]\s*$/u.test((l.say ?? l.ar).trim()) ? GAP_SENTENCE : GAP_PHRASE);
 
 export function narrationFile(root, cut, sceneId, k) {
   return join(root, 'audio', 'narration', cut, `${sceneId}-${String(k + 1).padStart(2, '0')}.wav`);
@@ -29,10 +32,10 @@ export async function buildTimeline({ root, script, cut, shots }) {
       return { ...l, d, file: has ? file : null };
     });
     const lead = s.lead ?? 0.5;
-    const tail = s.tail ?? 0.8;
+    const tail = Math.max(s.tail ?? 0.8, 0.6);
     let lt = lead;
-    for (const l of lines) { l.t = lt; lt += l.d + GAP; }
-    let dur = lines.length ? lt - GAP + tail : 0;
+    for (const [i, l] of lines.entries()) { l.t = lt; lt += l.d + (i < lines.length - 1 ? gapAfter(l) : 0); }
+    let dur = lines.length ? lt + tail : 0;
     if (s.t === 'demo' || s.t === 'phone') dur = Math.max(dur, naturalDuration(s.p.segments, shots) * 0.85);
     if (s.t === 'montage') dur = Math.max(dur, s.p.items.length * 2.6);
     dur = Math.max(dur, s.min ?? 0);

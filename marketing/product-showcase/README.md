@@ -4,8 +4,8 @@ A 20-minute product showcase and a 3-minute version, in Arabic (Modern Standard 
 with English subtitles, built from recordings of the running application. **Not for public release without
 the owner's explicit authorization.**
 
-Start with [PRODUCTION_STATUS.md](PRODUCTION_STATUS.md): what is finished, what is a preview, and what is
-blocked (the narration voice).
+Start with [PRODUCTION_STATUS.md](PRODUCTION_STATUS.md): the final files, the narration voice, and the points
+still open before the films are sent out.
 
 ## Documents
 

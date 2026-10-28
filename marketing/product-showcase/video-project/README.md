@@ -53,7 +53,9 @@ node build.mjs prepare 20 && node build.mjs prepare 3     # also writes the SRT 
 
 ## 3. Narration
 
-The narration is recorded by an Egyptian narrator in formal MSA. `node narrator-pack.mjs` writes the recording
+The final films of 2026-10-28 carry the synthetic voice described below (the owner's instruction, since the
+narrator's recordings could not be reached from the production environment). For a human voice, an Egyptian
+narrator in formal MSA records from the pack, and the films are rebuilt. `node narrator-pack.mjs` writes the recording
 pack (`../Narrator_Recording_Pack.pdf`, `../NARRATOR_RECORDING_PACK.md`): reading style, recording
 specification, file names and delivery, English terms, and every line with its full tashkeel, approximate length,
 the hamzat al-wasl joins that are easy to misread and the reading notes of `script/narrator-notes.mjs` (from the
@@ -79,8 +81,7 @@ The timeline uses each take's real length; scenes, pointer, camera, music cues a
 line that ends a sentence it leaves 0.8 s of silence, after a colon or comma 0.45 s. Lines without a take keep
 the estimate, and `prepare` reports how many are recorded.
 
-Until the recordings arrive, the films can be built with a synthetic guide voice. The guide takes (2026-10-28)
-use the open-source Piper voice
+The synthetic takes (2026-10-28, used in the final films) come from the open-source Piper voice
 `ar_JO-kareem-medium` (sherpa-onnx GitHub release `tts-models`), **with our own pronunciation**: the voice is not
 given the text. `audio/arabic_g2p.py` turns each diacritized line into phonemes by the reading rules, and the
 phoneme ids go straight to the model, so nothing re-reads or guesses the vowels:
@@ -108,10 +109,14 @@ was trained on. The phonemes of every line are saved next to the line list (`bui
 the pauses the voice makes at commas, `--noise-scale` and `--noise-w` its variation; `--tempo` time-stretches (not
 used). The settings above were chosen by the speech-recognition check on the 24 hardest lines: 0.76 with the lower
 variation gave a 7.8 % character error rate, against 11.4 % at 0.72 with the voice's default variation (0.8 was
-clearer still, 6.6 %, but would make the 20-minute cut almost 22 minutes). The 20-minute cut is 20.7 minutes, the
-3-minute cut 3.1. Lines that
+clearer still, 6.6 %, but would make the 20-minute cut almost 22 minutes). With the sentence-end
+pauses the 20-minute cut is 21.2 minutes, the 3-minute cut 3.1. Lines that
 already have a file are skipped, so a human take placed first is kept; `--force` regenerates, `--only <sceneId>`
 limits to one scene.
+
+An Egyptian reading (ج as a hard g, `ɡ` in the phonemes) was tried on 18 lines: the voice, fine-tuned from an
+English voice, says it closer to k, and speech recognition heard «الكامعات» for «الجامعات» (5.8 % character
+error rate against 3.7 % with the standard ج), so `ج` stays `dʒ`.
 
 **The voice's licence could not be confirmed**: its model card refers to a training-data repository that states
 no licence. Other Arabic voices were checked: the three newer Piper voices (`ar_JO-SA_dii`, `SA_miro`,

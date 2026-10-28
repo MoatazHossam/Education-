@@ -12,93 +12,93 @@ Every capability the video mentions, its status, who it serves, and where it app
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Curriculum catalogue (12 grades, 5 tracks, 231 subjects, 1,038 materials) | Available now · متاح الآن | School teams, ed-tech, publishers | One maintained reference of the Egyptian K-12 curriculum instead of spreadsheets | Choose track and grades; tick books; saved automatically | `c5-catalogue` 07:51.7<br>`c2-layers` 02:03.6 | `m-curriculum` 00:52.9 | `filters`, `pick-books` | tests/unit/catalog-fidelity.test.ts; scopes.test.ts (231/1,038); FEATURE_INVENTORY F-01–F-17 |
-| Filters: track, grade ruler, material kind, search | Available now · متاح الآن | School teams | Find the right books fast | Bakaloria → Grade 10 → International → search "Cambridge" | `c5-catalogue` 07:51.7 | — | `filters` | E2E journeys; FEATURE_INVENTORY F-02–F-05 |
-| Named content scopes, shared by the team; duplicate for another campus | Available now · متاح الآن | Owners, editors | A durable, shared record of the coverage decision | Duplicate a scope as "Campus B" and change three books | `c5-scopes` 08:32.6 | `m-curriculum` 00:52.9 | `first-scope`, `duplicate` | scopes.test.ts; FEATURE_INVENTORY S-10 |
-| Exports (text, CSV, JSON) | Available now · متاح الآن | Content teams | Hand the decision to other tools | List panel with the download menu | `c5-scopes` 08:32.6 | — | `exports` | scopes.test.ts; unit CSV tests; FEATURE_INVENTORY S-11 |
-| Verification marks (verified / needs review, with source) | Available now · متاح الآن | Platform team; all customers | Trust in the catalogue: what was checked, against what | Platform admin marks Arabic Language verified with the decree; the picker shows the badge | `c5-verified` 08:19.2 | — | `verify-subject`, `picker-verified` | catalog-verification.test.ts; E2E journey 8 |
-| Editorial verification of the 2026/27 catalogue content | In development · قيد الاستكمال | Platform team | The catalogue’s accuracy is the product’s value | Not shown as done: named in the readiness scene as a step before launch | `c8-ready` 19:17.6 | — | — (graphic) | PROJECT_STATUS B-6: 0 of 231 subjects verified; tools exist |
-| Compare two scopes, also across academic years; differences only; CSV | Available now · متاح الآن | School groups, consultants | See campus or year differences at a glance | Scopes list → Compare → differences table | `c5-compare` 08:50.4 | — | `scopes` | scope-compare.test.ts; unit scope-compare; E2E journey 12 |
-| Notes, assignees, status and due dates per book; bulk assignment | Available now · متاح الآن | Owners, editors, viewers (own status) | Follow-up with owners and dates instead of chat threads | Notes page → edit dialog (note, Karim, To do, tomorrow) → bulk selection | `c5-notes` 09:00.3 | `m-notes` 01:13.4 | `notes` | scope-notes.test.ts (21); E2E journeys 14–15 |
-| My assignments (all organizations), reminders, morning summary, in-app notifications | Available now · متاح الآن | Team members | Each person sees what they owe, overdue first | Karim: bell → My assignments → all organizations | `c5-assignments` 09:15.1<br>`c4-navigation` 06:35.6 | `m-notes` 01:13.4 | `karim-bell`, `assignments-all` | all-assignments.test.ts; due-reminders.test.ts; assignment-digest.test.ts; E2E journeys 16–18 |
-| Catalogue versions per academic year; spreadsheet import with preview; publish | Available now · متاح الآن | Platform team | Yearly updates reach every customer | Draft 2027/2028 → upload CSV → preview → publish | `c5-newyear` 09:34.6<br>`c7-central` 18:26.0 | — | `new-year` | admin-api-ops.test.ts; catalog-sheet.test.ts; E2E journey 11 |
-| Carry a scope to the next academic year (review, copy or move, notes follow) | Available now · متاح الآن | Owners, editors | The team does not start from zero each year | Banner → catalogue notification → review → carry | `c5-newyear` 09:34.6 | `m-curriculum` 00:52.9 | `carry` | scope-carry-forward.test.ts; unit carry-forward; E2E journey 10 |
+| Curriculum catalogue (12 grades, 5 tracks, 231 subjects, 1,038 materials) | Available now · متاح الآن | School teams, ed-tech, publishers | One maintained reference of the Egyptian K-12 curriculum instead of spreadsheets | Choose track and grades; tick books; saved automatically | `c5-catalogue` 08:04.2<br>`c2-layers` 02:07.1 | `m-curriculum` 00:53.9 | `filters`, `pick-books` | tests/unit/catalog-fidelity.test.ts; scopes.test.ts (231/1,038); FEATURE_INVENTORY F-01–F-17 |
+| Filters: track, grade ruler, material kind, search | Available now · متاح الآن | School teams | Find the right books fast | Bakaloria → Grade 10 → International → search "Cambridge" | `c5-catalogue` 08:04.2 | — | `filters` | E2E journeys; FEATURE_INVENTORY F-02–F-05 |
+| Named content scopes, shared by the team; duplicate for another campus | Available now · متاح الآن | Owners, editors | A durable, shared record of the coverage decision | Duplicate a scope as "Campus B" and change three books | `c5-scopes` 08:46.3 | `m-curriculum` 00:53.9 | `first-scope`, `duplicate` | scopes.test.ts; FEATURE_INVENTORY S-10 |
+| Exports (text, CSV, JSON) | Available now · متاح الآن | Content teams | Hand the decision to other tools | List panel with the download menu | `c5-scopes` 08:46.3 | — | `exports` | scopes.test.ts; unit CSV tests; FEATURE_INVENTORY S-11 |
+| Verification marks (verified / needs review, with source) | Available now · متاح الآن | Platform team; all customers | Trust in the catalogue: what was checked, against what | Platform admin marks Arabic Language verified with the decree; the picker shows the badge | `c5-verified` 08:32.4 | — | `verify-subject`, `picker-verified` | catalog-verification.test.ts; E2E journey 8 |
+| Editorial verification of the 2026/27 catalogue content | In development · قيد الاستكمال | Platform team | The catalogue’s accuracy is the product’s value | Not shown as done: named in the readiness scene as a step before launch | `c8-ready` 19:45.0 | — | — (graphic) | PROJECT_STATUS B-6: 0 of 231 subjects verified; tools exist |
+| Compare two scopes, also across academic years; differences only; CSV | Available now · متاح الآن | School groups, consultants | See campus or year differences at a glance | Scopes list → Compare → differences table | `c5-compare` 09:04.4 | — | `scopes` | scope-compare.test.ts; unit scope-compare; E2E journey 12 |
+| Notes, assignees, status and due dates per book; bulk assignment | Available now · متاح الآن | Owners, editors, viewers (own status) | Follow-up with owners and dates instead of chat threads | Notes page → edit dialog (note, Karim, To do, tomorrow) → bulk selection | `c5-notes` 09:14.4 | `m-notes` 01:15.0 | `notes` | scope-notes.test.ts (21); E2E journeys 14–15 |
+| My assignments (all organizations), reminders, morning summary, in-app notifications | Available now · متاح الآن | Team members | Each person sees what they owe, overdue first | Karim: bell → My assignments → all organizations | `c5-assignments` 09:29.6<br>`c4-navigation` 06:46.2 | `m-notes` 01:15.0 | `karim-bell`, `assignments-all` | all-assignments.test.ts; due-reminders.test.ts; assignment-digest.test.ts; E2E journeys 16–18 |
+| Catalogue versions per academic year; spreadsheet import with preview; publish | Available now · متاح الآن | Platform team | Yearly updates reach every customer | Draft 2027/2028 → upload CSV → preview → publish | `c5-newyear` 09:49.4<br>`c7-central` 18:52.4 | — | `new-year` | admin-api-ops.test.ts; catalog-sheet.test.ts; E2E journey 11 |
+| Carry a scope to the next academic year (review, copy or move, notes follow) | Available now · متاح الآن | Owners, editors | The team does not start from zero each year | Banner → catalogue notification → review → carry | `c5-newyear` 09:49.4 | `m-curriculum` 00:53.9 | `carry` | scope-carry-forward.test.ts; unit carry-forward; E2E journey 10 |
 
 ## Classroom
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Student accounts created by the school; roster import with preview (Arabic messages); one-time passwords | Available now · متاح الآن | School owners and admins | No student email or self sign-up; the school stays responsible | Add Omar; import a roster with a mistake, fix, import | `c5-students` 09:59.7 | — | `student-add`, `student-import` | STUDENT_ACCOUNTS.md; students.test.ts (26 tests); E2E journey 13. Off for every school until the legal review of minors’ data (PROJECT_STATUS B-9) |
-| Classes with their curriculum, students and a teacher per subject | Available now · متاح الآن | School admins, teachers | The class is built on the school’s curriculum decision | New class 1A → students → Karim teaches Arabic | `c5-classes` 10:26.8 | — | `class-create` | classroom.test.ts; E2E journey 20 |
-| Homework: set with curriculum books, hand in (text, photos, PDF), draft, take back, mark, return | Available now · متاح الآن | Teachers, students | Daily work in one place, with marks and comments | Karim sets homework; Omar hands in with a photo; Karim marks 9/10 and returns | `c5-homework` 10:45.9<br>`c6-homework` 13:44.6 | `m-homework` 01:23.3 | `homework-set`, `student-homework`, `homework-mark` | classroom.test.ts; E2E journey 20 |
-| Safer uploads: virus scan before anyone opens a file; photos resized, location removed | Available now · متاح الآن | Schools, students | Safety and privacy of children’s files | "Being checked" → checked, in the student’s homework | `c5-homework` 10:45.9 | — | `student-homework` | file-checks.test.ts; verified with the real ClamAV on the local stack (TEST_REPORT §4); not yet on a production host |
-| Online tests: question types, time limit, attempts, start code; server-kept time | Available now · متاح الآن | Teachers, students | Fair, controlled online assessment | New test → question with choices → publish; Omar enters the code | `c5-tests` 11:13.0<br>`c6-test` 14:00.0 | `m-tests` 01:34.4 | `test-create`, `student-test` | online-tests.test.ts; unit test-marking; E2E journey 21 |
-| Live monitoring: states, time left, answers; signals (left page, paste, offline, other device); extra time, another attempt, submit, close | Available now · متاح الآن | Teachers | Control during an exam without cameras or screen recording | Monitor shows Omar and Hana working, Hana’s paste and connection loss; extra time; close | `c5-monitor` 11:35.2 | `m-tests` 01:34.4 | `monitor` | online-tests.test.ts; E2E journey 21; real paste and offline events in the recording |
-| Automatic marking with fixed rules (Arabic spelling variants), teacher marks written answers; no AI marks | Available now · متاح الآن | Teachers | Less marking, the decision stays with the teacher | Results → Omar’s attempt → mark the written answer | `c5-marking` 12:01.0 | — | `test-results` | src/classroom/marking.ts ("no AI is involved in marking"); unit test-marking |
-| Exams at school scale | Available now · متاح الآن | Schools | A whole grade can sit one test from one network | Figure in the deployment diagram | `c7-deploy` 17:55.6 | — | — (graphic) | TEST_REPORT §5: 300 students, one address, no request refused (local two-instance stack, not production hardware) |
-| Gradebook per subject with average and CSV | Available now · متاح الآن | Teachers, admins | Marks gathered without spreadsheets | Class → Gradebook | `c5-gradebook` 12:17.2 | `m-tests` 01:34.4 | `gradebook`, `class-page` | gradebook.test.ts; E2E journey 22 |
-| Retention periods for classroom data, notice 14 days before deletion, holds | Available now · متاح الآن | School owners | The school decides how long children’s data is kept | Keeping data → three periods → confirm | `c5-governance` 12:57.9 | — | `retention` | classroom-retention.test.ts; E2E journey 23 |
+| Student accounts created by the school; roster import with preview (Arabic messages); one-time passwords | Available now · متاح الآن | School owners and admins | No student email or self sign-up; the school stays responsible | Add Omar; import a roster with a mistake, fix, import | `c5-students` 10:15.2 | — | `student-add`, `student-import` | STUDENT_ACCOUNTS.md; students.test.ts (26 tests); E2E journey 13. Off for every school until the legal review of minors’ data (PROJECT_STATUS B-9) |
+| Classes with their curriculum, students and a teacher per subject | Available now · متاح الآن | School admins, teachers | The class is built on the school’s curriculum decision | New class 1A → students → Karim teaches Arabic | `c5-classes` 10:42.5 | — | `class-create` | classroom.test.ts; E2E journey 20 |
+| Homework: set with curriculum books, hand in (text, photos, PDF), draft, take back, mark, return | Available now · متاح الآن | Teachers, students | Daily work in one place, with marks and comments | Karim sets homework; Omar hands in with a photo; Karim marks 9/10 and returns | `c5-homework` 11:01.5<br>`c6-homework` 14:03.1 | `m-homework` 01:24.9 | `homework-set`, `student-homework`, `homework-mark` | classroom.test.ts; E2E journey 20 |
+| Safer uploads: virus scan before anyone opens a file; photos resized, location removed | Available now · متاح الآن | Schools, students | Safety and privacy of children’s files | "Being checked" → checked, in the student’s homework | `c5-homework` 11:01.5 | — | `student-homework` | file-checks.test.ts; verified with the real ClamAV on the local stack (TEST_REPORT §4); not yet on a production host |
+| Online tests: question types, time limit, attempts, start code; server-kept time | Available now · متاح الآن | Teachers, students | Fair, controlled online assessment | New test → question with choices → publish; Omar enters the code | `c5-tests` 11:29.4<br>`c6-test` 14:18.9 | `m-tests` 01:36.0 | `test-create`, `student-test` | online-tests.test.ts; unit test-marking; E2E journey 21 |
+| Live monitoring: states, time left, answers; signals (left page, paste, offline, other device); extra time, another attempt, submit, close | Available now · متاح الآن | Teachers | Control during an exam without cameras or screen recording | Monitor shows Omar and Hana working, Hana’s paste and connection loss; extra time; close | `c5-monitor` 11:51.6 | `m-tests` 01:36.0 | `monitor` | online-tests.test.ts; E2E journey 21; real paste and offline events in the recording |
+| Automatic marking with fixed rules (Arabic spelling variants), teacher marks written answers; no AI marks | Available now · متاح الآن | Teachers | Less marking, the decision stays with the teacher | Results → Omar’s attempt → mark the written answer | `c5-marking` 12:18.2 | — | `test-results` | src/classroom/marking.ts ("no AI is involved in marking"); unit test-marking |
+| Exams at school scale | Available now · متاح الآن | Schools | A whole grade can sit one test from one network | Figure in the deployment diagram | `c7-deploy` 18:21.2 | — | — (graphic) | TEST_REPORT §5: 300 students, one address, no request refused (local two-instance stack, not production hardware) |
+| Gradebook per subject with average and CSV | Available now · متاح الآن | Teachers, admins | Marks gathered without spreadsheets | Class → Gradebook | `c5-gradebook` 12:34.8 | `m-tests` 01:36.0 | `gradebook`, `class-page` | gradebook.test.ts; E2E journey 22 |
+| Retention periods for classroom data, notice 14 days before deletion, holds | Available now · متاح الآن | School owners | The school decides how long children’s data is kept | Keeping data → three periods → confirm | `c5-governance` 13:16.2 | — | `retention` | classroom-retention.test.ts; E2E journey 23 |
 
 ## Student portal
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Student sign-in with school code and username (no email) | Available now · متاح الآن | Students | Simple, school-managed access | Phone: code, username, password | `c6-signin` 13:22.6 | — | `student-sign-in` | STUDENT_ACCOUNTS.md; E2E journey 13 |
-| Today: to do, missed, returned, tests open now | Available now · متاح الآن | Students | The school day in one place | Today on the phone and on a computer | `c6-today` 13:33.5 | `m-student` 01:47.7 | `student-sign-in`, `student-today-desktop` | E2E journey 20 |
-| Taking a test: start code, countdown, answers saved as you go, retry on weak connections, what the teacher sees | Available now · متاح الآن | Students | A fair, transparent test experience | Start with the code; answer three questions; submit | `c6-test` 14:00.0 | `m-student` 01:47.7 | `student-test` | E2E journeys 21, 24; school-network-limits.test.ts |
-| Result and review; My grades; My books; Arabic/English | Available now · متاح الآن | Students | Own marks and curriculum, in their language | Result → grades → books → English | `c6-result` 14:21.4<br>`c6-grades` 14:30.5 | `m-student` 01:47.7 | `student-result`, `student-grades`, `student-grades-desktop` | gradebook.test.ts; E2E journeys 13, 22 |
+| Student sign-in with school code and username (no email) | Available now · متاح الآن | Students | Simple, school-managed access | Phone: code, username, password | `c6-signin` 13:40.9 | — | `student-sign-in` | STUDENT_ACCOUNTS.md; E2E journey 13 |
+| Today: to do, missed, returned, tests open now | Available now · متاح الآن | Students | The school day in one place | Today on the phone and on a computer | `c6-today` 13:52.2 | `m-student` 01:49.7 | `student-sign-in`, `student-today-desktop` | E2E journey 20 |
+| Taking a test: start code, countdown, answers saved as you go, retry on weak connections, what the teacher sees | Available now · متاح الآن | Students | A fair, transparent test experience | Start with the code; answer three questions; submit | `c6-test` 14:18.9 | `m-student` 01:49.7 | `student-test` | E2E journeys 21, 24; school-network-limits.test.ts |
+| Result and review; My grades; My books; Arabic/English | Available now · متاح الآن | Students | Own marks and curriculum, in their language | Result → grades → books → English | `c6-result` 14:41.1<br>`c6-grades` 14:50.2 | `m-student` 01:49.7 | `student-result`, `student-grades`, `student-grades-desktop` | gradebook.test.ts; E2E journeys 13, 22 |
 
 ## Institution
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Sign-up with email confirmation, sign-in; 14-day trial of the first organization | Available now · متاح الآن | School owners | Self-serve start | Register → confirm → sign in → first scope | `c4-signup` 05:08.3 | — | `register`, `email-confirmed`, `sign-in`, `first-scope` | auth.test.ts; E2E journey 1; SUBSCRIPTION_MODEL (TRIAL_DAYS) |
-| Two-step verification (TOTP, recovery codes); mandatory for platform admins; optional policy for organizations | Available now · متاح الآن | All staff | Account protection | Admin enters the code; account page sets it up (QR blurred) | `c4-2fa` 05:28.7<br>`c4-account` 05:41.4 | `m-trust` 02:09.0 | `admin-2fa`, `account` | auth.test.ts; E2E journey 7 |
-| Account self-service: active sessions, personal data download | Available now · متاح الآن | All staff | Users control their data (PDPL) | Account page | `c4-account` 05:41.4 | — | `account` | tenancy.test.ts ("a user can export their data and delete their account…") |
-| Members, roles (owner, admin, editor, viewer) and invitations; enforced on the server | Available now · متاح الآن | Owners, admins | Team control with least privilege | Invite Karim (editor) and Salma (viewer); viewer refused | `c4-members` 05:52.3 | `m-trust` 02:09.0 | `members-invite`, `invitation`, `members`, `viewer` | tenancy.test.ts; authz-coverage.test.ts; E2E journeys 2–3 |
-| Several organizations per person; organization switcher | Available now · متاح الآن | Staff of school groups | One account across schools | Summer programme → school | `c4-tenancy` 06:14.6 | — | `org-switch` | E2E journey 18 |
-| Multi-tenancy: shared database, forced row-level security on tenant tables | Available now · متاح الآن | Buyers, investors | Isolation even if application code is wrong | Diagram | `c4-isolation` 06:23.0<br>`c7-isolation` 17:26.9 | `m-trust` 02:09.0 | — (graphic) | tenancy.test.ts (RLS proofs); SECURITY_DESIGN; SAAS_ARCHITECTURE |
-| Navigation, notifications bell, Arabic/English with right-to-left layout | Available now · متاح الآن | Everyone | Arabic-first product | Navigation; bell; English switch | `c4-navigation` 06:35.6 | — | `pick-books`, `karim-bell`, `language` | i18n.test.ts; E2E journey 9 (right-to-left, phone width) |
-| Phone layout; automated accessibility audit (WCAG 2.x A/AA, 149 screens, 0 findings) | Available now · متاح الآن | Everyone; public-sector buyers | Usable by everyone, on any device | Picker on a phone | `c4-access` 06:59.0 | — | `picker-phone` | tests/e2e/accessibility.spec.ts; TEST_REPORT (149 screens, 0 findings) |
-| Manual screen-reader review | In development · قيد الاستكمال | Everyone | Confirms the automated checks with a real screen reader | Stated as a step ahead | `c4-access` 06:59.0 | — | — (graphic) | SCREEN_READER_REVIEW.md: checklist ready, review not started |
-| Audit log (organization and platform) | Available now · متاح الآن | Owners, admins, platform team | Who did what, and when | Audit page | `c4-oversight` 07:19.0<br>`c5-governance` 12:57.9 | `m-trust` 02:09.0 | `audit`, `admin-audit` | tenancy.test.ts; admin-api-ops.test.ts |
-| Platform admin console (overview, organizations, users, catalogue, plans, alerts) | Available now · متاح الآن | Platform team | Operate the business centrally | Admin overview | `c4-oversight` 07:19.0 | — | `admin-overview` | admin-api-ops.test.ts; E2E journey 7 |
-| Customer-granted, time-boxed support access; every read audited; no impersonation | Available now · متاح الآن | Owners; platform team | Platform staff do not see school data without permission | Settings → support access → grant 24 h | `c4-oversight` 07:19.0 | `m-trust` 02:09.0 | `settings` | admin-api-ops.test.ts; SECURITY_DESIGN (A01) |
-| Read API with API keys; signed webhooks with retries and delivery history | Available now · متاح الآن | Ed-tech, publishers | Integration with content pipelines | Settings: API keys, webhook deliveries | `c5-governance` 12:57.9<br>`c3-segments` 03:24.3 | — | `settings` | webhooks.test.ts; admin-api-ops.test.ts; E2E journey 19 |
-| Encryption of stored secrets with key rotation; shared request limits | Available now · متاح الآن | Buyers, IT | Security in depth | Diagram | `c7-isolation` 17:26.9 | — | — (graphic) | data-keys.test.ts; rate-limit-store.test.ts; SECURITY_DESIGN |
+| Sign-up with email confirmation, sign-in; 14-day trial of the first organization | Available now · متاح الآن | School owners | Self-serve start | Register → confirm → sign in → first scope | `c4-signup` 05:17.6 | — | `register`, `email-confirmed`, `sign-in`, `first-scope` | auth.test.ts; E2E journey 1; SUBSCRIPTION_MODEL (TRIAL_DAYS) |
+| Two-step verification (TOTP, recovery codes); mandatory for platform admins; optional policy for organizations | Available now · متاح الآن | All staff | Account protection | Admin enters the code; account page sets it up (QR blurred) | `c4-2fa` 05:38.3<br>`c4-account` 05:51.0 | `m-trust` 02:11.0 | `admin-2fa`, `account` | auth.test.ts; E2E journey 7 |
+| Account self-service: active sessions, personal data download | Available now · متاح الآن | All staff | Users control their data (PDPL) | Account page | `c4-account` 05:51.0 | — | `account` | tenancy.test.ts ("a user can export their data and delete their account…") |
+| Members, roles (owner, admin, editor, viewer) and invitations; enforced on the server | Available now · متاح الآن | Owners, admins | Team control with least privilege | Invite Karim (editor) and Salma (viewer); viewer refused | `c4-members` 06:01.9 | `m-trust` 02:11.0 | `members-invite`, `invitation`, `members`, `viewer` | tenancy.test.ts; authz-coverage.test.ts; E2E journeys 2–3 |
+| Several organizations per person; organization switcher | Available now · متاح الآن | Staff of school groups | One account across schools | Summer programme → school | `c4-tenancy` 06:25.0 | — | `org-switch` | E2E journey 18 |
+| Multi-tenancy: shared database, forced row-level security on tenant tables | Available now · متاح الآن | Buyers, investors | Isolation even if application code is wrong | Diagram | `c4-isolation` 06:33.6<br>`c7-isolation` 17:51.5 | `m-trust` 02:11.0 | — (graphic) | tenancy.test.ts (RLS proofs); SECURITY_DESIGN; SAAS_ARCHITECTURE |
+| Navigation, notifications bell, Arabic/English with right-to-left layout | Available now · متاح الآن | Everyone | Arabic-first product | Navigation; bell; English switch | `c4-navigation` 06:46.2 | — | `pick-books`, `karim-bell`, `language` | i18n.test.ts; E2E journey 9 (right-to-left, phone width) |
+| Phone layout; automated accessibility audit (WCAG 2.x A/AA, 149 screens, 0 findings) | Available now · متاح الآن | Everyone; public-sector buyers | Usable by everyone, on any device | Picker on a phone | `c4-access` 07:10.4 | — | `picker-phone` | tests/e2e/accessibility.spec.ts; TEST_REPORT (149 screens, 0 findings) |
+| Manual screen-reader review | In development · قيد الاستكمال | Everyone | Confirms the automated checks with a real screen reader | Stated as a step ahead | `c4-access` 07:10.4 | — | — (graphic) | SCREEN_READER_REVIEW.md: checklist ready, review not started |
+| Audit log (organization and platform) | Available now · متاح الآن | Owners, admins, platform team | Who did what, and when | Audit page | `c4-oversight` 07:30.7<br>`c5-governance` 13:16.2 | `m-trust` 02:11.0 | `audit`, `admin-audit` | tenancy.test.ts; admin-api-ops.test.ts |
+| Platform admin console (overview, organizations, users, catalogue, plans, alerts) | Available now · متاح الآن | Platform team | Operate the business centrally | Admin overview | `c4-oversight` 07:30.7 | — | `admin-overview` | admin-api-ops.test.ts; E2E journey 7 |
+| Customer-granted, time-boxed support access; every read audited; no impersonation | Available now · متاح الآن | Owners; platform team | Platform staff do not see school data without permission | Settings → support access → grant 24 h | `c4-oversight` 07:30.7 | `m-trust` 02:11.0 | `settings` | admin-api-ops.test.ts; SECURITY_DESIGN (A01) |
+| Read API with API keys; signed webhooks with retries and delivery history | Available now · متاح الآن | Ed-tech, publishers | Integration with content pipelines | Settings: API keys, webhook deliveries | `c5-governance` 13:16.2<br>`c3-segments` 03:29.7 | — | `settings` | webhooks.test.ts; admin-api-ops.test.ts; E2E journey 19 |
+| Encryption of stored secrets with key rotation; shared request limits | Available now · متاح الآن | Buyers, IT | Security in depth | Diagram | `c7-isolation` 17:51.5 | — | — (graphic) | data-keys.test.ts; rate-limit-store.test.ts; SECURITY_DESIGN |
 
 ## Commercial
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plans with server-side limits and features; pricing page (launch proposals) | Available now · متاح الآن | Buyers | Institutional subscriptions | Pricing page; billing page usage | `c7-plans` 16:39.7 | — | `pricing`, `billing` | SUBSCRIPTION_MODEL.md; scopes.test.ts (limits); E2E journey 5 |
-| Subscription lifecycle: trial, upgrade, scheduled downgrade, cancel/resume, renewal invoices, grace period | Available now · متاح الآن | Owners | Billing without manual work | Billing page subscribed (development payment simulator not shown) | `c7-plans` 16:39.7 | — | `billing` | billing.test.ts, billing-logic.test.ts (sandbox provider); E2E journey 4 |
-| Paymob payments (Egyptian payment provider) | In development · قيد الاستكمال | Owners | Real payments | Note on screen: in development | `c7-plans` 16:39.7<br>`c8-ready` 19:17.6 | — | — (graphic) | paymob-contract.test.ts (simulator); not run against Paymob; needs merchant keys (B-2) |
-| Central updates to all customers (SaaS) | Available now · متاح الآن | Buyers, investors | Nothing to install; one catalogue update reaches everyone | Hub diagram | `c7-central` 18:26.0 | — | — (graphic) | Catalogue publish → notifications (catalog-notifications.test.ts) |
+| Plans with server-side limits and features; pricing page (launch proposals) | Available now · متاح الآن | Buyers | Institutional subscriptions | Pricing page; billing page usage | `c7-plans` 17:02.8 | — | `pricing`, `billing` | SUBSCRIPTION_MODEL.md; scopes.test.ts (limits); E2E journey 5 |
+| Subscription lifecycle: trial, upgrade, scheduled downgrade, cancel/resume, renewal invoices, grace period | Available now · متاح الآن | Owners | Billing without manual work | Billing page subscribed (development payment simulator not shown) | `c7-plans` 17:02.8 | — | `billing` | billing.test.ts, billing-logic.test.ts (sandbox provider); E2E journey 4 |
+| Paymob payments (Egyptian payment provider) | In development · قيد الاستكمال | Owners | Real payments | Note on screen: in development | `c7-plans` 17:02.8<br>`c8-ready` 19:45.0 | — | — (graphic) | paymob-contract.test.ts (simulator); not run against Paymob; needs merchant keys (B-2) |
+| Central updates to all customers (SaaS) | Available now · متاح الآن | Buyers, investors | Nothing to install; one catalogue update reaches everyone | Hub diagram | `c7-central` 18:52.4 | — | — (graphic) | Catalogue publish → notifications (catalog-notifications.test.ts) |
 
 ## Operations
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Containers, two app instances behind a load balancer, rolling restarts | Available now · متاح الآن | IT, investors | Updates without downtime | Deployment diagram | `c7-deploy` 17:55.6 | — | — (graphic) | TEST_REPORT §4 (local production-settings stack) |
-| Encrypted backups, restore tests, rebuilding a lost server (Linux and Windows scripts) | Available now · متاح الآن | IT | Recovery | Deployment diagram | `c7-deploy` 17:55.6 | — | — (graphic) | TEST_REPORT §4 drill; DEPLOYMENT_GUIDE §8; Windows script not yet run on Windows |
-| Production hosting, real email and alert channels, external penetration test | In development · قيد الاستكمال | Platform team | Commercial launch | Readiness scene: hosting environment | `c8-ready` 19:17.6 | — | — (graphic) | PROJECT_STATUS B-4; IMPLEMENTATION_ROADMAP 6.7–6.9 |
-| Legal review of students’ data (PDPL); student features enabled per school after it | In development · قيد الاستكمال | Schools, platform team | Lawful use with minors | Readiness scene: legal review | `c8-ready` 19:17.6 | — | — (graphic) | PROJECT_STATUS B-5, B-9; SECURITY_DESIGN §7 |
+| Containers, two app instances behind a load balancer, rolling restarts | Available now · متاح الآن | IT, investors | Updates without downtime | Deployment diagram | `c7-deploy` 18:21.2 | — | — (graphic) | TEST_REPORT §4 (local production-settings stack) |
+| Encrypted backups, restore tests, rebuilding a lost server (Linux and Windows scripts) | Available now · متاح الآن | IT | Recovery | Deployment diagram | `c7-deploy` 18:21.2 | — | — (graphic) | TEST_REPORT §4 drill; DEPLOYMENT_GUIDE §8; Windows script not yet run on Windows |
+| Production hosting, real email and alert channels, external penetration test | In development · قيد الاستكمال | Platform team | Commercial launch | Readiness scene: hosting environment | `c8-ready` 19:45.0 | — | — (graphic) | PROJECT_STATUS B-4; IMPLEMENTATION_ROADMAP 6.7–6.9 |
+| Legal review of students’ data (PDPL); student features enabled per school after it | In development · قيد الاستكمال | Schools, platform team | Lawful use with minors | Readiness scene: legal review | `c8-ready` 19:45.0 | — | — (graphic) | PROJECT_STATUS B-5, B-9; SECURITY_DESIGN §7 |
 
 ## AI
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AI educational assistant / Wise EduAgent integration | Future roadmap · رؤية مستقبلية | Students, teachers | Curriculum-aware help, under fixed rules | Status board, then a labelled concept (no product screen imitated) | `c6-ai-status` 15:18.2<br>`c6-ai-vision` 15:41.2<br>`c6-ai-ready` 16:24.8<br>`c8-roadmap` 19:44.1 | `m-ai` 02:23.7<br>`m-next` 02:36.1 | — (graphic) | No AI code in src/ (marking.ts: "no AI"); Wise not accessible (WISE_EDUAGENT_FUNCTIONAL_INVENTORY: NOT ACCESSIBLE); no AI provider (B-8, B-10) |
+| AI educational assistant / Wise EduAgent integration | Future roadmap · رؤية مستقبلية | Students, teachers | Curriculum-aware help, under fixed rules | Status board, then a labelled concept (no product screen imitated) | `c6-ai-status` 15:39.0<br>`c6-ai-vision` 16:02.8<br>`c6-ai-ready` 16:47.9<br>`c8-roadmap` 20:11.9 | `m-ai` 02:25.7<br>`m-next` 02:38.2 | — (graphic) | No AI code in src/ (marking.ts: "no AI"); Wise not accessible (WISE_EDUAGENT_FUNCTIONAL_INVENTORY: NOT ACCESSIBLE); no AI provider (B-8, B-10) |
 
 ## Roadmap
 
 | Capability | Status | Users | Value | How it is shown | 20-min cut | 3-min cut | Recordings | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Pilot with partner institutions | Future roadmap · رؤية مستقبلية | Schools, publishers | Feedback sets the priorities | Roadmap scene; invitation | `c8-roadmap` 19:44.1<br>`c8-invite` 20:08.4 | `m-next` 02:36.1<br>`m-end` 02:45.6 | — (graphic) | IMPLEMENTATION_ROADMAP 6.10 |
-| Parent accounts; question bank (images, formulas); grade weighting and term reports | Future roadmap · رؤية مستقبلية | Schools | Next portal features | Roadmap scene | `c8-roadmap` 19:44.1 | `m-next` 02:36.1 | — (graphic) | PROJECT_STATUS §4.2 "after the pilot’s feedback" |
-| Single sign-on (Google, Microsoft); other Arab curricula (KSA, UAE, Jordan) | Future roadmap · رؤية مستقبلية | School groups; regional markets | Enterprise and regional growth | Roadmap scene | `c8-roadmap` 19:44.1 | — | — (graphic) | IMPLEMENTATION_ROADMAP Phase 7 (P2, P3) |
-| Higher education (credit hours, course registration) | Future roadmap · رؤية مستقبلية | Universities | Expansion opportunity | Named as not supported today, a later opportunity | `c3-segments` 03:24.3 | `m-who` 00:39.5 | — (graphic) | Not in the roadmap; the catalogue is K-12 (PRODUCT_OVERVIEW) |
+| Pilot with partner institutions | Future roadmap · رؤية مستقبلية | Schools, publishers | Feedback sets the priorities | Roadmap scene; invitation | `c8-roadmap` 20:11.9<br>`c8-invite` 20:36.6 | `m-next` 02:38.2<br>`m-end` 02:47.7 | — (graphic) | IMPLEMENTATION_ROADMAP 6.10 |
+| Parent accounts; question bank (images, formulas); grade weighting and term reports | Future roadmap · رؤية مستقبلية | Schools | Next portal features | Roadmap scene | `c8-roadmap` 20:11.9 | `m-next` 02:38.2 | — (graphic) | PROJECT_STATUS §4.2 "after the pilot’s feedback" |
+| Single sign-on (Google, Microsoft); other Arab curricula (KSA, UAE, Jordan) | Future roadmap · رؤية مستقبلية | School groups; regional markets | Enterprise and regional growth | Roadmap scene | `c8-roadmap` 20:11.9 | — | — (graphic) | IMPLEMENTATION_ROADMAP Phase 7 (P2, P3) |
+| Higher education (credit hours, course registration) | Future roadmap · رؤية مستقبلية | Universities | Expansion opportunity | Named as not supported today, a later opportunity | `c3-segments` 03:29.7 | `m-who` 00:40.2 | — (graphic) | Not in the roadmap; the catalogue is K-12 (PRODUCT_OVERVIEW) |
 
 ## Implemented but not featured on their own
 
@@ -118,43 +118,43 @@ The badge each scene displays, so a reviewer can check that nothing in developme
 
 | Scene | Time | Badge on screen |
 | --- | --- | --- |
-| `c4-signup` | 05:08.3 | متاح الآن · Available now |
-| `c4-2fa` | 05:28.7 | متاح الآن · Available now |
-| `c4-account` | 05:41.4 | متاح الآن · Available now |
-| `c4-members` | 05:52.3 | متاح الآن · Available now |
-| `c4-tenancy` | 06:14.6 | متاح الآن · Available now |
-| `c4-navigation` | 06:35.6 | متاح الآن · Available now |
-| `c4-access` | 06:59.0 | متاح الآن · Available now |
-| `c4-oversight` | 07:19.0 | متاح الآن · Available now |
-| `c5-catalogue` | 07:51.7 | متاح الآن · Available now |
-| `c5-verified` | 08:19.2 | متاح الآن · Available now |
-| `c5-scopes` | 08:32.6 | متاح الآن · Available now |
-| `c5-compare` | 08:50.4 | متاح الآن · Available now |
-| `c5-notes` | 09:00.3 | متاح الآن · Available now |
-| `c5-assignments` | 09:15.1 | متاح الآن · Available now |
-| `c5-newyear` | 09:34.6 | متاح الآن · Available now |
-| `c5-students` | 09:59.7 | متاح الآن · Available now |
-| `c5-classes` | 10:26.8 | متاح الآن · Available now |
-| `c5-homework` | 10:45.9 | متاح الآن · Available now |
-| `c5-tests` | 11:13.0 | متاح الآن · Available now |
-| `c5-monitor` | 11:35.2 | متاح الآن · Available now |
-| `c5-marking` | 12:01.0 | متاح الآن · Available now |
-| `c5-gradebook` | 12:17.2 | متاح الآن · Available now |
-| `c6-signin` | 13:22.6 | متاح الآن · Available now |
-| `c6-today` | 13:33.5 | متاح الآن · Available now |
-| `c6-homework` | 13:44.6 | متاح الآن · Available now |
-| `c6-test` | 14:00.0 | متاح الآن · Available now |
-| `c6-result` | 14:21.4 | متاح الآن · Available now |
-| `c6-grades` | 14:30.5 | متاح الآن · Available now |
-| `c6-ai-ready` | 16:24.8 | متاح الآن · Available now |
-| `c7-plans` | 16:39.7 | متاح الآن · Available now |
+| `c4-signup` | 05:17.6 | متاح الآن · Available now |
+| `c4-2fa` | 05:38.3 | متاح الآن · Available now |
+| `c4-account` | 05:51.0 | متاح الآن · Available now |
+| `c4-members` | 06:01.9 | متاح الآن · Available now |
+| `c4-tenancy` | 06:25.0 | متاح الآن · Available now |
+| `c4-navigation` | 06:46.2 | متاح الآن · Available now |
+| `c4-access` | 07:10.4 | متاح الآن · Available now |
+| `c4-oversight` | 07:30.7 | متاح الآن · Available now |
+| `c5-catalogue` | 08:04.2 | متاح الآن · Available now |
+| `c5-verified` | 08:32.4 | متاح الآن · Available now |
+| `c5-scopes` | 08:46.3 | متاح الآن · Available now |
+| `c5-compare` | 09:04.4 | متاح الآن · Available now |
+| `c5-notes` | 09:14.4 | متاح الآن · Available now |
+| `c5-assignments` | 09:29.6 | متاح الآن · Available now |
+| `c5-newyear` | 09:49.4 | متاح الآن · Available now |
+| `c5-students` | 10:15.2 | متاح الآن · Available now |
+| `c5-classes` | 10:42.5 | متاح الآن · Available now |
+| `c5-homework` | 11:01.5 | متاح الآن · Available now |
+| `c5-tests` | 11:29.4 | متاح الآن · Available now |
+| `c5-monitor` | 11:51.6 | متاح الآن · Available now |
+| `c5-marking` | 12:18.2 | متاح الآن · Available now |
+| `c5-gradebook` | 12:34.8 | متاح الآن · Available now |
+| `c6-signin` | 13:40.9 | متاح الآن · Available now |
+| `c6-today` | 13:52.2 | متاح الآن · Available now |
+| `c6-homework` | 14:03.1 | متاح الآن · Available now |
+| `c6-test` | 14:18.9 | متاح الآن · Available now |
+| `c6-result` | 14:41.1 | متاح الآن · Available now |
+| `c6-grades` | 14:50.2 | متاح الآن · Available now |
+| `c6-ai-ready` | 16:47.9 | متاح الآن · Available now |
+| `c7-plans` | 17:02.8 | متاح الآن · Available now |
 
 **Curriculum Scope — in three minutes**
 
 | Scene | Time | Badge on screen |
 | --- | --- | --- |
-| `m-curriculum` | 00:52.9 | متاح الآن · Available now |
-| `m-notes` | 01:13.4 | متاح الآن · Available now |
-| `m-homework` | 01:23.3 | متاح الآن · Available now |
-| `m-tests` | 01:34.4 | متاح الآن · Available now |
-| `m-student` | 01:47.7 | متاح الآن · Available now |
+| `m-curriculum` | 00:53.9 | متاح الآن · Available now |
+| `m-notes` | 01:15.0 | متاح الآن · Available now |
+| `m-homework` | 01:24.9 | متاح الآن · Available now |
+| `m-tests` | 01:36.0 | متاح الآن · Available now |
+| `m-student` | 01:49.7 | متاح الآن · Available now |

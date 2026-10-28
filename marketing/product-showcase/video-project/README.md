@@ -57,15 +57,16 @@ text from ARABIC_NARRATION_SCRIPT.md (the "يُقرأ" lines where given). The t
 length instead of the estimate; scenes, pointer, camera, music cues and subtitles follow automatically. Lines
 without a take keep the estimate, and `prepare` reports how many are recorded.
 
-Or generate the takes with a synthetic voice. The current takes (2026-10-27) use the open-source Piper voice
+Or generate the takes with a synthetic voice. The current takes (2026-10-28) use the open-source Piper voice
 `ar_JO-kareem-medium` (sherpa-onnx GitHub release `tts-models`), **with our own pronunciation**: the voice is not
 given the text. `audio/arabic_g2p.py` turns each diacritized line into phonemes by the reading rules, and the
 phoneme ids go straight to the model, so nothing re-reads or guesses the vowels:
 
 ```sh
 python3 -m venv /path/to/venv && /path/to/venv/bin/pip install piper-tts
-PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-medium.onnx --length-scale 0.72 --sentence-silence 0.3
-PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx --length-scale 0.72 --sentence-silence 0.3
+S='--length-scale 0.76 --noise-scale 0.333 --noise-w 0.4 --sentence-silence 0.3'
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 20 --voice ar_JO-kareem-medium.onnx $S
+PIPER_PYTHON=/path/to/venv/bin/python node narrate.mjs 3 --voice ar_JO-kareem-medium.onnx $S
 python3 -m unittest discover -s audio -p 'test_*.py'     # the reading rules
 ```
 
@@ -80,9 +81,12 @@ a consonant, ʔa / ʔi after a pause); the article's lam assimilated to sun lett
 forms before every pause; ta marbuta; stress. Phonemes are written in espeak's own notation, the one the voice
 was trained on. The phonemes of every line are saved next to the line list (`build/<cut>/narration-lines-phonemes.json`).
 
-`--length-scale` sets the pace (0.72 ≈ 8.8 letters a second including pauses, the pace the script was written
-for), `--sentence-silence` the pause between sentences, `--max-pause` (0.28 s) shortens the pauses the voice
-makes at commas, `--noise-scale` and `--noise-w` its variation; `--tempo` time-stretches (not used). Lines that
+`--length-scale` sets the pace, `--sentence-silence` the pause between sentences, `--max-pause` (0.28 s) shortens
+the pauses the voice makes at commas, `--noise-scale` and `--noise-w` its variation; `--tempo` time-stretches (not
+used). The settings above were chosen by the speech-recognition check on the 24 hardest lines: 0.76 with the lower
+variation gave a 7.8 % character error rate, against 11.4 % at 0.72 with the voice's default variation (0.8 was
+clearer still, 6.6 %, but would make the 20-minute cut almost 22 minutes). The 20-minute cut is 20.7 minutes, the
+3-minute cut 3.1. Lines that
 already have a file are skipped, so a human take placed first is kept; `--force` regenerates, `--only <sceneId>`
 limits to one scene.
 
@@ -99,7 +103,8 @@ pace; `node narrate.mjs samples` renders two lines per voice). It needs `AZURE_S
 curl on its standard input, never on the command line or on disk.
 
 `lib/asr_check.py` transcribes the takes with Whisper (small, sherpa-onnx `asr-models` release) and reports a
-character error rate per line against the script, to find lines worth listening to.
+character error rate per line against the script (each take padded with half a second of silence, as in the
+film; without it Whisper tends to drop the last word), to find lines worth listening to.
 
 ## 4. Build a cut
 

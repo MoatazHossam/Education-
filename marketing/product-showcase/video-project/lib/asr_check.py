@@ -41,7 +41,9 @@ def main():
             x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
             sr = w.getframerate()
         stream = rec.create_stream()
-        stream.accept_waveform(sr, x)
+        # Half a second of silence on each side: without it Whisper tends to drop the last word of a take.
+        pad = np.zeros(sr // 2, np.float32)
+        stream.accept_waveform(sr, np.concatenate([pad, x, pad]))
         rec.decode_stream(stream)
         heard = stream.result.text
         ref, hyp = normalise(line['text']), normalise(heard)

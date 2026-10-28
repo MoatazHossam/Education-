@@ -1,7 +1,7 @@
 # Production status
 
-State on 2026-10-27. **Both cuts are finished as previews. The narration will be a female Azure neural voice; the
-generator is ready and waits for the Azure key and network access.** Nothing has been published.
+State on 2026-10-28. **The narration is generated with correct, rule-based Arabic pronunciation; the narrated cuts
+are being rendered.** Nothing has been published.
 
 ## Deliverables
 
@@ -9,49 +9,40 @@ generator is ready and waits for the Azure key and network access.** Nothing has
 | --- | --- |
 | PRODUCT_AUDIT.md, TARGET_AUDIENCE.md, VIDEO_CREATIVE_BRIEF.md | Done |
 | FEATURE_COVERAGE_MATRIX.md | Done (generated): 52 capabilities, 42 available now, 5 in development, 5 future roadmap |
-| STORYBOARD.md, SCENE_BY_SCENE_PRODUCTION.md | Done (generated) |
+| STORYBOARD.md, SCENE_BY_SCENE_PRODUCTION.md | Done (generated), timed to the voice |
 | ARABIC_NARRATION_SCRIPT.md | Done: 20-minute (134 lines) and 3-minute (28 lines), fully diacritized. Second tashkeel review on 2026-10-27: «أَيَّ الْكُتُبِ» (fronted object), «إِحْدَى وَثَلَاثُونَ مَادَّةً» (the unit agrees with the feminine noun, both cuts), «صَفْحَةِ "الْيَوْم"» (a page name), «إِلِكْتْرُونِيّ» (four lines) |
 | ENGLISH_TRANSLATION.md | Done |
-| arabic.srt, arabic-plain.srt, english.srt (+ the 3-minute set) | Done, timed to the estimated narration; regenerated automatically from the voice takes |
+| arabic.srt, arabic-plain.srt, english.srt (+ the 3-minute set) | Done, timed to the voice |
 | Recordings of the product | Done: 54 recordings, 538 frames (kept out of git; `npm run capture` recreates them) |
 | screenshots/, graphics/, Education_SaaS_Thumbnail.png | Done |
 | Music | Done: original generated score (`music/`, rebuilt by `build.mjs audio`); not yet reviewed by ear |
-| **Narration voice** | **Waiting for the Azure key and network access** — see below |
-| Education_SaaS_Product_Showcase_1080p_PREVIEW_no-narration.mp4 | Done: 19:38.6, 1920 × 1080, 173 MB |
-| Education_SaaS_Product_Showcase_3min_PREVIEW_no-narration.mp4 | Done: 2:54.7, 1920 × 1080, 31 MB |
-| Education_SaaS_Product_Showcase_20min.mp4 (3840 × 2160), …_1080p.mp4, …_3min.mp4 (narrated) | Waiting for the narration; one command each (below). A 3-minute cut with the male Piper voice was made on 2026-10-27 and withdrawn after review |
-| VIDEO_QA_REPORT.md | Done for the preview cuts; repeated on the narrated cuts |
-
-The preview files are the finished film with the narration shown as burned-in Arabic captions and a
-"PREVIEW — NO NARRATION" tag. They are suitable for an internal review of content, pacing and visuals, not
-for release.
+| Narration | Done (generated; takes kept out of git, `node narrate.mjs` recreates them) — see below |
+| Education_SaaS_Product_Showcase_3min.mp4 (1920 × 1080, 3:05) | Rendering |
+| Education_SaaS_Product_Showcase_1080p.mp4, Education_SaaS_Product_Showcase_20min.mp4 (3840 × 2160), 20:42 | Rendering after the 3-minute cut |
+| Preview cuts without narration (…_PREVIEW_no-narration.mp4) | Superseded by the narrated cuts |
+| VIDEO_QA_REPORT.md | Preview cuts done; repeated on the narrated cuts |
 
 ## The narration voice
 
-- **Tried and rejected:** the open-source Piper voice `ar_JO-kareem-medium` (male, the only Arabic Piper voice)
-  was generated for both cuts. The owner rejected it on 2026-10-27 ("very bad"; a female voice was asked for),
-  and its licence could not be confirmed. Its takes are not used.
-- **Chosen:** Azure AI Speech, female neural voice. Default `ar-SA-ZariyahNeural`; `ar-EG-SalmaNeural` and
-  `ar-AE-FatimaNeural` are the alternatives offered as samples. The generator (`video-project/narrate.mjs`,
-  `lib/azure-tts.mjs`) speaks the diacritized script in pausal form, retries throttling, and keeps the key out
-  of the command line, the disk and the logs.
-
-Needed from the owner (none of it in the chat or the repository):
-
-1. An Azure Speech resource (the free F0 tier is enough: both scripts are about 12,600 characters).
-2. Its key and region as environment secrets `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` in the Claude Code
-   environment settings.
-3. `*.tts.speech.microsoft.com` added to the environment's allowed domains (today it is refused), keeping
-   package managers allowed.
-4. A new session, so the settings apply.
-
-Then, in `video-project/`: `node narrate.mjs samples` (one sample per voice, for the owner to choose), then
-`node narrate.mjs 20` and `node narrate.mjs 3` with the chosen voice, the Whisper check (`lib/asr_check.py`)
-and a listening pass, `--rate` adjusted so each cut lands in its target length, then `node build.mjs all 20
-2160`, `node build.mjs all 20 1080` and `node build.mjs all 3 1080`, and the QA report.
-
-A human narrator stays possible at any time: record ARABIC_NARRATION_SCRIPT.md one line per file as
-`audio/narration/<cut>/<sceneId>-NN.wav`; the same build commands use those takes.
+- **The problem with the first voice was mostly its pronunciation engine.** Open Arabic voices read text through
+  espeak-ng, which mispronounces fully diacritized Arabic. Compared word by word over both scripts, it drops the
+  vowel after every shadda (الشَّمْسُ → "ash-shmsu", سَنُدَرِّسُ → "sanudarrsu"), reads a waw or ya that carries a
+  vowel as a vowel (هِيَ → "hīa"), ignores hamzat al-wasl (بِالْمَنْهَجِ → "bi āl-manhaji"), reads ذَلِكَ and هَذَا
+  with a short a, and has no pausal forms. The first takes also had to be sped up by about 40 %.
+- **Now:** the text is turned into phonemes by our own rules (`video-project/audio/arabic_g2p.py`, 15 tests), and
+  the phonemes go straight to the voice: every vowel, shadda, tanween and sukun as written; long vowels and
+  diphthongs; the hidden alif of هٰذَا / ذٰلِكَ / لٰكِنَّ / هٰكَذَا; hamzat al-wasl; sun letters; iqlab; ta marbuta; pausal
+  forms (الوقف) before every pause; stress. Checked against espeak on all 2,087 words of the scripts; every
+  difference was reviewed and the rules corrected where they were wrong (hamza with sukun, a wasl alif before a
+  second wasl, tanween on alif maqsura).
+- **Voice:** `ar_JO-kareem-medium` (Piper, male), at the pace the script was written for (about 9 letters a second
+  including pauses), with no time-stretching. Settings chosen by speech recognition (Whisper) on the hardest lines.
+- **Voices ruled out:** Azure AI Speech (no key; its host is blocked in this environment), the newer Piper Arabic
+  voices (CC BY-NC-SA 4.0, no commercial use), Nabra-82M (much less intelligible in the same check, 15–17 % against
+  3.7 %; clips line endings; cannot tell س from ص).
+- **Licence:** the voice's licence could not be confirmed (its model card refers to a training-data repository that
+  states no licence). It should be confirmed, or the narration recorded by a person, before public release. A human
+  narrator's takes drop in as files (`audio/narration/<cut>/<sceneId>-NN.wav`) with no other change.
 
 ## Other open points
 

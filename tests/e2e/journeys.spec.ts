@@ -1323,4 +1323,27 @@ test('questions suggested by AI: the platform gives the school AI requests; the 
   await page.getByRole('button', { name: 'Suggest questions with AI' }).click();
   await expect(page.getByRole('dialog').getByText('AI requests left for your school this month: 19')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+
+  // Homework suggested by AI fills the new-homework form; nothing is set until the teacher sets it.
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('button', { name: 'Set homework' }).click();
+  const form = page.getByRole('dialog', { name: 'Homework for 7A' });
+  await form.getByRole('button', { name: 'Suggest with AI' }).click();
+  dlg = page.getByRole('dialog', { name: 'Suggest homework with AI' });
+  await expect(dlg.getByText('AI requests left for your school this month: 19')).toBeVisible();
+  await dlg.getByLabel('Topic or lesson').fill('Forces and motion');
+  await dlg.getByLabel('Kind of homework').selectOption({ label: 'Writing' });
+  await dlg.getByLabel('About how many minutes (10–120)').fill('20');
+  await dlg.getByRole('button', { name: 'Suggest' }).click();
+  dlg = page.getByRole('dialog', { name: 'Suggested homework' });
+  await expect(dlg.getByRole('heading', { name: 'Forces around us' })).toBeVisible();
+  await expect(dlg.getByText('About 20 minutes of work')).toBeVisible();
+  await expect(dlg.getByText('Checks that students see a force as a push or a pull.')).toBeVisible();
+  await dlg.getByRole('button', { name: 'Use this suggestion' }).click();
+  await expect(form.getByLabel('Title')).toHaveValue('Forces around us');
+  await expect(form.getByLabel('Instructions')).toHaveValue(/^1\. Find three pushes and three pulls in your home\./);
+  await expect(form.getByLabel('Title')).toBeFocused();
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('link', { name: 'Forces around us' })).toHaveCount(0);
 });

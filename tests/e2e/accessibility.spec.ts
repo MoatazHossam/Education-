@@ -348,6 +348,21 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(page, 'suggested questions dialog');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
+  // Homework suggested by AI (docs/CLASSROOM.md §13): the request and review dialogs, each over the homework
+  // form it fills. Cancelled, so the class keeps its one homework.
+  await page.goto(classPath);
+  await page.getByRole('button', { name: 'Set homework' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Suggest with AI' }).click();
+  await audit(page, 'suggest homework dialog');
+  td = page.getByRole('dialog', { name: 'Suggest homework with AI' });
+  await td.getByLabel('Topic or lesson').fill('The alphabet');
+  await td.getByRole('button', { name: 'Suggest' }).click();
+  await expect(page.getByRole('dialog', { name: 'Suggested homework' })).toBeVisible();
+  await audit(page, 'suggested homework dialog');
+  await page.getByRole('dialog', { name: 'Suggested homework' }).getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('dialog', { name: 'Homework for 1A' }).getByRole('button', { name: 'Cancel' }).click();
+  await page.goto(testPath);
+  await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
   await page.getByRole('button', { name: 'Publish' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();

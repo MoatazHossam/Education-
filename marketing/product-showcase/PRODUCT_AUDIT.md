@@ -19,7 +19,7 @@ plus the video project in this folder; no application code was changed for the v
 
 ## 2. The product in one paragraph
 
-**Curriculum Scope (نطاق المناهج)** is a multi-tenant SaaS for the Egyptian K-12 curriculum. It began as a
+**Midad (مِداد)** is a multi-tenant SaaS for the Egyptian K-12 curriculum. It began as a
 single-page picker (`legacy/`) and now has two connected parts: a **curriculum workspace** (a versioned catalogue
 of 12 grades, 5 tracks, 231 subjects and 1,038 materials; named content scopes; comparison across campuses
 and years; notes, assignees and due dates; carry-forward to the next year; exports, a read API and webhooks),

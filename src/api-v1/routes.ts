@@ -11,9 +11,9 @@ import { selectedRows, toJson } from '../scopes/export.js';
 import { annotationsForExport } from '../scopes/notes.js';
 import { getScope, listScopes, scopeMaterialIds } from '../scopes/service.js';
 
-const KEY_RE = /^cs_live_[A-Za-z0-9_-]{43}$/;
+const KEY_RE = /^midad_live_[A-Za-z0-9_-]{43}$/;
 
-/** Resolves `Authorization: Bearer cs_live_…`. Lookup by hash happens before the tenant is known (system context). */
+/** Resolves `Authorization: Bearer midad_live_…`. Lookup by hash happens before the tenant is known (system context). */
 export async function resolveApiKey(ctx: AppContext, req: FastifyRequest): Promise<AuthState> {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return null;
@@ -41,7 +41,7 @@ export function registerApiV1Routes(app: FastifyInstance, ctx: AppContext): void
   // Every v1 call: authenticated key, plan includes API access, monthly quota consumed.
   async function withApi<T>(req: FastifyRequest, fn: (trx: Trx, orgId: string) => Promise<T>): Promise<T> {
     const auth = req.auth;
-    if (auth?.kind !== 'api_key') throw unauthorized('A valid API key is required (Authorization: Bearer cs_live_…)');
+    if (auth?.kind !== 'api_key') throw unauthorized('A valid API key is required (Authorization: Bearer midad_live_…)');
     return withOrgContext(ctx.db, { orgId: auth.orgId }, async (trx) => {
       const ent = await getEntitlements(trx, auth.orgId, grace);
       requireFeature(ent, 'api_access', 'API access');

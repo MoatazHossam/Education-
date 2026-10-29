@@ -13,7 +13,7 @@ application/json`); other content types are rejected with `415`.
   `POST /api/auth/student-login` and get the same kind of session. They may call only the student
   portal routes, `GET /api/auth/me` and `POST /api/auth/logout`; every other route answers
   403 `STAFF_ONLY`.
-- **Public API (`/api/v1`):** `Authorization: Bearer cs_live_…` (created in Organization settings
+- **Public API (`/api/v1`):** `Authorization: Bearer midad_live_…` (created in Organization settings
   → API keys; Professional plan and above). Read-only.
 
 ### Errors
@@ -270,7 +270,7 @@ of `PATCH /orgs/:orgId/subscription` (0 on every plan; null for no cap); `GET /a
 | GET | `/api/v1/catalog/versions` · `/api/v1/catalog/versions/:id` | catalogue |
 
 ```bash
-curl -H "Authorization: Bearer cs_live_…" https://app.example.com/api/v1/scopes
+curl -H "Authorization: Bearer midad_live_…" https://app.example.com/api/v1/scopes
 ```
 Each call counts toward `api_requests_per_month`; over the quota → `402 PLAN_LIMIT_REACHED`.
 A plan without API access → `402 FEATURE_NOT_IN_PLAN`. Revoked/unknown key → `401`.
@@ -318,10 +318,10 @@ not receive it until it is ticked in Settings.
 ```http
 POST /your/endpoint HTTP/1.1
 Content-Type: application/json
-User-Agent: CurriculumScope-Webhooks/1
-X-CurriculumScope-Event: scope.items_changed
-X-CurriculumScope-Delivery: 2b0c…            (this attempt's delivery id)
-X-CurriculumScope-Signature: t=1793001600,v1=5f2c…
+User-Agent: Midad-Webhooks/1
+X-Midad-Event: scope.items_changed
+X-Midad-Delivery: 2b0c…            (this attempt's delivery id)
+X-Midad-Signature: t=1793001600,v1=5f2c…
 
 {"id":"8d1e…","type":"scope.items_changed","createdAt":"2026-10-25T12:00:00.000Z","organizationId":"…",
  "data":{"scope":{"id":"…","name":"Grade 6 books","catalogVersionId":"…","academicYear":"2026/2027","itemCount":5,"updatedAt":"…"}}}

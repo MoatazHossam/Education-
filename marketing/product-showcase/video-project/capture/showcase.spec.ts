@@ -42,7 +42,7 @@ const grade = (n: number, lang: 'en' | 'ar' = 'ar') => `${word(lang, 'picker.gra
 const fmt = (n: number) => new Intl.NumberFormat('ar-EG').format(n);
 
 const DEMO = {
-  school: 'مدرسة وادي النيل للغات', mona: 'منى حسن', karim: 'كريم عادل', salma: 'سلمى فتحي', support: 'دعم نطاق المناهج',
+  school: 'مدرسة وادي النيل للغات', mona: 'منى حسن', karim: 'كريم عادل', salma: 'سلمى فتحي', support: 'دعم مِداد',
   scope: 'الكتب الأساسية للصفوف 1–3', scopeDescription: 'العربي والإنجليزي والرياضيات والعلوم لمنصة المرحلة الابتدائية الأولى.',
   campusB: 'الكتب الأساسية للصفوف 1–3 — الفرع ب', summerOrg: 'برنامج وادي النيل الصيفي', summerScope: 'قراءات صيف 2027',
   note1: 'اطلب 120 نسخة قبل سبتمبر، وراجع الغلاف الجديد.', note2: 'في انتظار طبعة 2027 من الناشر.',
@@ -57,7 +57,7 @@ const DEMO = {
 const MONA = 'mona.hassan@nilevalley.example';
 const KARIM = 'karim.adel@nilevalley.example';
 const SALMA = 'salma.fathy@nilevalley.example';
-const ADMIN = 'support@curriculumscope.example';
+const ADMIN = 'support@midad.example';
 const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 
 // Desktop windows are 1440 × 810 (16:9) at 2.5 device pixels per CSS pixel (3600 × 2025 frames);

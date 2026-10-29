@@ -807,7 +807,7 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/curriculum`;
   const signedBy = (secret: string, r: { headers: http.IncomingHttpHeaders; body: string }) => {
-    const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(String(r.headers['x-curriculumscope-signature']))!;
+    const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(String(r.headers['x-midad-signature']))!;
     return v1 === createHmac('sha256', secret).update(`${t}.${r.body}`).digest('hex');
   };
   try {
@@ -841,7 +841,7 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     expect(await runWebhookPass()).toMatchObject({ delivered: 1 });
     const change = JSON.parse(received[1]!.body);
     expect(change).toMatchObject({ type: 'scope.items_changed', data: { scope: { name: 'Grade 6 books', itemCount: 5 } } });
-    expect(received[1]!.headers['x-curriculumscope-event']).toBe('scope.items_changed');
+    expect(received[1]!.headers['x-midad-event']).toBe('scope.items_changed');
     expect(signedBy(secret, received[1]!)).toBe(true);
 
     await page.goto(`/org/${orgId}/settings`);

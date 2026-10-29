@@ -16,11 +16,11 @@ export default async function setup(): Promise<void> {
   try {
     await admin.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [TEST_DB]);
     await admin.query(`DROP DATABASE IF EXISTS ${TEST_DB}`);
-    for (const [role, pw] of [['cs_test_owner', 'owner-test-pw'], ['cs_test_app', 'app-test-pw']]) {
+    for (const [role, pw] of [['midad_test_owner', 'owner-test-pw'], ['midad_test_app', 'app-test-pw']]) {
       const exists = await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [role]);
       if (!exists.rowCount) await admin.query(`CREATE ROLE ${role} LOGIN PASSWORD '${pw}' NOSUPERUSER NOBYPASSRLS NOCREATEROLE`);
     }
-    await admin.query(`CREATE DATABASE ${TEST_DB} OWNER cs_test_owner`);
+    await admin.query(`CREATE DATABASE ${TEST_DB} OWNER midad_test_owner`);
   } finally {
     await admin.end();
   }
@@ -29,7 +29,7 @@ export default async function setup(): Promise<void> {
   const db = createDatabase(OWNER_URL, { poolMax: 2 });
   try {
     await migrateToLatest(db);
-    await grantAppRole(db, 'cs_test_app');
+    await grantAppRole(db, 'midad_test_app');
     await seedPlans(db, config.BILLING_CURRENCY);
     await seedCatalog(db);
   } finally {

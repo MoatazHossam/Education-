@@ -13,8 +13,8 @@ const MONITOR_ROWS = { x: 100, y: 270, w: 770, h: 170 };
 
 export const meta = {
   id: 'showcase-20',
-  title: 'نطاق المناهج — عرض المنتج',
-  titleEn: 'Curriculum Scope — Product Showcase',
+  title: 'مِداد — عرض المنتج',
+  titleEn: 'Midad — Product Showcase',
   target: [1170, 1230],
 };
 
@@ -97,9 +97,7 @@ export const scenes = [
     id: 'c1-reveal', ch: 1, t: 'logo', music: 'reveal', lead: 1.8, tail: 2.6,
     p: { tagline: { ar: 'منصة تعليمية سحابية للمدارس والمؤسسات التعليمية', en: 'A cloud education platform for schools and education organizations' } },
     lines: [
-      L('نُقَدِّمُ لَكُمْ: نِطَاقَ الْمَنَاهِجِ — Curriculum Scope.',
-        'Introducing: Curriculum Scope — نطاق المناهج.',
-        'نُقَدِّمُ لَكُمْ: نِطَاقَ الْمَنَاهِجِ — كَرِيكْيُولَمْ سْكُوب.'),
+      L('نُقَدِّمُ لَكُمْ مِنَصَّةَ مِدَادٍ.', 'Introducing Midad.'),
     ],
   },
 
@@ -750,7 +748,7 @@ export const scenes = [
   },
   {
     id: 'c7-central', ch: 7, t: 'hub', music: 'saas', lead: 0.5, tail: 1.2,
-    p: { center: 'نطاق المناهج', schools: 7, addon: { ar: 'وحدة الذكاء الاصطناعي (مستقبلًا)', en: 'AI module (future)', at: 1 } },
+    p: { center: 'مِداد', schools: 7, addon: { ar: 'وحدة الذكاء الاصطناعي (مستقبلًا)', en: 'AI module (future)', at: 1 } },
     lines: [
       L('وَلِأَنَّهَا SaaS، يَصِلُ كُلُّ تَحْدِيثٍ لِلدَّلِيلِ أَوْ لِلنِّظَامِ إِلَى كُلِّ الْمُؤَسَّسَاتِ مَعًا، دُونَ تَثْبِيتٍ عِنْدَ أَحَدٍ.',
         'And because it is SaaS, every update to the catalogue or the system reaches every institution together, with nothing to install.',
@@ -829,7 +827,7 @@ export const scenes = [
       L('لِذَلِكَ نَدْعُو الْمَدَارِسَ وَمَجْمُوعَاتِ الْمَدَارِسِ، وَشَرِكَاتِ التَّعْلِيمِ وَالنَّشْرِ، إِلَى الِانْضِمَامِ لِلْبَرْنَامَجِ التَّجْرِيبِيِّ، وَبِنَاءِ الْمَرْحَلَةِ الْقَادِمَةِ مَعَنَا.',
         'So we invite schools, school groups, and education and publishing companies to join the pilot programme and build the next stage with us.'),
       L('وَنُرَحِّبُ بِالشُّرَكَاءِ وَالْمُسْتَثْمِرِينَ الَّذِينَ يُؤْمِنُونَ بِتَعْلِيمٍ أَكْثَرَ تَرَابُطًا وَوُضُوحًا.', 'And we welcome partners and investors who believe in more connected, clearer education.'),
-      L('نِطَاقُ الْمَنَاهِجِ: مَنْهَجٌ وَاضِحٌ، وَفَصْلٌ مُتَّصِلٌ، وَمُؤَسَّسَةٌ تَرَى الصُّورَةَ كَامِلَةً.', 'Curriculum Scope: a clear curriculum, a connected classroom, and an institution that sees the whole picture.'),
+      L('مِدَادٌ: مَنْهَجٌ وَاضِحٌ، وَفَصْلٌ مُتَّصِلٌ، وَمُؤَسَّسَةٌ تَرَى الصُّورَةَ كَامِلَةً.', 'Midad: a clear curriculum, a connected classroom, and an institution that sees the whole picture.'),
       L('تَوَاصَلُوا مَعَنَا لِعَرْضٍ مُبَاشِرٍ، أَوْ لِلِانْضِمَامِ إِلَى التَّجْرِبَةِ.', 'Contact us for a live demo, or to join the pilot.'),
     ],
   },

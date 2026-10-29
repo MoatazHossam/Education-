@@ -43,10 +43,10 @@ export function signatureHeader(secret: string, body: string, now = new Date()):
 
 function deliveryHeaders(secret: string, body: string, eventType: string, deliveryId: string): Record<string, string> {
   return {
-    'user-agent': 'CurriculumScope-Webhooks/1',
-    'x-curriculumscope-event': eventType,
-    'x-curriculumscope-delivery': deliveryId,
-    'x-curriculumscope-signature': signatureHeader(secret, body),
+    'user-agent': 'Midad-Webhooks/1',
+    'x-midad-event': eventType,
+    'x-midad-delivery': deliveryId,
+    'x-midad-signature': signatureHeader(secret, body),
   };
 }
 

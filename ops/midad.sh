@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Curriculum Scope operations for Linux: start, stop, status, back up, restore and test a backup,
+# Midad operations for Linux: start, stop, status, back up, restore and test a backup,
 # for the development stack (docker-compose.yml + .env.docker) or production
 # (+ docker-compose.prod.yml + .env.production). Needs only bash and Docker with Compose v2.
-# Windows: the same commands as ops\*.bat (ops\cs.ps1). Guide: docs/DEPLOYMENT_GUIDE.md §8.
+# Windows: the same commands as ops\*.bat (ops\midad.ps1). Guide: docs/DEPLOYMENT_GUIDE.md §8.
 #
-#   ops/cs.sh                       a menu
-#   ops/cs.sh start | stop | status | backup | restore | verify | destinations   [options]
+#   ops/midad.sh                    a menu
+#   ops/midad.sh start | stop | status | backup | restore | verify | destinations   [options]
 #   (ops/start.sh, ops/stop.sh, ops/status.sh, ops/backup.sh and ops/restore.sh run the same)
 #
 # Options
@@ -18,7 +18,7 @@
 #
 # Backup copy settings (folder, server, bucket, encryption, retention) are kept in .env.backup,
 # readable only by you. The passphrase is never saved there: it is asked, or read from
-# CS_BACKUP_PASSPHRASE or the file named by BACKUP_PASSPHRASE_FILE.
+# MIDAD_BACKUP_PASSPHRASE or the file named by BACKUP_PASSPHRASE_FILE.
 set -euo pipefail
 umask 077 # every file these scripts write (backups, checksums, settings) is readable by you only
 
@@ -59,7 +59,7 @@ while (($#)); do
     --no-encrypt) NO_ENCRYPT=1 ;;
     --only-verify) ONLY_VERIFY=1 ;;
     -h | --help) usage; exit 0 ;;
-    *) die "unknown option $1 (ops/cs.sh --help)" ;;
+    *) die "unknown option $1 (ops/midad.sh --help)" ;;
   esac
   shift
 done
@@ -149,11 +149,11 @@ pick_env() { # pick_env [missing-ok]: a restore onto a new server may start with
     NOENV=1
   fi
   PROJECT=${COMPOSE_PROJECT_NAME:-$(envget COMPOSE_PROJECT_NAME)}
-  PROJECT=${PROJECT:-curriculum-scope}
+  PROJECT=${PROJECT:-midad}
   MANAGED=0
   [[ -n $(envget DATABASE_URL) ]] && MANAGED=1
-  IMAGE="curriculum-scope:$(envget APP_IMAGE_TAG)"
-  [[ $IMAGE == curriculum-scope: ]] && IMAGE=curriculum-scope:local
+  IMAGE="midad:$(envget APP_IMAGE_TAG)"
+  [[ $IMAGE == midad: ]] && IMAGE=midad:local
   return 0
 }
 dc() { docker compose "${FILES[@]}" --env-file "$ENV_FILE" "$@"; }
@@ -205,7 +205,7 @@ wait_postgres() {
 }
 ensure_image() {
   docker image inspect "$IMAGE" >/dev/null 2>&1 && return 0
-  [[ $IMAGE == curriculum-scope:local ]] || die "image $IMAGE not found (APP_IMAGE_TAG in $ENV_FILE)"
+  [[ $IMAGE == midad:local ]] || die "image $IMAGE not found (APP_IMAGE_TAG in $ENV_FILE)"
   step "Building the app image (needed once; a few minutes)"
   docker build -t "$IMAGE" "$ROOT"
 }
@@ -218,16 +218,16 @@ cmd_start() {
   mapfile -t extra < <(scale_args)
   args+=("${extra[@]}")
   if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    [[ $IMAGE == curriculum-scope:local ]] || die "image $IMAGE not found (APP_IMAGE_TAG in $ENV_FILE)"
+    [[ $IMAGE == midad:local ]] || die "image $IMAGE not found (APP_IMAGE_TAG in $ENV_FILE)"
     say "The app image is not built yet: it is built first (a few minutes)."
     build=1
-  elif [[ $IMAGE == curriculum-scope:local ]] && confirm "Rebuild the app image first (after updating the code)?" n; then
+  elif [[ $IMAGE == midad:local ]] && confirm "Rebuild the app image first (after updating the code)?" n; then
     build=1
   fi
   if ((build)); then
     args+=(--build)
     # The image being replaced stays as :previous, for a rollback (docs/DEPLOYMENT_GUIDE.md §4).
-    docker image inspect "$IMAGE" >/dev/null 2>&1 && docker tag "$IMAGE" curriculum-scope:previous
+    docker image inspect "$IMAGE" >/dev/null 2>&1 && docker tag "$IMAGE" midad:previous
   fi
   step "Starting the $ENV_NAME installation ($PROJECT)"
   dc "${args[@]}"
@@ -286,7 +286,7 @@ lock() { # one backup or restore at a time; a lock left by a run that was killed
 }
 get_passphrase() { # get_passphrase VAR new|existing
   local _pv=$1 _pp _pq _pf
-  if [[ -n ${CS_BACKUP_PASSPHRASE:-} ]]; then printf -v "$_pv" '%s' "$CS_BACKUP_PASSPHRASE"; return; fi
+  if [[ -n ${MIDAD_BACKUP_PASSPHRASE:-} ]]; then printf -v "$_pv" '%s' "$MIDAD_BACKUP_PASSPHRASE"; return; fi
   _pf=$(conf BACKUP_PASSPHRASE_FILE)
   if [[ -n $_pf ]]; then
     [[ -r $_pf ]] || die "BACKUP_PASSPHRASE_FILE $_pf cannot be read"
@@ -404,7 +404,7 @@ setup_dest() { # asks for one destination's settings, tests it and saves them
       ask v "Endpoint (https://… or a host name; empty for Amazon S3)" "$(conf BACKUP_BUCKET_ENDPOINT)"; save BACKUP_BUCKET_ENDPOINT "$v"
       ask v "Region (e.g. eu-central-1; may be empty for other providers)" "$(conf BACKUP_BUCKET_REGION)"; save BACKUP_BUCKET_REGION "$v"
       ask v "Bucket name" "$(conf BACKUP_BUCKET_NAME)"; save BACKUP_BUCKET_NAME "$v"
-      v=$(conf BACKUP_BUCKET_PREFIX); ask v "Folder inside the bucket" "${v:-curriculum-scope}"; save BACKUP_BUCKET_PREFIX "$v"
+      v=$(conf BACKUP_BUCKET_PREFIX); ask v "Folder inside the bucket" "${v:-midad}"; save BACKUP_BUCKET_PREFIX "$v"
       ask v "Access key ID" "$(conf BACKUP_BUCKET_ACCESS_KEY_ID)"; save BACKUP_BUCKET_ACCESS_KEY_ID "$v"
       ask_secret v "Secret access key (Enter keeps the saved one)"
       [[ -n $v ]] && save BACKUP_BUCKET_SECRET_ACCESS_KEY "$v"
@@ -425,7 +425,7 @@ setup_dest() { # asks for one destination's settings, tests it and saves them
 setup_passfile() { # scheduled backups read the passphrase from a file that only you can read
   local f p q
   f=$(conf BACKUP_PASSPHRASE_FILE)
-  ask f "File holding the passphrase, for scheduled backups (empty: always ask)" "${f:-$HOME/.curriculum-scope-backup-passphrase}"
+  ask f "File holding the passphrase, for scheduled backups (empty: always ask)" "${f:-$HOME/.midad-backup-passphrase}"
   if [[ -z $f ]]; then save BACKUP_PASSPHRASE_FILE ""; return 0; fi
   if [[ ! -s $f ]]; then
     ask_secret p "Passphrase to keep in $f (12 characters or more)"
@@ -464,7 +464,7 @@ pick_copies() { # sets COPIES (folder server bucket subset)
   for d in ${list//,/ }; do
     case $d in folder | server | bucket) ;; none | "") continue ;; *) die "unknown copy target $d (folder, server, bucket)" ;; esac
     if ! dest_ready "$d"; then
-      ((YES)) && die "$d copies are not set up: run ops/cs.sh destinations"
+      ((YES)) && die "$d copies are not set up: run ops/midad.sh destinations"
       setup_dest "$d" || die "could not set up $d"
     fi
     COPIES+=("$d")
@@ -488,9 +488,9 @@ prune() { # prune KIND DIR DAYS: removes backups older than DAYS there
   local kind=$1 dir=$2 days=$3
   [[ $days =~ ^[0-9]+$ ]] && ((days > 0)) || return 0
   case $kind in
-    local) find "$dir" -maxdepth 1 -name 'cs-backup-*' -mtime +"$days" -print -delete ;;
-    folder) find "$(conf BACKUP_FOLDER)" -maxdepth 1 -name 'cs-backup-*' -mtime +"$days" -print -delete ;;
-    server | bucket) rclone_run "$kind" "$dir" ro delete "$(remote_target "$kind")" --min-age "${days}d" --include 'cs-backup-*' ;;
+    local) find "$dir" -maxdepth 1 -name 'midad-backup-*' -mtime +"$days" -print -delete ;;
+    folder) find "$(conf BACKUP_FOLDER)" -maxdepth 1 -name 'midad-backup-*' -mtime +"$days" -print -delete ;;
+    server | bucket) rclone_run "$kind" "$dir" ro delete "$(remote_target "$kind")" --min-age "${days}d" --include 'midad-backup-*' ;;
   esac
 }
 
@@ -501,7 +501,7 @@ cmd_backup() {
   dir=$(backup_dir)
   lock "$dir"
   ts=$(date -u +%Y%m%dT%H%M%SZ)
-  name="cs-backup-$ENV_NAME-$ts"
+  name="midad-backup-$ENV_NAME-$ts"
   work="$dir/.work-$ts"
   mkdir -m 700 "$work"
   CLEANUP+=("$work" "$dir/$name.tar.partial" "$dir/$name.tar.enc.partial")
@@ -527,15 +527,15 @@ cmd_backup() {
 
   step "Database"
   local db bk
-  db=$(db_name); bk=$(envget DB_BACKUP_USER); bk=${bk:-curriculum_backup}
+  db=$(db_name); bk=$(envget DB_BACKUP_USER); bk=${bk:-midad_backup}
   if ((MANAGED)); then
     [[ -n $(envget BACKUP_DATABASE_URL) ]] || die "set BACKUP_DATABASE_URL in $ENV_FILE (the read-only backup role of the managed database)"
     BACKUP_URL=$(envget BACKUP_DATABASE_URL) pg_tool -e BACKUP_URL -- sh -c 'pg_dump --format=custom --compress=6 "$BACKUP_URL"' >"$work/database.dump"
     BACKUP_URL=$(envget BACKUP_DATABASE_URL) pg_tool -i -e BACKUP_URL -- sh -c 'psql "$BACKUP_URL" -v ON_ERROR_STOP=1 -At -F"|" -f -' <ops/verify.sql >"$work/verify-live.txt"
   else
     running postgres || die "the database is not running: start the installation first (ops/start.sh)"
-    dc exec -T -e CS_DB="$db" -e CS_USER="$bk" postgres sh -c 'pg_dump -U "$CS_USER" -d "$CS_DB" --format=custom --compress=6' >"$work/database.dump"
-    dc exec -T -e CS_DB="$db" -e CS_USER="$bk" postgres sh -c 'psql -U "$CS_USER" -d "$CS_DB" -v ON_ERROR_STOP=1 -At -F"|" -f -' <ops/verify.sql >"$work/verify-live.txt"
+    dc exec -T -e MIDAD_DB="$db" -e MIDAD_USER="$bk" postgres sh -c 'pg_dump -U "$MIDAD_USER" -d "$MIDAD_DB" --format=custom --compress=6' >"$work/database.dump"
+    dc exec -T -e MIDAD_DB="$db" -e MIDAD_USER="$bk" postgres sh -c 'psql -U "$MIDAD_USER" -d "$MIDAD_DB" -v ON_ERROR_STOP=1 -At -F"|" -f -' <ops/verify.sql >"$work/verify-live.txt"
   fi
   [[ $(head -c 5 "$work/database.dump") == PGDMP ]] || die "the database dump is not valid"
   say "  $(du -h "$work/database.dump" | cut -f1), $(grep -c '^rows|' "$work/verify-live.txt") tables, migrations $(grep '^migrations|' "$work/verify-live.txt" | cut -d'|' -f2)"
@@ -555,7 +555,7 @@ cmd_backup() {
   fi
 
   {
-    echo "format=cs-backup-1"
+    echo "format=midad-backup-1"
     echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "environment=$ENV_NAME"
     echo "project=$PROJECT"
@@ -570,7 +570,7 @@ cmd_backup() {
   step "Archive"
   tar -C "$work" -cf "$dir/$name.tar.partial" .
   if [[ $enc == yes ]]; then
-    CS_BACKUP_PASSPHRASE=$pass docker run --rm -i -e CS_BACKUP_PASSPHRASE "$IMAGE" node dist/cli/backup-crypt.js encrypt <"$dir/$name.tar.partial" >"$dir/$name.tar.enc.partial"
+    MIDAD_BACKUP_PASSPHRASE=$pass docker run --rm -i -e MIDAD_BACKUP_PASSPHRASE "$IMAGE" node dist/cli/backup-crypt.js encrypt <"$dir/$name.tar.partial" >"$dir/$name.tar.enc.partial"
     mv -f "$dir/$name.tar.enc.partial" "$dir/$name.tar.enc"
     rm -f "$dir/$name.tar.partial"
     final=$name.tar.enc
@@ -606,11 +606,11 @@ cmd_backup() {
 
 # ------------------------------------------------------------------ restore and test
 list_backups() { # list_backups SOURCE BACKUP_DIR SCRATCH_DIR: archive names, newest first
-  # shellcheck disable=SC2010 # newest first by time; the names are the scripts' own (cs-backup-<env>-<time>)
+  # shellcheck disable=SC2010 # newest first by time; the names are the scripts' own (midad-backup-<env>-<time>)
   case $1 in
-    local) ls -1t "$2" 2>/dev/null | grep -E '^cs-backup-.*\.tar(\.enc)?$' || true ;;
-    folder) ls -1t "$(conf BACKUP_FOLDER)" 2>/dev/null | grep -E '^cs-backup-.*\.tar(\.enc)?$' || true ;;
-    server | bucket) rclone_run "$1" "$3" ro lsf "$(remote_target "$1")" --files-only --format tp --separator '|' --include 'cs-backup-*.tar' --include 'cs-backup-*.tar.enc' | sort -r | cut -d'|' -f2 ;;
+    local) ls -1t "$2" 2>/dev/null | grep -E '^midad-backup-.*\.tar(\.enc)?$' || true ;;
+    folder) ls -1t "$(conf BACKUP_FOLDER)" 2>/dev/null | grep -E '^midad-backup-.*\.tar(\.enc)?$' || true ;;
+    server | bucket) rclone_run "$1" "$3" ro lsf "$(remote_target "$1")" --files-only --format tp --separator '|' --include 'midad-backup-*.tar' --include 'midad-backup-*.tar.enc' | sort -r | cut -d'|' -f2 ;;
   esac
 }
 fetch_backup() { # fetch_backup SOURCE DIR NAME STAGING: prints the local path of the archive
@@ -629,14 +629,14 @@ pg_tool() { # pg_tool DOCKER-OPTIONS... -- COMMAND...: PostgreSQL client tools f
   docker run "${a[@]}" "${v:-$PG_IMAGE}" "$@"
 }
 psql_restored() { # psql_restored DB < sql: runs SQL on a database of the bundled server as the superuser
-  dc exec -T -e CS_DB="$1" postgres sh -c 'psql -U "$POSTGRES_USER" -d "$CS_DB" -v ON_ERROR_STOP=1 -At -F"|" -f -'
+  dc exec -T -e MIDAD_DB="$1" postgres sh -c 'psql -U "$POSTGRES_USER" -d "$MIDAD_DB" -v ON_ERROR_STOP=1 -At -F"|" -f -'
 }
 admin_url_for() { printf '%s' "$1" | sed -E "s#(://[^/]*/)[^?]*#\1$2#"; }
 restore_db() { # restore_db DUMP NEWDB: creates NEWDB and restores DUMP into it (bundled or managed)
   local dump=$1 new=$2 owner app bk
-  owner=$(envget DB_OWNER_USER); owner=${owner:-curriculum_owner}
-  app=$(envget DB_APP_USER); app=${app:-curriculum_app}
-  bk=$(envget DB_BACKUP_USER); bk=${bk:-curriculum_backup}
+  owner=$(envget DB_OWNER_USER); owner=${owner:-midad_owner}
+  app=$(envget DB_APP_USER); app=${app:-midad_app}
+  bk=$(envget DB_BACKUP_USER); bk=${bk:-midad_backup}
   [[ $new =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || die "invalid database name $new"
   if ((MANAGED)); then
     [[ -n $RESTORE_URL ]] || die "no administrator connection for the managed database"
@@ -720,14 +720,14 @@ cmd_restore() {
   if [[ $name == *.enc ]]; then
     ensure_image
     get_passphrase pass existing
-    CS_BACKUP_PASSPHRASE=$pass docker run --rm -i -e CS_BACKUP_PASSPHRASE "$IMAGE" node dist/cli/backup-crypt.js decrypt <"$archive" >"$staging/backup.tar" || die "could not decrypt $name (wrong passphrase, or a damaged file)"
+    MIDAD_BACKUP_PASSPHRASE=$pass docker run --rm -i -e MIDAD_BACKUP_PASSPHRASE "$IMAGE" node dist/cli/backup-crypt.js decrypt <"$archive" >"$staging/backup.tar" || die "could not decrypt $name (wrong passphrase, or a damaged file)"
     archive=$staging/backup.tar
     say "  decrypted"
   fi
   x="$staging/x"
   mkdir -m 700 "$x"
   tar -C "$x" -xf "$archive"
-  [[ $(kv_get "$x/manifest.txt" format) == cs-backup-1 && -f $x/database.dump ]] || die "$name is not a Curriculum Scope backup"
+  [[ $(kv_get "$x/manifest.txt" format) == midad-backup-1 && -f $x/database.dump ]] || die "$name is not a Midad backup"
   (cd "$x" && for f in database.dump settings.env caddy-data.tar.gz verify-live.txt; do
     [[ -f $f ]] || continue
     [[ $(sha256sum "$f" | cut -d' ' -f1) == $(kv_get manifest.txt "sha256.$f") ]] || die "$f inside the backup does not match its checksum"
@@ -830,7 +830,7 @@ cmd_restore() {
 # ------------------------------------------------------------------ menu
 cmd_menu() {
   local c
-  choose c "Curriculum Scope: what do you want to do?" 3 "Start" "Stop" "Status" "Back up" "Restore" "Test a backup (changes nothing)" "Set up backup copies (folder or USB drive, server, bucket)" "Quit"
+  choose c "Midad: what do you want to do?" 3 "Start" "Stop" "Status" "Back up" "Restore" "Test a backup (changes nothing)" "Set up backup copies (folder or USB drive, server, bucket)" "Quit"
   case $c in
     1) CMD=start; cmd_start ;; 2) CMD=stop; cmd_stop ;; 3) CMD=status; cmd_status ;; 4) CMD=backup; cmd_backup ;;
     5) CMD=restore; cmd_restore ;; 6) CMD=verify; cmd_restore ;; 7) CMD=destinations; cmd_destinations ;; *) ;;

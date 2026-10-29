@@ -7,8 +7,8 @@ const MONITOR_ROWS = { x: 100, y: 270, w: 770, h: 170 };
 
 export const meta = {
   id: 'showcase-3',
-  title: 'نطاق المناهج — في ثلاث دقائق',
-  titleEn: 'Curriculum Scope — in three minutes',
+  title: 'مِداد — في ثلاث دقائق',
+  titleEn: 'Midad — in three minutes',
   target: [170, 190],
 };
 
@@ -43,8 +43,8 @@ export const scenes = [
     id: 'm-reveal', ch: 1, t: 'logo', music: 'reveal', lead: 1.6, tail: 1.6,
     p: { tagline: { ar: 'منصة تعليمية سحابية للمدارس والمؤسسات التعليمية', en: 'A cloud education platform for schools and education organizations' } },
     lines: [
-      L('نِطَاقُ الْمَنَاهِجِ: مِنَصَّةٌ وَاحِدَةٌ تَرْبِطُ الْمَنْهَجَ، وَالْفَصْلَ، وَالْمُؤَسَّسَةَ.',
-        'Curriculum Scope: one platform that connects the curriculum, the classroom and the institution.'),
+      L('مِدَادٌ: مِنَصَّةٌ وَاحِدَةٌ تَرْبِطُ الْمَنْهَجَ، وَالْفَصْلَ، وَالْمُؤَسَّسَةَ.',
+        'Midad: one platform that connects the curriculum, the classroom and the institution.'),
     ],
   },
   {
@@ -197,7 +197,7 @@ export const scenes = [
     },
     lines: [
       L('نَدْعُو الْمَدَارِسَ، وَشَرِكَاتِ التَّعْلِيمِ وَالنَّشْرِ، إِلَى الْبَرْنَامَجِ التَّجْرِيبِيِّ.', 'We invite schools and education and publishing companies to the pilot programme.'),
-      L('نِطَاقُ الْمَنَاهِجِ: مَنْهَجٌ وَاضِحٌ، وَفَصْلٌ مُتَّصِلٌ، وَمُؤَسَّسَةٌ تَرَى الصُّورَةَ كَامِلَةً.', 'Curriculum Scope: a clear curriculum, a connected classroom, and an institution that sees the whole picture.'),
+      L('مِدَادٌ: مَنْهَجٌ وَاضِحٌ، وَفَصْلٌ مُتَّصِلٌ، وَمُؤَسَّسَةٌ تَرَى الصُّورَةَ كَامِلَةً.', 'Midad: a clear curriculum, a connected classroom, and an institution that sees the whole picture.'),
       L('تَوَاصَلُوا مَعَنَا لِعَرْضٍ مُبَاشِرٍ.', 'Contact us for a live demo.'),
     ],
   },

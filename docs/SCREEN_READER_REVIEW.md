@@ -1,6 +1,6 @@
 # Screen-reader review checklist
 
-A manual review of Curriculum Scope with screen readers, for the parts of WCAG
+A manual review of Midad with screen readers, for the parts of WCAG
 2.2 AA that automated checks cannot judge: whether what is announced makes
 sense, in the right order, in the right language, at the right moment.
 
@@ -83,7 +83,7 @@ screen reader shows how they actually sound.
 |---|---|---|---|
 | F1 | The notifications button was named "Notifications"; the unread count shown on it was not announced. | Named "Notifications, 2 unread" while there are unread ones. | The count is announced; after opening the list the button is "Notifications" again. |
 | F2 | The whole page area was a live region, so a page change or a filter change could have the whole page read out. | Not a live region. Pages are announced by moving focus to the heading; messages use the status area. | Moving to another page reads its heading, not the whole page; changing a picker filter announces only the filter's new state. |
-| F3 | Every page had the same title, "Curriculum Scope". | The title is the page heading followed by " · Curriculum Scope" (in Arabic, " · نطاق المناهج"). | The title is announced on each page; the browser tab and history show it. |
+| F3 | Every page had the same title, the app's name. | The title is the page heading followed by " · Midad" (in Arabic, " · مِداد"). | The title is announced on each page; the browser tab and history show it. |
 | F4 | In the picker the kind of a book (Ministry, language-school, external reference, programme, assessment) was shown by colour only. | Each book button also says its kind, as the student portal already did. | A book is announced as its title followed by its kind, e.g. "… (Ministry material), toggle button, not pressed". |
 | F5 | Form hints and field errors were not linked to their fields; a field with an error was only "invalid". | Hints and errors are the field's description. | On an invalid field the error is read with the field; a corrected field no longer reads the old error. |
 | F6 | Text in the other language was not marked: English titles, names and notes in the Arabic interface, Arabic names in the English one. | Marked with `lang`, so the screen reader can switch voice. | With automatic language switching on, such text is read in its own language, a whole phrase at a time. |

@@ -497,7 +497,7 @@ errors not announced and a form error announced twice. All are fixed; the last r
 
 The "what screen readers are given" test against the previous front end (its checks made non-stopping so every one is
 reported): 13 failures, one for each fixed problem: the page area was a live region (1); every page
-title was "Curriculum Scope" (6: account, picker, settings, not found, and after switching to Arabic
+title was the app's name alone (6: account, picker, settings, not found, and after switching to Arabic
 and back); the password field had no description, before and after the error (3); the two book
 buttons had no kind in their name (2); the notifications button was "Notifications" with two unread (1).
 That test creates its member directly in the database, because the run already uses most of the 10
@@ -526,7 +526,7 @@ in PROJECT_STATUS.md; the English run was repeated after those fixes (1 passed, 
 | `scripts/backup.sh` with the backup role | Pass — 140 KB dump + checksum |
 | `scripts/verify-backup.sh` | Pass — migrations present, row counts match, RLS flags intact, invariants hold |
 | Restore into a new DB and query as the app role | Pass — catalogue readable, tenant rows hidden without context |
-| Backup from inside the compose stack (`docker compose exec postgres pg_dump -U curriculum_backup`) | Pass |
+| Backup from inside the compose stack (`docker compose exec postgres pg_dump -U midad_backup`) | Pass |
 | Re-run after the final code changes (image rebuilt at commit `1310087`; stack from an empty volume) | Pass — app, worker, postgres, mailpit healthy; `/readyz` 200; image contains no `.env` and no build CA |
 
 ### Two app instances behind Caddy (2026-10-25)
@@ -601,25 +601,25 @@ by ClamAV. Copy targets ran in containers on one Docker network (`BACKUP_DOCKER_
 server (`rclone serve s3`: MinIO's image was not available here, and no real cloud provider was used),
 and a folder standing in for a USB drive. Interactive runs were driven through a pseudo-terminal.
 
-**Linux script (`ops/cs.sh`)**
+**Linux script (`ops/midad.sh`)**
 
 | Check | Result |
 | --- | --- |
 | Interactive backup: settings file and certificates included, encrypted, copies to the folder, SFTP and the bucket | Pass in 6.5 s: archive 304 KB (dump 284 KB, 51 tables, 16 migrations); the four files have the same checksum; none of `PGDMP`, `SESSION_SECRET`, `DATA_ENCRYPTION_KEY`, `manifest` or the photo's name appears in the archive; the passphrase appears in no file |
 | `--yes` with no terminal, passphrase from the passphrase file | Pass: the saved choices reused, all three copies made |
 | SFTP server stopped | The backup kept here and in the folder; "copies failed: server", exit 1; no lock or unfinished files left |
-| Old backups (files dated 40 and 7 days back, and a file not named `cs-backup-*`, in all four places) | The 40-day-old backups deleted in the backup folder, the folder copy, on SFTP and in the bucket; the others kept |
+| Old backups (files dated 40 and 7 days back, and a file not named `midad-backup-*`, in all four places) | The 40-day-old backups deleted in the backup folder, the folder copy, on SFTP and in the bucket; the others kept |
 | Test of one backup fetched from each of the four places (`--only-verify`) | Pass ×4: 16 migrations, row-level security forced on 34 tables, all 51 tables' row counts equal to the backup's check; the scratch database dropped |
 | One byte changed in the folder copy | Refused by the checksum; with the checksum file removed, refused by the decryption ("Wrong passphrase, or the file is damaged"); exit 1 |
 | Wrong passphrase | Refused, exit 1 |
-| Restore from the bucket after renaming the school and deleting the webhook, switch | New database `curriculum_scope_r<time>`, checks passed, app back within a minute; the name and the webhook back, the photo's bytes identical (MD5), 20 test attempts, key check passed; the owner signed in through Caddy with password and TOTP |
+| Restore from the bucket after renaming the school and deleting the webhook, switch | New database `midad_r<time>`, checks passed, app back within a minute; the name and the webhook back, the photo's bytes identical (MD5), 20 test attempts, key check passed; the owner signed in through Caddy with password and TOTP |
 | **Lost server:** `docker compose down -v` (database, certificates, virus signatures gone), settings file, local backups and copy settings removed; restore from SFTP | Pass in about 90 s: the SFTP connection set up during the restore, the settings file put back from the backup, the database restored and checked, the certificates restored (HTTPS still validated by the old certificate authority), all services healthy, two-factor sign-in worked |
 | Managed database: a separate PostgreSQL 16 with the three roles and an admin that is neither superuser nor `BYPASSRLS` (only `CREATEDB` and membership of the owner role); restore and switch | New database owned by the owner role; `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `BACKUP_DATABASE_URL` rewritten; checks as the backup role passed; two-factor sign-in worked; backup and test from it passed, also with `DB_NAME` left out |
 | SFTP server replaced (new host key) | Copy refused ("knownhosts: key mismatch"), exit 1 |
 | A lock held by a running process; a lock and a decrypted file left by a killed run | Refused ("another backup or restore is running (process …)"); taken over with a warning, the leftovers deleted |
 | Stop, "remove the containers" | Containers removed; the four volumes kept |
 
-**Windows script (`ops\cs.ps1`), run with PowerShell 7.4.2 on Linux**
+**Windows script (`ops\midad.ps1`), run with PowerShell 7.4.2 on Linux**
 
 | Check | Result |
 | --- | --- |

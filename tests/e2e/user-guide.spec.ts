@@ -62,7 +62,7 @@ const fmt = (n: number) => new Intl.NumberFormat(LANG === 'ar' ? 'ar-EG' : 'en-G
 // ---------------------------------------------------------------- the demo school
 const DEMO = {
   en: {
-    school: 'Nile Valley Language School', mona: 'Mona Hassan', karim: 'Karim Adel', salma: 'Salma Fathy', support: 'Curriculum Scope Support',
+    school: 'Nile Valley Language School', mona: 'Mona Hassan', karim: 'Karim Adel', salma: 'Salma Fathy', support: 'Midad Support',
     scope: 'Primary 1–3 core books', scopeDescription: 'Arabic, English, maths and science for the lower primary platform.',
     campusB: 'Primary 1–3 core books — Campus B', summerOrg: 'Nile Valley Summer Programme', summerScope: 'Summer reading 2027',
     note1: 'Order 120 copies before September; check the new cover.', note2: 'Waiting for the 2027 edition from the publisher.',
@@ -75,7 +75,7 @@ const DEMO = {
     omarQ3: 'My family has five people. We live in Giza.', hanaQ3: 'I have a brother. He is seven.', testFeedback: 'Good sentences. Next time, say what each person does.',
   },
   ar: {
-    school: 'مدرسة وادي النيل للغات', mona: 'منى حسن', karim: 'كريم عادل', salma: 'سلمى فتحي', support: 'دعم نطاق المناهج',
+    school: 'مدرسة وادي النيل للغات', mona: 'منى حسن', karim: 'كريم عادل', salma: 'سلمى فتحي', support: 'دعم مِداد',
     scope: 'الكتب الأساسية للصفوف 1–3', scopeDescription: 'العربي والإنجليزي والرياضيات والعلوم لمنصة المرحلة الابتدائية الأولى.',
     campusB: 'الكتب الأساسية للصفوف 1–3 — الفرع ب', summerOrg: 'برنامج وادي النيل الصيفي', summerScope: 'قراءات صيف 2027',
     note1: 'اطلب 120 نسخة قبل سبتمبر، وراجع الغلاف الجديد.', note2: 'في انتظار طبعة 2027 من الناشر.',
@@ -92,7 +92,7 @@ const DEMO = {
 const MONA = 'mona.hassan@nilevalley.example';
 const KARIM = 'karim.adel@nilevalley.example';
 const SALMA = 'salma.fathy@nilevalley.example';
-const ADMIN = 'support@curriculumscope.example';
+const ADMIN = 'support@midad.example';
 const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 
 // ---------------------------------------------------------------- capture helpers

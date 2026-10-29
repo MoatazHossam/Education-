@@ -20,7 +20,7 @@ NOT VERIFIED.
 | ID | Fact | Evidence |
 | --- | --- | --- |
 | V-1 | The application is served from a Google AI Studio domain (`*.ai.studio`). AI Studio "Build" apps call the Gemini API (`GEMINI_API_KEY`) and can be exported by their owner as a ZIP file or pushed to GitHub. | The URL; [Google: Build apps in Google AI Studio](https://ai.google.dev/gemini-api/docs/aistudio-build-mode). **Whether Wise EduAgent is such an app, and what it does, is NOT VERIFIED.** |
-| V-2 | This repository's original artifact is headed "Paradise EduAgent · Content scope · Academic year 2026/2027". Curriculum Scope began as the tool that defines which Egyptian curriculum materials Paradise EduAgent covers. | `legacy/egypt-curriculum-picker.html`, line 105; `docs/PRODUCT_OVERVIEW.md`. This is the only verified link between the two products. |
+| V-2 | This repository's original artifact is headed "Paradise EduAgent · Content scope · Academic year 2026/2027". Midad began as the tool that defines which Egyptian curriculum materials Paradise EduAgent covers. | `legacy/egypt-curriculum-picker.html`, line 105; `docs/PRODUCT_OVERVIEW.md`. This is the only verified link between the two products. |
 
 ## 3. Inventory
 

@@ -57,7 +57,7 @@ const deliveries = () => withSystemContext(h.ownerDb, (trx) => trx.selectFrom('w
 const dueNow = () => withSystemContext(h.ownerDb, (trx) => sql`UPDATE webhook_deliveries SET next_attempt_at = now() WHERE status = 'pending'`.execute(trx));
 
 function verify(r: Received, secret: string) {
-  const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(String(r.headers['x-curriculumscope-signature']));
+  const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(String(r.headers['x-midad-signature']));
   expect(m, 'signature header').not.toBeNull();
   const [, t, v1] = m!;
   expect(Math.abs(Date.now() / 1000 - Number(t))).toBeLessThan(60);
@@ -132,8 +132,8 @@ describe('webhook endpoints', () => {
     expect(all.received.map((r) => r.json.type).sort()).toEqual(['scope.created', 'scope.deleted', 'scope.items_changed', 'scope.updated']);
     for (const r of all.received) {
       verify(r, hook.secret);
-      expect(r.headers['x-curriculumscope-event']).toBe(r.json.type);
-      expect(r.headers['user-agent']).toBe('CurriculumScope-Webhooks/1');
+      expect(r.headers['x-midad-event']).toBe(r.json.type);
+      expect(r.headers['user-agent']).toBe('Midad-Webhooks/1');
       expect(r.json).toMatchObject({ id: expect.any(String), createdAt: expect.any(String), organizationId: s.owner.orgId });
     }
     const items = all.received.find((r) => r.json.type === 'scope.items_changed')!.json;

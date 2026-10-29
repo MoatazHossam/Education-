@@ -15,9 +15,9 @@ Requirements: Node.js 22, PostgreSQL 16.
 npm ci
 # Create roles and the database (as a PostgreSQL superuser):
 psql -U postgres <<'SQL'
-CREATE ROLE curriculum_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
-CREATE ROLE curriculum_app   LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
-CREATE DATABASE curriculum_scope OWNER curriculum_owner;
+CREATE ROLE midad_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
+CREATE ROLE midad_app  LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
+CREATE DATABASE midad OWNER midad_owner;
 SQL
 cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
 set -a; . ./.env; set +a
@@ -118,9 +118,9 @@ then set in `.env.production`:
 
 | Setting | Value |
 | --- | --- |
-| `DATABASE_URL` | the app role (`curriculum_app`), e.g. `postgres://curriculum_app:…@db.example.com:5432/curriculum_scope` |
-| `MIGRATION_DATABASE_URL` | the owner role (`curriculum_owner`), same database |
-| `BACKUP_DATABASE_URL` | the backup role (`curriculum_backup`, `BYPASSRLS` + `pg_read_all_data`), same database |
+| `DATABASE_URL` | the app role (`midad_app`), e.g. `postgres://midad_app:…@db.example.com:5432/midad` |
+| `MIGRATION_DATABASE_URL` | the owner role (`midad_owner`), same database |
+| `BACKUP_DATABASE_URL` | the backup role (`midad_backup`, `BYPASSRLS` + `pg_read_all_data`), same database |
 | `DATABASE_SSL` | `true` |
 | `RESTORE_ADMIN_URL` (optional) | for restores: a role that can create databases and is a member of the owner role, database `postgres`; left out, a restore asks for it |
 
@@ -158,7 +158,7 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
    "Rebuild the app image first". Both instances restart together, a few seconds without service.
 2. Migrations must be backwards-compatible with the previous release (add columns/tables first,
    remove later) so a rollback only needs the old image.
-3. Rollback: both ways of rebuilding keep the image they replace as `curriculum-scope:previous`.
+3. Rollback: both ways of rebuilding keep the image they replace as `midad:previous`.
    Add `APP_IMAGE_TAG=previous` to `.env.production` and run `ops/start.sh --env prod`
    (or `APP_IMAGE_TAG=previous scripts/rolling-restart.sh`); remove the line again before the
    next upgrade, which would otherwise build into that tag. If a migration must be reverted,
@@ -264,21 +264,21 @@ failures (any uptime service, for example UptimeRobot or Better Stack); it also 
 
 ## 8. Operations scripts (Linux and Windows)
 
-`ops/` holds one tool in two forms: `ops/cs.sh` for Linux (bash) and `ops\cs.ps1` for Windows
+`ops/` holds one tool in two forms: `ops/midad.sh` for Linux (bash) and `ops\midad.ps1` for Windows
 (PowerShell), with short launchers. Both do the same things, read the same settings and make the same
 backups: a backup made with one restores with the other. The host needs only Docker with Compose v2;
 the database tools, encryption and file transfers run in containers.
 
 | Task | Linux | Windows |
 | --- | --- | --- |
-| Menu of everything below | `ops/cs.sh` | double-click `ops\cs.bat` |
+| Menu of everything below | `ops/midad.sh` | double-click `ops\midad.bat` |
 | Start | `ops/start.sh` | `ops\start.bat` |
 | Stop | `ops/stop.sh` | `ops\stop.bat` |
 | Status | `ops/status.sh` | `ops\status.bat` |
 | Back up | `ops/backup.sh` | `ops\backup.bat` |
 | Restore | `ops/restore.sh` | `ops\restore.bat` |
 | Test a backup (changes nothing) | `ops/restore.sh --only-verify` | `ops\restore.bat --only-verify` |
-| Set up backup copies | `ops/cs.sh destinations` | `ops\cs.bat destinations` |
+| Set up backup copies | `ops/midad.sh destinations` | `ops\midad.bat destinations` |
 
 Without options the scripts ask what they need: which installation, which choices, which backup.
 Options for the same answers, the same on both systems:
@@ -297,11 +297,11 @@ Options for the same answers, the same on both systems:
 
 **Linux** (recommended for a server): Docker Engine with the Compose plugin
 (`https://docs.docker.com/engine/install/`), `systemctl enable docker`, the repository in for example
-`/opt/curriculum-scope`, and `.env.production` (§3.2) readable by its owner only (`chmod 600`; the
+`/opt/midad`, and `.env.production` (§3.2) readable by its owner only (`chmod 600`; the
 start script offers to fix it). Run the scripts as root or as a member of the `docker` group.
 
 **Windows 10 (22H2) or 11:** Docker Desktop with the WSL 2 engine, and the repository (Git for Windows,
-or the ZIP from GitHub). The `.bat` files run `ops\cs.ps1` with PowerShell 7 when it is installed,
+or the ZIP from GitHub). The `.bat` files run `ops\midad.ps1` with PowerShell 7 when it is installed,
 otherwise with the Windows PowerShell 5.1 built into Windows, allowing that one script to run
 (`-ExecutionPolicy Bypass`). Edit settings files with Notepad. Docker Desktop runs only while its
 user is signed in: for the app to come back after a restart, turn on *Start Docker Desktop when you
@@ -317,7 +317,7 @@ unless they were stopped with the stop script, which keeps them stopped.
 - **Start** checks the settings file (required values present, no `change-me` left, `https://` in
   production, file readable by you only), builds the app image the first time, starts every service and
   waits until the app instances answer `/readyz`, then shows the status. It asks whether to rebuild the
-  image first (after updating the code; the replaced image is kept as `curriculum-scope:previous`, §4).
+  image first (after updating the code; the replaced image is kept as `midad:previous`, §4).
   With a managed database (`DATABASE_URL` set) the bundled `postgres` service is not started.
 - **Stop** asks: stop (containers kept, start again with start) or stop and remove the containers. Neither
   deletes data: the database, certificates and virus signatures stay in Docker volumes.
@@ -336,7 +336,7 @@ unless they were stopped with the stop script, which keeps them stopped.
 Not included: Docker images (rebuilt from the code; the backup records the app version), virus
 signatures (downloaded again), and `.env.backup` with your copy settings (note them down).
 
-- **Name and format:** `cs-backup-<dev|prod>-<UTC time>.tar.enc` (or `.tar`), with a `.sha256` checksum
+- **Name and format:** `midad-backup-<dev|prod>-<UTC time>.tar.enc` (or `.tar`), with a `.sha256` checksum
   file next to it; inside, a `manifest.txt` lists every part with its own checksum.
 - **Encryption** (default on): AES-256-GCM with a key derived from your passphrase (scrypt). The
   passphrase needs 12 characters or more. A wrong passphrase and any changed byte are both detected.
@@ -347,7 +347,7 @@ signatures (downloaded again), and `.env.backup` with your copy settings (note t
   checksum after the transfer.
 - **Old backups:** backups older than the number of days you choose (default 30; 0 keeps all) are
   deleted from the backup folder and from each copy the new backup reached. Only files named
-  `cs-backup-*` are touched, and only after a successful backup, so the newest always stays.
+  `midad-backup-*` are touched, and only after a successful backup, so the newest always stays.
 - **Safety:** the backup runs while the app serves (`pg_dump` reads a consistent snapshot). One backup or
   restore runs at a time; a lock left by a run that was killed is taken over, and what it left behind
   (possibly decrypted data) is deleted. If any copy fails, the script says which, keeps the backup, and
@@ -383,21 +383,21 @@ a backup first asks for one; the connection is tested when you save it.
 First run one backup by hand and answer the questions: a schedule (`--yes`) reuses those answers.
 For the passphrase, choose *Passphrase file for scheduled backups* in the copies menu: it writes the
 passphrase to a file readable only by you (on Windows by you and SYSTEM) and saves its location.
-Alternatively set `CS_BACKUP_PASSPHRASE` in the schedule's environment.
+Alternatively set `MIDAD_BACKUP_PASSPHRASE` in the schedule's environment.
 
 **Linux (cron):**
 ```bash
-# /etc/cron.d/curriculum-scope   (cron emails the echo line when a run fails)
+# /etc/cron.d/midad   (cron emails the echo line when a run fails)
 MAILTO=ops@example.com
-15 2 * * * root cd /opt/curriculum-scope && ops/backup.sh --env prod --yes >>/var/log/curriculum-scope-backup.log 2>&1 || echo "Curriculum Scope backup failed: see /var/log/curriculum-scope-backup.log"
-45 3 * * 0 root cd /opt/curriculum-scope && ops/restore.sh --env prod --yes --from bucket --only-verify >>/var/log/curriculum-scope-backup.log 2>&1 || echo "Curriculum Scope backup test failed: see /var/log/curriculum-scope-backup.log"
+15 2 * * * root cd /opt/midad && ops/backup.sh --env prod --yes >>/var/log/midad-backup.log 2>&1 || echo "Midad backup failed: see /var/log/midad-backup.log"
+45 3 * * 0 root cd /opt/midad && ops/restore.sh --env prod --yes --from bucket --only-verify >>/var/log/midad-backup.log 2>&1 || echo "Midad backup test failed: see /var/log/midad-backup.log"
 ```
 The second line tests the newest copy in the bucket every Sunday (use `server` or `folder` for those copies).
 
 **Windows (Task Scheduler):** *Create Task…*; *Run only when user is logged on* (Docker Desktop needs the
 signed-in user); trigger *Daily* at 02:15; action *Start a program*: program `cmd.exe`, arguments
 `/c ops\backup.bat --env prod --yes >> backups\backup-log.txt 2>&1`, *Start in* the project folder (e.g.
-`C:\curriculum-scope`). A second task, weekly, with `ops\restore.bat --env prod --yes --from bucket --only-verify`.
+`C:\midad`). A second task, weekly, with `ops\restore.bat --env prod --yes --from bucket --only-verify`.
 The *Last Run Result* column shows `0x0` for success and `0x1` for a failure; details are in the log file.
 
 Never schedule a restore without `--only-verify`: with `--yes` it would switch the app to the restored data.
@@ -455,7 +455,7 @@ passwords are fine with the bundled database, which creates its roles on first s
 With `DATABASE_URL` set (§3.3), backups read the database through `BACKUP_DATABASE_URL`; a restore
 creates the new database on the managed server through `RESTORE_ADMIN_URL` (taken from the settings file,
 or asked), checks it as the backup role, and switches the three URLs. The admin role needs to create
-databases and be a member of the owner role (`GRANT curriculum_owner TO <admin>`); it needs no superuser
+databases and be a member of the owner role (`GRANT midad_owner TO <admin>`); it needs no superuser
 rights.
 
 ### 8.10 What has been tested

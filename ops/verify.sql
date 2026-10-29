@@ -1,4 +1,4 @@
--- Checks a Curriculum Scope database: the live one when a backup is taken, the restored one
+-- Checks a Midad database: the live one when a backup is taken, the restored one
 -- after a restore or a backup test. Run as the backup role or a superuser:
 --   psql -v ON_ERROR_STOP=1 -At -F '|' -f ops/verify.sql
 -- Output lines: migrations|<count>|<last>, forced_rls_tables|<count>, rows|<table>|<count>.

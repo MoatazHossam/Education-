@@ -1,4 +1,4 @@
-# Curriculum Scope
+# Midad
 
 Multi-tenant SaaS for planning which Egyptian K-12 curriculum materials an organization covers —
 derived from the **Egypt Curriculum Picker** Claude Artifact (original source preserved in
@@ -52,7 +52,7 @@ npm run dev:worker      # emails + billing lifecycle
 | `npm run paymob:check` | With Paymob **test-mode** keys: real intention + signed-redirect check (DEPLOYMENT_GUIDE §3.5) |
 | `npm run ai:check` | With an AI provider's key (`AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`): one real request with a JSON schema, to check the key and model (docs/AI_LAYER.md) |
 | `npm run build` / `npm start` / `npm run start:worker` | Production build and processes |
-| `ops/cs.sh` (Linux), `ops\cs.bat` (Windows) | Start, stop, status, back up (encrypted; copies to a folder or USB drive, an SFTP server or an S3 bucket), restore and test a backup, interactively or scheduled (DEPLOYMENT_GUIDE §8) |
+| `ops/midad.sh` (Linux), `ops\midad.bat` (Windows) | Start, stop, status, back up (encrypted; copies to a folder or USB drive, an SFTP server or an S3 bucket), restore and test a backup, interactively or scheduled (DEPLOYMENT_GUIDE §8) |
 | `scripts/rolling-restart.sh [--build]` | Upgrade or restart production one app instance at a time (DEPLOYMENT_GUIDE §4) |
 | `scripts/backup.sh`, `scripts/restore.sh`, `scripts/verify-backup.sh` | Database-only backups with the PostgreSQL client tools on the host, without Docker (DEPLOYMENT_GUIDE §5) |
 | `node scripts/perf-smoke.mjs` | Latency/throughput probe |

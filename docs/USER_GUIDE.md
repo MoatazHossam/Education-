@@ -1,6 +1,6 @@
-# Curriculum Scope: user guide
+# Midad: user guide
 
-Curriculum Scope lets a school, publisher or ed-tech team choose which books
+Midad lets a school, publisher or ed-tech team choose which books
 and programmes of the Egyptian curriculum (Primary 1 to Secondary 3) its
 platform covers. The team keeps those choices together in named lists called
 **content scopes**. It adds notes, assigns books to colleagues with due dates,
@@ -747,7 +747,7 @@ or described, deleted, books added or removed, and notes, assignees, statuses
 or due dates changed.
 
 The signing secret is shown once. Your system checks each request's
-`X-CurriculumScope-Signature` header with it before trusting the request.
+`X-Midad-Signature` header with it before trusting the request.
 
 ![Endpoint added: the signing secret and how to check the signature](user-guide/images/webhook-secret.png)
 
@@ -860,7 +860,7 @@ https://…/verify-email?token=…
 
 The link expires in 48 hours. If you did not sign up, ignore this message.
 
-— Curriculum Scope
+— Midad
 ```
 
 **Invitation** (expires in 7 days)
@@ -873,7 +873,7 @@ https://…/invite?token=…
 
 The invitation expires in 7 days.
 
-— Curriculum Scope
+— Midad
 ```
 
 **A book was assigned to you** (right away; or one morning summary, as you
@@ -888,7 +888,7 @@ https://…/org/…/scopes/…/items?show=mine
 
 You receive this because books were assigned to you. Turn these emails off in your account settings: https://…/account
 
-— Curriculum Scope
+— Midad
 ```
 
 **Books due soon or overdue** (each book is reminded once when due soon and
@@ -910,13 +910,13 @@ https://…/org/…/assignments
 
 You receive this because books with a due date are assigned to you. Each book is reminded once when it is due soon and once when it is overdue. Turn these emails off in your account settings: https://…/account
 
-— Curriculum Scope
+— Midad
 ```
 
 **A new catalogue year is published** (to editors, admins and owners)
 
 ```text
-The 2027/2028 catalogue (Egypt K-12 curriculum — academic year 2027/2028) is now available in Curriculum Scope. These content scopes of Nile Valley Language School still use an older catalogue:
+The 2027/2028 catalogue (Egypt K-12 curriculum — academic year 2027/2028) is now available in Midad. These content scopes of Nile Valley Language School still use an older catalogue:
 • Primary 1–3 core books
 • Primary 1–3 core books — Campus B
 
@@ -925,7 +925,7 @@ https://…/org/…/scopes
 
 You receive this because you can edit scopes in Nile Valley Language School. Turn these emails off in your account settings: https://…/account
 
-— Curriculum Scope
+— Midad
 ```
 
 **Payment received**
@@ -933,7 +933,7 @@ You receive this because you can edit scopes in Nile Valley Language School. Tur
 ```text
 We received EGP 2,900.00 for invoice INV-2026-001000 (Nile Valley Language School). Thank you.
 
-— Curriculum Scope
+— Midad
 ```
 
 The system also sends:

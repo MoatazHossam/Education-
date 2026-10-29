@@ -2,13 +2,13 @@ import { createCipheriv, createDecipheriv, randomBytes, scrypt, type DecipherGCM
 import { Transform, type Readable, type Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-// Passphrase encryption of backup archives (ops/backup.sh, ops\cs.ps1). The scripts run
+// Passphrase encryption of backup archives (ops/backup.sh, ops\midad.ps1). The scripts run
 // it from the app image, so a host needs nothing but Docker. Layout:
-//   "CSBACKUP1\n" | salt (16) | IV (12) | AES-256-GCM ciphertext | tag (16)
+//   "MIDADBACKUP1\n" | salt (16) | IV (12) | AES-256-GCM ciphertext | tag (16)
 // The key comes from scrypt (N=2^15, r=8, p=1). Decryption streams the plaintext out and
 // checks the tag at the end: callers write to a temporary file and keep it only on success.
 
-export const MAGIC = Buffer.from('CSBACKUP1\n');
+export const MAGIC = Buffer.from('MIDADBACKUP1\n');
 const SALT = 16;
 const IV = 12;
 const TAG = 16;
@@ -54,8 +54,8 @@ export async function decryptStream(passphrase: string, input: Readable, output:
       try {
         if (!decipher) {
           header = Buffer.concat([header, chunk]);
+          if (header.length >= MAGIC.length && !header.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error('Not an encrypted backup (unknown format)');
           if (header.length < head) return done();
-          if (!header.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error('Not an encrypted backup (unknown format)');
           const salt = header.subarray(MAGIC.length, MAGIC.length + SALT);
           const iv = header.subarray(MAGIC.length + SALT, head);
           decipher = createDecipheriv('aes-256-gcm', await deriveKey(passphrase, salt), iv);

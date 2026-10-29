@@ -25,11 +25,11 @@ wait_ready() {
 }
 
 if [ "${1:-}" = "--build" ]; then
-  # Keep the image being replaced as curriculum-scope:previous. Rollback (with migrations that the
+  # Keep the image being replaced as midad:previous. Rollback (with migrations that the
   # previous release can still use, §4): APP_IMAGE_TAG=previous scripts/rolling-restart.sh
-  if docker image inspect curriculum-scope:local >/dev/null 2>&1; then
-    docker image tag curriculum-scope:local curriculum-scope:previous
-    echo "Kept the current image as curriculum-scope:previous."
+  if docker image inspect midad:local >/dev/null 2>&1; then
+    docker image tag midad:local midad:previous
+    echo "Kept the current image as midad:previous."
   fi
   dc build migrate
   dc run --rm migrate

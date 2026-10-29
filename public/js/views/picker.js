@@ -48,7 +48,7 @@ export function listText(tree, sel) {
   return s.trim() || t('picker.nothingSelected');
 }
 
-const prefKey = (orgId) => `cs-scope-${orgId}`;
+const prefKey = (orgId) => `midad-scope-${orgId}`;
 const readPref = (orgId) => { try { return localStorage.getItem(prefKey(orgId)); } catch { return null; } };
 const writePref = (orgId, id) => { try { localStorage.setItem(prefKey(orgId), id); } catch { /* optional convenience */ } };
 

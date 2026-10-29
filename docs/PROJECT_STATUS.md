@@ -301,7 +301,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Fixed while preparing it** (found by reading the markup; axe does not check these):
   - The notifications button's unread count was not announced: its name replaced the badge. It is now "Notifications, 2 unread".
   - The whole page area was a live region, so screen readers could read a whole page out after each change. It is not a live region any more: pages are announced through the heading that takes focus, and messages through the status area.
-  - Every page had the same title. Each page is now titled after its heading, followed by " · Curriculum Scope" (in Arabic, the Arabic name).
+  - Every page had the same title. Each page is now titled after its heading, followed by " · Midad" (in Arabic, the Arabic name).
   - In the picker, a book's kind (Ministry, language-school, external reference, programme, assessment) was shown by colour only. Each book button now also says it, as the student portal already did.
   - Form hints and field errors were not linked to their fields. They are now the field's description, and a corrected field no longer carries its old error.
 - **Files:** `docs/SCREEN_READER_REVIEW.md`, `public/index.html`, `public/js/{main,dom}.js`, `public/js/views/{shell,picker}.js`, `public/js/i18n.js`.
@@ -330,11 +330,11 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - **The gaps found in the guide, first:**
     - Compose now passes every setting the app reads, so a managed database (with SSL), the pool size, the timings and the image tag can be set in the settings file.
     - Every container's log is capped at 5 × 10 MB.
-    - A rebuild keeps the image it replaces as `curriculum-scope:previous`, for a rollback (`APP_IMAGE_TAG=previous`).
+    - A rebuild keeps the image it replaces as `midad:previous`, for a rollback (`APP_IMAGE_TAG=previous`).
     - The production `migrate` job failed when the settings file set `FILE_SCAN=clamav`: fixed.
     - `ops/verify.sql` checks a database (migrations, forced row-level security, row counts of all 51 tables, invariants); `scripts/verify-backup.sh` uses it too.
     - Database passwords: hex is now advised, since base64's `/` breaks database addresses.
-  - **`ops/cs.sh` (Linux) and `ops\cs.ps1` with `.bat` launchers (Windows):**
+  - **`ops/midad.sh` (Linux) and `ops\midad.ps1` with `.bat` launchers (Windows):**
     - Commands: start, stop, status, back up, restore, test a backup, and set up the copies, plus a menu of all of them.
     - Every choice is asked and saved as the next default; `--yes` reuses the saved choices for cron and Task Scheduler.
     - The host needs only Docker: the tools run in containers.
@@ -353,7 +353,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - `tests/unit/backup-crypt.test.ts` (3).
   - The drill in TEST_REPORT §4: both scripts, every kind of copy, the failure cases, a lost server and a managed database. It found six problems, all fixed.
 - **Arabic deployment guide** (asked afterwards: "update the deployment guide in Arabic too"): `docs/DEPLOYMENT_GUIDE.ar.md` is the whole guide in Arabic, sections 1–8, with the commands unchanged and the scripts' English prompts quoted with their meaning (the scripts themselves speak English). The two guides link to each other and are to be updated together.
-- **Files:** `ops/` (`cs.sh`, `cs.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
+- **Files:** `ops/` (`midad.sh`, `midad.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
 - **Not done:**
   - The Windows script has run only under PowerShell 7 on Linux, not on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler).
   - Copies went to servers in containers, not to a real cloud provider.
@@ -747,7 +747,7 @@ These block release; development cannot do them.
 | 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist now has 32 tasks, 23–32 for the portal (4.2 item 4, done), and the results page holds them | — |
 | 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8); the AI provider, model and key, who pays, and each school's or plan's monthly AI allowance (B-10; the layer is built and waits for them) | Needed before selling the portal, and before any AI feature runs | B-8, B-10 |
 | 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
-| 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\cs.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
+| 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\midad.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
 
 ### 4.2 Development that can start now
 

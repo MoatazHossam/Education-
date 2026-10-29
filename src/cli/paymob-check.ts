@@ -44,7 +44,7 @@ async function main() {
     invoiceNumber: 'PAYMOB-CHECK',
     amountCents,
     currency: 'EGP',
-    description: 'Curriculum Scope integration check',
+    description: 'Midad integration check',
     customer: { email: arg('email', 'paymob-check@example.com'), name: 'Paymob Check' },
     returnUrl,
     webhookUrl: returnUrl,

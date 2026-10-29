@@ -143,9 +143,9 @@ cross-tenant `INSERT` is rejected; the app role cannot `UPDATE audit_logs` or `A
 
 | Role | Privileges | Used by |
 | --- | --- | --- |
-| Owner (`curriculum_owner`) | Owns schema objects | Migrations, seeding only (`MIGRATION_DATABASE_URL`) |
-| App (`curriculum_app`) | `SELECT/INSERT/UPDATE/DELETE` on tables except no `UPDATE` on `audit_logs`; sequences; no `BYPASSRLS` | App and worker (`DATABASE_URL`) |
-| Backup (`curriculum_backup`) | `pg_read_all_data` + `BYPASSRLS`, read-only | `scripts/backup.sh` |
+| Owner (`midad_owner`) | Owns schema objects | Migrations, seeding only (`MIGRATION_DATABASE_URL`) |
+| App (`midad_app`) | `SELECT/INSERT/UPDATE/DELETE` on tables except no `UPDATE` on `audit_logs`; sequences; no `BYPASSRLS` | App and worker (`DATABASE_URL`) |
+| Backup (`midad_backup`) | `pg_read_all_data` + `BYPASSRLS`, read-only | `scripts/backup.sh` |
 | Superuser | Cluster administration | Restores (`scripts/restore.sh`) |
 
 `npm run db:migrate` (or `node dist/db/migrate-cli.js up`) applies migrations and, when

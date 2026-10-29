@@ -1,10 +1,20 @@
 # Production status
 
-State on 2026-10-28. **The three films are finished: 20-minute 4K and 1080p (21:11), 3-minute 1080p (3:08).** At the owner's
-instruction («قم أنت باصدار الفيديو و أتم العمل بشكل كامل») they carry the synthetic narration voice, with the
-recorded-instrument score and full pauses at the end of every sentence. The Egyptian narrator's recordings
-could not be reached from the production environment (below); the recording pack and the ingest stay ready, so
-the films can be rebuilt with a human voice at any time. Nothing has been published.
+State on 2026-10-29. **The three films are finished under the platform's name, Midad (مِداد): 20-minute 4K and
+1080p (21:09), 3-minute 1080p (3:06).** At the owner's instruction («قم أنت باصدار الفيديو و أتم العمل بشكل كامل»)
+they carry the synthetic narration voice, with the recorded-instrument score and full pauses at the end of every
+sentence. The Egyptian narrator's recordings could not be reached from the production environment (below); the
+recording pack and the ingest stay ready, so the films can be rebuilt with a human voice at any time. Nothing has
+been published.
+
+**The rename (2026-10-29).** The owner chose the name Midad (مِداد). The films were rebuilt with it:
+- **Narration:** new takes for the four lines that say the name.
+  - 20-minute cut: the reveal «نُقَدِّمُ لَكُمْ مِنَصَّةَ مِدَادٍ» and the closing line.
+  - 3-minute cut: its reveal and closing lines.
+  - The reveal was generated six times and the take that speech recognition heard exactly was kept.
+- **On screen:** the logo scene, the diagram, the titles, the subtitles and the narrator pack.
+- **Product recordings:** recorded again from the renamed application.
+- **Lengths:** the new reveal line is shorter, so the 20-minute cut lost 2.3 s and the 3-minute cut 1.4 s.
 
 **Before sending the films to official bodies, read "Open points": the voice's licence is not confirmed, and
 neither the voice nor the music has been listened to by a person.**
@@ -19,14 +29,14 @@ neither the voice nor the music has been listened to by a person.**
 | ARABIC_NARRATION_SCRIPT.md | Done: 20-minute (134 lines) and 3-minute (28 lines), fully diacritized. Third review on 2026-10-28 by four independent reviewers, every ending checked against its i'rab: no error in the diacritics; ten wording changes for strict readers applied (e.g. «فَرُبَّمَا لَا» for «فَقَدْ لَا», «تُفْتَحُ بَوَّابَةُ», «فِي أَثْنَاءِ», «دَفْعَةً وَاحِدَةً», the main clause before «حَتَّى لَوْ») |
 | ENGLISH_TRANSLATION.md | Done |
 | arabic.srt, arabic-plain.srt, english.srt (+ the 3-minute set) | Done, timed to the narration of the final films |
-| Recordings of the product | Done: 54 recordings, 538 frames (kept out of git; `npm run capture` recreates them) |
+| Recordings of the product | Done: 54 recordings, 542 frames, recorded again from the renamed application on 2026-10-29 (kept out of git; `npm run capture` recreates them) |
 | screenshots/, graphics/, Education_SaaS_Thumbnail.png | Done |
 | Music | Done: recorded instruments (piano, strings, cello, harp, celesta, pad, bass, soft percussion; FluidR3 soundfont, MIT), arranged per chapter, ducked under the voice |
 | Narration | Done with the synthetic voice (next section); every take matches the reviewed script |
 | **Education_SaaS_Product_Showcase_20min.mp4** (4K) | **Final** |
 | **Education_SaaS_Product_Showcase_1080p.mp4** (20-minute, 1080p) | **Final** |
 | **Education_SaaS_Product_Showcase_3min.mp4** (1080p) | **Final** |
-| VIDEO_QA_REPORT.md | Done on the final files: no technical fault found; −16 LUFS; full decode clean |
+| VIDEO_QA_REPORT.md | Done on the renamed final files (2026-10-29): no technical fault found; −16 LUFS; full decode clean; the name heard correctly by speech recognition wherever it is spoken |
 | Narrator_Recording_Pack.pdf, NARRATOR_RECORDING_PACK.md | Ready for a human narrator (formal Egyptian MSA, full tashkeel, notes per line) |
 
 ## The narration voice

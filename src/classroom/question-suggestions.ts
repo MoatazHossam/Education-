@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AnswerKey, QuestionOption, QuestionType } from '../db/types.js';
+import { gradeStage, writingRule } from '../ai/teaching.js';
 import { questionProblem } from './marking.js';
 
 // Questions suggested by the AI provider for a test (docs/ONLINE_TESTS.md §14).
@@ -80,17 +81,12 @@ const TYPE_RULES: Record<(typeof SUGGEST_TYPES)[number], string> = {
   essay: 'essay: an open question answered in a few sentences. marking_guide lists the points a full answer makes and how the marks are shared.',
 };
 
-const STAGE = (grade: number) => (grade <= 6 ? `primary ${grade}` : grade <= 9 ? `preparatory ${grade - 6}` : `secondary ${grade - 9}`);
-
 /** Instructions and task for the provider. The lesson text is the teacher's own material. */
 export function suggestionPrompt(ctx: SuggestionContext, req: SuggestRequest): { system: string; prompt: string } {
-  const language =
-    req.language === 'ar'
-      ? 'Write everything (questions, choices, answers, guides, explanations) in Modern Standard Arabic, with correct spelling (hamzas, ta marbuta, alif maqsura). Keep numbers as digits.'
-      : 'Write everything (questions, choices, answers, guides, explanations) in clear, simple English.';
+  const language = writingRule(req.language, 'questions, choices, answers, guides, explanations');
   const system = [
     'You help teachers in Egyptian schools write questions for their online tests. A teacher reviews and edits every question before any student sees it.',
-    `The class is in grade ${ctx.grade} of 12 (${STAGE(ctx.grade)}); the subject is ${ctx.subjectEn} (${ctx.subjectAr}).`,
+    `The class is in grade ${ctx.grade} of 12 (${gradeStage(ctx.grade)}); the subject is ${ctx.subjectEn} (${ctx.subjectAr}).`,
     language,
     'Rules:',
     '- Base every question on the topic and, when the teacher gives lesson text, on that text only. Do not add facts that are not in it. If the material supports fewer good questions than asked, write fewer.',

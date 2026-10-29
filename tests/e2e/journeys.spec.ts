@@ -963,7 +963,8 @@ test('classes and homework: the school sets up a class, a student hands in work 
   dlg = page.getByRole('dialog', { name: 'Work of Laila Hassan' });
   await expect(dlg.locator('.answer')).toHaveText('1) The Nile. 2) Upper Egypt. 3) Aswan.');
   await expect(dlg.locator('.file img')).toBeVisible();
-  expect(await dlg.locator('.file img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  // Visible means laid out, not loaded: wait for the picture itself to arrive before reading its size.
+  await expect.poll(() => dlg.locator('.file img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
   await dlg.getByLabel('Mark (out of 10)').fill('9');
   await dlg.getByLabel('Comments for the student').fill('Very good. Question 3: Aswan is right, add why.');
   await dlg.getByRole('button', { name: 'Return to student' }).click();

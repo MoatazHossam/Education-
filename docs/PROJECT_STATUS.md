@@ -700,10 +700,10 @@ user guides.
 
 | Guide | Web page | Offline copies | Built from |
 | --- | --- | --- | --- |
-| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` at `b0ea3ff`, republished 2026-10-28 |
-| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` at `b0ea3ff`, republished 2026-10-28 |
-| Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` on `main` at `fdc3f80`, 2026-10-27 |
-| دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (23 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` on `main` at `fdc3f80`, 2026-10-27 |
+| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` and its screenshots at `c845564`, republished 2026-10-29 |
+| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` and its screenshots at `c845564`, republished 2026-10-29 |
+| Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` at `d8050ab`, republished 2026-10-29 |
+| دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (24 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` at `d8050ab`, republished 2026-10-29 |
 
 - The pages are private: only their owner can open them until each is shared from its Share menu.
 - The offline copies were handed over in the working session; they are not stored in the repository.

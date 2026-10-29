@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AnswerKey, QuestionOption, QuestionType } from '../db/types.js';
-import { gradeStage, writingRule } from '../ai/teaching.js';
+import { gradeStage, MAX_LESSON_CHARS, writingRule } from '../ai/teaching.js';
 import { questionProblem } from './marking.js';
 
 // Questions suggested by the AI provider for a test (docs/ONLINE_TESTS.md §14).
@@ -12,8 +12,6 @@ import { questionProblem } from './marking.js';
 
 export const SUGGEST_TYPES = ['single', 'multiple', 'true_false', 'short', 'essay'] as const satisfies readonly QuestionType[];
 const LETTERS = 'abcdefghij';
-/** Characters of lesson text a teacher may give. */
-export const MAX_LESSON_CHARS = 12_000;
 
 export const SuggestBody = z.object({
   topic: z.string().trim().min(3).max(300),

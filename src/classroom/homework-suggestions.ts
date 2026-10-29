@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { gradeStage, writingRule } from '../ai/teaching.js';
+import { gradeStage, MAX_LESSON_CHARS, writingRule } from '../ai/teaching.js';
 import { zSubjectName } from './service.js';
 
 // Homework suggested by the AI provider (docs/CLASSROOM.md §13). The teacher gives
@@ -8,8 +8,6 @@ import { zSubjectName } from './service.js';
 // here: the suggestion fills the new-homework form, and the teacher edits and
 // sets it as any homework. No student data is involved.
 
-/** Characters of lesson text a teacher may give. */
-export const MAX_LESSON_CHARS = 12_000;
 
 export const HOMEWORK_KINDS = ['practice', 'reading', 'writing', 'research', 'review'] as const;
 

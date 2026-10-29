@@ -16,6 +16,7 @@ import * as items from './views/items.js';
 import * as assignments from './views/assignments.js';
 import * as members from './views/members.js';
 import * as picker from './views/picker.js';
+import * as plans from './views/plans.js';
 import * as scopes from './views/scopes.js';
 import * as settings from './views/settings.js';
 import * as student from './views/student.js';
@@ -56,6 +57,10 @@ route('/org/:orgId/scopes', { access: 'user', org: true, view: scopes.scopesView
 route('/org/:orgId/scopes/:scopeId/carry', { access: 'user', org: true, view: carry.carryView });
 route('/org/:orgId/scopes/compare', { access: 'user', org: true, view: compare.compareView });
 route('/org/:orgId/scopes/:scopeId/items', { access: 'user', org: true, view: items.itemsView });
+route('/org/:orgId/scopes/:scopeId/plans', { access: 'user', org: true, view: plans.plansView });
+route('/org/:orgId/scopes/:scopeId/plans/new', { access: 'user', org: true, view: plans.planEditView });
+route('/org/:orgId/scopes/:scopeId/plans/:planId', { access: 'user', org: true, view: plans.planView });
+route('/org/:orgId/scopes/:scopeId/plans/:planId/edit', { access: 'user', org: true, view: plans.planEditView });
 route('/org/:orgId/assignments', { access: 'user', org: true, view: assignments.assignmentsView });
 route('/org/:orgId/members', { access: 'user', org: true, view: members.membersView });
 route('/org/:orgId/students', { access: 'user', org: true, view: students.studentsView });

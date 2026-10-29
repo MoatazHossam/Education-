@@ -365,3 +365,36 @@ pending[{ stage, deleteAfter }] }`; homework and test JSON (staff and students) 
 - `tests/e2e/journeys.spec.ts`, journey 23: the owner sets 30 days for students' work, confirms, sees the
   homework and test due, keeps the test; after the worker's pass 15 days later the homework page and the
   teacher's view of the work say it was deleted, the mark 9 stays; the student sees why, and her mark.
+
+## 14. Homework suggested by AI
+
+When the school has AI requests (docs/AI_LAYER.md: off for every school until a platform administrator gives it a
+monthly allowance) and the server has an AI provider, the **new homework** form offers **Suggest with AI** to
+whoever may set homework in the class (the subject's teachers and the school's admins), while the class is open.
+
+- **The teacher gives** a topic (3–300 characters), optionally the lesson text (up to 12,000 characters), the kind
+  of homework (practice exercises, reading and questions, writing, a small research task, revision), about how many
+  minutes it should take (10–120) and the language (Arabic or English).
+- **What is sent** to the provider: that, the class's grade, the subject's names, and the titles of the subject's
+  books in the class's curriculum scope. Nothing about the students: no names, answers, marks or work. The form asks
+  teachers not to paste students' names or work.
+- **The instructions** (`src/classroom/homework-suggestions.ts`) ask for numbered steps addressed to the student,
+  doable at home without special equipment, sized for the minutes asked, handed in as text or photos of a notebook,
+  keeping to the lesson text when one is given, never inventing page or exercise numbers or links, in Modern
+  Standard Arabic with correct spelling or simple English, with notes for the teacher (what it checks and the
+  expected answers).
+- **The reply** must match the reply schema (title up to 200 characters, instructions up to 5,000, the homework
+  form's own limits); one more request is made if it does not (AI_LAYER §3).
+- **Nothing is saved.** The suggestion shows for review (title, instructions, estimated minutes, notes for the
+  teacher). **Use this suggestion** puts the title and instructions in the form, in place of what is there; the
+  teacher edits them and sets the homework as usual. The notes and the estimate are not kept, and the homework has
+  no mark that AI wrote it.
+- **Counting, errors and log** as for questions suggested for a test (ONLINE_TESTS §14), with feature
+  `homework_suggestion`; also `NOT_SUBJECT_TEACHER`, `INVALID_SUBJECT` and `CLASS_ARCHIVED`. The class page reports
+  the requests left (`ai`), or `null` when the form should not offer it.
+
+Tests: `tests/unit/homework-suggestions.test.ts` (4: the instructions and task, defaults, the reply schema, trimming),
+`tests/integration/homework-suggestions.test.ts` (5, against the Gemini simulator: off without AI requests, what is
+sent and returned, nothing saved, the teacher then sets it, only the subject's teachers and admins in an open class,
+request checks, a second request on a bad reply and refusals), E2E journey 25 (the suggestion fills the form; nothing
+is set until the teacher sets it) and the accessibility audit of both dialogs.

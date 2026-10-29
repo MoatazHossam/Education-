@@ -123,7 +123,7 @@ Everyone in an organization has one role. The **Members** page lists them.
 | **Owner** | Everything, including billing, transferring ownership, support access and deleting the organization. One per organization. |
 | **Admin** | Manage editors and viewers, invitations, students, settings, API keys and webhooks; read the audit log and billing. |
 | **Editor** | Create, edit, duplicate, carry forward and delete scopes; choose books; write notes and assign books. |
-| **Viewer** | Read and export scopes, notes and assignments. Cannot change anything. |
+| **Viewer** | Read and export scopes, notes and assignments. Write their own teaching plans ([section 5](#teaching-plans)); cannot change anything else. |
 
 The menu shows only what your role can use. Owners and admins see
 **Students** and **Classes** (when the student portal is on), **Billing**,
@@ -241,6 +241,42 @@ above; counts as an export).
 
 Scopes from different years can be compared. Books are then matched by
 subject and title, and a book missing from one year's catalogue is marked.
+
+### Teaching plans
+
+On the scopes list, the link in the **Teaching plans** column (for example
+**Plans: 2**), or **Teaching plans** on a class page, opens the scope's teaching
+plans, by grade and subject. Any member can read and print
+them and write new ones; a plan's author and the school's admins can change or
+delete it. There are two kinds:
+
+- a **lesson plan**: the topic and length of one lesson, the books, objectives,
+  materials, a warm-up, the activities with their minutes, questions to ask,
+  assessment, homework, support for students who struggle and more for those
+  who finish early, and notes;
+- a **pacing plan**: how a subject's curriculum is spread over the weeks of a
+  term, from its first day, with the periods a week and, for each week, the
+  units and lessons, objectives and notes. Each week shows its dates.
+
+**New plan** asks the kind, the grade and the subject (those with books in the
+scope), then **Start blank** or, when your school has AI requests, **Draft with
+AI**:
+
+- for a lesson plan, give the topic, if you like the lesson text, and the
+  lesson's length;
+- for a pacing plan, give the first day of the term, the number of teaching
+  weeks, the periods a week and, if you like, the units and lessons to cover
+  (for example the book's table of contents, one per line).
+
+The draft opens in the editor, unsaved. Read and correct every part, then
+**Save**; leaving the page discards it. Plans started from a draft are marked
+"AI draft" in the list. AI can be wrong, and it does not know your school's
+holidays: add them as notes on their weeks.
+
+In the editor, lists take one item per line; **Add an activity** and **Add a
+week** add rows, and each has its own **Remove** button. On a plan's page,
+**Print** prints only the plan (choose "Save as PDF" in the print dialog for a
+file).
 
 ## 6. Notes, assignees, statuses and due dates
 
@@ -524,6 +560,18 @@ Worksheets (photos or PDFs) can be attached on the homework's page. The
 class's students get a notification in their own language.
 
 ![Homework for 1A: Read the story "The Little Seed", with the Ministry textbook, due the next morning, 10 marks](user-guide/images/homework-dialog.png)
+
+**Suggest with AI** appears in the form for new homework when your school has
+AI requests (a platform administrator turns them on and sets how many a
+month). Give the topic and, if you like, paste the part of the lesson the
+homework should be on; choose the kind (practice exercises, reading and
+questions, writing, a small research task or revision), about how many minutes
+it should take, and the language. The suggestion shows its title, the
+instructions for students, the time it should take and notes for you (what it
+checks, the expected answers). **Use this suggestion** puts the title and
+instructions in the form; edit them, then set the homework as usual. Nothing is
+set until you do. AI can be wrong, so read it first. Do not paste students'
+names or work.
 
 Students see it on **Today** and under **Homework**. They write an answer,
 attach photos or a PDF, and **Hand in**. Until the work is marked, **Take back**

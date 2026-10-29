@@ -1347,3 +1347,102 @@ test('questions suggested by AI: the platform gives the school AI requests; the 
   await form.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('link', { name: 'Forces around us' })).toHaveCount(0);
 });
+
+test('teaching plans: the teacher drafts a lesson plan with AI, edits and prints it, writes a pacing plan by hand, and removes it', async ({ page }) => {
+  // Journey 20's class 7A uses the scope "Prep 1 books"; journey 25 left 18 AI requests this month.
+  await login(page, delta.ownerEmail);
+  await page.goto(`/org/${delta.orgId}/classes`);
+  await page.getByRole('link', { name: '7A' }).click();
+  await page.getByRole('link', { name: 'Teaching plans' }).click();
+  await expect(page.getByRole('heading', { name: 'Teaching plans', level: 1 })).toBeVisible();
+  await expect(page.getByText('No plans in this scope yet.')).toBeVisible();
+  await expect(page.getByLabel('Grade', { exact: true })).toHaveValue('7');
+
+  // A lesson plan drafted by AI opens in the editor, unsaved.
+  await page.getByRole('button', { name: 'New plan' }).click();
+  let dlg = page.getByRole('dialog', { name: 'New plan' });
+  await expect(dlg.getByLabel('Grade')).toHaveValue('7');
+  await dlg.getByLabel('Subject').selectOption(delta.subject);
+  await dlg.getByRole('button', { name: 'Draft with AI' }).click();
+  dlg = page.getByRole('dialog', { name: 'Draft a lesson plan with AI' });
+  await expect(dlg.getByText('AI requests left for your school this month: 18')).toBeVisible();
+  await dlg.getByRole('button', { name: 'Write the draft' }).click();
+  await expect(dlg.getByRole('alert')).toHaveText('Write the topic (at least 3 characters).');
+  await dlg.getByLabel('Topic or lesson').fill('The alphabet');
+  await dlg.getByLabel('Length of the lesson in minutes (20–180)').fill('45');
+  await dlg.getByRole('button', { name: 'Write the draft' }).click();
+  await expect(page.getByRole('heading', { name: 'New lesson plan', level: 1 })).toBeVisible();
+  await expect(page.getByText('This draft was written by AI.')).toBeVisible();
+  await expect(page.getByLabel('Title')).toHaveValue('Letters and sounds');
+  await expect(page.getByLabel('Topic')).toHaveValue('The alphabet');
+  await expect(page.getByRole('group', { name: 'Activity 2' }).getByLabel('Activity')).toHaveValue('Picture match');
+  await page.getByLabel('Title').fill('Letters and sounds (7A)');
+  await page.getByRole('button', { name: 'Remove activity 2' }).click();
+  await expect(page.getByRole('group', { name: 'Activity 2' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add an activity' }).click();
+  const added = page.getByRole('group', { name: 'Activity 2' });
+  await expect(added.getByLabel('Activity')).toBeFocused();
+  await added.getByLabel('Activity').fill('Letter hunt');
+  await added.getByLabel('Minutes').fill('25');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Lesson plan', level: 1, exact: true })).toBeVisible();
+  const doc = page.locator('article.plan-doc');
+  await expect(doc.getByRole('heading', { name: 'Letters and sounds (7A)' })).toBeVisible();
+  await expect(doc.getByRole('heading', { name: 'Objectives' })).toBeVisible();
+  await expect(doc.getByText('Say the sound of each letter')).toBeVisible();
+  await expect(doc.getByRole('row', { name: /Letter hunt/ })).toContainText('25');
+  await expect(doc.getByRole('row', { name: /Total/ })).toContainText('40');
+  await expect(doc.getByRole('row', { name: /Total/ })).toContainText('The lesson is 45 minutes.');
+  await expect(page.getByText('Started from a draft written by AI.')).toBeVisible();
+  // Printed, only the plan shows.
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('header.topbar')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Print' })).toBeHidden();
+  await expect(doc).toBeVisible();
+  await page.emulateMedia({ media: 'screen' });
+
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit plan', level: 1 })).toBeVisible();
+  await page.getByLabel('Notes').fill('Bring the letter cards from the library.');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(doc.getByText('Bring the letter cards from the library.')).toBeVisible();
+
+  // A pacing plan written by hand: the title is required, and each week shows its dates.
+  await page.getByRole('link', { name: '← Teaching plans' }).click();
+  await page.getByRole('button', { name: 'New plan' }).click();
+  dlg = page.getByRole('dialog', { name: 'New plan' });
+  await dlg.getByLabel('Kind of plan').selectOption({ label: 'Pacing plan' });
+  await dlg.getByLabel('Subject').selectOption(delta.subject);
+  await dlg.getByRole('button', { name: 'Start blank' }).click();
+  await expect(page.getByRole('heading', { name: 'New pacing plan', level: 1 })).toBeVisible();
+  await page.getByLabel('First day of the term').fill('2026-09-27');
+  await page.getByRole('group', { name: /Week 1/ }).getByLabel('Units and lessons').fill('Unit 1: Letters');
+  await page.getByRole('button', { name: 'Add a week' }).click();
+  await page.getByRole('group', { name: /Week 2/ }).getByLabel('Units and lessons').fill('Unit 2: Words');
+  await expect(page.getByRole('group', { name: /Week 2/ })).toContainText('4 Oct 2026 – 8 Oct 2026');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('Title')).toBeFocused();
+  await expect(page.getByLabel('Title')).toHaveAttribute('aria-invalid', 'true');
+  await page.getByLabel('Title').fill('Term 1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Pacing plan', level: 1, exact: true })).toBeVisible();
+  await expect(page.getByRole('row', { name: /Week 2/ })).toContainText('Unit 2: Words');
+  await expect(page.getByText('Last week ends')).toBeVisible();
+
+  // The list shows both, the AI draft marked; the scopes list counts them.
+  await page.getByRole('link', { name: '← Teaching plans' }).click();
+  await expect(page.getByRole('row', { name: /Letters and sounds \(7A\)/ })).toContainText('AI draft');
+  await expect(page.getByRole('row', { name: /Term 1/ })).toContainText(/2 weeks from 27 Sept? 2026/);
+  await page.goto(`/org/${delta.orgId}/scopes`);
+  await expect(page.getByRole('row', { name: /Prep 1 books/ }).getByRole('link', { name: 'Plans: 2' })).toBeVisible();
+
+  // The author deletes a plan.
+  await page.getByRole('link', { name: 'Plans: 2' }).click();
+  await page.getByRole('link', { name: 'Term 1' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('dialog', { name: 'Delete plan' }).getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText('Plan deleted')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Term 1' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Letters and sounds (7A)' })).toBeVisible();
+});

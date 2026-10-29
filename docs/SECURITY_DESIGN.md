@@ -116,6 +116,10 @@ The application role cannot modify audit rows (no `UPDATE` grant); retention del
    to the teacher for review and check structured replies against a schema before use. Before enabling a provider,
    choose a paid tier whose terms exclude training on requests, and name the provider and its region in the privacy
    notice and in the agreement with schools (§7).
+   Reviewed features (AI_LAYER §6a): suggested test questions, homework suggestions, and lesson and pacing plan
+   drafts. Each sends only what the teacher typed (topic, optional lesson text, a list of contents), the grade and
+   subject, and the titles of the curriculum's books; never students' names, work, answers or marks. Each form asks
+   teachers not to paste students' names or work, which no check can fully prevent.
 
 ## 7. Privacy and regulatory notes (not legal advice)
 

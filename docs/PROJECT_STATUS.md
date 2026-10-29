@@ -25,7 +25,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
-### The platform's name: Midad (مِداد) · IN PROGRESS (guides and films being rebuilt)
+### The platform's name: Midad (مِداد) · COMPLETE
 - **What:** the owner chose the name Midad (مِداد) on 2026-10-29, replacing the working name Curriculum Scope
   (نطاق المناهج). This is the only place the old name is kept, as a record; results dated before 2026-10-29 in
   this file and in TEST_REPORT were obtained under the old name and identifiers.
@@ -38,6 +38,25 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Compatibility:** nothing was deployed, so no data, keys, webhook receivers or backups used the old identifiers.
   An installation made before the rename would need its Compose project, database and roles renamed, or the old
   values set in its settings file (`COMPOSE_PROJECT_NAME`, `DB_NAME`, `DB_*_USER`).
+- **Checked (2026-10-29), app and docs:**
+  - Lint and typecheck clean; 52 files and 371 tests pass; E2E 29/29, including the accessibility audit of every
+    screen after the Arabic heading fix. Merged as PR #35.
+  - The guides' web pages and offline copies were republished.
+- **Checked (2026-10-29), operations scripts:** run on Docker under the new names (dev stack, test settings with
+  random secrets):
+  - `ops/midad.sh start` brought up the `midad-*` containers and migrated the `midad` database.
+  - A sign-up email reached Mailpit from "Midad".
+  - `backup` wrote an encrypted `midad-backup-dev-*.tar.enc` starting with `MIDADBACKUP1`.
+  - `verify` restored it into a scratch database, with all 52 tables matching.
+  - `restore` switched the app to the restored database. An account added after the backup was absent, as
+    expected, and the app was healthy.
+  - `ops/midad.ps1` (PowerShell 7.4) ran `status` and `verify` against the same stack, then `ops/midad.sh stop`
+    stopped it.
+  - The test stack, its volumes and the test backup were removed afterwards.
+- **Checked (2026-10-29), films:**
+  - The three films were rebuilt (21:09 at 4K and 1080p, 3:06) and pass the technical checks
+    (marketing/product-showcase/VIDEO_QA_REPORT.md).
+  - The name is heard as «مداد» by speech recognition on the final soundtracks.
 
 ### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
 - **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic

@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### The platform's name: Midad (مِداد) · IN PROGRESS (guides and films being rebuilt)
+- **What:** the owner chose the name Midad (مِداد) on 2026-10-29, replacing the working name Curriculum Scope
+  (نطاق المناهج). This is the only place the old name is kept, as a record; results dated before 2026-10-29 in
+  this file and in TEST_REPORT were obtained under the old name and identifiers.
+- **Renamed:** the interface (EN, AR), page titles, emails, the authenticator-app issuer; webhook headers
+  (`X-Midad-*`, `Midad-Webhooks/1`) and the API key prefix (`midad_live_`); the Docker image and Compose project,
+  database and roles (`midad`, `midad_owner`, `midad_app`, `midad_backup`); the operations scripts
+  (`ops/midad.sh`, `ops/midad.ps1`, `ops/midad.bat`), backup names (`midad-backup-*`), `MIDAD_BACKUP_PASSPHRASE`
+  and the encrypted-backup header; every document; the guides' screenshots and published copies; the showcase
+  films (narration, subtitles, logo, product recordings) and their documents.
+- **Compatibility:** nothing was deployed, so no data, keys, webhook receivers or backups used the old identifiers.
+  An installation made before the rename would need its Compose project, database and roles renamed, or the old
+  values set in its settings file (`COMPOSE_PROJECT_NAME`, `DB_NAME`, `DB_*_USER`).
+
 ### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
 - **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic
   and, optionally, the lesson text, choosing the kinds, difficulty and language (Arabic or English). The suggestions

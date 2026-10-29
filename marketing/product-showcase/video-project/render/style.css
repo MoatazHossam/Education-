@@ -75,6 +75,7 @@ body { font-family: var(--f); -webkit-font-smoothing: antialiased; text-renderin
 .window .tab { flex: 1; display: flex; justify-content: center; }
 .window .tab span { background: #fff; border: 1px solid #dde3ee; border-radius: 8px; padding: 2px 18px; font-size: 15px; color: var(--muted); direction: rtl; max-width: 640px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .window .demo-tag { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; color: #8a5a1a; background: #f8eedf; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.window .demo-tag .ar { font-family: var(--f); letter-spacing: 0; }
 .window .view { position: relative; overflow: hidden; background: #f7f8fb; }
 .window .view img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
 .cursor { position: absolute; width: 30px; height: 30px; left: 0; top: 0; pointer-events: none; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35)); z-index: 5; }

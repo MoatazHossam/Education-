@@ -407,11 +407,14 @@ distinct titles (`distinctTitleMaterialIds`), which pass on the same data.
 
 ## 3. End-to-end — `npm run test:e2e`
 
-**Chromium: 29 tests, 29 passed** (8.0 min, 2026-10-28, with questions suggested by AI: journey 25 has the platform give a school AI requests and a teacher ask for questions, keep two and edit one; the accessibility project audits both suggestion dialogs. Before that, with the AI layer: the platform administrator's journey now also tests the AI provider, which in E2E is the simulator in a process of its own, gives a school an allowance and the school sees it on its billing page), real server process on port 3100: 24 journeys,
-then the accessibility project (4 tests), which reuses the journeys' data.
-**Firefox: 24 journeys, 24 passed** (3.1 min; again 2.9 min) with `npm run test:e2e:firefox`, and
-**WebKit: 24 journeys, 24 passed** (3.9 min; again 3.6 min) with `npm run test:e2e:webkit`, each on a fresh
-database (see "Cross-browser runs" below). Journey 24's first run
+**Chromium: 29 tests, 29 passed.** The latest run took 7.2 min, on 2026-10-29 after the rename to Midad. It used a real server process on port 3100: 25 journeys, then the accessibility project (4 tests), which reuses the journeys' data.
+- **Journey 25 (2026-10-28, questions suggested by AI):** the platform gives a school AI requests; a teacher asks for questions, keeps two and edits one. The accessibility project audits both suggestion dialogs.
+- **The AI layer:** the platform administrator's journey also tests the AI provider (in E2E, a simulator in a process of its own), gives a school an allowance, and the school sees it on its billing page.
+- **Two failures on the way, neither a fault in the app** (2026-10-29):
+  - **The homework journey** read a handed-in photo's size as soon as it was visible. Under load (a film render on the same machine), the picture arrived 60–76 ms later, so the read returned 0. The journey now waits for the picture to load.
+  - **The every-screen accessibility audit** hit its 8-minute limit with no violations under the same load. On an idle machine it took 4.9 min; its usual time is 3–5.5 min, and the limit was not raised.
+
+**Firefox: 25 journeys, 25 passed** (3.1 min) with `npm run test:e2e:firefox`, and **WebKit: 25 journeys, 25 passed** (3.8 min) with `npm run test:e2e:webkit`. Both ran on 2026-10-29 on the merged code (`main` at `be4f7bb`), each on a fresh database. Journey 25 and the AI additions are included. The first cross-browser runs, on 2026-10-27, had 24 journeys: Firefox 3.1 and 2.9 min, WebKit 3.9 and 3.6 min (see "Cross-browser runs" below). Journey 24's first run
 stopped in its own setup: it left the question editor's third choice empty, which the editor refuses;
 the test now fills it.
 The audit test's time budget went from 5 to 8 minutes on 2026-10-27: with 147 screens it takes about

@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-28. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-10-29. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -734,7 +734,7 @@ user guides.
 
 | Condition | State |
 | --- | --- |
-| Core workflows function correctly | ✓ (311 unit/integration + 28 E2E passing: 24 journeys, 4 accessibility; the 24 journeys also pass in Firefox and WebKit) |
+| Core workflows function correctly | ✓ 371 unit/integration tests (52 files) and 29 E2E pass (25 journeys, 4 accessibility). The 25 journeys also pass in Firefox and WebKit (2026-10-29, on `main` after the rename) |
 | No mock responses in production flows | ✓ (sandbox provider is dev/test only and refused in production) |
 | Database persistence works | ✓ |
 | Multi-tenant isolation tested | ✓ |
@@ -746,7 +746,7 @@ user guides.
 | Automated tests pass | ✓ clean-checkout run of every CI step (`scripts/ci-local.sh`); ✗ not yet on GitHub-hosted runners (B-7) |
 | Critical security issues resolved | ✓ none known; ✗ not externally assessed |
 | Monitoring and alerts configured | ✓ built in and tested locally; ✗ real channels and external uptime check not configured (B-4) |
-| Backup and recovery tested | ✓ locally, with both scripts, including rebuilding a wiped server from an off-site copy; ✗ not on production infrastructure; ✗ the Windows script not yet on Windows |
+| Backup and recovery tested | ✓ locally, with both scripts, including rebuilding a wiped server from an off-site copy; backup, verify and restore run again under the new names on 2026-10-29; ✗ not on production infrastructure; ✗ the Windows script not yet on Windows |
 | Deployment reproducible | ✓ locally (Docker/compose) |
 | Documentation accurate | ✓ |
 | Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–8) with scripts for Linux and Windows; rolling restart and the backup and restore drill exercised on a local production-settings stack; ✗ not on the production host |

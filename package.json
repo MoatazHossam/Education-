@@ -1,5 +1,5 @@
 {
-  "name": "curriculum-scope",
+  "name": "midad",
   "version": "0.1.0",
   "private": true,
   "description": "Multi-tenant SaaS for planning Egyptian curriculum content scope (derived from the Egypt Curriculum Picker artifact).",

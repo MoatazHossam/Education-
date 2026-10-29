@@ -3,8 +3,8 @@ import { clamp, ease, enter, h, prog } from '../anim.js';
 import { logoMark } from '../icons.js';
 
 export function wordmark(size = 1) {
-  const ar = h('div', { style: { fontSize: `${112 * size}px`, fontWeight: '700', color: 'var(--on-night)', borderInlineStart: `${8 * size}px solid var(--margin)`, paddingInlineStart: `${30 * size}px`, lineHeight: '1.2', whiteSpace: 'nowrap' } }, 'نطاق المناهج');
-  const en = h('div', { class: 'ltr', style: { fontSize: `${50 * size}px`, fontWeight: '300', color: 'var(--sky)', letterSpacing: '0.02em', marginTop: `${6 * size}px`, textAlign: 'center' } }, 'Curriculum Scope');
+  const ar = h('div', { style: { fontSize: `${112 * size}px`, fontWeight: '700', color: 'var(--on-night)', borderInlineStart: `${8 * size}px solid var(--margin)`, paddingInlineStart: `${30 * size}px`, lineHeight: '1.2', whiteSpace: 'nowrap' } }, 'مِداد');
+  const en = h('div', { class: 'ltr', style: { fontSize: `${50 * size}px`, fontWeight: '300', color: 'var(--sky)', letterSpacing: '0.02em', marginTop: `${6 * size}px`, textAlign: 'center' } }, 'Midad');
   return { ar, en };
 }
 

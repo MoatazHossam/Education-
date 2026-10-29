@@ -2,7 +2,7 @@
 
 ## Objective
 
-Show school leaders, education companies and partners what Curriculum Scope (نطاق المناهج) does **today**,
+Show school leaders, education companies and partners what Midad (مِداد) does **today**,
 using the running product rather than generic imagery, with plenty of time on the value for the teacher, the
 student and the institution, and end with one action: **join the pilot as a partner institution**.
 

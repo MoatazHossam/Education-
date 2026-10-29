@@ -14,179 +14,174 @@ Which books? Who follows up?
 And where are the grades?
 
 4
-00:00:14,967 --> 00:00:17,796
-Curriculum Scope: one
-platform that connects the
+00:00:14,967 --> 00:00:19,907
+Midad: one platform that connects the
+curriculum, the classroom and the institution.
 
 5
-00:00:17,836 --> 00:00:20,560
-curriculum, the classroom
-and the institution.
-
-6
-00:00:22,600 --> 00:00:24,501
+00:00:21,933 --> 00:00:23,834
 Three connected layers:
 
-7
-00:00:24,991 --> 00:00:27,765
+6
+00:00:24,324 --> 00:00:27,099
 an up-to-date catalogue
 of Egypt’s curricula,
 
-8
-00:00:27,805 --> 00:00:30,304
+7
+00:00:27,139 --> 00:00:29,637
 where the school decides what it covers;
 
-9
-00:00:30,794 --> 00:00:34,472
+8
+00:00:30,127 --> 00:00:33,805
 classes, homework and tests built on it;
 
-10
-00:00:34,962 --> 00:00:39,521
+9
+00:00:34,295 --> 00:00:38,855
 and secure institutional
 management, in Arabic and English.
 
-11
-00:00:40,567 --> 00:00:45,160
+10
+00:00:39,900 --> 00:00:44,493
 It is built for private and
 international schools and school groups,
 
-12
-00:00:45,200 --> 00:00:49,793
+11
+00:00:44,533 --> 00:00:49,126
 education technology companies and
 publishers, and tutoring centres.
 
-13
-00:00:50,633 --> 00:00:53,083
+12
+00:00:49,966 --> 00:00:52,416
 Universities are a later expansion.
 
-14
-00:00:54,333 --> 00:00:58,739
+13
+00:00:53,667 --> 00:00:58,072
 A catalogue of twelve
 grades, 231 subjects and
 
-15
-00:00:58,779 --> 00:01:02,842
+14
+00:00:58,112 --> 00:01:02,176
 more than a thousand books and references.
 
-16
-00:01:03,682 --> 00:01:06,683
+15
+00:01:03,016 --> 00:01:06,016
 The team picks the books
 for each grade and track,
 
-17
-00:01:06,723 --> 00:01:09,343
+16
+00:01:06,056 --> 00:01:08,676
 and the decision is
 kept as a shared scope,
 
-18
-00:01:09,833 --> 00:01:14,342
+17
+00:01:09,166 --> 00:01:13,675
 exported, compared, and carried
 to the next year in one step.
 
-19
-00:01:15,267 --> 00:01:18,468
+18
+00:01:14,600 --> 00:01:17,801
 Every book has an owner,
 a due date and a reminder,
 
-20
-00:01:18,508 --> 00:01:20,970
+19
+00:01:17,841 --> 00:01:20,303
 so nothing gets lost between messages.
 
-21
-00:01:25,200 --> 00:01:29,508
+20
+00:01:24,533 --> 00:01:28,841
 The teacher sets homework
 linked to the curriculum,
 
-22
-00:01:29,998 --> 00:01:32,781
+21
+00:01:29,331 --> 00:01:32,114
 then marks it and
 returns it with comments.
 
-23
-00:01:36,300 --> 00:01:40,999
+22
+00:01:35,633 --> 00:01:40,332
 Online tests run on time kept by
 the server, with live monitoring
 
-24
-00:01:41,039 --> 00:01:45,471
+23
+00:01:40,372 --> 00:01:44,805
 and automatic marking — the
 final say stays with the teacher.
 
-25
-00:01:46,311 --> 00:01:49,110
+24
+00:01:45,645 --> 00:01:48,443
 Then the marks come
 together in one gradebook.
 
-26
-00:01:50,033 --> 00:01:55,181
+25
+00:01:49,367 --> 00:01:54,514
 Students find their school day on
 their phone: homework and tests,
 
-27
-00:01:55,671 --> 00:01:59,333
+26
+00:01:55,004 --> 00:01:58,666
 their grades and their books, with
 an account their school manages.
 
-28
-00:02:00,900 --> 00:02:05,629
+27
+00:02:00,233 --> 00:02:04,962
 Teachers get lighter manual
 follow-up, students find everything
 
-29
-00:02:05,669 --> 00:02:09,984
+28
+00:02:05,002 --> 00:02:09,317
 in one place, and the institution
 sees the whole picture.
 
-30
-00:02:11,433 --> 00:02:15,829
+29
+00:02:10,767 --> 00:02:15,163
 Each institution’s data is
 isolated inside the database,
 
-31
-00:02:15,869 --> 00:02:19,907
+30
+00:02:15,203 --> 00:02:19,241
 with roles, two-step
 verification and an audit log,
 
-32
-00:02:20,397 --> 00:02:24,898
+31
+00:02:19,731 --> 00:02:24,232
 and the platform team sees a school’s
 work only with its permission.
 
-33
-00:02:26,133 --> 00:02:31,226
+32
+00:02:25,467 --> 00:02:30,559
 The intelligent educational assistant
 is a future vision, not built yet;
 
-34
-00:02:31,716 --> 00:02:37,346
+33
+00:02:31,049 --> 00:02:36,679
 it will work under clear rules: it never
 changes a grade, and the teacher decides.
 
-35
-00:02:38,600 --> 00:02:42,668
+34
+00:02:37,933 --> 00:02:42,002
 The platform is functionally
 complete and tested locally,
 
-36
-00:02:42,708 --> 00:02:46,907
+35
+00:02:42,042 --> 00:02:46,240
 and is getting ready for a
 pilot with partner institutions.
 
-37
-00:02:48,133 --> 00:02:53,214
+36
+00:02:47,467 --> 00:02:52,548
 We invite schools and education and
 publishing companies to the pilot programme.
 
-38
-00:02:54,054 --> 00:02:57,535
-Curriculum Scope: a clear
-curriculum, a connected classroom,
+37
+00:02:53,388 --> 00:02:56,202
+Midad: a clear curriculum,
+a connected classroom,
 
-39
-00:02:57,575 --> 00:03:00,363
+38
+00:02:56,242 --> 00:02:58,954
 and an institution that
 sees the whole picture.
 
-40
-00:03:01,203 --> 00:03:03,365
+39
+00:02:59,794 --> 00:03:01,956
 Contact us for a live demo.

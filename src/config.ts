@@ -33,7 +33,7 @@ const EnvSchema = z
 
     EMAIL_TRANSPORT: z.enum(['smtp', 'log', 'none']).default('log'),
     SMTP_URL: z.string().optional(),
-    EMAIL_FROM: z.string().default('Curriculum Scope <no-reply@localhost>'),
+    EMAIL_FROM: z.string().default('Midad <no-reply@localhost>'),
 
     BILLING_PROVIDER: z.enum(['sandbox', 'paymob', 'disabled']).default('sandbox'),
     BILLING_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('EGP'),

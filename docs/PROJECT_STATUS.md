@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### The platform's name: Midad (مِداد) · IN PROGRESS (guides and films being rebuilt)
+- **What:** the owner chose the name Midad (مِداد) on 2026-10-29, replacing the working name Curriculum Scope
+  (نطاق المناهج). This is the only place the old name is kept, as a record; results dated before 2026-10-29 in
+  this file and in TEST_REPORT were obtained under the old name and identifiers.
+- **Renamed:** the interface (EN, AR), page titles, emails, the authenticator-app issuer; webhook headers
+  (`X-Midad-*`, `Midad-Webhooks/1`) and the API key prefix (`midad_live_`); the Docker image and Compose project,
+  database and roles (`midad`, `midad_owner`, `midad_app`, `midad_backup`); the operations scripts
+  (`ops/midad.sh`, `ops/midad.ps1`, `ops/midad.bat`), backup names (`midad-backup-*`), `MIDAD_BACKUP_PASSPHRASE`
+  and the encrypted-backup header; every document; the guides' screenshots and published copies; the showcase
+  films (narration, subtitles, logo, product recordings) and their documents.
+- **Compatibility:** nothing was deployed, so no data, keys, webhook receivers or backups used the old identifiers.
+  An installation made before the rename would need its Compose project, database and roles renamed, or the old
+  values set in its settings file (`COMPOSE_PROJECT_NAME`, `DB_NAME`, `DB_*_USER`).
+
 ### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
 - **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic
   and, optionally, the lesson text, choosing the kinds, difficulty and language (Arabic or English). The suggestions
@@ -301,7 +315,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **Fixed while preparing it** (found by reading the markup; axe does not check these):
   - The notifications button's unread count was not announced: its name replaced the badge. It is now "Notifications, 2 unread".
   - The whole page area was a live region, so screen readers could read a whole page out after each change. It is not a live region any more: pages are announced through the heading that takes focus, and messages through the status area.
-  - Every page had the same title. Each page is now titled after its heading, followed by " · Curriculum Scope" (in Arabic, the Arabic name).
+  - Every page had the same title. Each page is now titled after its heading, followed by " · Midad" (in Arabic, the Arabic name).
   - In the picker, a book's kind (Ministry, language-school, external reference, programme, assessment) was shown by colour only. Each book button now also says it, as the student portal already did.
   - Form hints and field errors were not linked to their fields. They are now the field's description, and a corrected field no longer carries its old error.
 - **Files:** `docs/SCREEN_READER_REVIEW.md`, `public/index.html`, `public/js/{main,dom}.js`, `public/js/views/{shell,picker}.js`, `public/js/i18n.js`.
@@ -330,11 +344,11 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - **The gaps found in the guide, first:**
     - Compose now passes every setting the app reads, so a managed database (with SSL), the pool size, the timings and the image tag can be set in the settings file.
     - Every container's log is capped at 5 × 10 MB.
-    - A rebuild keeps the image it replaces as `curriculum-scope:previous`, for a rollback (`APP_IMAGE_TAG=previous`).
+    - A rebuild keeps the image it replaces as `midad:previous`, for a rollback (`APP_IMAGE_TAG=previous`).
     - The production `migrate` job failed when the settings file set `FILE_SCAN=clamav`: fixed.
     - `ops/verify.sql` checks a database (migrations, forced row-level security, row counts of all 51 tables, invariants); `scripts/verify-backup.sh` uses it too.
     - Database passwords: hex is now advised, since base64's `/` breaks database addresses.
-  - **`ops/cs.sh` (Linux) and `ops\cs.ps1` with `.bat` launchers (Windows):**
+  - **`ops/midad.sh` (Linux) and `ops\midad.ps1` with `.bat` launchers (Windows):**
     - Commands: start, stop, status, back up, restore, test a backup, and set up the copies, plus a menu of all of them.
     - Every choice is asked and saved as the next default; `--yes` reuses the saved choices for cron and Task Scheduler.
     - The host needs only Docker: the tools run in containers.
@@ -353,7 +367,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - `tests/unit/backup-crypt.test.ts` (3).
   - The drill in TEST_REPORT §4: both scripts, every kind of copy, the failure cases, a lost server and a managed database. It found six problems, all fixed.
 - **Arabic deployment guide** (asked afterwards: "update the deployment guide in Arabic too"): `docs/DEPLOYMENT_GUIDE.ar.md` is the whole guide in Arabic, sections 1–8, with the commands unchanged and the scripts' English prompts quoted with their meaning (the scripts themselves speak English). The two guides link to each other and are to be updated together.
-- **Files:** `ops/` (`cs.sh`, `cs.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
+- **Files:** `ops/` (`midad.sh`, `midad.ps1`, the `.sh` and `.bat` launchers, `verify.sql`), `src/lib/backup-crypt.ts`, `src/cli/backup-crypt.ts`, `tests/unit/backup-crypt.test.ts`, `docker-compose.yml`, `docker-compose.prod.yml`, `.env.docker.example`, `.gitattributes`, `scripts/rolling-restart.sh`, `scripts/verify-backup.sh`, docs (DEPLOYMENT_GUIDE §3–5 and §7, new §8; TEST_REPORT §4; README).
 - **Not done:**
   - The Windows script has run only under PowerShell 7 on Linux, not on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler).
   - Copies went to servers in containers, not to a real cloud provider.
@@ -686,10 +700,10 @@ user guides.
 
 | Guide | Web page | Offline copies | Built from |
 | --- | --- | --- | --- |
-| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` at `b0ea3ff`, republished 2026-10-28 |
-| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` at `b0ea3ff`, republished 2026-10-28 |
-| Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` on `main` at `fdc3f80`, 2026-10-27 |
-| دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (23 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` on `main` at `fdc3f80`, 2026-10-27 |
+| User guide | <https://claude.ai/artifact/NA758JvyXJ8LD2s9kv9MDv> | PDF (86 pages), HTML | `docs/USER_GUIDE.md` and its screenshots at `c845564`, republished 2026-10-29 |
+| دليل الاستخدام (user guide, Arabic) | <https://claude.ai/artifact/74kgVq8fXASfCcMvW8DtV5> | PDF (87 pages), HTML | `docs/USER_GUIDE.ar.md` and its screenshots at `c845564`, republished 2026-10-29 |
+| Deployment guide | <https://claude.ai/artifact/79ZrcqCDKrfhKGWyAibb6D> | PDF (20 pages), HTML | `docs/DEPLOYMENT_GUIDE.md` at `d8050ab`, republished 2026-10-29 |
+| دليل النشر والتشغيل (deployment guide, Arabic) | <https://claude.ai/artifact/SEggmZuZfDTmENtsZCDcMq> | PDF (24 pages), HTML | `docs/DEPLOYMENT_GUIDE.ar.md` at `d8050ab`, republished 2026-10-29 |
 
 - The pages are private: only their owner can open them until each is shared from its Share menu.
 - The offline copies were handed over in the working session; they are not stored in the repository.
@@ -747,7 +761,7 @@ These block release; development cannot do them.
 | 6 | Manual screen-reader review (SCREEN_READER_REVIEW.md) and a native speaker's review of the Arabic texts, the portal's pages first | Only simulated checks so far. The checklist now has 32 tasks, 23–32 for the portal (4.2 item 4, done), and the results page holds them | — |
 | 7 | Decisions: whether and how student accounts and the portal are priced (free today, enabled per school by a platform administrator; no price is changed automatically); access to Wise (B-8); the AI provider, model and key, who pays, and each school's or plan's monthly AI allowance (B-10; the layer is built and waits for them) | Needed before selling the portal, and before any AI feature runs | B-8, B-10 |
 | 8 | Pilot with 3–5 design partners (IMPLEMENTATION_ROADMAP 6.10), with real students only after item 1 | Feedback decides the order of the later portal features in 4.2 | items 1, 4, 5 |
-| 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\cs.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
+| 9 | If a Windows computer will run the app: on it, one backup, one test and one restore with `ops\midad.bat`, and the scheduled task (DEPLOYMENT_GUIDE §8.5) | The Windows script has only run under PowerShell 7 on Linux; there is no Windows here | — |
 
 ### 4.2 Development that can start now
 

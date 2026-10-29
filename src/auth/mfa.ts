@@ -5,7 +5,7 @@ import { sha256Hex } from '../lib/crypto.js';
 
 authenticator.options = { window: 1, step: 30 };
 
-const ISSUER = 'Curriculum Scope';
+const ISSUER = 'Midad';
 
 export function generateTotpSecret(): string {
   return authenticator.generateSecret(20);

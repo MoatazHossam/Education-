@@ -33,7 +33,7 @@ export function synthesize({ text, voice, rate, out }, { key, region }) {
     `header = "Ocp-Apim-Subscription-Key: ${key}"`,
     'header = "Content-Type: application/ssml+xml"',
     'header = "X-Microsoft-OutputFormat: riff-48khz-16bit-mono-pcm"',
-    'header = "User-Agent: curriculum-scope-showcase"',
+    'header = "User-Agent: midad-showcase"',
     `data-binary = "@${body}"`,
     `output = "${out}"`,
     'silent',

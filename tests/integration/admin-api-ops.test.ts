@@ -137,13 +137,13 @@ describe('public API (API keys)', () => {
     const created = await owner.client.post(`/api/orgs/${owner.orgId}/api-keys`, { name: 'Content pipeline' });
     expect(created.statusCode).toBe(201);
     const key: string = created.json().key;
-    expect(key).toMatch(/^cs_live_/);
+    expect(key).toMatch(/^midad_live_/);
     const listed = (await owner.client.get(`/api/orgs/${owner.orgId}/api-keys`)).json().apiKeys;
     expect(JSON.stringify(listed)).not.toContain(key); // shown once only
 
     const auth = { authorization: `Bearer ${key}` };
     expect((await h.app.inject({ method: 'GET', url: '/api/v1/scopes' })).statusCode).toBe(401);
-    expect((await h.app.inject({ method: 'GET', url: '/api/v1/scopes', headers: { authorization: 'Bearer cs_live_' + 'x'.repeat(43) } })).statusCode).toBe(401);
+    expect((await h.app.inject({ method: 'GET', url: '/api/v1/scopes', headers: { authorization: 'Bearer midad_live_' + 'x'.repeat(43) } })).statusCode).toBe(401);
     const list = await h.app.inject({ method: 'GET', url: '/api/v1/scopes', headers: auth });
     expect(list.json().scopes).toHaveLength(1);
     const exp = await h.app.inject({ method: 'GET', url: `/api/v1/scopes/${scope.id}`, headers: auth });

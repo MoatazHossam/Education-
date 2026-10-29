@@ -3,7 +3,7 @@
 # sanity checks (ops/verify.sql), prints row counts, then drops the scratch database.
 # For backups made by ops/backup.sh (bundled database, only Docker needed), use ops/restore.sh --only-verify.
 #
-#   RESTORE_ADMIN_URL=postgres://postgres:***@host:5432/postgres scripts/verify-backup.sh backups/curriculum-scope-<ts>.dump
+#   RESTORE_ADMIN_URL=postgres://postgres:***@host:5432/postgres scripts/verify-backup.sh backups/midad-<ts>.dump
 set -euo pipefail
 : "${RESTORE_ADMIN_URL:?set RESTORE_ADMIN_URL}"
 DUMP="${1:?usage: verify-backup.sh <dump file>}"

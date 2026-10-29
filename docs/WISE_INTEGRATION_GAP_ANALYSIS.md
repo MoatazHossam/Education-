@@ -48,7 +48,7 @@ list, but they **do** depend on decisions only the owner can make (§3):
 
 1. **Access to Wise EduAgent:** an AI Studio source export (preferred) and/or network access to
    `wise-eduagent.ai.studio` with an authorized account.
-2. ~~**Students in Curriculum Scope**~~ — **decided 2026-10-25: school-created accounts.** Built, off
+2. ~~**Students in Midad**~~ — **decided 2026-10-25: school-created accounts.** Built, off
    for every school until a platform administrator enables it. Still needed: the legal assessment
    (age range, parental consent, controller/processor terms) before real students use it.
 3. **AI provider:** which provider and model (Gemini, if Wise uses it; or provider-independent), and

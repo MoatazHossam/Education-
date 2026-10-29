@@ -1,4 +1,4 @@
-# Curriculum Scope — product showcase video
+# Midad — product showcase video
 
 A 20-minute product showcase and a 3-minute version, in Arabic (Modern Standard Arabic, fully diacritized)
 with English subtitles, built from recordings of the running application. **Not for public release without

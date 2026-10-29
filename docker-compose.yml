@@ -2,7 +2,7 @@
 #   cp .env.docker.example .env.docker && docker compose --env-file .env.docker up --build
 # Production adds docker-compose.prod.yml (Caddy TLS proxy, a second app instance, no Mailpit).
 # ops/start.sh (Linux) and ops\start.bat (Windows) start either one (docs/DEPLOYMENT_GUIDE.md §8).
-name: curriculum-scope
+name: midad
 
 # Every container's log is capped (5 files of 10 MB), so logs cannot fill the disk.
 x-logging: &logging
@@ -31,7 +31,7 @@ x-app-env: &app-env
   WEBHOOK_ALLOW_INSECURE_TARGETS: ${WEBHOOK_ALLOW_INSECURE_TARGETS:-false}
   EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-smtp}
   SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
-  EMAIL_FROM: ${EMAIL_FROM:-Curriculum Scope <no-reply@localhost>}
+  EMAIL_FROM: ${EMAIL_FROM:-Midad <no-reply@localhost>}
   SALES_EMAIL: ${SALES_EMAIL:-}
   BILLING_PROVIDER: ${BILLING_PROVIDER:-sandbox}
   BILLING_CURRENCY: ${BILLING_CURRENCY:-EGP}
@@ -77,7 +77,7 @@ services:
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
       DB_APP_USER: ${DB_APP_USER}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
-      DB_BACKUP_USER: ${DB_BACKUP_USER:-curriculum_backup}
+      DB_BACKUP_USER: ${DB_BACKUP_USER:-midad_backup}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -94,7 +94,7 @@ services:
   # --build, or the start script's) keeps the one it replaces as "previous", for a rollback (DEPLOYMENT_GUIDE §4).
   migrate:
     build: .
-    image: curriculum-scope:${APP_IMAGE_TAG:-local}
+    image: midad:${APP_IMAGE_TAG:-local}
     command: ["sh", "-c", "node dist/db/migrate-cli.js up && node dist/db/seed-cli.js --catalog-only"]
     logging: *logging
     environment: *app-env
@@ -105,7 +105,7 @@ services:
     restart: "no"
 
   app:
-    image: curriculum-scope:${APP_IMAGE_TAG:-local}
+    image: midad:${APP_IMAGE_TAG:-local}
     restart: unless-stopped
     logging: *logging
     environment: *app-env
@@ -116,7 +116,7 @@ services:
         condition: service_completed_successfully
 
   worker:
-    image: curriculum-scope:${APP_IMAGE_TAG:-local}
+    image: midad:${APP_IMAGE_TAG:-local}
     command: ["node", "dist/worker.js"]
     restart: unless-stopped
     logging: *logging

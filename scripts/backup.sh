@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Logical backup of the application database.
 #
-#   BACKUP_DATABASE_URL=postgres://curriculum_backup:***@host:5432/curriculum_scope \
-#   BACKUP_DIR=/var/backups/curriculum-scope RETENTION_DAYS=14 scripts/backup.sh
+#   BACKUP_DATABASE_URL=postgres://midad_backup:***@host:5432/midad \
+#   BACKUP_DIR=/var/backups/midad RETENTION_DAYS=14 scripts/backup.sh
 #
 # Connect as the read-only backup role (BYPASSRLS + pg_read_all_data): tenant
 # tables FORCE row-level security, so the schema owner cannot dump them.
@@ -15,7 +15,7 @@ mkdir -p "$BACKUP_DIR"
 umask 077
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
-file="$BACKUP_DIR/curriculum-scope-$ts.dump"
+file="$BACKUP_DIR/midad-$ts.dump"
 pg_dump --format=custom --compress=6 --file="$file.partial" "$BACKUP_DATABASE_URL"
 mv "$file.partial" "$file"
 
@@ -27,6 +27,6 @@ fi
 sha256sum "$file" > "$file.sha256"
 
 # Retention: remove local dumps older than RETENTION_DAYS (off-site copies follow their own policy).
-find "$BACKUP_DIR" -maxdepth 1 -name 'curriculum-scope-*.dump*' -mtime +"$RETENTION_DAYS" -delete
+find "$BACKUP_DIR" -maxdepth 1 -name 'midad-*.dump*' -mtime +"$RETENTION_DAYS" -delete
 
 echo "backup written: $file ($(du -h "$file" | cut -f1))"

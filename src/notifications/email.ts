@@ -4,8 +4,8 @@ import type { Locale } from '../db/types.js';
 type Params = Record<string, string>;
 type Template = (p: Params) => { subject: string; text: string };
 
-const SIGN_EN = '\n\n— Curriculum Scope';
-const SIGN_AR = '\n\n— منصة نطاق المناهج';
+const SIGN_EN = '\n\n— Midad';
+const SIGN_AR = '\n\n— منصة مِداد';
 /** Role names as the Arabic interface shows them (the English email keeps the role's own name). */
 const ROLE_AR: Record<string, string> = { owner: 'المالك', admin: 'مسؤول', editor: 'محرر', viewer: 'مشاهد' };
 
@@ -64,8 +64,8 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
     ar: (p) => ({ subject: `انتقلت ${p.orgName} إلى الخطة المجانية`, text: `انتهى اشتراك ${p.planName} لـ ${p.orgName} (${p.reason}). بياناتك محفوظة، والعناصر التي تتجاوز الحدود تصبح للقراءة فقط حتى تشترك مجددًا.\n\n${p.link}${SIGN_AR}` }),
   },
   catalog_published: {
-    en: (p) => ({ subject: `The ${p.year} curriculum catalogue is published`, text: `The ${p.year} catalogue (${p.label}) is now available in Curriculum Scope. These content scopes of ${p.orgName} still use an older catalogue:\n${p.scopes}\n\nReview what changed for each scope (missing books, new editions, subject changes) and carry it forward:\n${p.link}\n\nYou receive this because you can edit scopes in ${p.orgName}. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
-    ar: (p) => ({ subject: `نُشر دليل المناهج لعام ${p.year}`, text: `أصبح دليل عام ${p.year} (${p.label}) متاحًا في منصة نطاق المناهج. ما زالت نطاقات المحتوى التالية في ${p.orgName} تستخدم دليلًا أقدم:\n${p.scopes}\n\nراجع التغييرات لكل نطاق (كتب غير موجودة، طبعات جديدة، تغييرات في المواد) وانقله إلى الدليل الجديد:\n${p.link}\n\nتصلك هذه الرسالة لأنك تستطيع تعديل النطاقات في ${p.orgName}. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
+    en: (p) => ({ subject: `The ${p.year} curriculum catalogue is published`, text: `The ${p.year} catalogue (${p.label}) is now available in Midad. These content scopes of ${p.orgName} still use an older catalogue:\n${p.scopes}\n\nReview what changed for each scope (missing books, new editions, subject changes) and carry it forward:\n${p.link}\n\nYou receive this because you can edit scopes in ${p.orgName}. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),
+    ar: (p) => ({ subject: `نُشر دليل المناهج لعام ${p.year}`, text: `أصبح دليل عام ${p.year} (${p.label}) متاحًا في منصة مِداد. ما زالت نطاقات المحتوى التالية في ${p.orgName} تستخدم دليلًا أقدم:\n${p.scopes}\n\nراجع التغييرات لكل نطاق (كتب غير موجودة، طبعات جديدة، تغييرات في المواد) وانقله إلى الدليل الجديد:\n${p.link}\n\nتصلك هذه الرسالة لأنك تستطيع تعديل النطاقات في ${p.orgName}. يمكنك إيقاف هذه الرسائل من إعدادات حسابك: ${p.settingsLink}${SIGN_AR}` }),
   },
   items_assigned: {
     en: (p) => ({ subject: `${p.by} assigned you ${p.count} ${p.count === '1' ? 'book' : 'books'} in “${p.scope}”`, text: `${p.by} assigned you ${p.count === '1' ? 'a book' : `${p.count} books`} to follow up in the scope “${p.scope}” (${p.orgName}):\n${p.items}\n\nSee your books, their notes and due dates:\n${p.link}\n\nYou receive this because books were assigned to you. Turn these emails off in your account settings: ${p.settingsLink}${SIGN_EN}` }),

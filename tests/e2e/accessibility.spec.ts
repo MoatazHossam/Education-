@@ -607,7 +607,7 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
 
   // Field hints and errors describe their field; a corrected field loses its old error. Neither submission changes the password.
   await page.goto('/account');
-  await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);
+  await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Midad`);
   const current = page.getByLabel('Current password');
   const fresh = page.getByLabel('New password');
   const hint = 'At least 10 characters. A passphrase works well.';
@@ -633,7 +633,7 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await page.getByLabel('Organization name').fill('Reader School');
   await page.getByRole('button', { name: 'Create organization' }).click();
   await page.waitForURL(/\/org\/[0-9a-f-]{36}$/);
-  await expect(page).toHaveTitle('Egypt Curriculum Picker · دليل المناهج · Curriculum Scope');
+  await expect(page).toHaveTitle('Egypt Curriculum Picker · دليل المناهج · Midad');
   await expect(page.locator('.mat.moe').first()).toHaveAccessibleName(/\(Ministry material\)/);
   await expect(page.locator('.mat.ext').first()).toHaveAccessibleName(/\(External reference\)/);
   // A title mixing scripts stays one flex item: its lang span is inside it, so the gap cannot split it.
@@ -642,13 +642,13 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await expect(mixed.locator('xpath=./span[1]/span[@lang="ar"]')).toHaveText('الأضواء');
   for (const path of [`/org/${orgIdFromUrl(page)}/settings`, '/no-such-page']) {
     await page.goto(path);
-    await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Curriculum Scope`);
+    await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Midad`);
   }
   await page.goto('/account');
   await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
-  await expect(page).toHaveTitle(/ · نطاق المناهج$/);
+  await expect(page).toHaveTitle(/ · مِداد$/);
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
-  await expect(page).toHaveTitle(/ · Curriculum Scope$/);
+  await expect(page).toHaveTitle(/ · Midad$/);
 
   // The unread count is part of the notifications button's name, until the list is opened.
   await ownerQuery(

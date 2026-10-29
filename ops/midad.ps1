@@ -1,11 +1,11 @@
-# Curriculum Scope operations for Windows: start, stop, status, back up, restore and test a backup,
+# Midad operations for Windows: start, stop, status, back up, restore and test a backup,
 # for the development stack (docker-compose.yml + .env.docker) or production
 # (+ docker-compose.prod.yml + .env.production). Needs Docker Desktop and the PowerShell built into
-# Windows (5.1) or PowerShell 7. Linux: the same commands as ops/cs.sh. Guide: docs/DEPLOYMENT_GUIDE.md section 8.
+# Windows (5.1) or PowerShell 7. Linux: the same commands as ops/midad.sh. Guide: docs/DEPLOYMENT_GUIDE.md section 8.
 #
-#   ops\cs.bat                      a menu (double-click it)
+#   ops\midad.bat                   a menu (double-click it)
 #   ops\start.bat, stop.bat, status.bat, backup.bat, restore.bat   [options]
-#   powershell -NoProfile -ExecutionPolicy Bypass -File ops\cs.ps1 <command> [options]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File ops\midad.ps1 <command> [options]
 #   commands: start | stop | status | backup | restore | verify | destinations | menu
 #
 # Options
@@ -18,7 +18,7 @@
 #
 # Backup copy settings (folder, server, bucket, encryption, retention) are kept in .env.backup,
 # readable only by you. The passphrase is never saved there: it is asked, or read from
-# CS_BACKUP_PASSPHRASE or the file named by BACKUP_PASSPHRASE_FILE.
+# MIDAD_BACKUP_PASSPHRASE or the file named by BACKUP_PASSPHRASE_FILE.
 
 # Notes for maintainers: this file stays ASCII (Windows PowerShell 5.1 misreads other characters in
 # a file without a byte order mark). Binary data never passes through PowerShell, which would change
@@ -75,7 +75,7 @@ for ($i = 0; $i -lt $argv.Count; $i++) {
     '^--?no-encrypt$' { $script:NoEncrypt = $true; break }
     '^--?only-verify$' { $script:OnlyVerify = $true; break }
     '^(-h|--help|/\?)$' { Show-Usage; exit 0 }
-    default { Die "unknown option $a (ops\cs.bat --help)" }
+    default { Die "unknown option $a (ops\midad.bat --help)" }
   }
 }
 
@@ -233,11 +233,11 @@ function Pick-Env([switch]$MissingOk) { # a restore onto a new server may start 
   }
   $script:Project = $env:COMPOSE_PROJECT_NAME
   if (-not $script:Project) { $script:Project = EnvGet 'COMPOSE_PROJECT_NAME' }
-  if (-not $script:Project) { $script:Project = 'curriculum-scope' }
+  if (-not $script:Project) { $script:Project = 'midad' }
   $script:Managed = [bool](EnvGet 'DATABASE_URL')
   $tag = EnvGet 'APP_IMAGE_TAG'
   if (-not $tag) { $tag = 'local' }
-  $script:Image = "curriculum-scope:$tag"
+  $script:Image = "midad:$tag"
 }
 function Scale-Args { if ($script:Managed) { return , @('--scale', 'postgres=0') } return , @() }
 function Apps { if ($script:EnvName -eq 'prod') { return , @('app', 'app2') } return , @('app') }
@@ -286,7 +286,7 @@ function Wait-Postgres {
 function Test-Image { Native @('docker', 'image', 'inspect', $script:Image) -Quiet -AllowFail; return ($script:Code -eq 0) }
 function Ensure-Image {
   if (Test-Image) { return }
-  if ($script:Image -ne 'curriculum-scope:local') { Die "image $($script:Image) not found (APP_IMAGE_TAG in $($script:EnvFile))" }
+  if ($script:Image -ne 'midad:local') { Die "image $($script:Image) not found (APP_IMAGE_TAG in $($script:EnvFile))" }
   Step 'Building the app image (needed once; a few minutes)'
   Native @('docker', 'build', '-t', $script:Image, $Root)
 }
@@ -298,14 +298,14 @@ function Cmd-Start {
   $a = @('up', '-d') + (Scale-Args)
   $build = $false
   if (-not (Test-Image)) {
-    if ($script:Image -ne 'curriculum-scope:local') { Die "image $($script:Image) not found (APP_IMAGE_TAG in $($script:EnvFile))" }
+    if ($script:Image -ne 'midad:local') { Die "image $($script:Image) not found (APP_IMAGE_TAG in $($script:EnvFile))" }
     Say 'The app image is not built yet: it is built first (a few minutes).'
     $build = $true
-  } elseif ($script:Image -eq 'curriculum-scope:local' -and (Confirm-Yes 'Rebuild the app image first (after updating the code)?' 'n')) { $build = $true }
+  } elseif ($script:Image -eq 'midad:local' -and (Confirm-Yes 'Rebuild the app image first (after updating the code)?' 'n')) { $build = $true }
   if ($build) {
     $a += '--build'
     # The image being replaced stays as :previous, for a rollback (docs/DEPLOYMENT_GUIDE.md section 4).
-    if (Test-Image) { Native @('docker', 'tag', $script:Image, 'curriculum-scope:previous') -Quiet }
+    if (Test-Image) { Native @('docker', 'tag', $script:Image, 'midad:previous') -Quiet }
   }
   Step "Starting the $($script:EnvName) installation ($($script:Project))"
   DC $a
@@ -353,7 +353,7 @@ function Lock-Dir([string]$Dir) { # one backup or restore at a time; a lock left
   Get-ChildItem -LiteralPath $Dir -Force | Where-Object { $_.Name -like '.work-*' -or $_.Name -like '.restore-*' -or $_.Name -like '*.partial' } | Remove-Item -Recurse -Force
 }
 function Get-Passphrase([switch]$New) {
-  if ($env:CS_BACKUP_PASSPHRASE) { return $env:CS_BACKUP_PASSPHRASE }
+  if ($env:MIDAD_BACKUP_PASSPHRASE) { return $env:MIDAD_BACKUP_PASSPHRASE }
   $f = Conf 'BACKUP_PASSPHRASE_FILE'
   if ($f) {
     if (-not (Test-Path -LiteralPath $f)) { Die "BACKUP_PASSPHRASE_FILE $f cannot be read" }
@@ -370,9 +370,9 @@ function Get-Passphrase([switch]$New) {
   }
 }
 function With-Passphrase([string]$Pass, [scriptblock]$Body) { # the passphrase reaches the container as an environment variable only
-  $old = $env:CS_BACKUP_PASSPHRASE
-  $env:CS_BACKUP_PASSPHRASE = $Pass
-  try { & $Body } finally { $env:CS_BACKUP_PASSPHRASE = $old }
+  $old = $env:MIDAD_BACKUP_PASSPHRASE
+  $env:MIDAD_BACKUP_PASSPHRASE = $Pass
+  try { & $Body } finally { $env:MIDAD_BACKUP_PASSPHRASE = $old }
 }
 
 # ------------------------------------------------------------------ copies: folder, server, bucket
@@ -475,9 +475,9 @@ function Setup-Dest([string]$Kind) { # asks for one destination's settings, test
         if (-not (Test-Path -LiteralPath $v)) { Die "cannot read $v" }
         Save 'BACKUP_SERVER_KEY_FILE' $v; Save 'BACKUP_SERVER_PASSWORD' ''
       } else {
-        $env:CS_OBSCURE = Ask-Secret 'Password for that user'
-        try { $o = Native @('docker', 'run', '--rm', '-e', 'CS_OBSCURE', '--entrypoint', 'sh', $RcloneImage, '-c', 'printenv CS_OBSCURE | rclone obscure -') -Capture }
-        finally { Remove-Item env:CS_OBSCURE -ErrorAction SilentlyContinue }
+        $env:MIDAD_OBSCURE = Ask-Secret 'Password for that user'
+        try { $o = Native @('docker', 'run', '--rm', '-e', 'MIDAD_OBSCURE', '--entrypoint', 'sh', $RcloneImage, '-c', 'printenv MIDAD_OBSCURE | rclone obscure -') -Capture }
+        finally { Remove-Item env:MIDAD_OBSCURE -ErrorAction SilentlyContinue }
         Save 'BACKUP_SERVER_PASSWORD' ([string]($o | Select-Object -First 1)).Trim(); Save 'BACKUP_SERVER_KEY_FILE' ''
       }
       $k = Conf 'BACKUP_SERVER_KNOWN_HOSTS'
@@ -494,7 +494,7 @@ function Setup-Dest([string]$Kind) { # asks for one destination's settings, test
       Save 'BACKUP_BUCKET_ENDPOINT' (Ask 'Endpoint (https://... or a host name; empty for Amazon S3)' (Conf 'BACKUP_BUCKET_ENDPOINT'))
       Save 'BACKUP_BUCKET_REGION' (Ask 'Region (e.g. eu-central-1; may be empty for other providers)' (Conf 'BACKUP_BUCKET_REGION'))
       Save 'BACKUP_BUCKET_NAME' (Ask 'Bucket name' (Conf 'BACKUP_BUCKET_NAME'))
-      $v = Conf 'BACKUP_BUCKET_PREFIX'; if (-not $v) { $v = 'curriculum-scope' }
+      $v = Conf 'BACKUP_BUCKET_PREFIX'; if (-not $v) { $v = 'midad' }
       Save 'BACKUP_BUCKET_PREFIX' (Ask 'Folder inside the bucket' $v)
       Save 'BACKUP_BUCKET_ACCESS_KEY_ID' (Ask 'Access key ID' (Conf 'BACKUP_BUCKET_ACCESS_KEY_ID'))
       $v = Ask-Secret 'Secret access key (Enter keeps the saved one)'
@@ -511,7 +511,7 @@ function Setup-Dest([string]$Kind) { # asks for one destination's settings, test
 }
 function Setup-Passfile { # scheduled backups read the passphrase from a file that only you can read
   $f = Conf 'BACKUP_PASSPHRASE_FILE'
-  if (-not $f) { $f = Join-Path $HOME '.curriculum-scope-backup-passphrase' }
+  if (-not $f) { $f = Join-Path $HOME '.midad-backup-passphrase' }
   $f = Ask 'File holding the passphrase, for scheduled backups (empty: always ask)' $f
   if (-not $f) { Save 'BACKUP_PASSPHRASE_FILE' ''; return }
   if (-not (Test-Path -LiteralPath $f) -or (Get-Item -LiteralPath $f).Length -eq 0) {
@@ -568,7 +568,7 @@ function Pick-Copies { # sets $script:Copies (folder, server, bucket)
     if ($d -eq 'none') { continue }
     if (@('folder', 'server', 'bucket') -notcontains $d) { Die "unknown copy target $d (folder, server, bucket)" }
     if (-not (Dest-Ready $d)) {
-      if ($script:Yes) { Die "$d copies are not set up: run ops\cs.bat destinations" }
+      if ($script:Yes) { Die "$d copies are not set up: run ops\midad.bat destinations" }
       if (-not (Setup-Dest $d)) { Die "could not set up $d" }
     }
     $script:Copies += $d
@@ -592,10 +592,10 @@ function Prune([string]$Kind, [string]$Dir, [int]$Days) { # removes backups olde
     $where = $Dir
     if ($Kind -eq 'folder') { $where = Conf 'BACKUP_FOLDER' }
     $cut = (Get-Date).AddDays(-$Days)
-    Get-ChildItem -LiteralPath $where -File -Filter 'cs-backup-*' | Where-Object { $_.LastWriteTime -lt $cut } | ForEach-Object { Say $_.FullName; Remove-Item -LiteralPath $_.FullName -Force }
+    Get-ChildItem -LiteralPath $where -File -Filter 'midad-backup-*' | Where-Object { $_.LastWriteTime -lt $cut } | ForEach-Object { Say $_.FullName; Remove-Item -LiteralPath $_.FullName -Force }
     return
   }
-  Invoke-Rclone $Kind $Dir 'ro' @('delete', (Remote-Target $Kind), '--min-age', "${Days}d", '--include', 'cs-backup-*') -AllowFail
+  Invoke-Rclone $Kind $Dir 'ro' @('delete', (Remote-Target $Kind), '--min-age', "${Days}d", '--include', 'midad-backup-*') -AllowFail
   if ($script:Code -ne 0) { Warn "could not clean up old backups in $Kind" }
 }
 
@@ -605,15 +605,15 @@ function Test-Pgdmp([string]$Path) {
   try { $b = New-Object byte[] 5; $n = $fs.Read($b, 0, 5); return ($n -eq 5 -and [Text.Encoding]::ASCII.GetString($b) -eq 'PGDMP') } finally { $fs.Dispose() }
 }
 function Get-Verify([string]$Db, [string]$User) { # ops/verify.sql on a database of the bundled server
-  DC @('cp', (Join-Path $Root 'ops/verify.sql'), 'postgres:/tmp/cs-verify.sql') -Quiet
-  return , (DC @('exec', '-T', '-e', "CS_DB=$Db", '-e', "CS_USER=$User", 'postgres', 'sh', '-c', 'psql -U $CS_USER -d $CS_DB -v ON_ERROR_STOP=1 -At -F ''|'' -f /tmp/cs-verify.sql') -Capture -AllowFail)
+  DC @('cp', (Join-Path $Root 'ops/verify.sql'), 'postgres:/tmp/midad-verify.sql') -Quiet
+  return , (DC @('exec', '-T', '-e', "MIDAD_DB=$Db", '-e', "MIDAD_USER=$User", 'postgres', 'sh', '-c', 'psql -U $MIDAD_USER -d $MIDAD_DB -v ON_ERROR_STOP=1 -At -F ''|'' -f /tmp/midad-verify.sql') -Capture -AllowFail)
 }
 function Cmd-Backup {
   Pick-Env
   $dir = Get-BackupDir
   Lock-Dir $dir
   $ts = (Get-Date).ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'")
-  $name = "cs-backup-$($script:EnvName)-$ts"
+  $name = "midad-backup-$($script:EnvName)-$ts"
   $work = Join-Path $dir ".work-$ts"
   New-Item -ItemType Directory -Path $work | Out-Null
   $script:Cleanup.Add($work); $script:Cleanup.Add((Join-Path $dir "$name.tar.partial")); $script:Cleanup.Add((Join-Path $dir "$name.tar.enc.partial"))
@@ -639,19 +639,19 @@ function Cmd-Backup {
   Step 'Database'
   $db = Get-DbName
   $bk = EnvGet 'DB_BACKUP_USER'
-  if (-not $bk) { $bk = 'curriculum_backup' }
+  if (-not $bk) { $bk = 'midad_backup' }
   if ($script:Managed) {
     if (-not (EnvGet 'BACKUP_DATABASE_URL')) { Die "set BACKUP_DATABASE_URL in $($script:EnvFile) (the read-only backup role of the managed database)" }
-    $env:CS_URL = EnvGet 'BACKUP_DATABASE_URL'
+    $env:MIDAD_URL = EnvGet 'BACKUP_DATABASE_URL'
     try {
-      Pg-Tool @('-e', 'CS_URL', '-v', "${work}:/w") @('sh', '-c', 'set -f; pg_dump --format=custom --compress=6 -f /w/database.dump $CS_URL')
-      $live = Pg-Tool @('-e', 'CS_URL', '-v', "$(Join-Path $Root 'ops'):/ops:ro") @('sh', '-c', 'set -f; psql $CS_URL -v ON_ERROR_STOP=1 -At -F ''|'' -f /ops/verify.sql') -Capture
-    } finally { Remove-Item env:CS_URL -ErrorAction SilentlyContinue }
+      Pg-Tool @('-e', 'MIDAD_URL', '-v', "${work}:/w") @('sh', '-c', 'set -f; pg_dump --format=custom --compress=6 -f /w/database.dump $MIDAD_URL')
+      $live = Pg-Tool @('-e', 'MIDAD_URL', '-v', "$(Join-Path $Root 'ops'):/ops:ro") @('sh', '-c', 'set -f; psql $MIDAD_URL -v ON_ERROR_STOP=1 -At -F ''|'' -f /ops/verify.sql') -Capture
+    } finally { Remove-Item env:MIDAD_URL -ErrorAction SilentlyContinue }
   } else {
     if (-not (Test-Running 'postgres')) { Die 'the database is not running: start the installation first (ops\start.bat)' }
-    DC @('exec', '-T', '-e', "CS_DB=$db", '-e', "CS_USER=$bk", 'postgres', 'sh', '-c', 'pg_dump -U $CS_USER -d $CS_DB --format=custom --compress=6 -f /tmp/cs-backup.dump')
-    DC @('cp', 'postgres:/tmp/cs-backup.dump', (Join-Path $work 'database.dump')) -Quiet
-    DC @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/cs-backup.dump') -Quiet -AllowFail
+    DC @('exec', '-T', '-e', "MIDAD_DB=$db", '-e', "MIDAD_USER=$bk", 'postgres', 'sh', '-c', 'pg_dump -U $MIDAD_USER -d $MIDAD_DB --format=custom --compress=6 -f /tmp/midad-backup.dump')
+    DC @('cp', 'postgres:/tmp/midad-backup.dump', (Join-Path $work 'database.dump')) -Quiet
+    DC @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/midad-backup.dump') -Quiet -AllowFail
     $live = Get-Verify $db $bk
     if ($script:Code -ne 0) { Die 'the check of the live database failed (ops/verify.sql)' }
   }
@@ -684,7 +684,7 @@ function Cmd-Backup {
   if ($settings) { $includes += ',settings' }
   if ($certs) { $includes += ',certificates' }
   $m = New-Object System.Collections.Generic.List[string]
-  $m.Add('format=cs-backup-1')
+  $m.Add('format=midad-backup-1')
   $m.Add('created=' + (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"))
   $m.Add("environment=$($script:EnvName)")
   $m.Add("project=$($script:Project)")
@@ -701,7 +701,7 @@ function Cmd-Backup {
   if ($enc) {
     $image = $script:Image
     With-Passphrase $pass {
-      Native (@('docker', 'run', '--rm') + (Tool-User) + @('-e', 'CS_BACKUP_PASSPHRASE', '-v', "${dir}:/b", $image, 'sh', '-c', "node dist/cli/backup-crypt.js encrypt < /b/$name.tar.partial > /b/$name.tar.enc.partial"))
+      Native (@('docker', 'run', '--rm') + (Tool-User) + @('-e', 'MIDAD_BACKUP_PASSPHRASE', '-v', "${dir}:/b", $image, 'sh', '-c', "node dist/cli/backup-crypt.js encrypt < /b/$name.tar.partial > /b/$name.tar.enc.partial"))
     }
     Move-Item -LiteralPath (Join-Path $dir "$name.tar.enc.partial") -Destination (Join-Path $dir "$name.tar.enc") -Force
     Remove-Item -LiteralPath (Join-Path $dir "$name.tar.partial") -Force
@@ -743,9 +743,9 @@ function Get-BackupList([string]$Source, [string]$Dir, [string]$Scratch) { # arc
     $where = $Dir
     if ($Source -eq 'folder') { $where = Conf 'BACKUP_FOLDER' }
     if (-not (Test-Path -LiteralPath $where)) { return , @() }
-    return , @(Get-ChildItem -LiteralPath $where -File | Where-Object { $_.Name -match '^cs-backup-.*\.tar(\.enc)?$' } | Sort-Object LastWriteTime -Descending | ForEach-Object { $_.Name })
+    return , @(Get-ChildItem -LiteralPath $where -File | Where-Object { $_.Name -match '^midad-backup-.*\.tar(\.enc)?$' } | Sort-Object LastWriteTime -Descending | ForEach-Object { $_.Name })
   }
-  $l = Invoke-Rclone $Source $Scratch 'ro' @('lsf', (Remote-Target $Source), '--files-only', '--format', 'tp', '--separator', '|', '--include', 'cs-backup-*.tar', '--include', 'cs-backup-*.tar.enc') -Capture
+  $l = Invoke-Rclone $Source $Scratch 'ro' @('lsf', (Remote-Target $Source), '--files-only', '--format', 'tp', '--separator', '|', '--include', 'midad-backup-*.tar', '--include', 'midad-backup-*.tar.enc') -Capture
   return , @($l | Where-Object { $_ } | Sort-Object -Descending | ForEach-Object { ($_ -split '\|', 2)[1] })
 }
 function Fetch-Backup([string]$Source, [string]$Dir, [string]$Name, [string]$Staging) { # the local path of the archive
@@ -775,25 +775,25 @@ pg_restore -U $POSTGRES_USER --exit-on-error -d $NEW_DB /tmp/cs-restore.dump || 
 '@
 $RestoreManaged = @'
 set -ef
-createdb --maintenance-db=$CS_ADMIN -O $OWNER $NEW_DB
-psql $CS_ADMIN -v ON_ERROR_STOP=1 -q <<SQL
+createdb --maintenance-db=$MIDAD_ADMIN -O $OWNER $NEW_DB
+psql $MIDAD_ADMIN -v ON_ERROR_STOP=1 -q <<SQL
 REVOKE ALL ON DATABASE $NEW_DB FROM PUBLIC;
 GRANT CONNECT ON DATABASE $NEW_DB TO $APPR, $BK;
 SQL
-pg_restore --exit-on-error --no-owner --role=$OWNER -d $CS_TARGET /r/$DUMP || { dropdb --maintenance-db=$CS_ADMIN $NEW_DB; exit 1; }
+pg_restore --exit-on-error --no-owner --role=$OWNER -d $MIDAD_TARGET /r/$DUMP || { dropdb --maintenance-db=$MIDAD_ADMIN $NEW_DB; exit 1; }
 '@
 function Restore-Db([string]$Dump, [string]$New) { # creates NEW and restores DUMP into it (bundled or managed)
-  $owner = EnvGet 'DB_OWNER_USER'; if (-not $owner) { $owner = 'curriculum_owner' }
-  $app = EnvGet 'DB_APP_USER'; if (-not $app) { $app = 'curriculum_app' }
-  $bk = EnvGet 'DB_BACKUP_USER'; if (-not $bk) { $bk = 'curriculum_backup' }
+  $owner = EnvGet 'DB_OWNER_USER'; if (-not $owner) { $owner = 'midad_owner' }
+  $app = EnvGet 'DB_APP_USER'; if (-not $app) { $app = 'midad_app' }
+  $bk = EnvGet 'DB_BACKUP_USER'; if (-not $bk) { $bk = 'midad_backup' }
   if ($New -notmatch '^[a-z_][a-z0-9_]{0,62}$') { Die "invalid database name $New" }
   $roles = @('-e', "NEW_DB=$New", '-e', "OWNER=$owner", '-e', "APPR=$app", '-e', "BK=$bk")
   if ($script:Managed) {
     if (-not $script:RestoreUrl) { Die 'no administrator connection for the managed database' }
-    $env:CS_ADMIN = $script:RestoreUrl
-    $env:CS_TARGET = Url-WithDb $script:RestoreUrl $New
-    try { Pg-Tool (@('-e', 'CS_ADMIN', '-e', 'CS_TARGET', '-e', "DUMP=$(Split-Path -Leaf $Dump)", '-v', "$(Split-Path -Parent $Dump):/r:ro") + $roles) @('sh', '-c', (Clean-Script $RestoreManaged)) }
-    finally { Remove-Item env:CS_ADMIN, env:CS_TARGET -ErrorAction SilentlyContinue }
+    $env:MIDAD_ADMIN = $script:RestoreUrl
+    $env:MIDAD_TARGET = Url-WithDb $script:RestoreUrl $New
+    try { Pg-Tool (@('-e', 'MIDAD_ADMIN', '-e', 'MIDAD_TARGET', '-e', "DUMP=$(Split-Path -Leaf $Dump)", '-v', "$(Split-Path -Parent $Dump):/r:ro") + $roles) @('sh', '-c', (Clean-Script $RestoreManaged)) }
+    finally { Remove-Item env:MIDAD_ADMIN, env:MIDAD_TARGET -ErrorAction SilentlyContinue }
   } else {
     if (-not (Test-Running 'postgres')) { Say 'Starting the database...'; DC @('up', '-d', 'postgres') }
     Wait-Postgres
@@ -803,12 +803,12 @@ function Restore-Db([string]$Dump, [string]$New) { # creates NEW and restores DU
 }
 function Verify-Db([string]$Db, [string]$Expected, [string]$Out) { # ops/verify.sql on DB, compared with the backup's; $true when it matches
   if ($script:Managed) { # as the backup role: the one role that reads every row despite row-level security
-    $env:CS_URL = Url-WithDb (EnvGet 'BACKUP_DATABASE_URL') $Db
-    try { $lines = Pg-Tool @('-e', 'CS_URL', '-v', "$(Join-Path $Root 'ops'):/ops:ro") @('sh', '-c', 'set -f; psql $CS_URL -v ON_ERROR_STOP=1 -At -F ''|'' -f /ops/verify.sql') -Capture -AllowFail }
-    finally { Remove-Item env:CS_URL -ErrorAction SilentlyContinue }
+    $env:MIDAD_URL = Url-WithDb (EnvGet 'BACKUP_DATABASE_URL') $Db
+    try { $lines = Pg-Tool @('-e', 'MIDAD_URL', '-v', "$(Join-Path $Root 'ops'):/ops:ro") @('sh', '-c', 'set -f; psql $MIDAD_URL -v ON_ERROR_STOP=1 -At -F ''|'' -f /ops/verify.sql') -Capture -AllowFail }
+    finally { Remove-Item env:MIDAD_URL -ErrorAction SilentlyContinue }
   } else {
-    DC @('cp', (Join-Path $Root 'ops/verify.sql'), 'postgres:/tmp/cs-verify.sql') -Quiet
-    $lines = DC @('exec', '-T', '-e', "CS_DB=$Db", 'postgres', 'sh', '-c', 'psql -U $POSTGRES_USER -d $CS_DB -v ON_ERROR_STOP=1 -At -F ''|'' -f /tmp/cs-verify.sql') -Capture -AllowFail
+    DC @('cp', (Join-Path $Root 'ops/verify.sql'), 'postgres:/tmp/midad-verify.sql') -Quiet
+    $lines = DC @('exec', '-T', '-e', "MIDAD_DB=$Db", 'postgres', 'sh', '-c', 'psql -U $POSTGRES_USER -d $MIDAD_DB -v ON_ERROR_STOP=1 -At -F ''|'' -f /tmp/midad-verify.sql') -Capture -AllowFail
   }
   if ($script:Code -ne 0) { Warn 'the check of the restored database failed (ops/verify.sql)'; return $false }
   Write-Lines $Out $lines
@@ -832,9 +832,9 @@ function Verify-Db([string]$Db, [string]$Expected, [string]$Out) { # ops/verify.
 }
 function Drop-Db([string]$Db) {
   if ($script:Managed) {
-    $env:CS_ADMIN = $script:RestoreUrl
-    try { Pg-Tool @('-e', 'CS_ADMIN', '-e', "DB=$Db") @('sh', '-c', 'set -f; dropdb --if-exists --maintenance-db=$CS_ADMIN $DB') -AllowFail }
-    finally { Remove-Item env:CS_ADMIN -ErrorAction SilentlyContinue }
+    $env:MIDAD_ADMIN = $script:RestoreUrl
+    try { Pg-Tool @('-e', 'MIDAD_ADMIN', '-e', "DB=$Db") @('sh', '-c', 'set -f; dropdb --if-exists --maintenance-db=$MIDAD_ADMIN $DB') -AllowFail }
+    finally { Remove-Item env:MIDAD_ADMIN -ErrorAction SilentlyContinue }
   } else { DC @('exec', '-T', '-e', "DB=$Db", 'postgres', 'sh', '-c', 'dropdb -U $POSTGRES_USER --if-exists $DB') -AllowFail }
 }
 function Base-Db([string]$Name) { # the database name without a suffix added by an earlier restore or test
@@ -884,7 +884,7 @@ function Cmd-Restore {
     $image = $script:Image
     $inDir = Split-Path -Parent $archive
     With-Passphrase $pass {
-      Native (@('docker', 'run', '--rm') + (Tool-User) + @('-e', 'CS_BACKUP_PASSPHRASE', '-v', "${inDir}:/in:ro", '-v', "${staging}:/out", $image, 'sh', '-c', "node dist/cli/backup-crypt.js decrypt < /in/$name > /out/backup.tar")) -AllowFail
+      Native (@('docker', 'run', '--rm') + (Tool-User) + @('-e', 'MIDAD_BACKUP_PASSPHRASE', '-v', "${inDir}:/in:ro", '-v', "${staging}:/out", $image, 'sh', '-c', "node dist/cli/backup-crypt.js decrypt < /in/$name > /out/backup.tar")) -AllowFail
     }
     if ($script:Code -ne 0) { Die "could not decrypt $name (wrong passphrase, or a damaged file)" }
     $archive = Join-Path $staging 'backup.tar'
@@ -893,7 +893,7 @@ function Cmd-Restore {
   Native (@('docker', 'run', '--rm') + (Tool-User) + @('-v', "$(Split-Path -Parent $archive):/in:ro", '-v', "${x}:/x", $ToolImage, 'tar', '-C', '/x', '-xf', "/in/$(Split-Path -Leaf $archive)")) -Quiet -AllowFail
   if ($script:Code -ne 0) { Die "$name could not be unpacked" }
   $manifest = Join-Path $x 'manifest.txt'
-  if ((Get-KV $manifest 'format') -ne 'cs-backup-1' -or -not (Test-Path -LiteralPath (Join-Path $x 'database.dump'))) { Die "$name is not a Curriculum Scope backup" }
+  if ((Get-KV $manifest 'format') -ne 'midad-backup-1' -or -not (Test-Path -LiteralPath (Join-Path $x 'database.dump'))) { Die "$name is not a Midad backup" }
   foreach ($f in @('database.dump', 'settings.env', 'caddy-data.tar.gz', 'verify-live.txt')) {
     $p = Join-Path $x $f
     if ((Test-Path -LiteralPath $p) -and (Sha256 $p) -ne (Get-KV $manifest "sha256.$f")) { Die "$f inside the backup does not match its checksum" }
@@ -994,7 +994,7 @@ function Cmd-Restore {
     Step 'Done'
     Say "The app now uses $newdb. The previous database, $olddb, is kept; the previous settings are in $($script:EnvFile).before-switch-$ts."
     if (-not $script:Managed) {
-      $t = DC @('exec', '-T', '-e', "CS_DB=$olddb", 'postgres', 'sh', '-c', 'psql -U $POSTGRES_USER -d $CS_DB -At -c ''SELECT count(*) FROM pg_tables WHERE schemaname = $$public$$''') -Capture -AllowFail
+      $t = DC @('exec', '-T', '-e', "MIDAD_DB=$olddb", 'postgres', 'sh', '-c', 'psql -U $POSTGRES_USER -d $MIDAD_DB -At -c ''SELECT count(*) FROM pg_tables WHERE schemaname = $$public$$''') -Capture -AllowFail
       if ($script:Code -eq 0 -and $t -contains '0') { Say "$olddb is empty (it was made when the database first started on this computer)." }
       Say "When you no longer need ${olddb}: docker compose $($script:Files -join ' ') --env-file $($script:EnvFile) exec postgres dropdb -U postgres $olddb"
     }
@@ -1007,7 +1007,7 @@ function Cmd-Restore {
 
 # ------------------------------------------------------------------ menu
 function Cmd-Menu {
-  $c = Choose 'Curriculum Scope: what do you want to do?' 3 @('Start', 'Stop', 'Status', 'Back up', 'Restore', 'Test a backup (changes nothing)', 'Set up backup copies (folder or USB drive, server, bucket)', 'Quit')
+  $c = Choose 'Midad: what do you want to do?' 3 @('Start', 'Stop', 'Status', 'Back up', 'Restore', 'Test a backup (changes nothing)', 'Set up backup copies (folder or USB drive, server, bucket)', 'Quit')
   switch ($c) {
     1 { $script:Cmd = 'start'; Cmd-Start }
     2 { $script:Cmd = 'stop'; Cmd-Stop }

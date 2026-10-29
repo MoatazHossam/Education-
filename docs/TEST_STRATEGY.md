@@ -66,8 +66,8 @@ staging host sized like production before launch; sandbox numbers are not capaci
 ```bash
 export TEST_PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres   # superuser for creating test DBs/roles
 npm run lint && npm run typecheck
-npm test                 # unit + integration (creates curriculum_scope_test)
-npm run test:e2e         # Playwright, Chromium: journeys + accessibility (creates curriculum_scope_e2e, server on :3100)
+npm test                 # unit + integration (creates midad_test)
+npm run test:e2e         # Playwright, Chromium: journeys + accessibility (creates midad_e2e, server on :3100)
 npm run test:e2e:firefox # the journeys in Firefox (fresh database)
 npm run test:e2e:webkit  # the journeys in WebKit, Safari's engine (fresh database)
 ```

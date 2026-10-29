@@ -1,7 +1,7 @@
 // UI strings in English and Arabic. Catalogue data (subject names, materials)
 // comes from the API, which already carries English and Arabic subject names.
 const en = {
-  'app.name': 'Curriculum Scope', 'app.tagline': 'Egypt K-12',
+  'app.name': 'Midad', 'app.tagline': 'Egypt K-12',
   'common.cancel': 'Cancel', 'common.none': 'None', 'common.actions': 'Details and actions', 'common.close': 'Close', 'common.confirm': 'Confirm', 'common.create': 'Create', 'common.delete': 'Delete', 'common.done': 'Done', 'common.edit': 'Edit', 'common.loading': 'Loading…', 'common.save': 'Save', 'common.saved': 'Saved',
   'nav.picker': 'Picker', 'nav.scopes': 'Scopes', 'nav.members': 'Members', 'nav.billing': 'Billing', 'nav.settings': 'Settings', 'nav.audit': 'Audit log', 'nav.admin': 'Platform admin',
   'shell.switchOrg': 'Switch organization', 'shell.chooseOrg': 'Choose organization…', 'shell.newOrg': 'New organization…', 'shell.nav': 'Main navigation', 'shell.logout': 'Sign out',
@@ -154,7 +154,7 @@ const en = {
   'webhooks.event.scope.deleted': 'Scope deleted', 'webhooks.event.scope.items_changed': 'Books added or removed', 'webhooks.event.scope.items_annotated': 'Notes, assignees, statuses or due dates changed', 'webhooks.event.ping': 'Test',
   'webhooks.add': 'Add endpoint', 'webhooks.created': 'Endpoint added', 'webhooks.newSecret': 'New signing secret',
   'webhooks.secretOnce': 'Copy this signing secret now; it is not shown again.',
-  'webhooks.signatureHelp': 'Each request carries X-CurriculumScope-Signature: t=<time>,v1=<signature>, where the signature is the HMAC-SHA256 of "<time>.<body>" with this secret. Check it, and that the time is recent, before trusting a request.',
+  'webhooks.signatureHelp': 'Each request carries X-Midad-Signature: t=<time>,v1=<signature>, where the signature is the HMAC-SHA256 of "<time>.<body>" with this secret. Check it, and that the time is recent, before trusting a request.',
   'webhooks.status.active': 'Active', 'webhooks.status.off': 'Off', 'webhooks.status.failing': 'Switched off after repeated failures',
   'webhooks.lastDelivery': 'Last delivery', 'webhooks.never': 'Nothing sent yet', 'webhooks.result.delivered': 'Delivered', 'webhooks.result.failed': 'Failed', 'webhooks.result.pending': 'Waiting',
   'webhooks.test': 'Send test', 'webhooks.testFor': 'Send a test to {url}', 'webhooks.testOk': 'Test delivered ({code})', 'webhooks.testFailed': 'Test failed: {error}',
@@ -386,7 +386,7 @@ const en = {
 };
 
 const ar = {
-  'app.name': 'نطاق المناهج', 'app.tagline': 'مصر من الابتدائي للثانوي',
+  'app.name': 'مِداد', 'app.tagline': 'مصر من الابتدائي للثانوي',
   'common.cancel': 'إلغاء', 'common.none': 'لا يوجد', 'common.actions': 'التفاصيل والإجراءات', 'common.close': 'إغلاق', 'common.confirm': 'تأكيد', 'common.create': 'إنشاء', 'common.delete': 'حذف', 'common.done': 'تم', 'common.edit': 'تعديل', 'common.loading': 'جارٍ التحميل…', 'common.save': 'حفظ', 'common.saved': 'تم الحفظ',
   'nav.picker': 'دليل المناهج', 'nav.scopes': 'النطاقات', 'nav.members': 'الأعضاء', 'nav.billing': 'الفوترة', 'nav.settings': 'الإعدادات', 'nav.audit': 'سجل التدقيق', 'nav.admin': 'إدارة المنصة',
   'shell.switchOrg': 'تبديل المؤسسة', 'shell.chooseOrg': 'اختر مؤسسة…', 'shell.newOrg': 'مؤسسة جديدة…', 'shell.nav': 'التنقل الرئيسي', 'shell.logout': 'تسجيل الخروج',
@@ -547,7 +547,7 @@ const ar = {
   'webhooks.event.scope.deleted': 'حذف نطاق', 'webhooks.event.scope.items_changed': 'إضافة كتب أو إزالتها', 'webhooks.event.scope.items_annotated': 'تغيّر الملاحظات أو المسؤولين أو الحالات أو المواعيد', 'webhooks.event.ping': 'اختبار',
   'webhooks.add': 'إضافة العنوان', 'webhooks.created': 'تمت إضافة العنوان', 'webhooks.newSecret': 'سر توقيع جديد',
   'webhooks.secretOnce': 'انسخ سر التوقيع الآن، فلن يظهر مرة أخرى.',
-  'webhooks.signatureHelp': 'يحمل كل طلب الترويسة X-CurriculumScope-Signature: t=<الوقت>,v1=<التوقيع>، والتوقيع هو HMAC-SHA256 للنص "<الوقت>.<المحتوى>" بهذا السر. تحقّق منه ومن حداثة الوقت قبل الوثوق بأي طلب.',
+  'webhooks.signatureHelp': 'يحمل كل طلب الترويسة X-Midad-Signature: t=<الوقت>,v1=<التوقيع>، والتوقيع هو HMAC-SHA256 للنص "<الوقت>.<المحتوى>" بهذا السر. تحقّق منه ومن حداثة الوقت قبل الوثوق بأي طلب.',
   'webhooks.status.active': 'يعمل', 'webhooks.status.off': 'متوقف', 'webhooks.status.failing': 'أُوقف بعد فشل متكرر',
   'webhooks.lastDelivery': 'آخر إرسال', 'webhooks.never': 'لم يُرسل شيء بعد', 'webhooks.result.delivered': 'تم التسليم', 'webhooks.result.failed': 'فشل', 'webhooks.result.pending': 'قيد الانتظار',
   'webhooks.test': 'إرسال اختبار', 'webhooks.testFor': 'إرسال اختبار إلى {url}', 'webhooks.testOk': 'تم تسليم الاختبار ({code})', 'webhooks.testFailed': 'فشل الاختبار: {error}',
@@ -828,13 +828,13 @@ export function setLocale(l) {
   document.title = DICTS[current]['app.name'];
   const skip = document.getElementById('skip-link');
   if (skip) skip.textContent = current === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content';
-  try { localStorage.setItem('cs-locale', current); } catch { /* preference is optional */ }
+  try { localStorage.setItem('midad-locale', current); } catch { /* preference is optional */ }
 }
 
 /** Account preference wins, then the last choice on this device, then the browser language. */
 export function initLocale(accountLocale) {
   let saved = null;
-  try { saved = localStorage.getItem('cs-locale'); } catch { saved = null; }
+  try { saved = localStorage.getItem('midad-locale'); } catch { saved = null; }
   setLocale(accountLocale || saved || (navigator.language?.startsWith('ar') ? 'ar' : 'en'));
 }
 

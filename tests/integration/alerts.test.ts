@@ -113,7 +113,7 @@ describe('operational alerts', () => {
   });
 
   it('alerts from memory when the database is unreachable, reminds after 6 hours, and resolves when it is back', async () => {
-    const down = createDatabase('postgres://cs_test_app:x@127.0.0.1:1/none', { poolMax: 1 });
+    const down = createDatabase('postgres://midad_test_app:x@127.0.0.1:1/none', { poolMax: 1 });
     let now = Date.parse('2026-10-25T10:00:00Z');
     const a = instance({}, { db: down, clock: () => now });
     try {

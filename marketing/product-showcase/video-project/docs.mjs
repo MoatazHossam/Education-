@@ -33,7 +33,7 @@ function visual(s, shotsMap) {
     case 'cold': return `Dark stage. Glass "fragments" (${p.fragments.map((f) => f.ar).join('، ')}) drift; the academic year 2026 / 2027 fades in, then the narration's questions appear in large type (${p.words.flat().join(' · ')}).`;
     case 'problems': return `Dark stage, title "أين تضيع الصورة؟". Six cards appear with the narration: ${p.cards.map((c) => `${c.ar} (${c.en})`).join('; ')}. Note at the end: "${p.note.ar}".`;
     case 'question': return `Dark stage. The question in three lines, the middle line in sky blue, with the product's red margin rule; English translation beneath.`;
-    case 'logo': return `Product reveal: the logo mark (public/favicon.svg) builds — square, red margin, three lines — then "نطاق المناهج" / "Curriculum Scope" and the tagline "${p.tagline.ar}".`;
+    case 'logo': return `Product reveal: the logo mark (public/favicon.svg) builds — square, red margin, three lines — then "مِداد" / "Midad" and the tagline "${p.tagline.ar}".`;
     case 'chapter': return `Chapter card: outlined chapter number, red bar, Arabic title, "CHAPTER n · English title", chapter dots.`;
     case 'split': return `Paper stage. Right: the original single-page artifact (legacy/, recording "legacy"), labelled "${p.left.ar}"; red tags (${p.tags.items.join('، ')}). Left, on the last line: today's picker (recording "${p.right.shot}"), "${p.right.ar}", with an arrow.`;
     case 'layers': return `Three bands appear with the narration: ${p.layers.map((l) => `${l.ar} (${l.items.join('، ')})`).join(' / ')}.`;
@@ -57,7 +57,7 @@ function visual(s, shotsMap) {
     case 'hub': return `The product mark at the centre of ${p.schools} institutions; update waves reach all of them; a dashed "${p.addon.ar}" module joins on line 2.`;
     case 'readiness': return `Three verified figures (${p.stats.map((x) => `${x.big} ${x.ar}`).join(' · ')}), then "${p.remaining.title}": ${p.remaining.items.join('، ')}.`;
     case 'roadmap': return `Timeline right to left: ${p.steps.map((x) => `${x.ar} [${x.kind}]: ${x.items.join('، ')}`).join(' → ')}.`;
-    case 'endcard': return `"${p.invite.ar}" with audience chips; then the logo, "نطاق المناهج / Curriculum Scope", "${p.slogan.ar}", and the call to action "${p.cta.ar}"; fade to black.`;
+    case 'endcard': return `"${p.invite.ar}" with audience chips; then the logo, "مِداد / Midad", "${p.slogan.ar}", and the call to action "${p.cta.ar}"; fade to black.`;
     default: return s.t;
   }
 }
@@ -109,7 +109,7 @@ function narrationDoc(lang) {
   out.push(isAr ? '# نصّ التعليق الصوتي — بالتشكيل الكامل' : '# English translation of the narration');
   out.push('');
   out.push(isAr
-    ? `<div dir="rtl">\n\nهذا هو النصّ الذي يُقرأ في الفيديو، مشكولًا بالكامل كما طُلب. ${TIMING.ar} حيث يختلف ما يُنطق عمّا يُكتب (أرقام، مصطلحات إنجليزية) يظهر تحت السطر «يُقرأ:».\n\n**توجيهات للقارئ:** فصحى مصرية رصينة (انظر Narrator_Recording_Pack.pdf وNARRATOR_RECORDING_PACK.md: أسلوب القراءة، والمواصفات، وملاحظات كل سطر)؛ صوت دافئ وواثق بلا مبالغة؛ سرعة نحو ١٠٥–١١٥ كلمة في الدقيقة؛ وقفة قصيرة عند الفاصلة وأطول عند النقطة؛ تُنطق المصطلحات الإنجليزية كما هي (SaaS «ساس»، API «إيه بي آي»، Webhooks «ويب هوكس»، Paymob «باي موب»، Wise EduAgent «وايز إيدو إيجنت»، Curriculum Scope «كَرِيكْيُولَمْ سْكُوب»).\n\n</div>`
+    ? `<div dir="rtl">\n\nهذا هو النصّ الذي يُقرأ في الفيديو، مشكولًا بالكامل كما طُلب. ${TIMING.ar} حيث يختلف ما يُنطق عمّا يُكتب (أرقام، مصطلحات إنجليزية) يظهر تحت السطر «يُقرأ:».\n\n**توجيهات للقارئ:** فصحى مصرية رصينة (انظر Narrator_Recording_Pack.pdf وNARRATOR_RECORDING_PACK.md: أسلوب القراءة، والمواصفات، وملاحظات كل سطر)؛ صوت دافئ وواثق بلا مبالغة؛ سرعة نحو ١٠٥–١١٥ كلمة في الدقيقة؛ وقفة قصيرة عند الفاصلة وأطول عند النقطة؛ تُنطق المصطلحات الإنجليزية كما هي (SaaS «ساس»، API «إيه بي آي»، Webhooks «ويب هوكس»، Paymob «باي موب»، Wise EduAgent «وايز إيدو إيجنت»).\n\n</div>`
     : `The English translation used for the English subtitles (english.srt, english-3min.srt). ${TIMING.en}`);
   out.push('');
   for (const c of cuts) {

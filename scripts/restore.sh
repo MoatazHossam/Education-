@@ -2,7 +2,7 @@
 # Restores a backup into a NEW database (never over the live one).
 #
 #   RESTORE_ADMIN_URL=postgres://postgres:***@host:5432/postgres \
-#   DB_OWNER_USER=curriculum_owner scripts/restore.sh backups/curriculum-scope-<ts>.dump curriculum_scope_restored
+#   DB_OWNER_USER=midad_owner scripts/restore.sh backups/midad-<ts>.dump midad_restored
 #
 # Runs as the database superuser: data is loaded with row-level security
 # bypassed, and the dump's own ownership/grants (owner role, app role) are kept,
@@ -13,7 +13,7 @@ set -euo pipefail
 : "${RESTORE_ADMIN_URL:?set RESTORE_ADMIN_URL (superuser connection to the maintenance database)}"
 DUMP="${1:?usage: restore.sh <dump file> <new database name>}"
 TARGET="${2:?usage: restore.sh <dump file> <new database name>}"
-OWNER="${DB_OWNER_USER:-curriculum_owner}"
+OWNER="${DB_OWNER_USER:-midad_owner}"
 [[ "$TARGET" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || { echo "invalid database name: $TARGET" >&2; exit 2; }
 
 if [[ -f "$DUMP.sha256" ]]; then

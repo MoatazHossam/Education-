@@ -1,8 +1,8 @@
 {
-  "name": "curriculum-scope-showcase-video",
+  "name": "midad-showcase-video",
   "private": true,
   "type": "module",
-  "description": "Programmatic production of the Curriculum Scope product showcase video (capture, graphics, audio, render).",
+  "description": "Programmatic production of the Midad product showcase video (capture, graphics, audio, render).",
   "scripts": {
     "capture": "cd ../../.. && ALERT_CHECK_INTERVAL_MS=900000 npx playwright test -c marketing/product-showcase/video-project/capture/playwright.capture.config.ts",
     "docs": "node docs.mjs",

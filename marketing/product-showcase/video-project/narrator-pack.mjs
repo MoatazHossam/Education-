@@ -86,7 +86,7 @@ const CHECK = [
 ]
 
 function markdown(cuts) {
-  const out = ['# حزمة تسجيل التعليق الصوتي — نطاق المناهج', '', '<div dir="rtl">', ''];
+  const out = ['# حزمة تسجيل التعليق الصوتي — مِداد', '', '<div dir="rtl">', ''];
   const lines = cuts.reduce((a, c) => a + c.count, 0);
   const secs = cuts.reduce((a, c) => a + c.total, 0);
   out.push(`نسخة ${DATE}. تسجيل التعليق الصوتي لفيلمَي عرض المنتج: الكامل (${cuts[0].count} سطرًا) والقصير (${cuts[1].count} سطرًا)، ${lines} سطرًا في المجموع، نحو ${Math.round(secs / 60)} دقيقة من القراءة الصافية (بسرعة نحو ${WPM} كلمة في الدقيقة)؛ نحو ساعتين في الأستوديو مع الإعادات. القارئ: صوت رجل أو امرأة مصري، بالعربية الفصحى.`, '');
@@ -117,7 +117,7 @@ function html(cuts) {
   const secs = cuts.reduce((a, c) => a + c.total, 0);
   const list = (items) => `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`;
   const body = [];
-  body.push(`<section class="cover"><div class="eyebrow">CURRICULUM SCOPE · NARRATOR RECORDING PACK</div><h1>حزمة تسجيل التعليق الصوتي</h1><h2>نطاق المناهج — فيلمَا عرض المنتج</h2>
+  body.push(`<section class="cover"><div class="eyebrow">MIDAD · NARRATOR RECORDING PACK</div><h1>حزمة تسجيل التعليق الصوتي</h1><h2>مِداد — فيلمَا عرض المنتج</h2>
     <table class="facts"><tr><td>الأسطر</td><td>${arDigits(lines)} سطرًا (الفيلم الكامل ${arDigits(cuts[0].count)}، القصير ${arDigits(cuts[1].count)})</td></tr>
     <tr><td>القراءة الصافية</td><td>نحو ${arDigits(Math.round(secs / 60))} دقيقة، بسرعة نحو ${arDigits(WPM)} كلمة في الدقيقة</td></tr>
     <tr><td>وقت الأستوديو</td><td>نحو ساعتين مع الإعادات</td></tr>
@@ -171,7 +171,7 @@ await page.evaluate(() => document.fonts.ready);
 await page.pdf({
   path: join(ROOT, 'Narrator_Recording_Pack.pdf'), format: 'A4', printBackground: true, displayHeaderFooter: true,
   headerTemplate: '<div></div>',
-  footerTemplate: '<div style="width:100%;font-size:8px;color:#8a97ab;text-align:center;font-family:sans-serif">Curriculum Scope · Narrator recording pack · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+  footerTemplate: '<div style="width:100%;font-size:8px;color:#8a97ab;text-align:center;font-family:sans-serif">Midad · Narrator recording pack · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
   margin: { top: '16mm', bottom: '18mm', left: '16mm', right: '16mm' },
 });
 await browser.close();

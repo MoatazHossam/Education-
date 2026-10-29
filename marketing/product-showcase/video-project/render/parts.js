@@ -59,6 +59,9 @@ export function caption(p) {
   return h('div', { class: 'caption' }, t, p.status ? status(p.status) : null);
 }
 
+// The Arabic half of a tag keeps its letters joined: it is set without the mono font's letter spacing.
+const tagParts = (tag) => tag.split(/( · )/).map((part) => (/[\u0600-\u06FF]/.test(part) ? h('span', { class: 'ar' }, part) : part));
+
 /** A browser window around recorded frames (desktop shots, 16:9). */
 export function browserWindow({ x, y, w, title = '', tag = 'DEMO DATA · بيانات تجريبية' }) {
   const vh = Math.round((w * 9) / 16);
@@ -68,7 +71,7 @@ export function browserWindow({ x, y, w, title = '', tag = 'DEMO DATA · بيا�
   // The camera moves `inner` inside the fixed window: the frame never grows over the captions.
   const inner = h('div', { class: 'inner', style: { width: `${w}px`, height: `${vh}px` } }, imgB, imgA);
   const view = h('div', { class: 'view', style: { width: `${w}px`, height: `${vh}px` } }, inner);
-  const bar = h('div', { class: 'bar' }, h('div', { class: 'dots' }, h('i'), h('i'), h('i')), h('div', { class: 'tab' }, tab), h('span', { class: 'demo-tag' }, tag));
+  const bar = h('div', { class: 'bar' }, h('div', { class: 'dots' }, h('i'), h('i'), h('i')), h('div', { class: 'tab' }, tab), h('span', { class: 'demo-tag' }, ...tagParts(tag)));
   const el = h('div', { class: 'window', style: { left: `${x}px`, top: `${y}px`, width: `${w}px` } }, bar, view);
   return { el, view: inner, imgA, imgB, tab, vw: w, vh, barH: 36 };
 }

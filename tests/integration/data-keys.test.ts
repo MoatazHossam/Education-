@@ -81,7 +81,7 @@ async function receiver() {
   return { url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/hook`, received, close: () => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }) };
 }
 const signedWith = (secret: string, r: { headers: http.IncomingHttpHeaders; body: string }) => {
-  const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(String(r.headers['x-curriculumscope-signature']))!;
+  const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(String(r.headers['x-midad-signature']))!;
   return v1 === createHmac('sha256', secret).update(`${t}.${r.body}`).digest('hex');
 };
 

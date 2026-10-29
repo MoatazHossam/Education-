@@ -12,7 +12,7 @@ import { processWebhookDeliveries } from '../../src/webhooks/service.js';
 import { ADMIN_URL } from '../helpers/env.js';
 
 export const E2E_PORT = 3100;
-export const E2E_DB = 'curriculum_scope_e2e';
+export const E2E_DB = 'midad_e2e';
 const PID_FILE = join(process.cwd(), 'test-results', '.e2e-server.pid');
 // The AI provider of the E2E server is the local simulator (tests/helpers/ai-simulator.ts), run as its own process.
 export const E2E_AI_PORT = 3199;
@@ -27,7 +27,7 @@ function dbUrl(user: string, password: string): string {
   return u.toString();
 }
 
-export const E2E_OWNER_URL = dbUrl('cs_test_owner', 'owner-test-pw');
+export const E2E_OWNER_URL = dbUrl('midad_test_owner', 'owner-test-pw');
 
 export const E2E_ENV: Record<string, string> = {
   NODE_ENV: 'test',
@@ -35,7 +35,7 @@ export const E2E_ENV: Record<string, string> = {
   HOST: '127.0.0.1',
   APP_URL: `http://localhost:${E2E_PORT}`,
   LOG_LEVEL: 'warn',
-  DATABASE_URL: dbUrl('cs_test_app', 'app-test-pw'),
+  DATABASE_URL: dbUrl('midad_test_app', 'app-test-pw'),
   MIGRATION_DATABASE_URL: E2E_OWNER_URL,
   SESSION_SECRET: 'e2e-session-secret-0123456789-abcdefghijklmnop',
   DATA_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),

@@ -1,6 +1,6 @@
 <div dir="rtl" lang="ar">
 
-# نطاق المناهج: دليل النشر والتشغيل
+# مِداد: دليل النشر والتشغيل
 
 هذه النسخة العربية من [دليل النشر والتشغيل](DEPLOYMENT_GUIDE.md)، وتُحدَّث معه: الأوامر والإعدادات فيهما واحدة.
 
@@ -27,9 +27,9 @@
 npm ci
 # Create roles and the database (as a PostgreSQL superuser):
 psql -U postgres <<'SQL'
-CREATE ROLE curriculum_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
-CREATE ROLE curriculum_app   LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
-CREATE DATABASE curriculum_scope OWNER curriculum_owner;
+CREATE ROLE midad_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
+CREATE ROLE midad_app  LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
+CREATE DATABASE midad OWNER midad_owner;
 SQL
 cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
 set -a; . ./.env; set +a
@@ -128,9 +128,9 @@ curl -fsS https://<domain>/readyz
 
 | الإعداد | القيمة |
 | --- | --- |
-| `DATABASE_URL` | دور التطبيق (`curriculum_app`)، مثلًا `postgres://curriculum_app:…@db.example.com:5432/curriculum_scope` |
-| `MIGRATION_DATABASE_URL` | الدور المالك (`curriculum_owner`)، قاعدة البيانات نفسها |
-| `BACKUP_DATABASE_URL` | دور النسخ الاحتياطي (`curriculum_backup`، مع `BYPASSRLS` و`pg_read_all_data`)، قاعدة البيانات نفسها |
+| `DATABASE_URL` | دور التطبيق (`midad_app`)، مثلًا `postgres://midad_app:…@db.example.com:5432/midad` |
+| `MIGRATION_DATABASE_URL` | الدور المالك (`midad_owner`)، قاعدة البيانات نفسها |
+| `BACKUP_DATABASE_URL` | دور النسخ الاحتياطي (`midad_backup`، مع `BYPASSRLS` و`pg_read_all_data`)، قاعدة البيانات نفسها |
 | `DATABASE_SSL` | `true` |
 | `RESTORE_ADMIN_URL` (اختياري) | للاستعادة: دور يستطيع إنشاء قواعد بيانات وعضو في الدور المالك، على قاعدة البيانات `postgres`؛ إن تُرك فارغًا سألت عنه الاستعادة |
 
@@ -164,7 +164,7 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
    - بدون <span dir="ltr">`--build`</span> يعيد السكربت تشغيل المثيلين فقط، واحدًا بعد الآخر. إن لم يصبح أحدهما جاهزًا توقف السكربت، واستمر الآخر في الخدمة.
    - في ويندوز (أو كطريق أبسط في لينكس): شغّل `ops\start.bat --env prod` وأجب بنعم (y) على السؤال «<span dir="ltr">Rebuild the app image first</span>» (أعد بناء صورة التطبيق أولًا). يُعاد تشغيل المثيلين معًا، فتنقطع الخدمة بضع ثوانٍ.
 2. يجب أن تكون الترحيلات متوافقة مع الإصدار السابق (أضف الأعمدة والجداول أولًا، واحذفها لاحقًا)، حتى لا يحتاج الرجوع إلا إلى الصورة القديمة.
-3. الرجوع إلى الإصدار السابق: طريقتا إعادة البناء كلتاهما تحتفظان بالصورة التي تستبدلانها باسم `curriculum-scope:previous`. أضف `APP_IMAGE_TAG=previous` إلى <span dir="ltr">`.env.production`</span> وشغّل `ops/start.sh --env prod` (أو `APP_IMAGE_TAG=previous scripts/rolling-restart.sh`). احذف هذا السطر قبل الترقية التالية، وإلا بُنيت الصورة الجديدة بهذا الاسم. إن احتاج الأمر إلى التراجع عن ترحيل، فاستعد النسخة الاحتياطية التي أُخذت قبل الترقية ([القسم 8.6](#86-الاستعادة)).
+3. الرجوع إلى الإصدار السابق: طريقتا إعادة البناء كلتاهما تحتفظان بالصورة التي تستبدلانها باسم `midad:previous`. أضف `APP_IMAGE_TAG=previous` إلى <span dir="ltr">`.env.production`</span> وشغّل `ops/start.sh --env prod` (أو `APP_IMAGE_TAG=previous scripts/rolling-restart.sh`). احذف هذا السطر قبل الترقية التالية، وإلا بُنيت الصورة الجديدة بهذا الاسم. إن احتاج الأمر إلى التراجع عن ترحيل، فاستعد النسخة الاحتياطية التي أُخذت قبل الترقية ([القسم 8.6](#86-الاستعادة)).
 
 ### تغيير مفتاح التشفير `DATA_ENCRYPTION_KEY`
 
@@ -238,20 +238,20 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 
 ## 8. سكربتات التشغيل (لينكس وويندوز)
 
-يحتوي <span dir="ltr">`ops/`</span> على أداة واحدة بشكلين: `ops/cs.sh` للينكس (bash)، و`ops\cs.ps1` لويندوز (PowerShell)، ومعهما ملفات تشغيل قصيرة. يقوم الشكلان بالأعمال نفسها، ويقرآن الإعدادات نفسها، ويصنعان النسخ الاحتياطية نفسها: النسخة التي يصنعها أحدهما يستعيدها الآخر. لا يحتاج الجهاز إلا إلى Docker مع Compose v2؛ أما أدوات قاعدة البيانات والتشفير ونقل الملفات فتعمل داخل حاويات.
+يحتوي <span dir="ltr">`ops/`</span> على أداة واحدة بشكلين: `ops/midad.sh` للينكس (bash)، و`ops\midad.ps1` لويندوز (PowerShell)، ومعهما ملفات تشغيل قصيرة. يقوم الشكلان بالأعمال نفسها، ويقرآن الإعدادات نفسها، ويصنعان النسخ الاحتياطية نفسها: النسخة التي يصنعها أحدهما يستعيدها الآخر. لا يحتاج الجهاز إلا إلى Docker مع Compose v2؛ أما أدوات قاعدة البيانات والتشفير ونقل الملفات فتعمل داخل حاويات.
 
 **رسائل السكربتات وأسئلتها بالإنجليزية.** يذكر هذا الدليل نص كل سؤال مهم كما يظهر، ومعه شرحه. الإجابة على أسئلة نعم/لا بالحرف `y` (نعم) أو `n` (لا)، وعلى أسئلة الاختيار برقم الخيار. والقيمة بين القوسين المربعين <span dir="ltr">`[ ]`</span> هي الإجابة الافتراضية: اضغط Enter لقبولها.
 
 | المهمة | لينكس | ويندوز |
 | --- | --- | --- |
-| قائمة بكل ما يلي | `ops/cs.sh` | انقر نقرًا مزدوجًا على `ops\cs.bat` |
+| قائمة بكل ما يلي | `ops/midad.sh` | انقر نقرًا مزدوجًا على `ops\midad.bat` |
 | التشغيل | `ops/start.sh` | `ops\start.bat` |
 | الإيقاف | `ops/stop.sh` | `ops\stop.bat` |
 | الحالة | `ops/status.sh` | `ops\status.bat` |
 | النسخ الاحتياطي | `ops/backup.sh` | `ops\backup.bat` |
 | الاستعادة | `ops/restore.sh` | `ops\restore.bat` |
 | اختبار نسخة احتياطية (لا يغيّر شيئًا) | `ops/restore.sh --only-verify` | `ops\restore.bat --only-verify` |
-| إعداد أماكن النسخ الإضافية | `ops/cs.sh destinations` | `ops\cs.bat destinations` |
+| إعداد أماكن النسخ الإضافية | `ops/midad.sh destinations` | `ops\midad.bat destinations` |
 
 بدون خيارات تسأل السكربتات عما تحتاجه: أي تثبيت، وأي اختيارات، وأي نسخة احتياطية. وهذه خيارات تعطي الإجابات نفسها مسبقًا، وهي واحدة في النظامين:
 
@@ -267,9 +267,9 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 
 ### 8.1 تجهيز الجهاز
 
-**لينكس** (الموصى به للخادم): Docker Engine مع إضافة Compose (<span dir="ltr">`https://docs.docker.com/engine/install/`</span>)، ثم `systemctl enable docker`، والمستودع في مجلد مثل <span dir="ltr">`/opt/curriculum-scope`</span>، و<span dir="ltr">`.env.production`</span> ([القسم 3.2](#32-الإعدادات)) لا يقرؤه إلا مالكه (`chmod 600`؛ ويعرض سكربت التشغيل إصلاح ذلك). شغّل السكربتات بصفة root أو بمستخدم عضو في مجموعة `docker`.
+**لينكس** (الموصى به للخادم): Docker Engine مع إضافة Compose (<span dir="ltr">`https://docs.docker.com/engine/install/`</span>)، ثم `systemctl enable docker`، والمستودع في مجلد مثل <span dir="ltr">`/opt/midad`</span>، و<span dir="ltr">`.env.production`</span> ([القسم 3.2](#32-الإعدادات)) لا يقرؤه إلا مالكه (`chmod 600`؛ ويعرض سكربت التشغيل إصلاح ذلك). شغّل السكربتات بصفة root أو بمستخدم عضو في مجموعة `docker`.
 
-**ويندوز 10 (22H2) أو 11:** Docker Desktop بمحرك WSL 2، والمستودع (عبر Git for Windows، أو ملف ZIP من GitHub). تشغّل ملفات <span dir="ltr">`.bat`</span> الملف `ops\cs.ps1` بـ PowerShell 7 إن كان مثبتًا، وإلا بـ Windows PowerShell 5.1 المضمّن في ويندوز، مع السماح بتشغيل هذا السكربت وحده (<span dir="ltr">`-ExecutionPolicy Bypass`</span>). عدّل ملفات الإعدادات بالمفكرة (Notepad).
+**ويندوز 10 (22H2) أو 11:** Docker Desktop بمحرك WSL 2، والمستودع (عبر Git for Windows، أو ملف ZIP من GitHub). تشغّل ملفات <span dir="ltr">`.bat`</span> الملف `ops\midad.ps1` بـ PowerShell 7 إن كان مثبتًا، وإلا بـ Windows PowerShell 5.1 المضمّن في ويندوز، مع السماح بتشغيل هذا السكربت وحده (<span dir="ltr">`-ExecutionPolicy Bypass`</span>). عدّل ملفات الإعدادات بالمفكرة (Notepad).
 - لا يعمل Docker Desktop إلا والمستخدم الذي ثبّته مسجّل الدخول: ليعود التطبيق بعد إعادة تشغيل الجهاز، فعّل في إعدادات Docker Desktop الخيار *Start Docker Desktop when you sign in* (تشغيل Docker Desktop عند تسجيل الدخول)، وأبقِ ذلك المستخدم مسجّل الدخول (الشاشة المقفلة لا تمنع ذلك).
 - الخادم الذي يجب أن يعمل دون أن يسجّل أحد دخوله مكانه لينكس.
 - راجع شروط ترخيص Docker Desktop لمؤسستك (المؤسسات الأكبر تحتاج اشتراكًا مدفوعًا).
@@ -281,7 +281,7 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 - **التشغيل** (start):
   - يفحص ملف الإعدادات: القيم المطلوبة موجودة، ولم تبقَ قيم `change-me`، و<span dir="ltr">`https://`</span> في الإنتاج، والملف لا يقرؤه غيرك.
   - يبني صورة التطبيق في المرة الأولى، ويشغّل كل الخدمات، وينتظر حتى يرد مثيلا التطبيق على <span dir="ltr">`/readyz`</span>، ثم يعرض الحالة.
-  - يسأل «<span dir="ltr">Rebuild the app image first (after updating the code)?</span>» أي: هل يعيد بناء الصورة أولًا (بعد تحديث الكود)؟ وتُحفظ الصورة المستبدلة باسم `curriculum-scope:previous` ([القسم 4](#4-الترقيات-والرجوع-إلى-الإصدار-السابق)).
+  - يسأل «<span dir="ltr">Rebuild the app image first (after updating the code)?</span>» أي: هل يعيد بناء الصورة أولًا (بعد تحديث الكود)؟ وتُحفظ الصورة المستبدلة باسم `midad:previous` ([القسم 4](#4-الترقيات-والرجوع-إلى-الإصدار-السابق)).
   - مع قاعدة بيانات مُدارة (`DATABASE_URL` مضبوط) لا تُشغَّل خدمة `postgres` المضمّنة.
 - **الإيقاف** (stop) يسأل «<span dir="ltr">Stop how?</span>» (كيف يوقف): الخيار 1 إيقاف مع بقاء الحاويات (ثم التشغيل من جديد بسكربت التشغيل)، أو الخيار 2 إيقاف مع حذف الحاويات. لا يحذف أي منهما بيانات: قاعدة البيانات والشهادات وبصمات الفيروسات تبقى في مجلدات Docker الدائمة.
 - **الحالة** (status) تسرد الخدمات مع حالتها وصحتها، وهل كل مثيل للتطبيق جاهز، والعنوان.
@@ -297,10 +297,10 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 
 ليس في النسخة: صور Docker (تُبنى من الكود من جديد، والنسخة تسجّل إصدار التطبيق)، وبصمات الفيروسات (تُنزَّل من جديد)، والملف <span dir="ltr">`.env.backup`</span> الذي فيه إعدادات أماكن النسخ (دوّنها في مكان آخر).
 
-- **الاسم والصيغة:** `cs-backup-<dev|prod>-<UTC time>.tar.enc`، والوقت بالتوقيت العالمي (أو <span dir="ltr">`.tar`</span>)، وبجانبه ملف بصمة التحقق <span dir="ltr">`.sha256`</span>؛ وداخله `manifest.txt` يسرد كل جزء ببصمته.
+- **الاسم والصيغة:** `midad-backup-<dev|prod>-<UTC time>.tar.enc`، والوقت بالتوقيت العالمي (أو <span dir="ltr">`.tar`</span>)، وبجانبه ملف بصمة التحقق <span dir="ltr">`.sha256`</span>؛ وداخله `manifest.txt` يسرد كل جزء ببصمته.
 - **التشفير** (مفعّل افتراضيًا): AES-256-GCM بمفتاح مشتق من عبارة المرور (scrypt). تحتاج عبارة المرور إلى 12 حرفًا أو أكثر. تُكتشف عبارة المرور الخاطئة وأي بايت متغيّر. **بدون عبارة المرور لا يمكن فتح النسخة الاحتياطية**: احفظها في مدير كلمات مرور، بعيدًا عن النسخ الاحتياطية. لا تكتبها السكربتات في أي مكان إلا في ملف عبارة المرور الذي تنشئه أنت للمهام المجدولة ([القسم 8.5](#85-النسخ-والاختبار-المجدولان)).
 - **أين:** مجلد النسخ الاحتياطية (افتراضيًا <span dir="ltr">`backups/`</span> داخل مجلد المشروع، ولا يقرؤه غيرك؛ ويمكن تغييره بـ `BACKUP_DIR` في <span dir="ltr">`.env.backup`</span>)، والنسخ الإضافية التي تختارها ([القسم 8.4](#84-النسخ-الإضافية-مجلد-أو-قرص-usb-أو-خادم-آخر-أو-مخزن-سحابي)). كل نسخة إضافية تُقارن ببصمتها بعد النقل.
-- **النسخ القديمة:** تُحذف النسخ الأقدم من عدد الأيام الذي تختاره (الافتراضي 30، و0 يحتفظ بالكل) من مجلد النسخ الاحتياطية، ومن كل مكان وصلت إليه النسخة الجديدة. لا يُمس إلا الملفات التي يبدأ اسمها بـ <span dir="ltr">`cs-backup-`</span>، ولا يحدث الحذف إلا بعد نسخ ناجح، فتبقى الأحدث دائمًا.
+- **النسخ القديمة:** تُحذف النسخ الأقدم من عدد الأيام الذي تختاره (الافتراضي 30، و0 يحتفظ بالكل) من مجلد النسخ الاحتياطية، ومن كل مكان وصلت إليه النسخة الجديدة. لا يُمس إلا الملفات التي يبدأ اسمها بـ <span dir="ltr">`midad-backup-`</span>، ولا يحدث الحذف إلا بعد نسخ ناجح، فتبقى الأحدث دائمًا.
 - **الأمان:**
   - يعمل النسخ والتطبيق يخدم المستخدمين (`pg_dump` يقرأ لقطة متسقة).
   - لا يعمل إلا نسخ أو استعادة واحدة في الوقت نفسه. القفل الذي تركه تشغيل أُوقف قسرًا يُتولّى تلقائيًا، ويُحذف ما تركه وراءه (وقد يكون فيه بيانات مفكوكة التشفير).
@@ -344,17 +344,17 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 
 ### 8.5 النسخ والاختبار المجدولان
 
-شغّل أولًا نسخًا احتياطيًا واحدًا يدويًا وأجب على الأسئلة: المهمة المجدولة (<span dir="ltr">`--yes`</span>) تعيد استخدام تلك الإجابات. ولعبارة المرور، اختر من قائمة أماكن النسخ «<span dir="ltr">Passphrase file for scheduled backups</span>» (ملف عبارة المرور للنسخ المجدول): يكتب عبارة المرور في ملف لا يقرؤه غيرك (وفي ويندوز: أنت وحساب SYSTEM)، ويحفظ مكانه. أو اضبط `CS_BACKUP_PASSPHRASE` في بيئة المهمة المجدولة.
+شغّل أولًا نسخًا احتياطيًا واحدًا يدويًا وأجب على الأسئلة: المهمة المجدولة (<span dir="ltr">`--yes`</span>) تعيد استخدام تلك الإجابات. ولعبارة المرور، اختر من قائمة أماكن النسخ «<span dir="ltr">Passphrase file for scheduled backups</span>» (ملف عبارة المرور للنسخ المجدول): يكتب عبارة المرور في ملف لا يقرؤه غيرك (وفي ويندوز: أنت وحساب SYSTEM)، ويحفظ مكانه. أو اضبط `MIDAD_BACKUP_PASSPHRASE` في بيئة المهمة المجدولة.
 
 **لينكس (cron):**
 
 <div dir="ltr">
 
 ```bash
-# /etc/cron.d/curriculum-scope   (cron emails the echo line when a run fails)
+# /etc/cron.d/midad   (cron emails the echo line when a run fails)
 MAILTO=ops@example.com
-15 2 * * * root cd /opt/curriculum-scope && ops/backup.sh --env prod --yes >>/var/log/curriculum-scope-backup.log 2>&1 || echo "Curriculum Scope backup failed: see /var/log/curriculum-scope-backup.log"
-45 3 * * 0 root cd /opt/curriculum-scope && ops/restore.sh --env prod --yes --from bucket --only-verify >>/var/log/curriculum-scope-backup.log 2>&1 || echo "Curriculum Scope backup test failed: see /var/log/curriculum-scope-backup.log"
+15 2 * * * root cd /opt/midad && ops/backup.sh --env prod --yes >>/var/log/midad-backup.log 2>&1 || echo "Midad backup failed: see /var/log/midad-backup.log"
+45 3 * * 0 root cd /opt/midad && ops/restore.sh --env prod --yes --from bucket --only-verify >>/var/log/midad-backup.log 2>&1 || echo "Midad backup test failed: see /var/log/midad-backup.log"
 ```
 
 </div>
@@ -368,7 +368,7 @@ MAILTO=ops@example.com
 4. الإجراء «<span dir="ltr">Start a program</span>» (تشغيل برنامج):
    - البرنامج: `cmd.exe`
    - الوسائط: <span dir="ltr">`/c ops\backup.bat --env prod --yes >> backups\backup-log.txt 2>&1`</span>
-   - «<span dir="ltr">Start in</span>» (البدء في): مجلد المشروع، مثلًا `C:\curriculum-scope`.
+   - «<span dir="ltr">Start in</span>» (البدء في): مجلد المشروع، مثلًا `C:\midad`.
 5. مهمة ثانية، أسبوعية، بالأمر `ops\restore.bat --env prod --yes --from bucket --only-verify`.
 
 يُظهر عمود «<span dir="ltr">Last Run Result</span>» (نتيجة آخر تشغيل) القيمة `0x0` للنجاح و`0x1` للفشل، والتفاصيل في ملف السجل.
@@ -411,7 +411,7 @@ MAILTO=ops@example.com
 عند ضبط `DATABASE_URL` ([القسم 3.3](#33-التشغيل)):
 - يقرأ النسخ الاحتياطي قاعدة البيانات عبر `BACKUP_DATABASE_URL`.
 - تنشئ الاستعادة قاعدة البيانات الجديدة على الخادم المُدار عبر `RESTORE_ADMIN_URL` (من ملف الإعدادات، أو تسأل عنه)، وتفحصها بدور النسخ الاحتياطي، وتغيّر العناوين الثلاثة.
-- يحتاج دور المدير إلى صلاحية إنشاء قواعد البيانات وعضوية الدور المالك (<span dir="ltr">`GRANT curriculum_owner TO <admin>`</span>)، ولا يحتاج إلى صلاحيات superuser.
+- يحتاج دور المدير إلى صلاحية إنشاء قواعد البيانات وعضوية الدور المالك (<span dir="ltr">`GRANT midad_owner TO <admin>`</span>)، ولا يحتاج إلى صلاحيات superuser.
 
 ### 8.10 ما الذي جُرِّب
 

@@ -347,7 +347,7 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
       requireFeature(await getEntitlements(trx, orgId, grace), 'api_access', 'API access');
       const active = await trx.selectFrom('api_keys').select((eb) => eb.fn.countAll<string>().as('n')).where('org_id', '=', orgId).where('revoked_at', 'is', null).executeTakeFirstOrThrow();
       if (Number(active.n) >= MAX_ACTIVE_API_KEYS) throw conflict(`At most ${MAX_ACTIVE_API_KEYS} active API keys`, 'API_KEY_LIMIT');
-      const key = `cs_live_${randomToken(32)}`;
+      const key = `midad_live_${randomToken(32)}`;
       const row = await trx
         .insertInto('api_keys')
         .values({ org_id: orgId, name, prefix: key.slice(0, 14), key_hash: sha256Hex(key), created_by: user.id })

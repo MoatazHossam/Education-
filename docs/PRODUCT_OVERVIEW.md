@@ -33,8 +33,8 @@ files, and no tests**.
 
 ## What the product is now
 
-**Curriculum Scope** (working name; change it in `public/js/i18n.js` and the email signature in
-`src/notifications/email.ts`) is a multi-tenant SaaS built around that same picker:
+**Midad** (مِداد, the name the owner chose on 2026-10-29; it is set in `public/js/i18n.js` and the email
+signatures in `src/notifications/email.ts`) is a multi-tenant SaaS built around that same picker:
 
 > A curated, versioned catalogue of the Egyptian K-12 curriculum, and a shared workspace where an
 > organization's team decides — and keeps a durable record of — exactly which curriculum materials

@@ -360,3 +360,28 @@ table.gradebook thead th{vertical-align:bottom;min-width:8em}
 table.gradebook thead th a{font-family:var(--f-body);font-size:14px;letter-spacing:0;text-transform:none}
 table.gradebook tbody th{font-family:inherit;font-size:inherit;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600;border-top:1px solid var(--rule)}
 .subject-pick{display:flex;align-items:center;gap:8px}
+
+/* Teaching plans (views/plans.js): the plan as a document, and its editor's repeated rows. */
+.plan-doc{gap:4px}
+.plan-doc .plan-title{font-family:var(--f-display);font-size:22px;margin:0 0 6px}
+.plan-facts{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0 0 8px;font-size:14px}
+.plan-facts dt{color:var(--muted)}
+.plan-facts dd{margin:0}
+.plan-section h2{font-size:16px;margin:14px 0 6px}
+.plan-section ol,.plan-section ul{margin:0;padding-inline-start:22px;display:grid;gap:3px}
+.prose{white-space:pre-line;overflow-wrap:anywhere;margin:0}
+.plan-table tfoot th,.plan-table tfoot td{font-weight:600}
+fieldset.plan-row{border:1px solid var(--rule);border-radius:8px;padding:10px 14px 14px;display:grid;gap:10px;margin:0}
+fieldset.plan-row legend{font-weight:600;padding:0 4px}
+
+@media print{
+  .skip,.topbar,.banner,.toasts,.no-print,.crumbs{display:none !important}
+  body,main{background:#fff !important;color:#000 !important}
+  main.wrap{max-width:none;padding:0}
+  .page-head{border:0;padding:0;margin-bottom:8px}
+  .card{border:0;padding:0;box-shadow:none;background:#fff}
+  .plan-doc table.data th,.plan-doc table.data td{border-top:1px solid #999;color:#000}
+  .plan-section{break-inside:avoid-page}
+  .plan-table tr{break-inside:avoid}
+  a{color:#000;text-decoration:none}
+}

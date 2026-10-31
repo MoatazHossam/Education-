@@ -210,8 +210,78 @@ async function teacherDialog(orgId, cls, subjects) {
   return Boolean(ok);
 }
 
+const HW_KINDS = ['practice', 'reading', 'writing', 'research', 'review'];
+
+/**
+ * Homework suggested by AI (docs/CLASSROOM.md §13) for the subject chosen in the form: the teacher
+ * gives a topic and, if they like, the lesson text, reads the suggestion, and uses it to fill the
+ * form. Nothing is saved until the homework is set. Returns { title, instructions } or null.
+ */
+async function suggestHomeworkDialog(orgId, cls, subject, ai) {
+  const err = h('div', { class: 'alert error', role: 'alert' });
+  const status = h('p', { class: 'muted', role: 'status' });
+  const topic = h('input', { id: 'hs-topic', type: 'text', maxlength: 300, dir: 'auto', required: true, 'aria-describedby': 'hs-topic-hint' });
+  const lesson = h('textarea', { id: 'hs-lesson', rows: 5, maxlength: 12000, dir: 'auto', 'aria-describedby': 'hs-lesson-hint' });
+  const kind = h('select', { id: 'hs-kind' }, HW_KINDS.map((k) => h('option', { value: k }, t(`hw.kind.${k}`))));
+  const minutes = h('input', { id: 'hs-minutes', type: 'number', min: '10', max: '120', step: '5', inputmode: 'numeric', value: '30' });
+  const language = h('select', { id: 'hs-language' }, ['ar', 'en'].map((l) => h('option', { value: l, selected: locale() === l ? 'selected' : null }, t(`tests.suggestLang.${l}`))));
+  const body = h('div', { class: 'stack' },
+    h('p', { class: 'notice' }, t('hw.suggestNote')),
+    h('p', { class: 'muted' }, t('hw.suggestFor', { subject: subjectName({ subjectEn: subject.nameEn, subjectAr: subject.nameAr }), name: cls.name })),
+    ai.left !== null ? h('p', { class: 'muted' }, t('tests.suggestLeft', { n: fmtNum(ai.left) })) : null,
+    err,
+    h('div', { class: 'field' }, h('label', { for: 'hs-topic' }, t('tests.suggestTopic')), topic, h('span', { class: 'hint', id: 'hs-topic-hint' }, t('tests.suggestTopicHint'))),
+    h('div', { class: 'field' }, h('label', { for: 'hs-lesson' }, t('tests.suggestLesson')), lesson, h('span', { class: 'hint', id: 'hs-lesson-hint' }, t('hw.suggestLessonHint'))),
+    h('div', { class: 'grid2' },
+      h('div', { class: 'field' }, h('label', { for: 'hs-kind' }, t('hw.suggestKind')), kind),
+      h('div', { class: 'field' }, h('label', { for: 'hs-minutes' }, t('hw.suggestMinutes')), minutes)),
+    h('div', { class: 'field' }, h('label', { for: 'hs-language' }, t('hw.suggestLanguage')), language),
+    status);
+  let busy = false;
+  let reply = null;
+  await dialog({
+    title: t('hw.suggestTitle'),
+    body,
+    actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }, {
+      label: t('tests.suggestGo'), value: true, validate: async () => {
+        if (busy) return false;
+        err.textContent = '';
+        if (topic.value.trim().length < 3) { err.textContent = t('tests.suggestNeedTopic'); topic.focus(); return false; }
+        busy = true;
+        status.textContent = t('hw.suggestWorking');
+        try {
+          reply = await post(`/api/orgs/${orgId}/classes/${cls.id}/suggest-homework`, {
+            subjectEn: subject.nameEn, topic: topic.value.trim(), lessonText: lesson.value.trim(), kind: kind.value,
+            minutes: Math.min(120, Math.max(10, Math.round(Number(minutes.value) || 30))), language: language.value,
+          });
+          return true;
+        } catch (e) {
+          err.textContent = errorMessage(e);
+          return false;
+        } finally {
+          busy = false;
+          status.textContent = '';
+        }
+      },
+    }],
+  });
+  if (!reply) return null;
+  const sg = reply.suggestion;
+  const use = await dialog({
+    title: t('hw.suggestionTitle'),
+    body: h('div', { class: 'stack' },
+      h('p', { class: 'notice' }, t('hw.suggestionReplaces')),
+      h('h3', { dir: 'auto' }, sg.title),
+      h('div', { class: 'answer', dir: 'auto' }, sg.instructions),
+      h('p', { class: 'muted' }, t('hw.suggestionMinutes', { n: fmtNum(sg.estimatedMinutes) })),
+      sg.teacherNotes ? h('div', { class: 'stack' }, h('h3', {}, t('hw.suggestionNotes')), h('p', { class: 'muted', dir: 'auto' }, sg.teacherNotes)) : null),
+    actions: [{ label: t('common.cancel'), value: false, kind: 'ghost' }, { label: t('hw.suggestionUse'), value: true }],
+  });
+  return use ? { title: sg.title, instructions: sg.instructions } : null;
+}
+
 /** Set or edit homework. `subjects` are the subjects this member may set work for, with their books. */
-async function homeworkDialog(orgId, cls, subjects, initial = null) {
+async function homeworkDialog(orgId, cls, subjects, initial = null, ai = null) {
   const f = {};
   const err = h('div', { class: 'alert error', role: 'alert' });
   const field = (id, label, input, hint) => h('div', { class: 'field' }, h('label', { for: id }, label), input, hint ? h('span', { class: 'hint', id: `${id}-hint` }, hint) : null);
@@ -243,8 +313,19 @@ async function homeworkDialog(orgId, cls, subjects, initial = null) {
   };
   f.subject.addEventListener('change', () => { picked.clear(); drawBooks(); });
   drawBooks();
+  // AI suggestions fill a new homework's title and instructions, for the subject chosen above.
+  const suggestBtn = ai && !initial
+    ? h('button', { type: 'button', class: 'btn small ghost', onclick: () => act(async () => {
+      const sg = await suggestHomeworkDialog(orgId, cls, subjects[Number(f.subject.value)], ai);
+      if (!sg) return;
+      f.title.value = sg.title;
+      f.instructions.value = sg.instructions;
+      f.title.focus();
+    }) }, t('hw.suggest'))
+    : null;
   const body = h('div', { class: 'stack' }, err,
     field('hw-subject', t('classes.subject'), f.subject),
+    suggestBtn ? h('div', { class: 'row' }, suggestBtn) : null,
     field('hw-title', t('hw.titleField'), f.title),
     field('hw-instr', t('hw.instructions'), f.instructions),
     books,
@@ -330,7 +411,7 @@ export async function classView(ctx) {
 
   const setBtn = subjects.length && !cls.archived
     ? h('button', { type: 'button', class: 'btn', onclick: () => act(async () => {
-      const r = await homeworkDialog(orgId, cls, subjects);
+      const r = await homeworkDialog(orgId, cls, subjects, null, data.ai);
       if (r) { toast(t('hw.setDone')); refresh(); }
     }) }, t('hw.set'))
     : null;
@@ -368,7 +449,8 @@ export async function classView(ctx) {
   return h('div', {},
     h('p', { class: 'crumbs' }, link(`/org/${orgId}/classes`, data.admin ? t('classes.title') : t('classes.myTitle'))),
     pageHead(cls.name, sub, cls.archived ? h('p', { class: 'notice' }, t('classes.archivedNote')) : null,
-      h('div', { class: 'row' }, link(`/org/${orgId}/classes/${classId}/gradebook`, t('classes.gradebook'), { class: 'btn small' })), adminActions),
+      h('div', { class: 'row' }, link(`/org/${orgId}/classes/${classId}/gradebook`, t('classes.gradebook'), { class: 'btn small' }),
+        cls.scopeId ? link(`/org/${orgId}/scopes/${cls.scopeId}/plans?grade=${cls.grade}`, t('plans.forClass'), { class: 'btn small ghost' }) : null), adminActions),
     homeworkCard,
     testsCard(orgId, data, subjects),
     h('div', { class: 'grid2' }, studentsCard, teachersCard));

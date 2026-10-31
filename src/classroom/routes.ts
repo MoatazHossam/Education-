@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { hasRole, inOrg } from '../auth/guards.js';
+import { aiAllowance, runAiTask } from '../ai/service.js';
 import { getEntitlements, lockOrg } from '../billing/entitlements.js';
 import { gradeList } from '../catalog/service.js';
 import type { HomeworkMaterial } from '../db/types.js';
@@ -11,6 +12,7 @@ import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { getScope } from '../scopes/service.js';
 import { zGrade } from '../students/service.js';
+import { HomeworkSuggestBody, homeworkPrompt, SuggestedHomework, toHomeworkSuggestion } from './homework-suggestions.js';
 import { itemRetention } from './retention.js';
 import { classTests } from './tests-service.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, openable, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
@@ -112,6 +114,8 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
         ...(await classSubjects(trx, acc.cls)),
         homework,
         tests,
+        // Homework suggestions (§13): when the school has AI requests and the class is open.
+        ai: acc.cls.archived_at ? null : await aiAllowance(ctx, trx, orgId),
       };
     });
   });
@@ -253,6 +257,24 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
       return row;
     });
     return reply.status(201).send({ homework: homeworkJson(hw) });
+  });
+
+  // Homework suggested by the AI provider from a topic and, optionally, the lesson text (§13). Nothing is
+  // saved: the suggestion fills the new-homework form, and the teacher sets it with the route above.
+  app.post('/api/orgs/:orgId/classes/:classId/suggest-homework', rateLimited(30, '1 hour'), async (req) => {
+    const { orgId, classId } = parse(ClassParams, req.params);
+    const body = parse(HomeworkSuggestBody, req.body);
+    const { user, context } = await inOrg(ctx, req, orgId, 'viewer', async (trx, access) => {
+      assertClassroomEnabled(await getEntitlements(trx, orgId, grace));
+      const acc = await classAccess(trx, access, classId);
+      if (acc.cls.archived_at) throw conflict('This class is archived', 'CLASS_ARCHIVED');
+      assertTeachesSubject(acc, body.subjectEn);
+      const subject = (await classSubjects(trx, acc.cls)).subjects.find((s) => s.nameEn === body.subjectEn);
+      if (!subject) throw new AppError(400, 'INVALID_SUBJECT', 'Choose a subject of this class’s grade');
+      return { user: access.user, context: { grade: acc.cls.grade, subjectEn: subject.nameEn, subjectAr: subject.nameAr, books: subject.materials.map((m) => m.title) } };
+    });
+    const result = await runAiTask(ctx, { orgId, user, meta: requestMeta(req) }, { feature: 'homework_suggestion', ...homeworkPrompt(context, body), output: SuggestedHomework });
+    return { suggestion: toHomeworkSuggestion(result.value), model: result.model };
   });
 
   app.get('/api/orgs/:orgId/homework/:homeworkId', async (req) => {

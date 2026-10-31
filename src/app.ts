@@ -26,6 +26,7 @@ import { AppError } from './lib/errors.js';
 import { safeEqual } from './lib/crypto.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOrgRoutes } from './orgs/routes.js';
+import { registerPlanRoutes } from './scopes/plan-routes.js';
 import { registerScopeRoutes } from './scopes/routes.js';
 import { registerStudentRoutes } from './students/routes.js';
 import { registerGradebookRoutes } from './classroom/gradebook-routes.js';
@@ -184,6 +185,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
   registerOrgRoutes(app, ctx);
   registerCatalogRoutes(app, ctx);
   registerScopeRoutes(app, ctx);
+  registerPlanRoutes(app, ctx);
   registerWebhookRoutes(app, ctx);
   registerStudentRoutes(app, ctx);
   await registerClassroomRoutes(app, ctx);

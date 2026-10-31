@@ -21,7 +21,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 | B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
 | B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts), and since 2026-10-26 the teacher and student portal on the same switch (classes, homework, online tests with monitoring, gradebook). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7). The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 | No school should use student accounts or the portal with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
-| B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and its first feature (questions suggested for online tests) are built (docs/AI_LAYER.md). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
+| B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
 
@@ -57,6 +57,41 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   - The three films were rebuilt (21:09 at 4K and 1080p, 3:06) and pass the technical checks
     (marketing/product-showcase/VIDEO_QA_REPORT.md).
   - The name is heard as «مداد» by speech recognition on the final soundtracks.
+
+### Teaching plans: lesson plans and pacing plans, by hand or from an AI draft · COMPLETE (AI drafts not yet run against the real Gemini API)
+- **What:** each curriculum scope has teaching plans per grade and subject (docs/TEACHING_PLANS.md). A **lesson plan**
+  holds a lesson's topic, length, books, objectives, materials, warm-up, timed activities, questions, assessment,
+  homework, support and extension; a **pacing plan** spreads a subject's curriculum over the weeks of a term, each week
+  dated from the term's first day. Any member writes their own and everyone in the school reads and prints them; the
+  author and admins change or delete them. It works for every school, with or without student accounts.
+- **AI drafts:** when the school has AI requests, **Draft with AI** writes a lesson plan from a topic and optional lesson
+  text, or a pacing plan from the term's first day, weeks, periods a week and an optional list of contents (exactly one
+  entry per week). The draft opens in the editor unsaved; the member corrects it and saves it, and the plan is marked as
+  started from an AI draft. Nothing about students is sent.
+- **Data:** migration `0018_teaching_plans` (forced row-level security; plans go with their scope; at most 500 per
+  scope); audit `plan.created`, `plan.updated`, `plan.deleted` without content.
+- **Files:** `src/scopes/plans.ts`, `plan-routes.ts`, `plan-suggestions.ts`, `src/ai/teaching.ts`, `src/db/migrations/0018_teaching_plans.ts`,
+  `public/js/views/plans.js` (list, editor, printable plan), `scopes.js` and `classes.js` (links), `app.css` (plan and
+  print styles), `i18n.js`; docs TEACHING_PLANS, AI_LAYER §6a, API_DOCUMENTATION, DATABASE_DESIGN, SECURITY_DESIGN,
+  USER_GUIDE (EN, AR), TEST_REPORT.
+- **Tests:** unit 9, integration 8 (4 for plans, 4 for drafts against the Gemini simulator), tenancy (forced
+  row-level security), E2E journey 26, and the accessibility audit of 19 more screens (the list, both dialogs, the
+  editor with a draft and with an error, both kinds of plan; in Arabic, dark and on a phone); full suite 57 files,
+  397 tests; E2E 30/30.
+- **Not done:** a run against the real Gemini API and teachers' review of real drafts in both languages; screenshots
+  of the plans pages in the user guides; links between a pacing plan's weeks and lesson plans; the school calendar
+  (holidays are notes on weeks); plans are not copied with a scope or carried to a new year.
+
+### Homework suggested by AI · COMPLETE (not yet run against the real Gemini API)
+- **What:** the new-homework form offers **Suggest with AI** to the subject's teachers and the school's admins when the
+  school has AI requests. From a topic, optional lesson text, the kind of homework, about how many minutes and the
+  language, it returns a title, instructions for students, an estimate and notes for the teacher; **Use this
+  suggestion** fills the form, and nothing is set until the teacher sets it (docs/CLASSROOM.md §14).
+- **Files:** `src/classroom/homework-suggestions.ts`, `src/classroom/routes.ts`, `public/js/views/classes.js`,
+  `public/js/dom.js` (each dialog's heading its own id, as a suggestion opens over the form), `i18n.js`.
+- **Tests:** unit 4, integration 5 (Gemini simulator), E2E journey 25 (the suggestion fills the form), accessibility
+  audit of both dialogs.
+- **Not done:** a run against the real Gemini API and teachers' review of real suggestions.
 
 ### Questions suggested by AI for online tests · COMPLETE (not yet run against the real Gemini API)
 - **What:** on a test's page, the subject's teachers and the school's admins can ask for up to 10 questions from a topic

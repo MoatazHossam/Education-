@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { inOrg, type OrgAccess } from '../auth/guards.js';
-import { runAiTask } from '../ai/service.js';
-import { getEntitlements, usageFor } from '../billing/entitlements.js';
+import { aiAllowance, runAiTask } from '../ai/service.js';
+import { getEntitlements } from '../billing/entitlements.js';
 import type { Executor } from '../db/index.js';
 import type { AnswerKey, Test } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
@@ -118,14 +118,6 @@ function checkQuestion(body: z.infer<typeof QuestionBody>): void {
 export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void {
   const grace = ctx.config.GRACE_DAYS;
 
-  /** AI requests the school has left this month (null: no cap), or null when it has none at all. */
-  async function aiAllowance(exec: Executor, orgId: string): Promise<{ left: number | null } | null> {
-    if (!ctx.ai) return null;
-    const limit = (await getEntitlements(exec, orgId, grace)).limits.ai_requests_per_month;
-    if (limit === 0 || limit === undefined) return null;
-    return { left: limit === null ? null : Math.max(0, limit - (await usageFor(exec, orgId)).ai_requests) };
-  }
-
   app.post('/api/orgs/:orgId/classes/:classId/tests', rateLimited(300, '1 hour'), async (req, reply) => {
     const { orgId, classId } = parse(ClassParams, req.params);
     const body = parse(Settings.extend({ subjectEn: zSubjectName, subjectAr: zSubjectName }), req.body);
@@ -176,7 +168,7 @@ export function registerTestRoutes(app: FastifyInstance, ctx: AppContext): void 
         canEdit,
         started: await hasAttempts(trx, testId),
         // Question suggestions (§14): for those who can change the test, when the school has AI requests.
-        ai: canEdit ? await aiAllowance(trx, orgId) : null,
+        ai: canEdit ? await aiAllowance(ctx, trx, orgId) : null,
         questions: await testQuestions(trx, testId, canEdit),
         retention: await itemRetention(trx, 'test', test),
       };

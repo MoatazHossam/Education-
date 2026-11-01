@@ -11,10 +11,10 @@ student data · **Low** = hardening.
 
 | ID | Finding | Severity | Area |
 | --- | --- | --- | --- |
-| S-1 | `billing_events`, `notifications` and `email_outbox` have no Row-Level Security | Medium | Tenant isolation |
-| S-2 | The RLS bypass flag is a session setting any SQL run by the app role can set | Medium | Tenant isolation |
-| S-3 | 53 `withSystemContext` call sites (cross-tenant) without an enforced inventory | Medium | Tenant isolation |
-| S-4 | Runtime role can `DELETE` audit rows | Low | Audit integrity |
+| S-1 | `billing_events`, `notifications` and `email_outbox` have no Row-Level Security | Medium | Tenant isolation · **fixed by task 1.1** |
+| S-2 | The RLS bypass flag is a session setting any SQL run by the app role can set | Medium | Tenant isolation · **fixed by task 1.1** |
+| S-3 | 33 `withSystemContext` call sites (cross-tenant) without an enforced inventory | Medium | Tenant isolation · **fixed by task 1.1** |
+| S-4 | Runtime role can `DELETE` audit rows | Low | Audit integrity · **fixed by task 1.1** |
 | S-5 | Account lockout lets anyone lock a known teacher or student out for 15 minutes, repeatably | High (exam days) | Authentication |
 | S-6 | No breached/common-password check; student passwords set by schools | Medium | Authentication |
 | S-7 | Lockout counter is read-modify-write (non-atomic) | Low | Authentication |
@@ -66,14 +66,33 @@ flag but make it unforgeable, e.g. a `SECURITY DEFINER` function that checks `cu
 (a) is simpler to reason about. *Acceptance:* as the web role, `SELECT set_config('app.rls_bypass','on',true);
 SELECT count(*) FROM scopes;` returns only the current tenant's rows.
 
-**S-3 — Cross-tenant code paths [V-code].** `withSystemContext` is called 53 times across 20 files
-(`grep -rn withSystemContext src`). The comment says each must be a reviewed exception (`src/db/index.ts:69-73`),
+**S-3 — Cross-tenant code paths [V-code].** `withSystemContext` is called 33 times in 20 files at `d66de3b`
+(`git grep -c "withSystemContext(" -- 'src/*.ts'`; 53 matching lines including imports). The comment says each must be a reviewed exception (`src/db/index.ts:69-73`),
 but nothing enforces it. *Fix:* an allow-list test that fails when a new call site appears outside the listed
 files/functions. Combine with S-2(a).
 
 **S-4 — Audit tampering [V-code].** The runtime role loses `UPDATE` on `audit_logs` but keeps `DELETE`
 (`src/db/migrator.ts:68-69`), needed by retention cleanup. *Fix:* run retention as the system role only, revoke
 `DELETE` from the web role. Low priority.
+
+### Resolution of S-1 to S-4 (task 1.1)
+
+Implemented on the audit's branch after the owner's go-ahead:
+- Migration `0018_system_role`: `app_rls_bypass()` is always `false`; RLS on `notifications` (recipient's
+  organization or recipient), `email_outbox` (insert by anyone, everything else system-only) and
+  `billing_events` (system-only).
+- A separate system role (`midad_system`, `BYPASSRLS`, not superuser) on its own pool
+  (`SYSTEM_DATABASE_URL`); `withSystemContext` runs there and nowhere else (`src/db/index.ts`). The app
+  role can no longer bypass a policy by any setting. Server and worker refuse to start in production
+  when the roles are wrong (`databaseRoleProblems`).
+- The app role loses `DELETE` on `audit_logs`; only the system role's retention cleanup deletes.
+- `tests/unit/system-context-allowlist.test.ts` lists every call site with its reason.
+- New tests in `tests/integration/tenancy.test.ts`: the old setting opens nothing; the three tables are
+  not readable across schools; the role check.
+- Found while doing it: the worker's email sender read the outbox with the app role and no context; it now
+  runs in the system context (`src/jobs/tasks.ts`).
+- Consequence for hosting: a managed PostgreSQL must allow one `BYPASSRLS` role (it already needed one
+  for backups) **[ASSUMPTION — check per provider]**.
 
 ## 2. Authentication
 
@@ -182,7 +201,7 @@ enforced) and keep the number of platform admins minimal.
 ## 8. Supply chain and assurance
 
 **S-15.** Dependencies are mostly caret ranges (`package.json:38-58`) with a lockfile; AI SDKs are pinned. CI runs
-`npm audit --omit=dev --audit-level=high` (`.github/workflows/ci.yml:40-41`) but CI is not running (B-7).
+`npm audit --omit=dev --audit-level=high` (`.github/workflows/ci.yml:40-41`) and CI runs on GitHub again since 2026-11-01 (B-7 cleared).
 Base images are tags, not digests (`Dockerfile:3`, `docker-compose*.yml`). *Fix:* Dependabot or Renovate for npm,
 Docker and Actions; pin images by digest in production; monthly patch window; rebuild for base-image CVEs.
 
@@ -204,7 +223,7 @@ ORDER BY 2, 1;"
 psql "$DATABASE_URL" -c "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;"
 
 # Cross-tenant call sites (track the count; it should only change deliberately)
-grep -rn "withSystemContext" src --include=*.ts | grep -v "^src/db/index.ts" | wc -l   # 53 at d66de3b
+npm run test:unit -- system-context-allowlist   # after task 1.1: the reviewed list of call sites
 
 # Security and tenancy tests
 npm run test:integration -- tenancy authz-coverage auth

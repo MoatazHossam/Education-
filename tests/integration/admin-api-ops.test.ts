@@ -194,13 +194,13 @@ describe('operations', () => {
     const sent: string[] = [];
     const r1 = await processOutbox(h.db, { send: async (m) => void sent.push(m.to) });
     expect(r1.sent).toBeGreaterThan(0);
-    const rows = await h.ownerDb.selectFrom('email_outbox').select(['status', 'text_body']).execute();
+    const rows = await h.systemDb.selectFrom('email_outbox').select(['status', 'text_body']).execute();
     expect(rows.every((r) => r.status === 'sent' && r.text_body === '[redacted after delivery]')).toBe(true);
 
-    await h.ownerDb.insertInto('email_outbox').values({ to_email: 'x@example.test', template: 't', subject: 's', text_body: 'b' }).execute();
+    await h.systemDb.insertInto('email_outbox').values({ to_email: 'x@example.test', template: 't', subject: 's', text_body: 'b' }).execute();
     const r2 = await processOutbox(h.db, { send: async () => { throw new Error('SMTP down'); } });
     expect(r2.failed).toBe(1);
-    const failed = await h.ownerDb.selectFrom('email_outbox').selectAll().where('to_email', '=', 'x@example.test').executeTakeFirstOrThrow();
+    const failed = await h.systemDb.selectFrom('email_outbox').selectAll().where('to_email', '=', 'x@example.test').executeTakeFirstOrThrow();
     expect(failed).toMatchObject({ status: 'pending', attempts: 1, last_error: 'SMTP down' });
     expect(failed.send_after.getTime()).toBeGreaterThan(Date.now());
   });

@@ -28,6 +28,8 @@ function dbUrl(user: string, password: string): string {
 }
 
 export const E2E_OWNER_URL = dbUrl('midad_test_owner', 'owner-test-pw');
+/** The system role (BYPASSRLS): sees every school's rows, for the journeys' checks. */
+export const E2E_SYSTEM_URL = dbUrl('midad_test_system', 'system-test-pw');
 
 export const E2E_ENV: Record<string, string> = {
   NODE_ENV: 'test',
@@ -36,6 +38,7 @@ export const E2E_ENV: Record<string, string> = {
   APP_URL: `http://localhost:${E2E_PORT}`,
   LOG_LEVEL: 'warn',
   DATABASE_URL: dbUrl('midad_test_app', 'app-test-pw'),
+  SYSTEM_DATABASE_URL: E2E_SYSTEM_URL,
   MIGRATION_DATABASE_URL: E2E_OWNER_URL,
   SESSION_SECRET: 'e2e-session-secret-0123456789-abcdefghijklmnop',
   DATA_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
@@ -123,7 +126,7 @@ export async function stopServer(): Promise<void> {
 
 /** Reads the newest email of a template sent to an address (outbox table). */
 export async function latestEmailText(to: string, template: string): Promise<string> {
-  const client = new pg.Client({ connectionString: E2E_OWNER_URL });
+  const client = new pg.Client({ connectionString: E2E_SYSTEM_URL });
   await client.connect();
   try {
     for (let i = 0; i < 20; i++) {
@@ -138,10 +141,9 @@ export async function latestEmailText(to: string, template: string): Promise<str
 }
 
 export async function ownerQuery(sql: string, params: unknown[] = []) {
-  const client = new pg.Client({ connectionString: E2E_OWNER_URL });
+  const client = new pg.Client({ connectionString: E2E_SYSTEM_URL });
   await client.connect();
   try {
-    await client.query(`SELECT set_config('app.rls_bypass', 'on', false)`);
     return (await client.query(sql, params)).rows;
   } finally {
     await client.end();
@@ -150,7 +152,7 @@ export async function ownerQuery(sql: string, params: unknown[] = []) {
 
 /** One pass of the worker's due-date reminders against the E2E database (the E2E run starts no worker). */
 export async function runReminderPass(now: Date) {
-  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2, systemUrl: E2E_SYSTEM_URL });
   try {
     return await runDueReminders(db, loadConfig(E2E_ENV), now);
   } finally {
@@ -160,7 +162,7 @@ export async function runReminderPass(now: Date) {
 
 /** One pass of the worker's daily summaries against the E2E database. */
 export async function runDigestPass(now: Date) {
-  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2, systemUrl: E2E_SYSTEM_URL });
   try {
     return await runAssignmentDigests(db, loadConfig(E2E_ENV), now);
   } finally {
@@ -170,7 +172,7 @@ export async function runDigestPass(now: Date) {
 
 /** One pass of the worker's webhook deliveries against the E2E database. */
 export async function runWebhookPass() {
-  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2, systemUrl: E2E_SYSTEM_URL });
   try {
     return await processWebhookDeliveries(db, loadConfig(E2E_ENV));
   } finally {
@@ -180,7 +182,7 @@ export async function runWebhookPass() {
 
 /** One pass of the worker's file checks (docs/CLASSROOM.md §5) against the E2E database; no virus scanner here. */
 export async function runFileCheckPass() {
-  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2, systemUrl: E2E_SYSTEM_URL });
   try {
     return await runClassroomFileChecks(db, null);
   } finally {
@@ -190,7 +192,7 @@ export async function runFileCheckPass() {
 
 /** One pass of the worker's classroom retention (docs/CLASSROOM.md §11) against the E2E database. */
 export async function runRetentionPass(now: Date) {
-  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2 });
+  const db = createDatabase(E2E_ENV.DATABASE_URL!, { poolMax: 2, systemUrl: E2E_SYSTEM_URL });
   try {
     return await runClassroomRetention(db, loadConfig(E2E_ENV), now);
   } finally {

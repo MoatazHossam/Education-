@@ -22,9 +22,13 @@ x-app-env: &app-env
   # bundled one (--scale postgres=0; the ops scripts do this when DATABASE_URL is set).
   DATABASE_URL: ${DATABASE_URL:-postgres://${DB_APP_USER}:${DB_APP_PASSWORD}@postgres:5432/${DB_NAME}}
   MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}}
+  # The system role (BYPASSRLS) for cross-tenant work; the app role above never bypasses row-level security.
+  SYSTEM_DATABASE_URL: ${SYSTEM_DATABASE_URL:-postgres://${DB_SYSTEM_USER:-midad_system}:${DB_SYSTEM_PASSWORD}@postgres:5432/${DB_NAME}}
+  SYSTEM_DATABASE_POOL_MAX: ${SYSTEM_DATABASE_POOL_MAX:-}
   DATABASE_SSL: ${DATABASE_SSL:-}
   DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
   APP_DB_ROLE: ${DB_APP_USER}
+  SYSTEM_DB_ROLE: ${DB_SYSTEM_USER:-midad_system}
   SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
   DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
   DATA_ENCRYPTION_KEYS_PREVIOUS: ${DATA_ENCRYPTION_KEYS_PREVIOUS:-}
@@ -77,6 +81,8 @@ services:
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
       DB_APP_USER: ${DB_APP_USER}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      DB_SYSTEM_USER: ${DB_SYSTEM_USER:-midad_system}
+      DB_SYSTEM_PASSWORD: ${DB_SYSTEM_PASSWORD:-}
       DB_BACKUP_USER: ${DB_BACKUP_USER:-midad_backup}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:-}
     volumes:

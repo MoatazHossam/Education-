@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { withOrgContext, withSystemContext } from '../../src/db/index.js';
+import { createDatabase, databaseRoleProblems, withOrgContext, withSystemContext } from '../../src/db/index.js';
 import { addMember, Client, createHarness, publishedVersionId, resetData, signUp, someMaterialIds, type Harness } from '../helpers/harness.js';
 
 let h: Harness;
@@ -59,14 +59,13 @@ describe('cross-tenant isolation over the API', () => {
 });
 
 describe('Row-Level Security (database layer)', () => {
-  it('every table with an org_id column has forced RLS, apart from the documented exceptions', async () => {
-    // billing_events: system-only webhook receipts; notifications: scoped by user_id (DATABASE_DESIGN.md).
+  it('every table with an org_id column has forced RLS', async () => {
     const { rows } = await sql<{ relname: string; rls: boolean; forced: boolean }>`
       SELECT c.relname, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
       FROM pg_class c JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped
       WHERE c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace`.execute(h.ownerDb);
     const unprotected = rows.filter((r) => !(r.rls && r.forced)).map((r) => r.relname).sort();
-    expect(unprotected).toEqual(['billing_events', 'notifications']);
+    expect(unprotected).toEqual([]);
     expect(rows.map((r) => r.relname)).toContain('checkout_sessions');
   });
 
@@ -102,6 +101,68 @@ describe('Row-Level Security (database layer)', () => {
     expect(role.rows[0]).toEqual({ rolsuper: false, rolbypassrls: false });
     await expect(withSystemContext(h.db, (trx) => sql`UPDATE audit_logs SET action = 'tampered'`.execute(trx))).rejects.toThrow(/permission denied/);
     await expect(sql`ALTER TABLE scopes DISABLE ROW LEVEL SECURITY`.execute(h.db)).rejects.toThrow(/must be owner/);
+  });
+
+  it('the application role cannot switch Row-Level Security off with a setting (migration 0018)', async () => {
+    const { a, b } = await twoTenants();
+    // What an SQL injection on the application's connection could try: the old bypass setting.
+    const seen = await h.db.transaction().execute(async (trx) => {
+      await sql`SELECT set_config('app.rls_bypass', 'on', true), set_config('app.current_org', ${b.orgId}, true)`.execute(trx);
+      return trx.selectFrom('scopes').select('org_id').execute();
+    });
+    expect(seen).toHaveLength(0);
+    const unscoped = await h.db.transaction().execute(async (trx) => {
+      await sql`SELECT set_config('app.rls_bypass', 'on', true)`.execute(trx);
+      return trx.selectFrom('subscriptions').select('org_id').execute();
+    });
+    expect(unscoped).toHaveLength(0);
+    // The system role, on its own connection, sees both schools.
+    const all = await withSystemContext(h.db, (trx) => trx.selectFrom('subscriptions').select('org_id').execute());
+    expect(all.map((r) => r.org_id).sort()).toEqual([a.orgId, b.orgId].sort());
+  });
+
+  it('the application role cannot delete audit history; only the system role can (retention)', async () => {
+    await twoTenants();
+    await expect(sql`DELETE FROM audit_logs`.execute(h.db)).rejects.toThrow(/permission denied/);
+    const r = await withSystemContext(h.db, (trx) => trx.deleteFrom('audit_logs').where('created_at', '<', new Date(0)).executeTakeFirst());
+    expect(Number(r.numDeletedRows)).toBe(0);
+  });
+
+  it('notifications, queued emails and payment events are not readable across tenants', async () => {
+    const { a, b } = await twoTenants();
+    await h.systemDb.insertInto('notifications').values({ user_id: a.userId, org_id: a.orgId, kind: 'test', title: 'For A only', body: 'secret' }).execute();
+    await h.systemDb.insertInto('billing_events').values({ provider: 'sandbox', event_id: 'evt-a', event_type: 'payment.succeeded', org_id: a.orgId, payload: '{}', status: 'processed' }).execute();
+    expect(await h.systemDb.selectFrom('email_outbox').select('id').execute()).not.toHaveLength(0);
+
+    // Org B's context, unfiltered queries: nothing of A's.
+    const asB = await withOrgContext(h.db, { orgId: b.orgId, userId: b.userId }, async (trx) => ({
+      notifications: await trx.selectFrom('notifications').select('title').execute(),
+      emails: await trx.selectFrom('email_outbox').select('to_email').execute(),
+      events: await trx.selectFrom('billing_events').select('event_id').execute(),
+    }));
+    expect(asB).toEqual({ notifications: [], emails: [], events: [] });
+    // Without any context nothing at all; the recipient sees their own notification.
+    expect(await h.db.selectFrom('notifications').select('id').execute()).toHaveLength(0);
+    const own = await withOrgContext(h.db, { orgId: a.orgId, userId: a.userId }, (trx) => trx.selectFrom('notifications').select('title').execute());
+    expect(own).toEqual([{ title: 'For A only' }]);
+    // Anyone may queue an email; only the system role reads it back.
+    await withOrgContext(h.db, { orgId: b.orgId, userId: b.userId }, (trx) =>
+      trx.insertInto('email_outbox').values({ to_email: 'b@example.test', template: 't', subject: 's', text_body: 'b' }).execute(),
+    );
+    await expect(
+      withOrgContext(h.db, { orgId: b.orgId, userId: b.userId }, (trx) => trx.insertInto('notifications').values({ user_id: a.userId, org_id: a.orgId, kind: 'test', title: 'x', body: 'x' }).execute()),
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  it('the start-up role check passes with the application and system roles', async () => {
+    expect(await databaseRoleProblems(h.db)).toEqual([]);
+    // The application role on both pools is refused.
+    const same = createDatabase(h.config.DATABASE_URL, { poolMax: 1, systemUrl: h.config.DATABASE_URL, systemPoolMax: 1 });
+    try {
+      expect((await databaseRoleProblems(same)).join(' ')).toMatch(/uses the application role/);
+    } finally {
+      await same.destroy();
+    }
   });
 
   it('composite keys stop items pointing at another tenant’s scope or another catalogue version', async () => {

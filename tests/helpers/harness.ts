@@ -3,24 +3,27 @@ import { authenticator } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { buildApp } from '../../src/app.js';
 import { loadConfig, type AppConfig } from '../../src/config.js';
-import { createDatabase, type Database } from '../../src/db/index.js';
+import { createDatabase, systemDatabaseOf, type Database } from '../../src/db/index.js';
 import { encryptSecret } from '../../src/lib/crypto.js';
-import { OWNER_URL, TEST_ENV } from './env.js';
+import { OWNER_URL, SYSTEM_URL_DB, TEST_ENV } from './env.js';
 
 export interface Harness {
   app: FastifyInstance;
   config: AppConfig;
   /** Application-role connection (RLS enforced), same as the app uses. */
   db: Database;
-  /** Owner connection for test assertions and fixtures (bypasses nothing implicitly; use with care). */
+  /** Owner connection for test assertions and fixtures (bypasses nothing implicitly; withSystemContext on it uses the system role). */
   ownerDb: Database;
+  /** The system role's pool (BYPASSRLS): reads any school's rows, for assertions on system-only tables. */
+  systemDb: Database;
   close(): Promise<void>;
 }
 
 export async function createHarness(overrides: Record<string, string> = {}): Promise<Harness> {
   const config = loadConfig({ ...TEST_ENV, ...overrides });
-  const db = createDatabase(config.DATABASE_URL, { poolMax: 5 });
-  const ownerDb = createDatabase(OWNER_URL, { poolMax: 2 });
+  const db = createDatabase(config.DATABASE_URL, { poolMax: 5, systemUrl: config.SYSTEM_DATABASE_URL, systemPoolMax: 3 });
+  // withSystemContext(ownerDb, …) runs on the system role, like the app's own system work.
+  const ownerDb = createDatabase(OWNER_URL, { poolMax: 2, systemUrl: SYSTEM_URL_DB, systemPoolMax: 2 });
   const app = await buildApp({ config, db, logger: false });
   await app.ready();
   return {
@@ -28,6 +31,7 @@ export async function createHarness(overrides: Record<string, string> = {}): Pro
     config,
     db,
     ownerDb,
+    systemDb: systemDatabaseOf(ownerDb)!,
     async close() {
       await app.close();
       await db.destroy();
@@ -112,7 +116,7 @@ export class Client {
 export const PASSWORD = 'correct-horse-battery-staple';
 
 export async function latestEmail(h: Harness, to: string, template?: string) {
-  let q = h.ownerDb.selectFrom('email_outbox').selectAll().where('to_email', '=', to).orderBy('created_at', 'desc');
+  let q = h.systemDb.selectFrom('email_outbox').selectAll().where('to_email', '=', to).orderBy('created_at', 'desc');
   if (template) q = q.where('template', '=', template);
   return q.executeTakeFirst();
 }

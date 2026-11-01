@@ -60,11 +60,13 @@ modules, no bundler; fonts self-hosted from `@fontsource`.
    policies keyed on transaction-local settings:
    - `withOrgContext()` sets `app.current_org` → only that tenant's rows are visible/writable;
    - `withUserContext()` sets `app.current_user` → a user sees only their own memberships;
-   - `withSystemContext()` sets `app.rls_bypass` → explicit, reviewed cross-tenant work (worker,
-     webhooks, platform admin, token lookups).
+   - `withSystemContext()` runs on a separate pool as the system role (`BYPASSRLS`,
+     `SYSTEM_DATABASE_URL`) → explicit, reviewed cross-tenant work (worker, webhooks, platform admin,
+     token lookups), listed in `tests/unit/system-context-allowlist.test.ts`. The app role has no
+     setting that bypasses a policy (migration 0018).
    With no context, tenant tables return **no rows** — a forgotten `WHERE org_id = …` fails closed.
-   The app connects as a role with neither `SUPERUSER` nor `BYPASSRLS`; the server refuses to
-   start in production otherwise (`inspectRole`).
+   The app connects as a role with neither `SUPERUSER` nor `BYPASSRLS`; the server and worker refuse
+   to start in production otherwise, or when the system role lacks `BYPASSRLS` (`databaseRoleProblems`).
 3. **Composite foreign keys** — `scope_items (scope_id, org_id, catalog_version_id)` references
    `scopes (id, org_id, catalog_version_id)` and `(material_id, catalog_version_id)` references
    `catalog_materials (id, version_id)`, so an item cannot point at another tenant's scope or at a

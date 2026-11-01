@@ -248,8 +248,8 @@ function Get-DbName { # DB_NAME, or the database named in DATABASE_URL (managed 
 }
 function Check-Env {
   $keys = @('SESSION_SECRET', 'DATA_ENCRYPTION_KEY')
-  if ($script:Managed) { $keys += 'MIGRATION_DATABASE_URL' }
-  else { $keys += @('POSTGRES_SUPERUSER_PASSWORD', 'DB_NAME', 'DB_OWNER_USER', 'DB_OWNER_PASSWORD', 'DB_APP_USER', 'DB_APP_PASSWORD', 'DB_BACKUP_PASSWORD') }
+  if ($script:Managed) { $keys += @('MIGRATION_DATABASE_URL', 'SYSTEM_DATABASE_URL') }
+  else { $keys += @('POSTGRES_SUPERUSER_PASSWORD', 'DB_NAME', 'DB_OWNER_USER', 'DB_OWNER_PASSWORD', 'DB_APP_USER', 'DB_APP_PASSWORD', 'DB_SYSTEM_PASSWORD', 'DB_BACKUP_PASSWORD') }
   if ($script:EnvName -eq 'prod') { $keys += @('APP_URL', 'DOMAIN', 'ACME_EMAIL') }
   $missing = @($keys | Where-Object { -not (EnvGet $_) })
   if ($missing.Count) { Die "set these in $($script:EnvFile) first: $($missing -join ' ')" }
@@ -769,7 +769,7 @@ trap 'rm -f /tmp/cs-restore.dump' EXIT
 createdb -U $POSTGRES_USER -O $OWNER $NEW_DB
 psql -U $POSTGRES_USER -d postgres -v ON_ERROR_STOP=1 -q <<SQL
 REVOKE ALL ON DATABASE $NEW_DB FROM PUBLIC;
-GRANT CONNECT ON DATABASE $NEW_DB TO $APPR, $BK;
+GRANT CONNECT ON DATABASE $NEW_DB TO $APPR, $SYS, $BK;
 SQL
 pg_restore -U $POSTGRES_USER --exit-on-error -d $NEW_DB /tmp/cs-restore.dump || { dropdb -U $POSTGRES_USER $NEW_DB; exit 1; }
 '@
@@ -778,16 +778,17 @@ set -ef
 createdb --maintenance-db=$MIDAD_ADMIN -O $OWNER $NEW_DB
 psql $MIDAD_ADMIN -v ON_ERROR_STOP=1 -q <<SQL
 REVOKE ALL ON DATABASE $NEW_DB FROM PUBLIC;
-GRANT CONNECT ON DATABASE $NEW_DB TO $APPR, $BK;
+GRANT CONNECT ON DATABASE $NEW_DB TO $APPR, $SYS, $BK;
 SQL
 pg_restore --exit-on-error --no-owner --role=$OWNER -d $MIDAD_TARGET /r/$DUMP || { dropdb --maintenance-db=$MIDAD_ADMIN $NEW_DB; exit 1; }
 '@
 function Restore-Db([string]$Dump, [string]$New) { # creates NEW and restores DUMP into it (bundled or managed)
   $owner = EnvGet 'DB_OWNER_USER'; if (-not $owner) { $owner = 'midad_owner' }
   $app = EnvGet 'DB_APP_USER'; if (-not $app) { $app = 'midad_app' }
+  $sys = EnvGet 'DB_SYSTEM_USER'; if (-not $sys) { $sys = 'midad_system' }
   $bk = EnvGet 'DB_BACKUP_USER'; if (-not $bk) { $bk = 'midad_backup' }
   if ($New -notmatch '^[a-z_][a-z0-9_]{0,62}$') { Die "invalid database name $New" }
-  $roles = @('-e', "NEW_DB=$New", '-e', "OWNER=$owner", '-e', "APPR=$app", '-e', "BK=$bk")
+  $roles = @('-e', "NEW_DB=$New", '-e', "OWNER=$owner", '-e', "APPR=$app", '-e', "SYS=$sys", '-e', "BK=$bk")
   if ($script:Managed) {
     if (-not $script:RestoreUrl) { Die 'no administrator connection for the managed database' }
     $env:MIDAD_ADMIN = $script:RestoreUrl
@@ -972,14 +973,14 @@ function Cmd-Restore {
   # 4. Switch the app to the restored database.
   if ($script:Managed) {
     Step "Switching the app to $newdb"
-    Say 'With a managed database, the database name changes in DATABASE_URL, MIGRATION_DATABASE_URL and BACKUP_DATABASE_URL.'
+    Say 'With a managed database, the database name changes in DATABASE_URL, SYSTEM_DATABASE_URL, MIGRATION_DATABASE_URL and BACKUP_DATABASE_URL.'
   }
   if (Confirm-Yes "Switch the app to $newdb now? It stops for about a minute; $olddb is kept" 'y') {
     foreach ($s in ((Apps) + @('worker'))) { DC @('stop', $s) -Quiet -AllowFail }
     Copy-Item -LiteralPath $script:EnvFile -Destination "$($script:EnvFile).before-switch-$ts"
     Protect-Path "$($script:EnvFile).before-switch-$ts"
     if ($script:Managed) {
-      foreach ($k in @('DATABASE_URL', 'MIGRATION_DATABASE_URL', 'BACKUP_DATABASE_URL')) { $v = EnvGet $k; if ($v) { Set-KV $script:EnvFile $k (Url-WithDb $v $newdb) } }
+      foreach ($k in @('DATABASE_URL', 'SYSTEM_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'BACKUP_DATABASE_URL')) { $v = EnvGet $k; if ($v) { Set-KV $script:EnvFile $k (Url-WithDb $v $newdb) } }
     }
     Set-KV $script:EnvFile 'DB_NAME' $newdb
     Step "Starting with $newdb"

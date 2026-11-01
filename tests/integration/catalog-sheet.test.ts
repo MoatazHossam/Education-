@@ -80,14 +80,14 @@ describe('catalogue spreadsheet export and import', () => {
     expect(after.materials.find((m) => m.id === m3!.id)!.verification).toMatchObject({ status: 'needs_review', note: 'Edition for 2026/27 not announced' });
     expect((await owner.client.get(`/api/catalog/versions/${versionId}`, { 'if-none-match': before.headers.etag as string })).statusCode).toBe(200);
 
-    const notes = await h.ownerDb.selectFrom('notifications').select(['kind', 'body']).where('user_id', '=', owner.userId).where('kind', '=', 'catalog_review').execute();
+    const notes = await h.systemDb.selectFrom('notifications').select(['kind', 'body']).where('user_id', '=', owner.userId).where('kind', '=', 'catalog_review').execute();
     expect(notes).toEqual([{ kind: 'catalog_review', body: 'Edition for 2026/27 not announced — “Sheet plan”' }]);
     const audit = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('audit_logs').select(['action', 'metadata']).where('action', '=', 'admin.catalog_imported').execute());
     expect(audit).toEqual([{ action: 'admin.catalog_imported', metadata: expect.objectContaining({ marksChanged: 3, warnings: 0 }) }]);
 
     // The same sheet again changes nothing and notifies no one.
     expect((await upload(admin, versionId, csv, true)).json().summary).toMatchObject({ marksChanged: 0, unchanged: 1269 });
-    expect(await h.ownerDb.selectFrom('notifications').select('id').where('user_id', '=', owner.userId).where('kind', '=', 'catalog_review').execute()).toHaveLength(1);
+    expect(await h.systemDb.selectFrom('notifications').select('id').where('user_id', '=', owner.userId).where('kind', '=', 'catalog_review').execute()).toHaveLength(1);
   });
 
   it('refuses content changes on a published version as a whole: nothing is written', async () => {

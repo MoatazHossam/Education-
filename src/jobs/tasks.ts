@@ -16,7 +16,8 @@ const MAX_ATTEMPTS = 8;
 export async function processOutbox(db: Database, mailer: Mailer, batch = 20): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
-  await db.transaction().execute(async (trx) => {
+  // The outbox holds every school's emails: only the system role reads it (migration 0018).
+  await withSystemContext(db, async (trx) => {
     const rows = await trx
       .selectFrom('email_outbox')
       .selectAll()

@@ -168,7 +168,7 @@ db_name() { # DB_NAME, or the database named in DATABASE_URL (managed database)
 
 check_env() {
   local k missing=() keys=(SESSION_SECRET DATA_ENCRYPTION_KEY)
-  if ((MANAGED)); then keys+=(MIGRATION_DATABASE_URL); else keys+=(POSTGRES_SUPERUSER_PASSWORD DB_NAME DB_OWNER_USER DB_OWNER_PASSWORD DB_APP_USER DB_APP_PASSWORD DB_BACKUP_PASSWORD); fi
+  if ((MANAGED)); then keys+=(MIGRATION_DATABASE_URL SYSTEM_DATABASE_URL); else keys+=(POSTGRES_SUPERUSER_PASSWORD DB_NAME DB_OWNER_USER DB_OWNER_PASSWORD DB_APP_USER DB_APP_PASSWORD DB_SYSTEM_PASSWORD DB_BACKUP_PASSWORD); fi
   [[ $ENV_NAME == prod ]] && keys+=(APP_URL DOMAIN ACME_EMAIL)
   for k in "${keys[@]}"; do [[ -n $(envget "$k") ]] || missing+=("$k"); done
   ((${#missing[@]} == 0)) || die "set these in $ENV_FILE first: ${missing[*]}"
@@ -633,27 +633,28 @@ psql_restored() { # psql_restored DB < sql: runs SQL on a database of the bundle
 }
 admin_url_for() { printf '%s' "$1" | sed -E "s#(://[^/]*/)[^?]*#\1$2#"; }
 restore_db() { # restore_db DUMP NEWDB: creates NEWDB and restores DUMP into it (bundled or managed)
-  local dump=$1 new=$2 owner app bk
+  local dump=$1 new=$2 owner app sys bk
   owner=$(envget DB_OWNER_USER); owner=${owner:-midad_owner}
   app=$(envget DB_APP_USER); app=${app:-midad_app}
+  sys=$(envget DB_SYSTEM_USER); sys=${sys:-midad_system}
   bk=$(envget DB_BACKUP_USER); bk=${bk:-midad_backup}
   [[ $new =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || die "invalid database name $new"
   if ((MANAGED)); then
     [[ -n $RESTORE_URL ]] || die "no administrator connection for the managed database"
     ADMIN_URL=$RESTORE_URL TARGET_URL=$(admin_url_for "$RESTORE_URL" "$new") pg_tool -v "$(dirname "$dump"):/r:ro" -e ADMIN_URL -e TARGET_URL \
-      -e NEW_DB="$new" -e OWNER="$owner" -e APPR="$app" -e BK="$bk" -e DUMP="/r/$(basename "$dump")" -- sh -ec '
+      -e NEW_DB="$new" -e OWNER="$owner" -e APPR="$app" -e SYS="$sys" -e BK="$bk" -e DUMP="/r/$(basename "$dump")" -- sh -ec '
         psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -qc "CREATE DATABASE \"$NEW_DB\" OWNER \"$OWNER\""
-        psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -qc "REVOKE ALL ON DATABASE \"$NEW_DB\" FROM PUBLIC; GRANT CONNECT ON DATABASE \"$NEW_DB\" TO \"$APPR\", \"$BK\""
+        psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -qc "REVOKE ALL ON DATABASE \"$NEW_DB\" FROM PUBLIC; GRANT CONNECT ON DATABASE \"$NEW_DB\" TO \"$APPR\", \"$SYS\", \"$BK\""
         pg_restore --exit-on-error --no-owner --role="$OWNER" -d "$TARGET_URL" "$DUMP" || { psql "$ADMIN_URL" -qc "DROP DATABASE \"$NEW_DB\""; exit 1; }'
   else
     running postgres || { say "Starting the database..."; dc up -d postgres >/dev/null; }
     wait_postgres
     local err
     err=$(dc cp "$dump" postgres:/tmp/cs-restore.dump 2>&1) || die "could not copy the backup into the database container: $err"
-    dc exec -T -e NEW_DB="$new" -e OWNER="$owner" -e APPR="$app" -e BK="$bk" postgres sh -ec '
+    dc exec -T -e NEW_DB="$new" -e OWNER="$owner" -e APPR="$app" -e SYS="$sys" -e BK="$bk" postgres sh -ec '
       trap "rm -f /tmp/cs-restore.dump" EXIT
       createdb -U "$POSTGRES_USER" -O "$OWNER" "$NEW_DB"
-      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -qc "REVOKE ALL ON DATABASE \"$NEW_DB\" FROM PUBLIC; GRANT CONNECT ON DATABASE \"$NEW_DB\" TO \"$APPR\", \"$BK\""
+      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -qc "REVOKE ALL ON DATABASE \"$NEW_DB\" FROM PUBLIC; GRANT CONNECT ON DATABASE \"$NEW_DB\" TO \"$APPR\", \"$SYS\", \"$BK\""
       pg_restore -U "$POSTGRES_USER" --exit-on-error -d "$NEW_DB" /tmp/cs-restore.dump || { dropdb -U "$POSTGRES_USER" "$NEW_DB"; exit 1; }'
   fi
 }
@@ -795,14 +796,14 @@ cmd_restore() {
   # 4. Switch the app to the restored database.
   if ((MANAGED)); then
     step "Switching the app to $newdb"
-    say "With a managed database, the database name changes in DATABASE_URL, MIGRATION_DATABASE_URL and BACKUP_DATABASE_URL."
+    say "With a managed database, the database name changes in DATABASE_URL, SYSTEM_DATABASE_URL, MIGRATION_DATABASE_URL and BACKUP_DATABASE_URL."
   fi
   if confirm "Switch the app to $newdb now? It stops for about a minute; $olddb is kept" y; then
     local s
     for s in $(apps) worker; do dc stop "$s" >/dev/null 2>&1 || true; done
     cp -p -- "$ENV_FILE" "$ENV_FILE.before-switch-$ts"
     if ((MANAGED)); then
-      for s in DATABASE_URL MIGRATION_DATABASE_URL BACKUP_DATABASE_URL; do [[ -n $(envget $s) ]] && kv_set "$ENV_FILE" "$s" "$(admin_url_for "$(envget $s)" "$newdb")"; done
+      for s in DATABASE_URL SYSTEM_DATABASE_URL MIGRATION_DATABASE_URL BACKUP_DATABASE_URL; do [[ -n $(envget $s) ]] && kv_set "$ENV_FILE" "$s" "$(admin_url_for "$(envget $s)" "$newdb")"; done
     fi
     kv_set "$ENV_FILE" DB_NAME "$newdb"
     step "Starting with $newdb"

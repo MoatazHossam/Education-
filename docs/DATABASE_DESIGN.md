@@ -117,13 +117,20 @@ Primary keys are UUIDs (`gen_random_uuid()`), except `audit_logs` (bigint identi
 ## 3. Row-Level Security
 
 Helper functions read transaction-local settings:
-`app_current_org()`, `app_current_user()`, `app_rls_bypass()`.
+`app_current_org()`, `app_current_user()`. A third, `app_rls_bypass()`, still appears in the policies of
+migrations 0001–0017, but since migration `0018` it is always `false`: no setting lets a role through a
+policy. Cross-tenant work runs as the **system role**, which has `BYPASSRLS`, on its own connection pool
+(`SYSTEM_DATABASE_URL`, `withSystemContext` in `src/db/index.ts`); the application role cannot bypass
+row-level security in any way, so an SQL injection on its connection would still see one school at most.
 
 ```sql
 CREATE POLICY scopes_isolation ON scopes
-  USING (app_rls_bypass() OR org_id = app_current_org())
+  USING (app_rls_bypass() OR org_id = app_current_org())      -- app_rls_bypass() is false (0018)
   WITH CHECK (app_rls_bypass() OR org_id = app_current_org());
 -- memberships and students: USING also allows user_id = app_current_user()
+-- notifications (0018): the recipient's organization, or the recipient (user_id = app_current_user())
+-- email_outbox (0018): anyone may INSERT; only the system role reads, sends or deletes
+-- billing_events (0018): the system role only
 ```
 
 Student requests (the student portal) also set `app.current_student` (`withStudentContext`,
@@ -137,19 +144,24 @@ events; automatic marking reads the keys in the school's context after the stude
 
 Settings are applied with `set_config(..., true)` (transaction-local), which is safe with
 connection pooling. Tests prove: no rows without context; another tenant's context sees nothing;
-cross-tenant `INSERT` is rejected; the app role cannot `UPDATE audit_logs` or `ALTER TABLE … DISABLE ROW LEVEL SECURITY`.
+cross-tenant `INSERT` is rejected; the old `app.rls_bypass` setting opens nothing; every table with an
+`org_id` column has forced RLS; the app role cannot `UPDATE` or `DELETE` `audit_logs` or `ALTER TABLE … DISABLE ROW LEVEL SECURITY`.
+The places that use the system role are listed, each with its reason, in
+`tests/unit/system-context-allowlist.test.ts`; a new one fails that test until it is reviewed and added.
 
 ## 4. Database roles
 
 | Role | Privileges | Used by |
 | --- | --- | --- |
 | Owner (`midad_owner`) | Owns schema objects | Migrations, seeding only (`MIGRATION_DATABASE_URL`) |
-| App (`midad_app`) | `SELECT/INSERT/UPDATE/DELETE` on tables except no `UPDATE` on `audit_logs`; sequences; no `BYPASSRLS` | App and worker (`DATABASE_URL`) |
+| App (`midad_app`) | `SELECT/INSERT/UPDATE/DELETE` on tables except no `UPDATE`/`DELETE` on `audit_logs`; sequences; no `BYPASSRLS` | App and worker, every request in a school's or user's context (`DATABASE_URL`) |
+| System (`midad_system`) | Same grants, plus `DELETE` on `audit_logs` (retention); `BYPASSRLS`, never superuser | `withSystemContext` only: billing webhooks, the worker's passes, platform administration, token lookups (`SYSTEM_DATABASE_URL`) |
 | Backup (`midad_backup`) | `pg_read_all_data` + `BYPASSRLS`, read-only | `scripts/backup.sh` |
 | Superuser | Cluster administration | Restores (`scripts/restore.sh`) |
 
 `npm run db:migrate` (or `node dist/db/migrate-cli.js up`) applies migrations and, when
-`APP_DB_ROLE` is set, re-applies the app role's grants. Roles are created by
+`APP_DB_ROLE` and `SYSTEM_DB_ROLE` are set, re-applies those roles' grants. The server and the worker
+refuse to start in production when the app role can bypass RLS, or the system role cannot or is a superuser. Roles are created by
 `deploy/postgres-init/01-roles.sh` (Docker) or manually on a managed database.
 
 Why backups need their own role: `FORCE ROW LEVEL SECURITY` applies RLS to the owner too, so

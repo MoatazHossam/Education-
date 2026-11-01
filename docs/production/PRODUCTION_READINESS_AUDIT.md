@@ -129,7 +129,7 @@ needed before launch) · **Blocked** (needs an external decision or credential).
 | 13 | Performance on 8 GB | Nearly | Load-tested 300 students on one exam locally **[DOC]**; memory budget is tight with ClamAV; files in PostgreSQL grow the database |
 | 14 | Multi-country readiness (KSA, UAE, others) | Gap | Catalogue is Egypt-only; Cairo time zone hard-coded in 6 files; single billing currency; no organization country or time zone |
 | 15 | Legal and compliance | Blocked | No privacy policy, terms or DPA; student data features must stay off until counsel advises (B-5, B-9) |
-| 16 | CI | Blocked | GitHub Actions jobs fail before running; the repository says the account is locked for billing (B-7) |
+| 16 | CI | Ready | Was blocked by an account billing lock (B-7); on 2026-11-01 all five checks ran green on GitHub for PR #39 |
 
 ## 5. Critical launch blockers
 
@@ -141,7 +141,7 @@ Ordered by how early they block. "External" means it needs the owner, a provider
 | L-2 | Company entity, tax registration and invoicing rules per country (EG 14 % VAT, KSA 15 %, UAE 5 % **[ASSUMPTION — confirm with an accountant]**) | External | Invoices show net amounts only **[DOC]** `SECURITY_DESIGN.md §7` |
 | L-3 | Paymob merchant account(s) and keys per country, and a test-mode run | External + code | `src/cli/paymob-check.ts`; B-2 |
 | L-4 | Production host, region, domain, SMTP with SPF/DKIM/DMARC, alert channels | External | B-4 |
-| L-5 | CI not running on GitHub | External | B-7; CI otherwise configured (`.github/workflows/ci.yml`) |
+| L-5 | ~~CI not running on GitHub~~ Resolved 2026-11-01 | — | B-7 cleared; all five checks green on PR #39 |
 | L-6 | Rollback path through `ops/start.sh` fails after a migration (I-3) | Code | Must be fixed or the runbook changed before the first upgrade in production |
 | L-7 | No platform-wide AI spend cap; billing currency and quotas are per deployment, not per country | Code | AI_COST_CONTROL_PLAN, BILLING_INTEGRATION_PLAN |
 | L-8 | Catalogue content unverified (0 of 231 subjects) | External | B-6 **[DOC]** |
@@ -187,11 +187,10 @@ last recorded results are in `docs/TEST_REPORT.md` **[DOC]**.
 
 ## 8. GitHub Actions (open item)
 
-`.github/workflows/ci.yml` defines three jobs (checks, e2e in three browsers, docker smoke test). Runs on GitHub
-fail before any job starts; `docs/PROJECT_STATUS.md` B-7 records the message "your account is locked due to a
-billing issue" **[DOC]**. This is an account setting, not a code problem. Until it is cleared,
-`scripts/ci-local.sh` reproduces the workflow locally. Action for the owner: GitHub → Settings → Billing and plans
-→ resolve the lock, then re-run the workflow on `main`.
+`.github/workflows/ci.yml` defines three jobs (checks, e2e in three browsers, docker smoke test). When the audit
+started, runs on GitHub failed before any job started; `docs/PROJECT_STATUS.md` B-7 records the message "your
+account is locked due to a billing issue" **[DOC]**. **Update 2026-11-01:** the lock is cleared. All five checks ran
+green on GitHub for PR #39 **[VERIFIED]**. `scripts/ci-local.sh` remains available for local runs.
 
 ## 9. Assumptions made in this audit
 
@@ -216,8 +215,7 @@ per-service secrets; PITR; staging and production hosts; external monitoring; mu
 time zones, currencies are Egypt-only).
 
 **Critical launch blockers:** legal advice per country, above all on minors' data and cross-border hosting (L-1);
-company/tax position (L-2); Paymob credentials and a test-mode run (L-3); host, domain, SMTP (L-4); GitHub
-Actions blocked by an account billing lock (L-5); the rollback path that fails after a migration (L-6); no
+company/tax position (L-2); Paymob credentials and a test-mode run (L-3); host, domain, SMTP (L-4); the rollback path that fails after a migration (L-6); no
 platform AI spend cap (L-7); unverified catalogue (L-8).
 
 **Recommended hosting:** one 4 vCPU / 8 GB / 160 GB+ NVMe VPS with an encrypted disk, Ubuntu 24.04, the existing

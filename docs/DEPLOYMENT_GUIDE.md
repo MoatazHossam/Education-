@@ -17,11 +17,13 @@ npm ci
 psql -U postgres <<'SQL'
 CREATE ROLE midad_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
 CREATE ROLE midad_app  LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
+CREATE ROLE midad_system LOGIN PASSWORD 'dev-system' NOSUPERUSER BYPASSRLS;
 CREATE DATABASE midad OWNER midad_owner;
+GRANT CONNECT ON DATABASE midad TO midad_app, midad_system;
 SQL
-cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
+cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, SYSTEM_DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
 set -a; . ./.env; set +a
-npm run db:migrate       # schema + grants for APP_DB_ROLE
+npm run db:migrate       # schema + grants for APP_DB_ROLE and SYSTEM_DB_ROLE
 npm run db:seed          # plans, 2026/27 catalogue, demo users (prints credentials and the admin TOTP secret)
 npm run dev              # http://localhost:3000
 npm run dev:worker       # emails (log transport prints them) and billing lifecycle
@@ -113,12 +115,13 @@ only inside the compose network.
 Caddy obtains TLS certificates automatically. Every container's log is capped at 5 files of 10 MB,
 so logs cannot fill the disk.
 
-**Managed PostgreSQL.** Create the three roles with the SQL from `deploy/postgres-init/01-roles.sh`,
+**Managed PostgreSQL.** Create the four roles with the SQL from `deploy/postgres-init/01-roles.sh`,
 then set in `.env.production`:
 
 | Setting | Value |
 | --- | --- |
 | `DATABASE_URL` | the app role (`midad_app`), e.g. `postgres://midad_app:…@db.example.com:5432/midad` |
+| `SYSTEM_DATABASE_URL` | the system role (`midad_system`, `BYPASSRLS`, not a superuser), same database |
 | `MIGRATION_DATABASE_URL` | the owner role (`midad_owner`), same database |
 | `BACKUP_DATABASE_URL` | the backup role (`midad_backup`, `BYPASSRLS` + `pg_read_all_data`), same database |
 | `DATABASE_SSL` | `true` |
@@ -126,7 +129,22 @@ then set in `.env.production`:
 
 With `DATABASE_URL` set, the ops scripts start everything except the bundled `postgres` service. Where a
 provider does not allow `BYPASSRLS`, the scripts cannot back up (tenant tables force row-level
-security): use the provider's backups and point-in-time recovery instead.
+security): use the provider's backups and point-in-time recovery instead. The application itself also
+needs one `BYPASSRLS` role, the system role: check that the provider allows it before choosing one.
+
+**Installations made before migration 0018 (the system role).** The roles script runs only when the
+database volume is first created, so an existing database lacks the system role. Before upgrading, as a
+superuser (bundled: `docker compose … exec postgres psql -U postgres`), with your own password, then add
+`DB_SYSTEM_PASSWORD` (bundled) or `SYSTEM_DATABASE_URL` (managed) to the settings file:
+
+```sql
+CREATE ROLE midad_system LOGIN PASSWORD '…' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB;
+GRANT CONNECT ON DATABASE midad TO midad_system;
+```
+
+The `migrate` service then grants it its privileges. Going back to a release before 0018 needs
+`npm run db:migrate:down` once (it reverts 0018) before the older image starts: older releases rely on the
+setting that 0018 switched off.
 
 ### 3.4 First platform administrator
 ```bash

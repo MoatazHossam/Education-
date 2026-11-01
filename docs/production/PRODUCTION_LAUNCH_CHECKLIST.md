@@ -40,7 +40,7 @@ repository.
 | C-8 | Generated secrets: `SESSION_SECRET` (48 bytes), `DATA_ENCRYPTION_KEY` (32 bytes), DB passwords | App | see `.env.docker.example` |
 | C-9 | Alert channel (email list and/or Slack/Teams webhook) | Alerts | `ALERT_EMAILS`, `ALERT_WEBHOOK_URL` |
 | C-10 | Uptime monitor and log service accounts | Monitoring | — |
-| C-11 | GitHub billing fixed so Actions run; container registry (GHCR) access | CI/CD | — |
+| C-11 | GitHub billing fixed so Actions run (done 2026-11-01); container registry (GHCR) access | CI/CD | — |
 | C-12 | Penetration-testing vendor | Assurance | — |
 
 ## 3. Engineering go/no-go

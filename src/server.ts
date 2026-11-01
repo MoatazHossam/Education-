@@ -1,17 +1,16 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
-import { createDatabase, inspectRole } from './db/index.js';
+import { createAppDatabase, databaseRoleProblems } from './db/index.js';
 import { AlertMonitor, alertChannels } from './ops/alerts.js';
 
 async function main() {
   const config = loadConfig();
-  const db = createDatabase(config.DATABASE_URL, { poolMax: config.DATABASE_POOL_MAX, ssl: config.DATABASE_SSL });
+  const db = createAppDatabase(config, config.DATABASE_POOL_MAX);
   const app = await buildApp({ config, db });
 
-  // Row-Level Security is silently skipped for superusers and BYPASSRLS roles.
-  const role = await inspectRole(db);
-  if (role.superuser || role.bypassRls) {
-    const msg = `Database role "${role.role}" bypasses Row-Level Security; connect with the least-privilege application role`;
+  // Row-Level Security is silently skipped for superusers and BYPASSRLS roles; only the
+  // separate system role may bypass it (src/db/index.ts, withSystemContext).
+  for (const msg of await databaseRoleProblems(db)) {
     if (config.isProduction) throw new Error(msg);
     app.log.warn(msg);
   }

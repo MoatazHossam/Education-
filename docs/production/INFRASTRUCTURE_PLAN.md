@@ -116,8 +116,12 @@ applied; or (b) change the runbook to the rolling path only and make `ops/start.
 `APP_IMAGE_TAG=previous`. (a) is safer. *Acceptance:* a scripted drill — release N+1 with a new migration, roll back
 to N with both paths, `/readyz` 200 on both instances.
 
-**Release artefacts (I-4).** Build in CI, push to a private registry (GHCR) tagged with the git SHA, deploy by
-digest; keep the last 5 releases. Until CI runs on GitHub (B-7), build locally with `scripts/ci-local.sh` and push
+**Migration 0018 (task 1.1) is not backward compatible**: releases before it rely on the `app.rls_bypass`
+setting it switched off, so going back past it needs `npm run db:migrate:down` once before the older
+image (documented in `docs/DEPLOYMENT_GUIDE.md`). Nothing is deployed yet, so this costs nothing now.
+
+**Release artefacts (I-4). Build in CI, push to a private registry (GHCR) tagged with the git SHA, deploy by
+digest; keep the last 5 releases. GitHub Actions runs again (B-7 cleared 2026-11-01); `scripts/ci-local.sh` can still build locally and push
 from there.
 
 ## 7. Health checks and monitoring

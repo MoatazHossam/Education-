@@ -2,7 +2,8 @@
 
 Built from the findings in this folder. It does not replace `docs/IMPLEMENTATION_ROADMAP.md` (the product
 roadmap) or `docs/PROJECT_STATUS.md`; it is the path from `main` at `d66de3b` to a commercial launch.
-Nothing here has been started: **implementation waits for the owner's go-ahead.**
+Implementation waits for the owner's go-ahead for each task. Task 1.1 was approved on 2026-11-01 and is
+done on the same branch as this audit.
 
 Sizes are engineering-day estimates **[ASSUMPTION]**. IDs refer to findings: S- (security), I- (infrastructure),
 B-G / P- (billing), A- / AI- (AI cost), D- / C- / L- (decisions, credentials, legal in
@@ -27,14 +28,14 @@ Standard checks for every code task (unchanged from today):
 ```bash
 npm run lint && npm run typecheck && npm test        # TEST_PG_ADMIN_URL set to a local PostgreSQL 16
 npm run test:e2e                                      # Playwright, Chromium
-scripts/ci-local.sh                                   # full CI locally while GitHub Actions is blocked (B-7)
+scripts/ci-local.sh                                   # full CI locally (GitHub Actions also runs on every PR)
 ```
 
 ## Phase 1 — Hardening that needs no outside input
 
 | # | Task | Findings | Size | Acceptance criteria | Verification |
 | --- | --- | --- | --- | --- | --- |
-| 1.1 | **Tenant isolation hardening**: RLS on `billing_events`, `notifications`, `email_outbox`; separate `midad_system` DB role with `BYPASSRLS` for worker/webhook/admin aggregates; the web role can no longer bypass; allow-list test for `withSystemContext` call sites | S-1, S-2, S-3, S-4 | 3 d | As the web role, `set_config('app.rls_bypass','on',true)` exposes nothing; unfiltered selects on the three tables from another tenant return 0 rows; all 371 existing tests pass | `npm run test:integration -- tenancy authz-coverage`; SQL in SECURITY_GAP_ANALYSIS §9 |
+| 1.1 | **Done (PR #39).** **Tenant isolation hardening**: RLS on `billing_events`, `notifications`, `email_outbox`; separate `midad_system` DB role with `BYPASSRLS` for worker/webhook/admin aggregates; the web role can no longer bypass; allow-list test for `withSystemContext` call sites | S-1, S-2, S-3, S-4 | 3 d | As the web role, `set_config('app.rls_bypass','on',true)` exposes nothing; unfiltered selects on the three tables from another tenant return 0 rows; all 371 existing tests pass | `npm run test:integration -- tenancy authz-coverage`; SQL in SECURITY_GAP_ANALYSIS §9 |
 | 1.2 | **Rollback fix**: `migrate` succeeds when the database is ahead of the image; runbook updated; rollback drill script | I-3 | 1 d | Release N+1 with a new migration, roll back to N via `ops/start.sh` and via `rolling-restart.sh`: both instances `/readyz` 200 | New integration test on the migrator; drill on Docker |
 | 1.3 | **Lockout that cannot be weaponised**: per account+address lock or progressive delay; no hard lock of students during an open test window; atomic counter | S-5, S-7 | 2 d | 20 failures from address A do not block a correct login from B; existing lockout tests adapted | `npm run test:integration -- auth students` |
 | 1.4 | **Container limits and PostgreSQL tuning** in `docker-compose.prod.yml`; `ConcurrentDatabaseReload no` for ClamAV; Node heap caps | I-1, I-2, I-7 | 1 d | `docker compose config` shows limits; stack healthy; local load test unchanged (no 5xx) | `docker stats`; `scripts/load-exam.mjs` locally |

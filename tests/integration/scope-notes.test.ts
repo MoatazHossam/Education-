@@ -24,7 +24,7 @@ async function team() {
 }
 
 const notifications = (userId: string) =>
-  h.ownerDb.selectFrom('notifications').select(['kind', 'title', 'body', 'link']).where('user_id', '=', userId).where('kind', '=', 'item_assigned').execute();
+  h.systemDb.selectFrom('notifications').select(['kind', 'title', 'body', 'link']).where('user_id', '=', userId).where('kind', '=', 'item_assigned').execute();
 
 describe('notes and assignees on selected books', () => {
   it('an editor sets a note and an assignee; everyone in the organization sees them', async () => {
@@ -216,7 +216,7 @@ describe('notes travel with the scope', () => {
 });
 
 describe('status, due dates, assignment emails and my assignments', () => {
-  const emails = (to: string) => h.ownerDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', 'items_assigned').execute();
+  const emails = (to: string) => h.systemDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', 'items_assigned').execute();
 
   it('an editor sets a status and a due date; bad values are refused', async () => {
     const t = await team();

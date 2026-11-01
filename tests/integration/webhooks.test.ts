@@ -252,7 +252,7 @@ describe('webhook endpoints', () => {
     await deliver();
     const list = (await s.owner.client.get(`${s.base}/webhooks`)).json().webhooks;
     expect(list[0]).toMatchObject({ enabled: false, disabledReason: 'failing', consecutiveFailures: DISABLE_AFTER_FAILURES, lastDelivery: { status: 'pending', statusCode: 503 } });
-    const notices = await h.ownerDb.selectFrom('notifications').select(['title', 'link']).where('user_id', '=', s.owner.userId).where('kind', '=', 'webhook_disabled').execute();
+    const notices = await h.systemDb.selectFrom('notifications').select(['title', 'link']).where('user_id', '=', s.owner.userId).where('kind', '=', 'webhook_disabled').execute();
     expect(notices).toEqual([{ title: 'A webhook was switched off', link: `/org/${s.owner.orgId}/settings` }]);
     const audit = (await s.owner.client.get(`${s.base}/audit-logs?action=webhook.disabled`)).json().entries;
     expect(audit).toHaveLength(1);

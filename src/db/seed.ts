@@ -1,10 +1,10 @@
 import { sql } from 'kysely';
 import { PLAN_DEFINITIONS } from '../billing/plans.js';
 import { buildLegacyDataset, type Dataset } from '../catalog/legacy-dataset.js';
-import { withSystemContext, type Database, type Trx } from './index.js';
+import type { Database, Trx } from './index.js';
 
 export async function seedPlans(db: Database, currency: string): Promise<void> {
-  await withSystemContext(db, async (trx) => {
+  await db.transaction().execute(async (trx) => {
     for (const p of PLAN_DEFINITIONS) {
       // Insert only: never overwrite prices an operator has changed at runtime.
       await trx
@@ -86,7 +86,7 @@ export async function insertCatalogVersion(
 /** Seeds the 2026/2027 catalogue from the legacy dataset unless that year already exists. */
 export async function seedCatalog(db: Database): Promise<{ versionId: string; created: boolean }> {
   const dataset = buildLegacyDataset();
-  return withSystemContext(db, async (trx) => {
+  return db.transaction().execute(async (trx) => {
     await sql`SELECT pg_advisory_xact_lock(hashtext('seed_catalog'))`.execute(trx);
     const existing = await trx
       .selectFrom('catalog_versions')

@@ -118,8 +118,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     if (body.inviteToken) {
       // Accepting an invitation by creating an account. The emailed token proves
       // control of the address, so the account starts verified.
-      const result = await db.transaction().execute(async (trx) => {
-        await sql`SELECT set_config('app.rls_bypass', 'on', true)`.execute(trx);
+      // Before the account exists nobody is a member, so the token lookup and the
+      // membership it grants run in the system context; the token is the authorization.
+      const result = await withSystemContext(db, async (trx) => {
         const invite = await trx
           .selectFrom('invitations')
           .selectAll()
@@ -369,7 +370,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
           .executeTakeFirstOrThrow(),
       );
       // Homework notices (docs/CLASSROOM.md): the portal's bell shows the unread count.
-      const unread = await db.selectFrom('notifications').select((eb) => eb.fn.countAll<string>().as('n')).where('user_id', '=', auth.user.id).where('read_at', 'is', null).executeTakeFirstOrThrow();
+      const unread = await withUserContext(db, auth.user.id, (trx) =>
+        trx.selectFrom('notifications').select((eb) => eb.fn.countAll<string>().as('n')).where('user_id', '=', auth.user.id).where('read_at', 'is', null).executeTakeFirstOrThrow(),
+      );
       return {
         mfaPending: false,
         user: publicUser(auth.user),
@@ -389,12 +392,14 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         .orderBy('o.name')
         .execute(),
     );
-    const unread = await db
-      .selectFrom('notifications')
-      .select((eb) => eb.fn.countAll<string>().as('n'))
-      .where('user_id', '=', auth.user.id)
-      .where('read_at', 'is', null)
-      .executeTakeFirstOrThrow();
+    const unread = await withUserContext(db, auth.user.id, (trx) =>
+      trx
+        .selectFrom('notifications')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('user_id', '=', auth.user.id)
+        .where('read_at', 'is', null)
+        .executeTakeFirstOrThrow(),
+    );
     return {
       mfaPending: false,
       user: publicUser(auth.user),
@@ -490,7 +495,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       trx.selectFrom('memberships as m').innerJoin('organizations as o', 'o.id', 'm.org_id').select(['o.id', 'o.name', 'm.role', 'm.created_at']).where('m.user_id', '=', user.id).execute(),
     );
     const sessions = await db.selectFrom('sessions').select(['ip', 'user_agent', 'created_at', 'last_seen_at']).where('user_id', '=', user.id).execute();
-    const notifications = await db.selectFrom('notifications').select(['kind', 'title', 'body', 'created_at', 'read_at']).where('user_id', '=', user.id).execute();
+    const notifications = await withUserContext(db, user.id, (trx) =>
+      trx.selectFrom('notifications').select(['kind', 'title', 'body', 'created_at', 'read_at']).where('user_id', '=', user.id).execute(),
+    );
     const audit = await withSystemContext(db, (trx) =>
       trx.selectFrom('audit_logs').select(['action', 'org_id', 'ip', 'user_agent', 'created_at']).where('actor_user_id', '=', user.id).orderBy('id', 'desc').limit(1000).execute(),
     );
@@ -640,10 +647,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const { user } = requireUser(req);
     const { token } = parse(z.object({ token: z.string().min(20).max(200) }), req.body);
     const meta = requestMeta(req);
-    const orgId = await db.transaction().execute(async (trx) => {
-      // Token lookup happens before the caller is a member, so it runs with the
-      // RLS bypass; the token itself is the authorization.
-      await sql`SELECT set_config('app.rls_bypass', 'on', true)`.execute(trx);
+    const orgId = await withSystemContext(db, async (trx) => {
+      // Token lookup happens before the caller is a member, so it runs in the system
+      // context; the token itself is the authorization.
       const invite = await trx
         .selectFrom('invitations')
         .selectAll()
@@ -657,8 +663,6 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       if (invite.email !== user.email) throw new AppError(403, 'INVITATION_EMAIL_MISMATCH', `This invitation was sent to a different email address`);
       const org = await trx.selectFrom('organizations').select(['status', 'name']).where('id', '=', invite.org_id).executeTakeFirstOrThrow();
       if (org.status !== 'active') throw forbidden('This organization is suspended', 'ORG_SUSPENDED');
-      await sql`SELECT set_config('app.rls_bypass', '', true)`.execute(trx);
-      await setOrgContext(trx, invite.org_id, user.id);
       await trx
         .insertInto('memberships')
         .values({ org_id: invite.org_id, user_id: user.id, role: invite.role })

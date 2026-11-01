@@ -82,7 +82,7 @@ if [[ "$JOBS" == *docker* ]]; then
   step "docker: build image" docker build ${DOCKER_BUILD_ARGS:-} -t midad:ci .
   smoke() {
     local out
-    out=$(docker run --rm -e NODE_ENV=production -e APP_URL=https://ci.example -e DATABASE_URL=postgres://x@localhost/x \
+    out=$(docker run --rm -e NODE_ENV=production -e APP_URL=https://ci.example -e DATABASE_URL=postgres://x@localhost/x -e SYSTEM_DATABASE_URL=postgres://y@localhost/x \
       -e SESSION_SECRET=ci-secret-ci-secret-ci-secret-ci-secret -e DATA_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
       -e EMAIL_TRANSPORT=smtp -e SMTP_URL=smtp://localhost -e BILLING_PROVIDER=sandbox -e SANDBOX_WEBHOOK_SECRET=0123456789abcdef \
       midad:ci 2>&1)

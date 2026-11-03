@@ -348,6 +348,54 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await audit(page, 'suggested questions dialog');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
+  // Homework suggested by AI (docs/CLASSROOM.md §13): the request and review dialogs, each over the homework
+  // form it fills. Cancelled, so the class keeps its one homework.
+  await page.goto(classPath);
+  await page.getByRole('button', { name: 'Set homework' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Suggest with AI' }).click();
+  await audit(page, 'suggest homework dialog');
+  td = page.getByRole('dialog', { name: 'Suggest homework with AI' });
+  await td.getByLabel('Topic or lesson').fill('The alphabet');
+  await td.getByRole('button', { name: 'Suggest' }).click();
+  await expect(page.getByRole('dialog', { name: 'Suggested homework' })).toBeVisible();
+  await audit(page, 'suggested homework dialog');
+  await page.getByRole('dialog', { name: 'Suggested homework' }).getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('dialog', { name: 'Homework for 1A' }).getByRole('button', { name: 'Cancel' }).click();
+  // Teaching plans (docs/TEACHING_PLANS.md): the list, the new-plan and draft dialogs, the editor holding an AI
+  // draft and one with a field error, and both kinds of plan.
+  await page.getByRole('link', { name: 'Teaching plans' }).click();
+  await expect(page.getByText('No plans in this scope yet.')).toBeVisible();
+  const plansPath = new URL(page.url()).pathname;
+  await audit(page, 'teaching plans (none yet)');
+  await page.getByRole('button', { name: 'New plan' }).click();
+  await audit(page, 'new plan dialog');
+  await page.getByRole('dialog').getByRole('button', { name: 'Draft with AI' }).click();
+  await audit(page, 'draft a lesson plan dialog');
+  td = page.getByRole('dialog', { name: 'Draft a lesson plan with AI' });
+  await td.getByLabel('Topic or lesson').fill('The alphabet');
+  await td.getByRole('button', { name: 'Write the draft' }).click();
+  await expect(page.getByRole('heading', { name: 'New lesson plan', level: 1 })).toBeVisible();
+  await audit(page, 'lesson plan editor (AI draft)');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson plan', level: 1, exact: true })).toBeVisible();
+  const lessonPlanPath = new URL(page.url()).pathname;
+  await audit(page, 'lesson plan');
+  await page.goto(plansPath);
+  await page.getByRole('button', { name: 'New plan' }).click();
+  await page.getByRole('dialog').getByLabel('Kind of plan').selectOption('pacing');
+  await page.getByRole('dialog').getByRole('button', { name: 'Start blank' }).click();
+  await expect(page.getByRole('heading', { name: 'New pacing plan', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('Title')).toHaveAttribute('aria-invalid', 'true');
+  await audit(page, 'pacing plan editor (field error)');
+  await page.getByLabel('Title').fill('Term 1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Pacing plan', level: 1, exact: true })).toBeVisible();
+  const pacingPlanPath = new URL(page.url()).pathname;
+  await audit(page, 'pacing plan');
+  await visit(page, plansPath, 'teaching plans (two plans)');
+  await page.goto(testPath);
+  await expect(page.getByRole('heading', { name: 'Questions (2, 2 points)' })).toBeVisible();
   await page.getByRole('button', { name: 'Publish' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published. The class’s students were told.')).toBeVisible();
@@ -479,6 +527,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
     [itemsPath, 'notes and assignees (Arabic)'], [assignmentsPath, 'my assignments (Arabic)'], [allAssignmentsPath, 'my assignments in all organizations (Arabic)'],
     [`/org/${orgId}/classes`, 'classes (Arabic)'], [classPath, 'class (Arabic)'], [homeworkPath, 'homework (Arabic)'],
     [testPath, 'test (Arabic)'], [monitorPath, 'test live monitor (Arabic)'], [resultsPath, 'test results (Arabic)'], [gradebookPath, 'gradebook (Arabic)'],
+    [plansPath, 'teaching plans (Arabic)'], [lessonPlanPath, 'lesson plan (Arabic)'], [pacingPlanPath, 'pacing plan (Arabic)'], [`${lessonPlanPath}/edit`, 'lesson plan editor (Arabic)'],
     [retentionPath, 'keeping classroom data (Arabic)'],
   ] as const) await visit(page, path, where);
   // Latin text keeps its own order in the Arabic interface: an email address is one left-to-right piece
@@ -504,6 +553,8 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(page, testPath, 'test (dark)');
   await visit(page, monitorPath, 'test live monitor (dark)');
   await visit(page, gradebookPath, 'gradebook (dark)');
+  await visit(page, plansPath, 'teaching plans (dark)');
+  await visit(page, lessonPlanPath, 'lesson plan (dark)');
   await visit(page, retentionPath, 'keeping classroom data (dark)');
   await visit(page, allAssignmentsPath, 'my assignments in all organizations (dark)');
 
@@ -517,6 +568,9 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await visit(phone, assignmentsPath, 'my assignments (phone)');
   await visit(phone, `/org/${orgId}/settings`, 'settings (phone)');
   await visit(phone, retentionPath, 'keeping classroom data (phone)');
+  await visit(phone, plansPath, 'teaching plans (phone)');
+  await visit(phone, lessonPlanPath, 'lesson plan (phone)');
+  await visit(phone, `${pacingPlanPath}/edit`, 'pacing plan editor (phone)');
   await visit(phone, allAssignmentsPath, 'my assignments in all organizations (phone)');
 
   // Platform admin.

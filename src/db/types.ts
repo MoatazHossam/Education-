@@ -755,6 +755,28 @@ export interface ClassroomRetentionNoticesTable {
   notified_at: Generated<Date>;
 }
 
+// ---------------------------------------------------------------- teaching plans (migration 0018)
+export type TeachingPlanKind = 'lesson' | 'pacing';
+
+export interface TeachingPlansTable {
+  id: Generated<string>;
+  org_id: string;
+  scope_id: string;
+  kind: TeachingPlanKind;
+  grade: number;
+  subject_en: string;
+  subject_ar: string;
+  title: string;
+  language: 'ar' | 'en';
+  /** The plan, checked by src/scopes/plans.ts (LessonContent or PacingContent). */
+  content: Json<Record<string, unknown>>;
+  ai_assisted: Generated<boolean>;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface DB {
   users: UsersTable;
   organizations: OrganizationsTable;
@@ -784,6 +806,7 @@ export interface DB {
   catalog_materials: CatalogMaterialsTable;
   scopes: ScopesTable;
   scope_items: ScopeItemsTable;
+  teaching_plans: TeachingPlansTable;
   item_reminders: ItemRemindersTable;
   assignment_digest_items: AssignmentDigestItemsTable;
   webhook_endpoints: WebhookEndpointsTable;

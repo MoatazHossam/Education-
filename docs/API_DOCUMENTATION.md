@@ -162,7 +162,12 @@ create, edit, archive, delete: admin), `classes/:classId/students` (PUT the list
 `classes/:classId/teachers` (admin), `classes/:classId/homework` (POST: the subject's teacher or an admin),
 `homework/:homeworkId` (GET with the roster; PATCH, DELETE), `homework/:homeworkId/files`,
 `homework/:homeworkId/submissions/:studentId` (GET the work; PATCH `{points?, feedback?, return?}`),
-`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId`.
+`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId`, and `classes/:classId/suggest-homework` (POST
+`{subjectEn, topic, lessonText?, kind?: "practice"|"reading"|"writing"|"research"|"review", minutes?: 10–120,
+language}`: a homework suggestion by AI, returned as `{suggestion: {title, instructions, estimatedMinutes,
+teacherNotes}, model}` and never saved; the subject's teachers and admins in an open class; uses one of the
+school's AI requests; 30 an hour; CLASSROOM.md §14). `GET classes/:classId` returns `ai: {left}` when the school
+has AI requests and the class is open, else `ai: null`.
 Files in every listing carry `status` (`pending` while the worker checks them, `ready`, or `infected` /
 `unreadable` once deleted) and `uploadedSize` (the size as uploaded when a photo was made smaller); a
 file opens only when `ready` (docs/CLASSROOM.md §5).
@@ -201,7 +206,7 @@ and, by the worker, `classroom.retention_applied`.
 ### Scopes
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/orgs/:orgId/scopes` | viewer | `{scopes:[…, itemCount, readOnly, notes, assigned, assignedToMe], limit}` |
+| GET | `/api/orgs/:orgId/scopes` | viewer | `{scopes:[…, itemCount, planCount, readOnly, notes, assigned, assignedToMe], limit}` |
 | POST | `/api/orgs/:orgId/scopes` | editor | `{name, description?, catalogVersionId}` |
 | GET / PATCH / DELETE | `/api/orgs/:orgId/scopes/:scopeId` | viewer / editor / editor | GET returns `materialIds` and `annotations:[{materialId, note, assigneeId, assigneeName, annotatedAt, annotatedBy}]` (selected books with a note or an assignee) |
 | PATCH | `/api/orgs/:orgId/scopes/:scopeId/items/:materialId` | editor (status: also the assignee, any role) | `{note?: string ≤500 \| null, assigneeId?: uuid \| null, status?: "todo"\|"in_progress"\|"done" \| null, dueOn?: "YYYY-MM-DD" (2000–2100) \| null}` (at least one; `""` clears the note) → `{annotation}`. A member who is not an editor may change only the `status` of a book assigned to them (`403` otherwise). The book must be selected (`404`); the assignee must be a member of the organization (`400 ASSIGNEE_NOT_MEMBER`); read-only scopes `402`. A new assignee other than yourself gets an in-app notification. Audited as `scope.item_annotated` (which fields changed, not the note's text) |
@@ -214,6 +219,17 @@ and, by the worker, `classroom.retention_applied`.
 | GET | `/api/orgs/:orgId/scopes/:scopeId/carry-forward?to=<versionId>` | viewer | Preview of carrying the scope to another **published** version: `{scope, from, to, suggestedName, plan:{subjects:[{source, target\|null, changes:[{field, from, to}], carried:[{fromId, toId, title, kind, renamedFrom?}], missing:[{fromId, title, kind}], added:[{id, title, kind}]}], summary}}`; `400` for the scope's own or an unpublished version. `notes:{carried, lost}`: notes and assignees that follow their books, and those on books that cannot be carried |
 | POST | `/api/orgs/:orgId/scopes/:scopeId/carry-forward` | editor | `{targetVersionId, mode?: "copy"\|"move", name?, add?: uuid[], skip?: uuid[]}`. `copy` (default) → `201`, new scope in the target version (`402 PLAN_LIMIT_REACHED` at the scope limit, `409 SCOPE_NAME_TAKEN`); `move` → `200`, the scope switches version and its items are replaced (refused for read-only scopes). `add` must be materials of the target version (`400 INVALID_MATERIALS`); `skip` leaves carried items out. Notes and assignees follow carried books (`notesCarried` in the response). Audited as `scope.carried_forward` |
 | GET | `/api/orgs/:orgId/scopes/:scopeId/export?format=txt\|csv\|json` | viewer | attachment; counts toward monthly exports; CSV/JSON need Starter+. CSV ends with `note`, `assignee`, `status`, `due_on` columns, JSON items carry `note`, `assignee`, `status`, `dueOn` (also in `GET /api/v1/scopes/:id`); TXT keeps the original layout |
+
+### Teaching plans (`/api/orgs/:orgId/scopes/:scopeId/plans`) — any member reads and writes; the author and admins change
+Rules in docs/TEACHING_PLANS.md §3. `GET`: `{scope, grades:[{grade, subjects:[{nameEn, nameAr, books}]}], plans:[{id,
+kind, grade, subjectEn, subjectAr, title, language, aiAssisted, createdBy, updatedBy, createdAt, updatedAt, canEdit,
+summary}], limit, ai}`. `POST` `{kind: "lesson"|"pacing", grade, subjectEn, title, language, aiAssisted?, content}` →
+`201 {plan}` (`400 INVALID_SUBJECT` when the grade and subject have no books in the scope, `409 TOO_MANY_PLANS` at 500).
+`GET …/:planId` → `{plan (with content), scope}`; `PATCH …/:planId` `{title?, language?, content?}` and `DELETE …/:planId`
+for the author and admins (`403 NOT_PLAN_AUTHOR`). `POST …/suggest-lesson` `{grade, subjectEn, topic, lessonText?,
+durationMinutes?: 20–180, language}` and `POST …/suggest-pacing` `{grade, subjectEn, startDate, weeks: 1–40,
+periodsPerWeek?: 1–15, contents?, language}` return `{draft: {kind, grade, subjectEn, language, title, content}, model}`,
+never saved; one AI request each; 30 an hour. Audited as `plan.created`, `plan.updated`, `plan.deleted` (no content).
 
 Example:
 ```bash

@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import { recordAudit, type RequestMeta } from '../audit/audit.js';
-import { consumeUsage, getEntitlements, releaseUsage } from '../billing/entitlements.js';
-import { withOrgContext } from '../db/index.js';
+import { consumeUsage, getEntitlements, releaseUsage, usageFor } from '../billing/entitlements.js';
+import { withOrgContext, type Executor } from '../db/index.js';
 import type { AiRequestsTable, StaffUser } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, featureUnavailable, forbidden } from '../lib/errors.js';
@@ -61,6 +61,17 @@ export function aiFailure(kind: AiErrorKind): AppError {
   if (kind === 'rate_limited') return new AppError(503, 'AI_BUSY', 'The AI service is busy. Try again in a minute.');
   if (kind === 'unavailable' || kind === 'timeout') return new AppError(503, 'AI_UNAVAILABLE', 'The AI service did not answer. Try again later.');
   return new AppError(502, 'AI_FAILED', 'The AI service could not handle the request. Try again later; if it keeps happening, contact support.');
+}
+
+/**
+ * AI requests the school has left this month (null: no cap), or null when it has none at all or no
+ * provider is set up. Pages use it to show an AI feature only where it can run.
+ */
+export async function aiAllowance(ctx: AppContext, exec: Executor, orgId: string): Promise<{ left: number | null } | null> {
+  if (!ctx.ai) return null;
+  const limit = (await getEntitlements(exec, orgId, ctx.config.GRACE_DAYS)).limits.ai_requests_per_month;
+  if (limit === 0 || limit === undefined) return null;
+  return { left: limit === null ? null : Math.max(0, limit - (await usageFor(exec, orgId)).ai_requests) };
 }
 
 export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, task: AiTask<T>): Promise<AiResult<T>> {

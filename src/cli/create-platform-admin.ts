@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../auth/password.js';
 import { loadConfig } from '../config.js';
-import { createDatabase, withSystemContext } from '../db/index.js';
+import { createAppDatabase, withSystemContext } from '../db/index.js';
 import { recordAudit } from '../audit/audit.js';
 
 // Usage: create-platform-admin --email ops@example.com --name "Ops Admin"
@@ -18,7 +18,7 @@ async function main() {
   const name = arg('name') ?? 'Platform Admin';
   if (!email || !/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Pass --email <address>');
   const config = loadConfig();
-  const db = createDatabase(config.DATABASE_URL, { poolMax: 1, ssl: config.DATABASE_SSL });
+  const db = createAppDatabase(config, 1);
   try {
     const existing = await db.selectFrom('users').select(['id']).where('email', '=', email).executeTakeFirst();
     if (existing) {

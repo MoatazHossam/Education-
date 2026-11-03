@@ -18,6 +18,7 @@ import * as m0015 from './migrations/0015_classroom_retention.js';
 import * as m0016 from './migrations/0016_file_checks.js';
 import * as m0017 from './migrations/0017_ai_requests.js';
 import * as m0018 from './migrations/0018_teaching_plans.js';
+import * as m0019 from './migrations/0019_system_role.js';
 
 // Static registry: works identically under tsx and the compiled dist build.
 const MIGRATIONS: Record<string, Migration> = {
@@ -39,6 +40,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0016_file_checks': m0016,
   '0017_ai_requests': m0017,
   '0018_teaching_plans': m0018,
+  '0019_system_role': m0019,
 };
 
 class StaticProvider implements MigrationProvider {
@@ -60,15 +62,19 @@ export async function migrateToLatest(db: Database): Promise<string[]> {
 }
 
 /**
- * Grants the runtime application role the minimum privileges it needs.
- * audit_logs is append-only for the application (no UPDATE).
+ * Grants a runtime role the minimum privileges it needs:
+ * - "app", the web application's role (no BYPASSRLS): audit_logs is append-only for
+ *   it (no UPDATE, no DELETE);
+ * - "system", the role with BYPASSRLS behind withSystemContext (src/db/index.ts):
+ *   the same, but it may DELETE audit rows, for the retention cleanup.
  */
-export async function grantAppRole(db: Database, role: string): Promise<void> {
+export async function grantAppRole(db: Database, role: string, kind: 'app' | 'system' = 'app'): Promise<void> {
   if (!/^[a-z_][a-z0-9_]{0,62}$/.test(role)) throw new Error(`Invalid role name: ${role}`);
   const r = sql.id(role);
   await sql`GRANT USAGE ON SCHEMA public TO ${r}`.execute(db);
   await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${r}`.execute(db);
   await sql`REVOKE UPDATE ON audit_logs FROM ${r}`.execute(db);
+  if (kind === 'app') await sql`REVOKE DELETE ON audit_logs FROM ${r}`.execute(db);
   await sql`REVOKE ALL ON kysely_migration, kysely_migration_lock FROM ${r}`.execute(db);
   await sql`GRANT SELECT ON kysely_migration TO ${r}`.execute(db);
   await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${r}`.execute(db);

@@ -18,6 +18,11 @@ const EnvSchema = z
     MIGRATION_DATABASE_URL: z.string().min(1).optional(),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DATABASE_SSL: bool.default(false),
+    // The system role (BYPASSRLS, not superuser) for cross-tenant work: billing webhooks,
+    // the worker's passes, platform administration (src/db/index.ts, withSystemContext).
+    // The application role in DATABASE_URL cannot bypass Row-Level Security at all.
+    SYSTEM_DATABASE_URL: z.string().min(1, 'SYSTEM_DATABASE_URL is required (the system role with BYPASSRLS)'),
+    SYSTEM_DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
 
     SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
     DATA_ENCRYPTION_KEY: z
@@ -110,6 +115,9 @@ const EnvSchema = z
       if (!env.FILE_SCAN) {
         ctx.addIssue({ code: 'custom', path: ['FILE_SCAN'], message: 'FILE_SCAN must be set in production: clamav (scan homework files for viruses) or off' });
       }
+    }
+    if (env.SYSTEM_DATABASE_URL === env.DATABASE_URL) {
+      ctx.addIssue({ code: 'custom', path: ['SYSTEM_DATABASE_URL'], message: 'SYSTEM_DATABASE_URL must use the system role, not the application role of DATABASE_URL' });
     }
     if (env.FILE_SCAN === 'clamav' && !env.CLAMAV_HOST) {
       ctx.addIssue({ code: 'custom', path: ['CLAMAV_HOST'], message: 'CLAMAV_HOST is required when FILE_SCAN=clamav' });

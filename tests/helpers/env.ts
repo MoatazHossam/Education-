@@ -13,12 +13,15 @@ function withCredentials(url: string, user: string, password: string, db: string
 
 export const OWNER_URL = withCredentials(ADMIN_URL, 'midad_test_owner', 'owner-test-pw', TEST_DB);
 export const APP_URL_DB = withCredentials(ADMIN_URL, 'midad_test_app', 'app-test-pw', TEST_DB);
+/** The system role (BYPASSRLS) behind withSystemContext. */
+export const SYSTEM_URL_DB = withCredentials(ADMIN_URL, 'midad_test_system', 'system-test-pw', TEST_DB);
 
 export const TEST_ENV: Record<string, string> = {
   NODE_ENV: 'test',
   APP_URL: 'http://localhost:3000',
   LOG_LEVEL: 'silent',
   DATABASE_URL: APP_URL_DB,
+  SYSTEM_DATABASE_URL: SYSTEM_URL_DB,
   MIGRATION_DATABASE_URL: OWNER_URL,
   SESSION_SECRET: 'test-session-secret-0123456789-abcdefghijklmnop',
   DATA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),

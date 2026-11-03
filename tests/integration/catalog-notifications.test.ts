@@ -14,11 +14,11 @@ interface Material { id: string; title: string }
 interface Subject { id: string; grade: number; track: string; block: string; code: string; materials: Material[] }
 
 const notes = (userId: string, kind?: string) => {
-  let q = h.ownerDb.selectFrom('notifications').select(['kind', 'title', 'body', 'link', 'org_id']).where('user_id', '=', userId).orderBy('created_at');
+  let q = h.systemDb.selectFrom('notifications').select(['kind', 'title', 'body', 'link', 'org_id']).where('user_id', '=', userId).orderBy('created_at');
   if (kind) q = q.where('kind', '=', kind);
   return q.execute();
 };
-const mails = (to: string, template: string) => h.ownerDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', template).execute();
+const mails = (to: string, template: string) => h.systemDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', template).execute();
 const subjects = async (c: Client, versionId: string) => ((await c.get(`/api/admin/catalog/versions/${versionId}`)).json() as { subjects: Subject[] }).subjects;
 
 async function scopeWith(owner: Owner, versionId: string, name: string, materialIds: string[]) {

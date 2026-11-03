@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireStudentSession } from '../auth/guards.js';
 import { getEntitlements, lockOrg } from '../billing/entitlements.js';
-import type { Trx } from '../db/index.js';
+import { withUserContext, type Trx } from '../db/index.js';
 import type { Homework } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { perAccount, rateLimited } from '../http/rate-limit.js';
@@ -180,22 +180,26 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
   // ------------------------------------------------------------ notifications (in the portal; students have no email)
   app.get('/api/student/notifications', async (req) => {
     const { user } = requireStudentSession(req);
-    const rows = await ctx.db
-      .selectFrom('notifications')
-      .select(['id', 'kind', 'title', 'body', 'link', 'read_at', 'created_at'])
-      .where('user_id', '=', user.id)
-      .orderBy('created_at', 'desc')
-      .limit(50)
-      .execute();
+    const rows = await withUserContext(ctx.db, user.id, (trx) =>
+      trx
+        .selectFrom('notifications')
+        .select(['id', 'kind', 'title', 'body', 'link', 'read_at', 'created_at'])
+        .where('user_id', '=', user.id)
+        .orderBy('created_at', 'desc')
+        .limit(50)
+        .execute(),
+    );
     return { notifications: rows.map((n) => ({ id: n.id, kind: n.kind, title: n.title, body: n.body, link: n.link, readAt: n.read_at, createdAt: n.created_at })) };
   });
 
   app.post('/api/student/notifications/read', async (req) => {
     const { user } = requireStudentSession(req);
     const { ids } = parse(z.object({ ids: z.array(zUuid).max(100).optional() }), req.body ?? {});
-    let q = ctx.db.updateTable('notifications').set({ read_at: new Date() }).where('user_id', '=', user.id).where('read_at', 'is', null);
-    if (ids?.length) q = q.where('id', 'in', ids);
-    const res = await q.executeTakeFirst();
+    const res = await withUserContext(ctx.db, user.id, (trx) => {
+      let q = trx.updateTable('notifications').set({ read_at: new Date() }).where('user_id', '=', user.id).where('read_at', 'is', null);
+      if (ids?.length) q = q.where('id', 'in', ids);
+      return q.executeTakeFirst();
+    });
     return { updated: Number(res.numUpdatedRows) };
   });
 

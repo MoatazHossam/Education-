@@ -90,7 +90,7 @@ describe('operational alerts', () => {
         ('r1@school.test', 'verify', 's', 'b', 'pending', 2, now() + interval '5 minutes'),
         ('r2@school.test', 'verify', 's', 'b', 'pending', 3, now() + interval '5 minutes'),
         ('r3@school.test', 'verify', 's', 'b', 'pending', 2, now() + interval '5 minutes')`.execute(h.ownerDb);
-    await sql`INSERT INTO billing_events (provider, event_id, event_type, payload, status, error) VALUES ('sandbox', 'evt-1', 'payment', '{}', 'failed', 'amount mismatch')`.execute(h.ownerDb);
+    await sql`INSERT INTO billing_events (provider, event_id, event_type, payload, status, error) VALUES ('sandbox', 'evt-1', 'payment', '{}', 'failed', 'amount mismatch')`.execute(h.systemDb);
     const errors = new ServerErrorCounter();
     for (let i = 0; i < 9; i++) errors.record();
     expect((await evaluate(h.db, h.config, errors)).map((o) => o.key)).not.toContain('server_errors');

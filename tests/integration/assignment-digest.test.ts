@@ -39,7 +39,7 @@ async function school(org = 'Alpha School', n = 4) {
 }
 
 const emails = (to: string, template: string) =>
-  h.ownerDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', template).orderBy('created_at').execute();
+  h.systemDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', template).orderBy('created_at').execute();
 // assignment_digest_items has forced row-level security, even for the table owner.
 const waiting = () => withSystemContext(h.ownerDb, (trx) => trx.selectFrom('assignment_digest_items').selectAll().execute());
 
@@ -49,7 +49,7 @@ describe('daily summary of assignment emails', () => {
     await s.assign(s.books.slice(0, 2));
     await s.assign(s.books.slice(2, 3));
     expect(await emails(s.hana.email, 'items_assigned')).toEqual([]);
-    const notices = await h.ownerDb.selectFrom('notifications').select('title').where('user_id', '=', s.hana.userId).where('kind', '=', 'item_assigned').execute();
+    const notices = await h.systemDb.selectFrom('notifications').select('title').where('user_id', '=', s.hana.userId).where('kind', '=', 'item_assigned').execute();
     expect(notices).toHaveLength(2);
     expect(await waiting()).toHaveLength(3);
 

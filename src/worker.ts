@@ -5,7 +5,7 @@ import { runClassroomRetention } from './classroom/retention.js';
 import { runHomeworkAnnouncements } from './classroom/service.js';
 import { runTestDeadlines } from './classroom/tests-service.js';
 import { loadConfig } from './config.js';
-import { createDatabase } from './db/index.js';
+import { createAppDatabase, databaseRoleProblems } from './db/index.js';
 import { heartbeat, processOutbox, runCleanup } from './jobs/tasks.js';
 import { createMailer } from './notifications/mailer.js';
 import { runAssignmentDigests } from './scopes/digest.js';
@@ -20,7 +20,11 @@ const FILE_CHECKS_EVERY_MS = 2_000;
 async function main() {
   const config = loadConfig();
   const log = pino({ level: config.LOG_LEVEL });
-  const db = createDatabase(config.DATABASE_URL, { poolMax: 3, ssl: config.DATABASE_SSL });
+  const db = createAppDatabase(config, 3);
+  for (const msg of await databaseRoleProblems(db)) {
+    if (config.isProduction) throw new Error(msg);
+    log.warn(msg);
+  }
   const mailer = createMailer(config, log);
   let stopping = false;
   let lastCleanup = 0;

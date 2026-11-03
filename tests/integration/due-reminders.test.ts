@@ -35,9 +35,9 @@ async function team(n = 4) {
 }
 
 const reminderEmails = (to: string) =>
-  h.ownerDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', 'items_due').orderBy('created_at').execute();
+  h.systemDb.selectFrom('email_outbox').select(['subject', 'text_body']).where('to_email', '=', to).where('template', '=', 'items_due').orderBy('created_at').execute();
 const reminderNotices = (userId: string) =>
-  h.ownerDb.selectFrom('notifications').select(['title', 'body', 'link', 'org_id']).where('user_id', '=', userId).where('kind', '=', 'items_due').orderBy('created_at').execute();
+  h.systemDb.selectFrom('notifications').select(['title', 'body', 'link', 'org_id']).where('user_id', '=', userId).where('kind', '=', 'items_due').orderBy('created_at').execute();
 // item_reminders has forced row-level security, even for the table owner.
 const records = () => withSystemContext(h.ownerDb, (trx) => trx.selectFrom('item_reminders').selectAll().orderBy('due_on').execute());
 

@@ -1,6 +1,6 @@
 import { recordPlatformAudit } from '../audit/audit.js';
 import { loadConfig } from '../config.js';
-import { createDatabase } from '../db/index.js';
+import { createAppDatabase } from '../db/index.js';
 import { keyId } from '../lib/crypto.js';
 import { rotateDataKeys } from '../ops/data-keys.js';
 
@@ -14,7 +14,7 @@ import { rotateDataKeys } from '../ops/data-keys.js';
 async function main() {
   const check = process.argv.includes('--check');
   const config = loadConfig();
-  const db = createDatabase(config.DATABASE_URL, { poolMax: 2, ssl: config.DATABASE_SSL });
+  const db = createAppDatabase(config, 2);
   try {
     const ring = config.dataKeys;
     console.log(`Current key: ${keyId(ring.current)}${ring.previous.length ? `; previous keys: ${ring.previous.map(keyId).join(', ')}` : '; no previous keys'}`);

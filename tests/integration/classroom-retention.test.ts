@@ -126,7 +126,7 @@ describe('classroom data retention', () => {
     expect(await counts(s)).toEqual(before);
 
     // Owners and admins are told, in the app and by email; teachers are not.
-    const notes = await h.ownerDb.selectFrom('notifications').select(['user_id', 'title', 'link']).where('kind', '=', 'classroom_retention').execute();
+    const notes = await h.systemDb.selectFrom('notifications').select(['user_id', 'title', 'link']).where('kind', '=', 'classroom_retention').execute();
     expect(notes.map((n) => n.user_id).sort()).toEqual([s.owner.userId, s.admin.userId].sort());
     expect(notes[0]!.link).toBe(`/org/${s.orgId}/classes/retention`);
     const mail = await latestEmail(h, s.owner.email, 'classroom_retention');
@@ -229,7 +229,7 @@ describe('classroom data retention', () => {
     expect(await run(16)).toMatchObject({ removed: 2 });
     const homeworkIds = () => withSystemContext(h.ownerDb, (trx) => trx.selectFrom('homework').select('id').execute()).then((rows) => rows.map((r) => r.id));
     expect(await homeworkIds()).not.toContain(s.oldHw);
-    expect(await h.ownerDb.selectFrom('notifications').select('id').where('link', '=', `/student/homework/${s.oldHw}`).executeTakeFirst()).toBeUndefined();
+    expect(await h.systemDb.selectFrom('notifications').select('id').where('link', '=', `/student/homework/${s.oldHw}`).executeTakeFirst()).toBeUndefined();
     // The held test is whole, the other school's old homework too.
     expect((await counts(s)).events).toBe(3);
     expect((await homeworkIds()).sort()).toEqual([s.recentHw, otherHw].sort());

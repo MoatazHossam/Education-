@@ -25,6 +25,18 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Production readiness audit and tenant isolation hardening · COMPLETE (2026-11-01)
+- **Audit:** seven documents in `docs/production/` (readiness, security gaps, infrastructure, billing, AI
+  cost, roadmap, launch checklist) for a launch in Egypt, Saudi Arabia and the UAE.
+- **Task 1.1 of that roadmap, approved by the owner:** cross-tenant work runs as a separate system role
+  (`midad_system`, `BYPASSRLS`, `SYSTEM_DATABASE_URL`); the application role can no longer bypass row-level
+  security by any setting (migration `0019_system_role`); `notifications`, `email_outbox` and
+  `billing_events` have row-level security; the app role cannot delete audit rows; every system-context
+  call site is listed in `tests/unit/system-context-allowlist.test.ts`.
+- **Upgrade note:** existing databases need the system role created once (DEPLOYMENT_GUIDE §3.2,
+  "Installations made before migration 0019").
+- **Tests:** lint, typecheck, 53 files / 376 tests; migration 0019 applied, reverted and applied again.
+
 ### The platform's name: Midad (مِداد) · COMPLETE
 - **What:** the owner chose the name Midad (مِداد) on 2026-10-29, replacing the working name Curriculum Scope
   (نطاق المناهج). This is the only place the old name is kept, as a record; results dated before 2026-10-29 in

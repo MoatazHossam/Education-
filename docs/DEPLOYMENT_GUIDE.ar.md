@@ -29,9 +29,11 @@ npm ci
 psql -U postgres <<'SQL'
 CREATE ROLE midad_owner LOGIN PASSWORD 'dev-owner' NOSUPERUSER NOBYPASSRLS;
 CREATE ROLE midad_app  LOGIN PASSWORD 'dev-app'   NOSUPERUSER NOBYPASSRLS;
+CREATE ROLE midad_system LOGIN PASSWORD 'dev-system' NOSUPERUSER BYPASSRLS;
 CREATE DATABASE midad OWNER midad_owner;
+GRANT CONNECT ON DATABASE midad TO midad_app, midad_system;
 SQL
-cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
+cp .env.example .env     # fill SESSION_SECRET, DATA_ENCRYPTION_KEY, DATABASE_URL, SYSTEM_DATABASE_URL, MIGRATION_DATABASE_URL, SANDBOX_WEBHOOK_SECRET
 set -a; . ./.env; set +a
 npm run db:migrate       # schema + grants for APP_DB_ROLE
 npm run db:seed          # plans, 2026/27 catalogue, demo users (prints credentials and the admin TOTP secret)
@@ -124,17 +126,27 @@ curl -fsS https://<domain>/readyz
 
 يحصل Caddy على شهادات TLS تلقائيًا. سجل كل حاوية محدود بخمسة ملفات حجم كل منها 10 ميجابايت، فلا تملأ السجلات القرص.
 
-**PostgreSQL مُدار.** أنشئ الأدوار الثلاثة بأوامر SQL الموجودة في `deploy/postgres-init/01-roles.sh`، ثم اضبط في <span dir="ltr">`.env.production`</span>:
+**PostgreSQL مُدار.** أنشئ الأدوار الأربعة بأوامر SQL الموجودة في `deploy/postgres-init/01-roles.sh`، ثم اضبط في <span dir="ltr">`.env.production`</span>:
 
 | الإعداد | القيمة |
 | --- | --- |
 | `DATABASE_URL` | دور التطبيق (`midad_app`)، مثلًا `postgres://midad_app:…@db.example.com:5432/midad` |
+| `SYSTEM_DATABASE_URL` | دور النظام (`midad_system`، مع `BYPASSRLS` ودون صلاحيات المستخدم الأعلى)، قاعدة البيانات نفسها |
 | `MIGRATION_DATABASE_URL` | الدور المالك (`midad_owner`)، قاعدة البيانات نفسها |
 | `BACKUP_DATABASE_URL` | دور النسخ الاحتياطي (`midad_backup`، مع `BYPASSRLS` و`pg_read_all_data`)، قاعدة البيانات نفسها |
 | `DATABASE_SSL` | `true` |
 | `RESTORE_ADMIN_URL` (اختياري) | للاستعادة: دور يستطيع إنشاء قواعد بيانات وعضو في الدور المالك، على قاعدة البيانات `postgres`؛ إن تُرك فارغًا سألت عنه الاستعادة |
 
-عند ضبط `DATABASE_URL` تشغّل السكربتات كل الخدمات ما عدا خدمة `postgres` المضمّنة. إن كان المزود لا يسمح بـ `BYPASSRLS`، فلن تستطيع السكربتات أخذ نسخة احتياطية (جداول المؤسسات تفرض أمان مستوى الصف حتى على مالكها): استخدم حينها النسخ الاحتياطية للمزود والاستعادة إلى نقطة زمنية.
+عند ضبط `DATABASE_URL` تشغّل السكربتات كل الخدمات ما عدا خدمة `postgres` المضمّنة. إن كان المزود لا يسمح بـ `BYPASSRLS`، فلن تستطيع السكربتات أخذ نسخة احتياطية (جداول المؤسسات تفرض أمان مستوى الصف حتى على مالكها): استخدم حينها النسخ الاحتياطية للمزود والاستعادة إلى نقطة زمنية. ويحتاج التطبيق نفسه أيضًا إلى دور واحد بصلاحية `BYPASSRLS` هو دور النظام: تأكّد أن المزوّد يسمح بذلك قبل اختياره.
+
+**التثبيتات السابقة للترحيل 0019 (دور النظام).** لا يعمل سكربت الأدوار إلا عند إنشاء وحدة تخزين قاعدة البيانات أول مرة، فقاعدة البيانات الموجودة تنقصها دور النظام. قبل الترقية، نفّذ بصلاحية المستخدم الأعلى (المضمّنة: <span dir="ltr">`docker compose … exec postgres psql -U postgres`</span>) وبكلمة مرور من اختيارك، ثم أضف `DB_SYSTEM_PASSWORD` (المضمّنة) أو `SYSTEM_DATABASE_URL` (المُدارة) إلى ملف الإعدادات:
+
+```sql
+CREATE ROLE midad_system LOGIN PASSWORD '…' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB;
+GRANT CONNECT ON DATABASE midad TO midad_system;
+```
+
+تمنحه خدمة `migrate` بعد ذلك صلاحياته. والرجوع إلى إصدار أقدم من 0019 يحتاج إلى تشغيل <span dir="ltr">`npm run db:migrate:down`</span> مرة واحدة (يتراجع عن 0019) قبل تشغيل الصورة الأقدم، لأن الإصدارات الأقدم تعتمد على الإعداد الذي أوقفه 0019.
 
 ### 3.4 أول مدير للمنصة
 

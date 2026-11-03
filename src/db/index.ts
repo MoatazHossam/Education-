@@ -18,7 +18,7 @@ export interface DatabaseOptions {
   ssl?: boolean;
   /**
    * Address of the system role (BYPASSRLS, never superuser) used by withSystemContext.
-   * The application role cannot bypass Row-Level Security at all (migration 0018), so
+   * The application role cannot bypass Row-Level Security at all (migration 0019), so
    * cross-tenant work runs on this second, separate pool.
    */
   systemUrl?: string;
@@ -118,7 +118,7 @@ export async function withUserContext<T>(db: Database, userId: string, fn: (trx:
  * Cross-tenant transaction for platform-level work (billing webhooks, the
  * background worker, platform administration aggregates, token lookups).
  * It runs on the system role's own pool (BYPASSRLS), never on the application
- * role, which cannot bypass Row-Level Security by any setting (migration 0018).
+ * role, which cannot bypass Row-Level Security by any setting (migration 0019).
  * Every call site must be a deliberate, reviewed exception: the list is checked
  * by tests/unit/system-context-allowlist.test.ts.
  */

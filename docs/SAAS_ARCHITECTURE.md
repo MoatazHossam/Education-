@@ -63,7 +63,7 @@ modules, no bundler; fonts self-hosted from `@fontsource`.
    - `withSystemContext()` runs on a separate pool as the system role (`BYPASSRLS`,
      `SYSTEM_DATABASE_URL`) → explicit, reviewed cross-tenant work (worker, webhooks, platform admin,
      token lookups), listed in `tests/unit/system-context-allowlist.test.ts`. The app role has no
-     setting that bypasses a policy (migration 0018).
+     setting that bypasses a policy (migration 0019).
    With no context, tenant tables return **no rows** — a forgotten `WHERE org_id = …` fails closed.
    The app connects as a role with neither `SUPERUSER` nor `BYPASSRLS`; the server and worker refuse
    to start in production otherwise, or when the system role lacks `BYPASSRLS` (`databaseRoleProblems`).

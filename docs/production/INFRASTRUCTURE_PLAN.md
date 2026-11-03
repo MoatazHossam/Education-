@@ -116,7 +116,7 @@ applied; or (b) change the runbook to the rolling path only and make `ops/start.
 `APP_IMAGE_TAG=previous`. (a) is safer. *Acceptance:* a scripted drill — release N+1 with a new migration, roll back
 to N with both paths, `/readyz` 200 on both instances.
 
-**Migration 0018 (task 1.1) is not backward compatible**: releases before it rely on the `app.rls_bypass`
+**Migration 0019 (task 1.1) is not backward compatible**: releases before it rely on the `app.rls_bypass`
 setting it switched off, so going back past it needs `npm run db:migrate:down` once before the older
 image (documented in `docs/DEPLOYMENT_GUIDE.md`). Nothing is deployed yet, so this costs nothing now.
 

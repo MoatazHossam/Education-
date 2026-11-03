@@ -5,7 +5,7 @@ A manual review of Midad with screen readers, for the parts of WCAG
 sense, in the right order, in the right language, at the right moment.
 
 The automated checks already in place (TEST_REPORT.md §3) are the axe-core
-WCAG 2.2 A/AA audit of 149 screens and dialogs (English and Arabic, light and
+WCAG 2.2 A/AA audit of 170 screens and dialogs (English and Arabic, light and
 dark, desktop and phone) and a keyboard-only journey. They find roughly a third
 to a half of WCAG problems. This checklist covers the rest for screen-reader
 users. It has **not been carried out yet**.

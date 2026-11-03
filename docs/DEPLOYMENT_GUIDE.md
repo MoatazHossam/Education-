@@ -132,7 +132,7 @@ provider does not allow `BYPASSRLS`, the scripts cannot back up (tenant tables f
 security): use the provider's backups and point-in-time recovery instead. The application itself also
 needs one `BYPASSRLS` role, the system role: check that the provider allows it before choosing one.
 
-**Installations made before migration 0018 (the system role).** The roles script runs only when the
+**Installations made before migration 0019 (the system role).** The roles script runs only when the
 database volume is first created, so an existing database lacks the system role. Before upgrading, as a
 superuser (bundled: `docker compose … exec postgres psql -U postgres`), with your own password, then add
 `DB_SYSTEM_PASSWORD` (bundled) or `SYSTEM_DATABASE_URL` (managed) to the settings file:
@@ -142,9 +142,9 @@ CREATE ROLE midad_system LOGIN PASSWORD '…' NOSUPERUSER BYPASSRLS NOCREATEROLE
 GRANT CONNECT ON DATABASE midad TO midad_system;
 ```
 
-The `migrate` service then grants it its privileges. Going back to a release before 0018 needs
-`npm run db:migrate:down` once (it reverts 0018) before the older image starts: older releases rely on the
-setting that 0018 switched off.
+The `migrate` service then grants it its privileges. Going back to a release before 0019 needs
+`npm run db:migrate:down` once (it reverts 0019) before the older image starts: older releases rely on the
+setting that 0019 switched off.
 
 ### 3.4 First platform administrator
 ```bash

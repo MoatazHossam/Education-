@@ -78,7 +78,7 @@ files/functions. Combine with S-2(a).
 ### Resolution of S-1 to S-4 (task 1.1)
 
 Implemented on the audit's branch after the owner's go-ahead:
-- Migration `0018_system_role`: `app_rls_bypass()` is always `false`; RLS on `notifications` (recipient's
+- Migration `0019_system_role`: `app_rls_bypass()` is always `false`; RLS on `notifications` (recipient's
   organization or recipient), `email_outbox` (insert by anyone, everything else system-only) and
   `billing_events` (system-only).
 - A separate system role (`midad_system`, `BYPASSRLS`, not superuser) on its own pool

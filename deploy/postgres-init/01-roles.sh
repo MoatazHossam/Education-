@@ -7,7 +7,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<SQL
 CREATE ROLE ${DB_OWNER_USER} LOGIN PASSWORD '${DB_OWNER_PASSWORD}' NOSUPERUSER NOBYPASSRLS NOCREATEROLE;
 CREATE ROLE ${DB_APP_USER} LOGIN PASSWORD '${DB_APP_PASSWORD}' NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 -- System role for cross-tenant work (billing webhooks, the worker, platform administration;
--- SYSTEM_DATABASE_URL). It bypasses row-level security, the app role never can (migration 0018).
+-- SYSTEM_DATABASE_URL). It bypasses row-level security, the app role never can (migration 0019).
 CREATE ROLE ${DB_SYSTEM_USER} LOGIN PASSWORD '${DB_SYSTEM_PASSWORD}' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB;
 -- Read-only backup role: tenant tables FORCE row-level security, so even the
 -- schema owner cannot pg_dump them; this role bypasses RLS but cannot write.

@@ -17,7 +17,8 @@ import * as m0014 from './migrations/0014_online_tests.js';
 import * as m0015 from './migrations/0015_classroom_retention.js';
 import * as m0016 from './migrations/0016_file_checks.js';
 import * as m0017 from './migrations/0017_ai_requests.js';
-import * as m0018 from './migrations/0018_system_role.js';
+import * as m0018 from './migrations/0018_teaching_plans.js';
+import * as m0019 from './migrations/0019_system_role.js';
 
 // Static registry: works identically under tsx and the compiled dist build.
 const MIGRATIONS: Record<string, Migration> = {
@@ -38,7 +39,8 @@ const MIGRATIONS: Record<string, Migration> = {
   '0015_classroom_retention': m0015,
   '0016_file_checks': m0016,
   '0017_ai_requests': m0017,
-  '0018_system_role': m0018,
+  '0018_teaching_plans': m0018,
+  '0019_system_role': m0019,
 };
 
 class StaticProvider implements MigrationProvider {

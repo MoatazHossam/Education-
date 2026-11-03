@@ -103,7 +103,7 @@ describe('Row-Level Security (database layer)', () => {
     await expect(sql`ALTER TABLE scopes DISABLE ROW LEVEL SECURITY`.execute(h.db)).rejects.toThrow(/must be owner/);
   });
 
-  it('the application role cannot switch Row-Level Security off with a setting (migration 0018)', async () => {
+  it('the application role cannot switch Row-Level Security off with a setting (migration 0019)', async () => {
     const { a, b } = await twoTenants();
     // What an SQL injection on the application's connection could try: the old bypass setting.
     const seen = await h.db.transaction().execute(async (trx) => {

@@ -1,9 +1,9 @@
 # AI layer
 
-**Status (2026-10-28): the provider-independent layer is built and tested, and the owner chose Google
-Gemini. The first feature on it is built: questions suggested for online tests, which a teacher reviews
-before adding (docs/ONLINE_TESTS.md §14). Neither has run against the real Gemini API yet: no key is set
-in this environment.** The Wise EduAgent integration and any AI that students use stay blocked
+**Status (2026-10-29): the provider-independent layer is built and tested, and the owner chose Google
+Gemini. Four features for teachers are built on it (§6a): questions suggested for online tests, homework
+suggestions, and drafts of lesson plans and pacing plans. A teacher reviews every result before anything is
+saved. None has run against the real Gemini API yet: no key is set in this environment.** The Wise EduAgent integration and any AI that students use stay blocked
 (PROJECT_STATUS B-8, B-9).
 
 **To turn it on with Gemini:** set `AI_PROVIDER=gemini`, `AI_API_KEY` (a Gemini API key from Google AI
@@ -140,6 +140,12 @@ result to the teacher for review before anything is saved, and add the feature t
 | Feature (`feature` in the log) | Who | What is sent | Docs |
 | --- | --- | --- | --- |
 | `test_questions`: questions suggested for an online test | the subject's teachers and the school's admins, before a student starts | the topic, the teacher's lesson text, the grade, subject, the subject's book titles, the test's title and kind | ONLINE_TESTS.md §14 |
+| `homework_suggestion`: a homework suggestion in the new-homework form | the subject's teachers and the school's admins, in an open class | the topic, the teacher's lesson text, the kind of homework and its minutes, the grade, subject and the subject's book titles | CLASSROOM.md §14 |
+| `lesson_plan`: a draft lesson plan | any member of the school, for a grade and subject with books in the scope | the topic, the member's lesson text, the lesson's length, the grade, subject and the subject's book titles | TEACHING_PLANS.md §4 |
+| `pacing_plan`: a draft pacing plan for a term | any member of the school, for a grade and subject with books in the scope | the term's first day, weeks and periods a week, the member's list of contents, the grade, subject and the subject's book titles | TEACHING_PLANS.md §4 |
+
+None of them sends anything about students. The wording shared by the features (the grade's stage, the
+language rule, the lesson text limit) is in `src/ai/teaching.ts`.
 
 ## 7. Tests
 
@@ -152,7 +158,9 @@ result to the teacher for review before anything is saved, and add the feature t
   on failure, the monthly limit under 8 concurrent requests, unlimited allowances, row-level security,
   retention, the admin endpoints.
 - E2E (platform admin journey): the AI card, the connection test, the override, and the school's meter.
-  The E2E server's provider is the simulator, run as its own process.
+  The E2E server's provider is the simulator, run as its own process; it answers each feature's requests
+  (`tests/e2e/ai-simulator-server.ts`).
+- Each feature's own tests are listed in its document (§6a).
 
 Passing against the simulator does not replace a run against the provider: `npm run ai:check` with a
 real key is the remaining check (PROJECT_STATUS, AI layer).

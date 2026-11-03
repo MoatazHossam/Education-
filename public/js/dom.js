@@ -138,12 +138,16 @@ export function problemText(p) {
 }
 
 /** Modal dialog built on <dialog>; resolves with the clicked action value. */
+let dialogCount = 0;
+
 export function dialog({ title, body, actions }) {
   return new Promise((resolve) => {
     const opener = document.activeElement;
     let value = null;
-    const d = h('dialog', { 'aria-labelledby': 'dlg-title' },
-      h('h2', { id: 'dlg-title' }, title),
+    // Each dialog's own heading id: a dialog can open over another (a suggestion over the form it fills).
+    const titleId = `dlg-title-${++dialogCount}`;
+    const d = h('dialog', { 'aria-labelledby': titleId },
+      h('h2', { id: titleId }, title),
       body,
       h('div', { class: 'dialog-actions' }, actions.map((a) => h('button', {
         type: 'button', class: `btn ${a.kind || ''}`, onclick: async () => {

@@ -21,7 +21,9 @@ export async function processOutbox(db: Database, mailer: Mailer, batch = 20): P
       .selectFrom('email_outbox')
       .selectAll()
       .where('status', '=', 'pending')
-      .where('send_after', '<=', new Date())
+      // Compare in the database: send_after defaults to now() with microseconds, and a JS Date is
+      // only millisecond-precise, so a row queued in the same millisecond would be skipped.
+      .where('send_after', '<=', sql<Date>`now()`)
       .orderBy('created_at')
       .limit(batch)
       .forUpdate()

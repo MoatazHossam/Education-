@@ -678,6 +678,29 @@ column on `organizations`, an expanding change). Images were built with the prox
 
 With the fix the whole drill took 1 min 30 s (images already built). No drill containers or images were left.
 
+### Container memory limits and PostgreSQL settings (2026-11-05) — task 1.4
+
+Production findings I-1, I-2 and I-7 (`docs/production/INFRASTRUCTURE_PLAN.md` §3, §5). The production-settings stack
+(`docker-compose.yml` + `docker-compose.prod.yml`: Caddy with its local certificate authority, `app` and `app2`,
+worker, ClamAV with real signatures, PostgreSQL 16), built from this branch and started with
+`ops/start.sh --env prod` under its own project name with throwaway settings and secrets, on a 4-vCPU, 15 GB
+sandbox (cgroup v1, so limits are enforced). Everything was removed afterwards.
+
+| Check | Result |
+| --- | --- |
+| `docker compose config` | Limits app, app2, migrate 768 MiB; worker 1 GiB; clamav 2 GiB; postgres 3 GiB with 1 GiB `/dev/shm`; caddy 256 MiB; `NODE_OPTIONS=--max-old-space-size=512` for app, app2, worker, migrate; the postgres `command:` with every setting |
+| Running containers | The same limits in `docker inspect`; `SHOW` gives shared_buffers 1GB, effective_cache_size 2GB, work_mem 16MB, maintenance_work_mem 256MB, max_connections 80, idle_in_transaction_session_timeout 2min; V8 heap limit 524 MiB in app, app2 and worker; `ConcurrentDatabaseReload no` in clamd.conf; all healthy |
+| ClamAV signature reload (two standalone containers, no limit, same signatures, `clamdscan --reload`, resident memory sampled every 0.2 s) | Default `ConcurrentDatabaseReload yes`: 944 MiB steady, **1,886 MiB peak**, 22 s. With `no`: 944 MiB steady, **956 MiB peak**, 17 s (scans wait meanwhile) |
+| Exam load test, 300 students and 5 teachers for 8 minutes (`scripts/load-exam.mjs`, as in §5) | **16,539 requests, all 2xx** (no 429, no 5xx); 300 of 300 signed in, started and submitted; 5,983 acknowledged answers, none missing or different. p95: sign-in 114 ms, start 42 ms, save 27 ms, heartbeat 25 ms, monitor 67 ms, submit 76 ms |
+| Memory under that load (`docker stats` every 15 s, 31 samples) | Peaks: app 114 MiB and app2 95 MiB of 768; worker 77 MiB of 1,024; clamav 962 MiB of 2,048; postgres 157 MiB of 3,072 (small database); caddy 29 MiB of 256. No container killed or restarted; no statement of 500 ms or more in the database log |
+| A container over its limit (`docker exec` of a process in `worker` that kept allocating 64 MiB buffers) | Stopped by the kernel at about 960 MiB (exit 137, `oom_kill 1` in the worker's memory cgroup). The worker kept running (heartbeat healthy); PostgreSQL the same process, not restarted; app, app2 and ClamAV untouched; `/readyz` through Caddy 200 |
+
+Compared with the same test on 2026-10-27 (§5): the same result (every request 2xx). Sign-in was slower at the
+tail: p99 788 ms against 131 ms, the slowest 895 ms. Other latencies were the same within a few milliseconds. The
+cause was not isolated: sign-in now also does the lockout's lookups (task 1.3), one instance reached 204 % CPU during
+the first minute's Argon2 hashing, and the load generator and `docker stats` ran on the same 4 vCPUs. The memory
+limits were far from reached. Repeat on staging hardware.
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

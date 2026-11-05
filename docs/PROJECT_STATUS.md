@@ -25,6 +25,23 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Memory limits for every container and a tuned database (roadmap task 1.4) · COMPLETE (2026-11-05; measured in this sandbox, not yet on the production host)
+- **Asked:** task 1.4 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings I-1, I-2 and I-7: no container had a
+  memory limit, so one runaway (a virus-signature reload, a large photo) could make the host's kernel kill PostgreSQL;
+  PostgreSQL ran with its stock settings; ClamAV briefly needed twice its memory while reloading signatures.
+- **Implemented** in `docker-compose.prod.yml`, each value changeable in the env file (`.env.docker.example`;
+  DEPLOYMENT_GUIDE §3.6 gives values for 4, 8 and 16 GB hosts):
+  - memory limits sized for 4 vCPU / 8 GB: app and app2 768 MB, worker 1 GB, ClamAV 2 GB, PostgreSQL 3 GB,
+    Caddy 256 MB, migrate 768 MB;
+  - Node's heap capped at 512 MB in the app, worker and migrate;
+  - PostgreSQL settings for its limit (shared_buffers 1 GB, effective_cache_size 2 GB, work_mem 16 MB,
+    max_connections 80, slow statements logged, abandoned transactions ended after 2 minutes);
+  - ClamAV loads new signatures in place of the old ones (`ConcurrentDatabaseReload no`).
+- **Measured** on the production-settings stack (TEST_REPORT §4): the reload's peak 956 MiB instead of 1,886 MiB; the
+  300-student exam load test with every request answered 2xx and every answer stored; peak memory far below each limit;
+  a process pushed past the worker's limit was stopped while PostgreSQL and the app kept running.
+- **Still to do:** repeat on the production or staging host (launch checklist E-4).
+
 ### Sign-in lockout that cannot be used against teachers and students (roadmap task 1.3) · COMPLETE (2026-11-05)
 - **Asked:** task 1.3 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings S-5 and S-7: five wrong
   passwords from anywhere locked the account for everyone for 15 minutes, so anyone who knew a teacher's email or a

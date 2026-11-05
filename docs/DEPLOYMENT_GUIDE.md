@@ -50,8 +50,8 @@ Builds behind a TLS-intercepting proxy: `docker build --network host --build-arg
 ### 3.1 Infrastructure
 - One Linux VM with Docker (e.g. 2–4 vCPU, 4–8 GB RAM). Hetzner CPX22 (2 vCPU/4 GB) is about
   €7.99/month after its April 2026 price change ([Better Stack](https://betterstack.com/community/guides/web-servers/digitalocean-vs-hetzner/)).
-  The virus scanner (ClamAV) alone holds about 1–1.5 GB of memory: 4 GB is the minimum with it, 8 GB
-  leaves room.
+  The virus scanner (ClamAV) alone holds about 1 GB of memory: 4 GB is the minimum with it, 8 GB
+  leaves room and is what the production settings are sized for (§3.6).
   If customer data must stay in Egypt or the region, choose the hosting location after the legal
   review (SECURITY_DESIGN.md §7).
 - Prefer **managed PostgreSQL 16** with automated backups and point-in-time recovery; otherwise use
@@ -162,6 +162,40 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
 3. Copy secret key, public key, HMAC secret into the env file; restart `app` and `worker`.
 4. In Paymob test mode, run: subscribe → pay → check the invoice turns paid; decline a payment;
    replay a callback; verify `/admin/events`. Record results in TEST_REPORT.md before going live.
+
+### 3.6 Memory and database sizing
+`docker-compose.prod.yml` gives every container a memory limit and tunes the bundled PostgreSQL for
+one 4 vCPU / 8 GB host. A container that goes over its limit is stopped and restarted by Docker on its
+own; without limits, the host's kernel picks a process to kill when memory runs out, possibly
+PostgreSQL. Each value can be set in the env file (`.env.docker.example` lists them; empty means the
+8 GB column); `ops/start.sh` applies a change.
+
+| Setting | 4 GB host | 8 GB host (default) | 16 GB host |
+| --- | --- | --- | --- |
+| `POSTGRES_MEMORY_LIMIT` | 1g | 3g | 6g |
+| `POSTGRES_SHARED_BUFFERS` | 256MB | 1GB | 2GB |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | 512MB | 2GB | 4GB |
+| `POSTGRES_WORK_MEM` | 8MB | 16MB | 32MB |
+| `POSTGRES_MAINTENANCE_WORK_MEM` | 64MB | 256MB | 512MB |
+| `APP_MEMORY_LIMIT` / `APP_HEAP_MB` (each of the two instances) | 512m / 384 | 768m / 512 | 1g / 768 |
+| `WORKER_MEMORY_LIMIT` / `WORKER_HEAP_MB` | 768m / 384 | 1g / 512 | 1536m / 768 |
+| `CLAMAV_MEMORY_LIMIT` | 1536m | 2g | 2g |
+| `CADDY_MEMORY_LIMIT` | 128m | 256m | 256m |
+
+- The 8 GB column was measured under the exam load test (TEST_REPORT §4, "Container memory limits").
+  The other two are scaled from it: watch `docker stats` on the host before relying on them.
+- The limit of the bundled PostgreSQL also bounds the operating system's file cache for its files.
+  So `shared_buffers`, PostgreSQL's own cache, is the larger part of the limit, and
+  `effective_cache_size` counts only what the limit leaves.
+- `POSTGRES_MAX_CONNECTIONS` (80) covers the two app instances (10 + 5 connections each), the worker
+  (3 + 5), migrations, backups and tools, about 50. Raise it with `DATABASE_POOL_MAX`.
+- ClamAV loads new signatures in place of the old ones rather than beside them
+  (`ConcurrentDatabaseReload no`): measured, its memory stays at about 0.95 GB during a reload instead
+  of reaching 1.9 GB. Scans wait for the reload (17 s measured); files that time out are retried.
+- On a 4 GB host, also add 2 GB of swap.
+- With a managed database the `POSTGRES_*` settings do not apply; size it in the provider's console.
+- Check memory with `docker stats --no-stream`. If a container keeps restarting, look for the kernel's
+  out-of-memory message in `docker compose logs <service>` or `dmesg`, and raise its limit.
 
 ## 4. Upgrades and rollback
 

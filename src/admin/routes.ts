@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { recordAudit, requestMeta, type AuditActor } from '../audit/audit.js';
 import { requirePlatformAdmin } from '../auth/guards.js';
+import { clearLoginFailures, lockedAccounts } from '../auth/login-protection.js';
 import { revokeUserSessions } from '../auth/sessions.js';
 import { effectivePlan } from '../billing/entitlements.js';
 import { FREE_PLAN_ID } from '../billing/plans.js';
@@ -327,7 +328,7 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     return sys(async (trx) => {
       let query = trx
         .selectFrom('users')
-        .select(['id', 'email', 'name', 'status', 'is_platform_admin', 'email_verified_at', 'mfa_enabled', 'last_login_at', 'locked_until', 'created_at'])
+        .select(['id', 'email', 'name', 'status', 'is_platform_admin', 'email_verified_at', 'mfa_enabled', 'last_login_at', 'created_at'])
         // Student accounts belong to their school and are managed there, not by the platform.
         .where('kind', '=', 'staff')
         .orderBy('created_at', 'desc')
@@ -338,7 +339,9 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
         query = query.where((eb) => eb.or([eb('email', 'ilike', like), eb('name', 'ilike', like)]));
       }
       const rows = await query.execute();
-      return { users: rows.map((u) => ({ id: u.id, email: u.email, name: u.name, status: u.status, isPlatformAdmin: u.is_platform_admin, emailVerified: Boolean(u.email_verified_at), mfaEnabled: u.mfa_enabled, lastLoginAt: u.last_login_at, lockedUntil: u.locked_until, createdAt: u.created_at })) };
+      // Locked out somewhere (one browser or address, or every unknown one): the latest end of those locks.
+      const locked = await lockedAccounts(trx, rows.map((u) => u.id));
+      return { users: rows.map((u) => ({ id: u.id, email: u.email, name: u.name, status: u.status, isPlatformAdmin: u.is_platform_admin, emailVerified: Boolean(u.email_verified_at), mfaEnabled: u.mfa_enabled, lastLoginAt: u.last_login_at, lockedUntil: locked.get(u.id) ?? null, createdAt: u.created_at })) };
     });
   });
 
@@ -362,8 +365,9 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     const actor = adminActor(req);
     const { id } = parse(z.object({ id: zUuid }), req.params);
     return sys(async (trx) => {
-      const res = await trx.updateTable('users').set({ locked_until: null, failed_login_count: 0 }).where('id', '=', id).where('kind', '=', 'staff').executeTakeFirst();
-      if (!Number(res.numUpdatedRows)) throw notFound('User');
+      const user = await trx.selectFrom('users').select('id').where('id', '=', id).where('kind', '=', 'staff').executeTakeFirst();
+      if (!user) throw notFound('User');
+      await clearLoginFailures(trx, ctx.config, id);
       await recordAudit(trx, actor, { action: 'admin.user_unlocked', targetType: 'user', targetId: id }, requestMeta(req));
       return { status: 'unlocked' };
     });

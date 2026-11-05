@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -49,7 +49,7 @@ erDiagram
 
 | Table | Purpose | Key constraints | RLS |
 | --- | --- | --- | --- |
-| `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); lockout counters; `trial_used`; `catalog_emails` (catalogue update emails opt-out); `assignment_emails` (emails when books are assigned) and `assignment_email_frequency` (`instant`, the default, or `daily` for one summary each morning); `due_reminder_emails` (due-date reminder emails) | — |
+| `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); `failed_login_count` and `locked_until`, unused since `0020` (sign-in lockout is in `login_failures`) and to be dropped in a later release; `trial_used`; `catalog_emails` (catalogue update emails opt-out); `assignment_emails` (emails when books are assigned) and `assignment_email_frequency` (`instant`, the default, or `daily` for one summary each morning); `due_reminder_emails` (due-date reminder emails) | — |
 | `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
 | `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org**; staff accounts only (trigger) | org **or** own user rows |
 | `students` | School-created student accounts (`docs/STUDENT_ACCOUNTS.md`) | PK `user_id` (a `kind = 'student'` user: trigger); unique `(org_id, username)`; username pattern; grade 1–12; `(scope_id, org_id)` references `scopes(id, org_id)` with `ON DELETE SET NULL (scope_id)`; deleting the row deletes the account (trigger) | org **or** own user row |
@@ -100,6 +100,8 @@ erDiagram
 | `worker_heartbeats` | Liveness of background workers | PK name | — |
 | `ops_alerts` | State of each operational alert (firing / resolved, first and last seen, last notified), so only one app instance sends each message | PK `key`; counts only in `summary`/`details` | — (no tenant data) |
 | `rate_limits` | Counters for route-specific rate limits, shared by app instances | PK `key` = HMAC of route and client key (no IPs or emails); UNLOGGED (counters restart after a crash) | — (no tenant data) |
+| `login_failures` | Failed sign-ins per account and client (`src/auth/login-protection.ts`, migration `0020`) | PK `(user_id, client)`; client `device:<SHA-256 of the device token>`, `address:<HMAC of the address>` or `account` (all clients the account does not know); `failures`, `window_started_at`, `locked_until`; updated in one statement per failure; cascade with the user | — (no tenant data) |
+| `login_devices` | Browsers an account has fully signed in from (they keep their own lockout count) | PK `(user_id, device_hash)`, hash = SHA-256 of the random token in the browser's device cookie; `last_signed_in_at`; cascade with the user | — (no tenant data) |
 
 Verification columns on `catalog_subjects` and `catalog_materials`: `verification_status`
 (`unverified` / `verified` / `needs_review`), `verification_source`, `verification_url` (http/https),
@@ -191,6 +193,8 @@ are never created when `NODE_ENV=production`.
 | Read notifications | 180 d | worker |
 | Expired unaccepted invitations | 90 d after expiry | worker |
 | Rate-limit counters | until their window ends (≤ 1 h) | worker hourly |
+| Failed sign-in counts (`login_failures`) | a day after their window started, once no lock is running | worker hourly |
+| Browsers an account signed in from (`login_devices`) | a year after their last sign-in (the cookie's lifetime) | worker hourly |
 | Resolved operational alerts | 90 d after resolution | worker |
 | Due-date reminder records | 60 d after the due date | worker hourly |
 | Assignments waiting for a daily summary | until the next morning's summary; 30 d at most | worker |

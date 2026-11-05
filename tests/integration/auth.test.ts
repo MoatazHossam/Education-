@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { Client, createHarness, latestEmail, PASSWORD, resetData, signUp, tokenFrom, totp, uniqueEmail, type Harness } from '../helpers/harness.js';
+import { Client, createHarness, createPlatformAdmin, createStudent, enableStudents, latestEmail, PASSWORD, resetData, signUp, tokenFrom, totp, uniqueEmail, type Harness } from '../helpers/harness.js';
 import { decryptSecret } from '../../src/lib/crypto.js';
 
 let h: Harness;
@@ -59,7 +59,7 @@ describe('registration and email verification', () => {
 });
 
 describe('login protection', () => {
-  it('locks the account after 5 failed attempts and uses a generic error', async () => {
+  it('locks out the client after 5 failed attempts with a generic error; other addresses still sign in', async () => {
     const { email } = await signUp(h);
     const c = new Client(h.app);
     for (let i = 0; i < 5; i++) {
@@ -67,11 +67,124 @@ describe('login protection', () => {
       expect(r.statusCode).toBe(401);
       expect(r.json().error.code).toBe('INVALID_CREDENTIALS');
     }
-    // Correct password is now refused while locked.
+    // The correct password is now refused from this client, with the same error as an unknown account.
     const locked = await c.post('/api/auth/login', { email, password: PASSWORD });
     expect(locked.statusCode).toBe(401);
     const unknown = await c.post('/api/auth/login', { email: uniqueEmail(), password: PASSWORD });
     expect(unknown.json().error).toEqual(locked.json().error);
+    // Another browser on the same address is the same client: also refused.
+    expect((await new Client(h.app, c.ip).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(401);
+    // Another address is not locked out.
+    expect((await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+  });
+
+  it('20 failed sign-ins from address A do not stop a correct sign-in from address B (S-5)', async () => {
+    const { email, userId } = await signUp(h);
+    const a = new Client(h.app);
+    const codes: number[] = [];
+    for (let i = 0; i < 20; i++) codes.push((await a.post('/api/auth/login', { email, password: `wrong-${i}` })).statusCode);
+    // Refused throughout: 401 until the address's rate limit, then 429.
+    expect(codes.every((c) => c === 401 || c === 429)).toBe(true);
+    const b = new Client(h.app);
+    expect((await b.post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+    // Only five passwords were checked from A: the rest were refused unchecked.
+    const audit = await h.systemDb.selectFrom('audit_logs').select('action').where('target_id', '=', userId).where('action', 'like', 'auth.%').execute();
+    const count = (action: string) => audit.filter((r) => r.action === action).length;
+    expect(count('auth.login_failed') + count('auth.account_locked')).toBe(5);
+    expect(count('auth.account_locked')).toBe(1);
+  });
+
+  it('a browser that signed in before keeps signing in on an address someone else locked out', async () => {
+    const { email } = await signUp(h);
+    // The owner's own browser at school; the device cookie is HttpOnly and SameSite=Strict.
+    const own = new Client(h.app);
+    const first = await own.post('/api/auth/login', { email, password: PASSWORD });
+    expect(first.statusCode).toBe(200);
+    const device = first.cookies.find((c) => c.name === 'midad_device');
+    expect(device).toMatchObject({ httpOnly: true, sameSite: 'Strict', path: '/' });
+    own.cookies.delete('sid'); // signed out, the device cookie stays
+    // Someone else on the same school network locks that address out of the account, and uses up its rate limit.
+    const other = new Client(h.app, own.ip);
+    for (let i = 0; i < 12; i++) await other.post('/api/auth/login', { email, password: `wrong-${i}` });
+    expect((await new Client(h.app, own.ip).post('/api/auth/login', { email, password: PASSWORD })).statusCode).not.toBe(200);
+    // The owner's browser has its own count and rate limit.
+    expect((await own.post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+    // A made-up device cookie is just another client of that address.
+    const forged = new Client(h.app, own.ip);
+    forged.cookies.set('midad_device', 'A'.repeat(43));
+    expect((await forged.post('/api/auth/login', { email, password: PASSWORD })).statusCode).not.toBe(200);
+  });
+
+  it('accounts that share a browser (a school computer) have their own allowance on it', async () => {
+    const one = await signUp(h);
+    const two = await signUp(h);
+    const shared = new Client(h.app);
+    for (const u of [one, two]) {
+      expect((await shared.post('/api/auth/login', { email: u.email, password: PASSWORD })).statusCode).toBe(200);
+      shared.cookies.delete('sid');
+    }
+    // One account uses up its allowance on this browser...
+    for (let i = 0; i < 11; i++) await shared.post('/api/auth/login', { email: one.email, password: `wrong-${i}` });
+    expect((await shared.post('/api/auth/login', { email: one.email, password: PASSWORD })).statusCode).toBe(429);
+    // ...the other still signs in from it.
+    expect((await shared.post('/api/auth/login', { email: two.email, password: PASSWORD })).statusCode).toBe(200);
+  });
+
+  it('20 failures from addresses the account does not know lock them all out, but not a known browser', async () => {
+    const { email, userId } = await signUp(h);
+    const known = new Client(h.app);
+    expect((await known.post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+    known.cookies.delete('sid');
+    for (let n = 0; n < 4; n++) {
+      const attacker = new Client(h.app);
+      for (let i = 0; i < 5; i++) expect((await attacker.post('/api/auth/login', { email, password: `wrong-${n}-${i}` })).statusCode).toBe(401);
+    }
+    const audit = await h.systemDb.selectFrom('audit_logs').select(['action', 'metadata']).where('target_id', '=', userId).where('action', '=', 'auth.account_locked').execute();
+    expect(audit.map((r) => (r.metadata as { locked?: string }).locked).sort()).toEqual(['client', 'client', 'client', 'unknown_clients']);
+    // A new address is refused even with the correct password; the known browser is not.
+    expect((await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(401);
+    expect((await known.post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+    // The platform administrator sees the lock and lifts it.
+    const admin = await createPlatformAdmin(h);
+    const listed = (await admin.get(`/api/admin/users?q=${encodeURIComponent(email)}`)).json().users[0];
+    expect(new Date(listed.lockedUntil).getTime()).toBeGreaterThan(Date.now() + 50 * 60_000);
+    expect((await admin.post(`/api/admin/users/${userId}/unlock`)).statusCode).toBe(200);
+    expect((await admin.get(`/api/admin/users?q=${encodeURIComponent(email)}`)).json().users[0].lockedUntil).toBeNull();
+    expect((await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+  });
+
+  it('an unlock also gives the locked-out address its sign-in attempts back (staff and students)', async () => {
+    const owner = await signUp(h);
+    await enableStudents(h, owner.orgId);
+    const s = await createStudent(h, owner.client, owner.orgId);
+    const admin = await createPlatformAdmin(h);
+    const NETWORK = '198.51.100.20';
+    const staffTry = (password: string) => new Client(h.app, NETWORK).post('/api/auth/login', { email: owner.email, password });
+    const studentTry = (password: string) => new Client(h.app, NETWORK).post('/api/auth/student-login', { school: s.school, username: s.username, password });
+    // Someone on the network uses up both accounts' attempts from that address.
+    for (let i = 0; i < 12; i++) {
+      await staffTry(`wrong-${i}`);
+      await studentTry(`wrong-${i}`);
+    }
+    expect((await staffTry(PASSWORD)).statusCode).toBe(429);
+    expect((await studentTry(s.password)).statusCode).toBe(429);
+    expect((await owner.client.post(`/api/orgs/${owner.orgId}/students/${s.userId}/unlock`)).statusCode).toBe(200);
+    expect((await studentTry(s.password)).statusCode).toBe(200);
+    expect((await admin.post(`/api/admin/users/${owner.userId}/unlock`)).statusCode).toBe(200);
+    expect((await staffTry(PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('counts parallel failures exactly (S-7)', async () => {
+    const { email, userId } = await signUp(h);
+    const c = new Client(h.app);
+    const results = await Promise.all(Array.from({ length: 8 }, (_, i) => c.post('/api/auth/login', { email, password: `wrong-${i}` })));
+    expect(results.every((r) => r.statusCode === 401)).toBe(true);
+    const audit = await h.systemDb.selectFrom('audit_logs').select('action').where('target_id', '=', userId).where('action', 'in', ['auth.login_failed', 'auth.account_locked']).execute();
+    const rows = await h.ownerDb.selectFrom('login_failures').select(['client', 'failures', 'locked_until']).where('user_id', '=', userId).execute();
+    // Every password checked is counted, for the client and for the account.
+    expect(audit.length).toBeGreaterThanOrEqual(5);
+    expect(rows.map((r) => r.failures).sort()).toEqual([audit.length, audit.length]);
+    expect(rows.every((r) => r.client === 'account' || (r.locked_until && r.locked_until > new Date()))).toBe(true);
   });
 
   it('rate-limits repeated login attempts per client and account', async () => {
@@ -185,6 +298,29 @@ describe('two-factor authentication', () => {
     await c2.refresh();
     expect((await c2.post('/api/auth/mfa/verify', { recoveryCode: recoveryCodes[0] })).statusCode).toBe(401);
     void secret;
+  });
+
+  it('wrong codes lock out only this client and end its pending session; a browser is trusted only after the code', async () => {
+    const { client, email } = await signUp(h);
+    const { recoveryCodes } = await enable(client);
+    const c = new Client(h.app);
+    const login = await c.post('/api/auth/login', { email, password: PASSWORD });
+    expect(login.json()).toMatchObject({ mfaRequired: true });
+    expect(login.cookies.some((k) => k.name === 'midad_device')).toBe(false);
+    await c.refresh();
+    for (let i = 0; i < 4; i++) expect((await c.post('/api/auth/mfa/verify', { code: '000000' })).statusCode).toBe(401);
+    expect((await c.get('/api/auth/me')).json()).toMatchObject({ mfaPending: true });
+    // The fifth wrong code (after a correct password, so five failures in all) locks this client out.
+    expect((await c.post('/api/auth/mfa/verify', { code: '000000' })).statusCode).toBe(401);
+    expect((await c.get('/api/auth/me')).statusCode).toBe(401);
+    expect((await new Client(h.app, c.ip).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(401);
+    // Another address signs in with password and second factor; only then is its browser trusted.
+    const other = new Client(h.app);
+    await other.post('/api/auth/login', { email, password: PASSWORD });
+    await other.refresh();
+    const ok = await other.post('/api/auth/mfa/verify', { recoveryCode: recoveryCodes[0] });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.cookies.some((k) => k.name === 'midad_device')).toBe(true);
   });
 
   it('disabling MFA requires password and a valid code', async () => {

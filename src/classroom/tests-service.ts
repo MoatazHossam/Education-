@@ -43,6 +43,25 @@ export function testOverForAll(t: Pick<Test, 'closes_at' | 'closed_early_at' | '
   return new Date(t.closes_at.getTime() + t.max_extra_minutes * 60_000);
 }
 
+/** How long before a test opens a student's sign-in already counts as being for the test. */
+export const SIGN_IN_LEAD_MS = 60 * 60_000;
+
+/**
+ * Whether one of the student's classes has a published test open now or opening within SIGN_IN_LEAD_MS
+ * (until no student can still be working, testOverForAll). Sign-in lockout then never locks the student
+ * out from everywhere (src/auth/login-protection.ts). Needs the school's context (row-level security).
+ */
+export async function hasTestNow(exec: Executor, orgId: string, studentId: string): Promise<boolean> {
+  const { rows } = await sql<{ one: number }>`
+    SELECT 1 AS one FROM tests t
+    JOIN class_students cs ON cs.class_id = t.class_id AND cs.org_id = t.org_id
+    WHERE cs.student_id = ${studentId} AND t.org_id = ${orgId} AND t.status = 'published'
+      AND t.opens_at <= now() + make_interval(secs => ${SIGN_IN_LEAD_MS / 1000})
+      AND coalesce(t.closed_early_at, t.closes_at + make_interval(mins => t.max_extra_minutes)) > now()
+    LIMIT 1`.execute(exec);
+  return rows.length > 0;
+}
+
 /** Whether a student may see marks of a submitted attempt (the test's results setting). */
 export function resultsVisible(t: Pick<Test, 'results' | 'results_released_at' | 'closes_at' | 'closed_early_at' | 'max_extra_minutes'>, attempt: Pick<TestAttempt, 'status'>, now = new Date()): boolean {
   if (attempt.status !== 'submitted') return false;

@@ -6,7 +6,7 @@ import type { FastifyRequest } from 'fastify';
  * be skipped because the global hook already ran). Runs at preHandler so the
  * key generator can use the parsed body (e.g. per-account login limits).
  */
-export function rateLimited(max: number, timeWindow: string, keyGenerator?: (req: FastifyRequest) => string) {
+export function rateLimited(max: number, timeWindow: string, keyGenerator?: (req: FastifyRequest) => string | Promise<string>) {
   return { config: { rateLimit: { max, timeWindow, hook: 'preHandler' as const, ...(keyGenerator ? { keyGenerator } : {}) } } };
 }
 

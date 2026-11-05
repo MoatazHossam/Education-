@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { z } from 'zod';
+import { lockedAccounts } from '../auth/login-protection.js';
 import { hashPassword } from '../auth/password.js';
 import type { Entitlements } from '../billing/entitlements.js';
 import { gradeList, loadCatalogTree } from '../catalog/service.js';
@@ -97,12 +98,13 @@ export async function listStudents(exec: Executor, orgId: string) {
     .selectFrom('students as s')
     .innerJoin('users as u', 'u.id', 's.user_id')
     .leftJoin('scopes as sc', 'sc.id', 's.scope_id')
-    .select(['s.user_id', 's.username', 's.grade', 's.scope_id', 's.created_at', 'u.name', 'u.last_login_at', 'u.locked_until', 'sc.name as scopeName'])
+    .select(['s.user_id', 's.username', 's.grade', 's.scope_id', 's.created_at', 'u.name', 'u.last_login_at', 'sc.name as scopeName'])
     .where('s.org_id', '=', orgId)
     .orderBy('s.grade')
     .orderBy('s.username')
     .execute();
-  const now = new Date();
+  // Locked out somewhere: on some browser or address, or every one the student never signed in from.
+  const locked = await lockedAccounts(exec, rows.map((r) => r.user_id));
   return rows.map((r) => ({
     userId: r.user_id,
     username: r.username,
@@ -111,7 +113,7 @@ export async function listStudents(exec: Executor, orgId: string) {
     scopeId: r.scope_id,
     scopeName: r.scopeName,
     lastLoginAt: r.last_login_at,
-    locked: Boolean(r.locked_until && r.locked_until > now),
+    locked: locked.has(r.user_id),
     createdAt: r.created_at,
   }));
 }

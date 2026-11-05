@@ -116,7 +116,7 @@ needed before launch) · **Blocked** (needs an external decision or credential).
 | --- | --- | --- | --- |
 | 1 | Application security baseline | Ready | CSP without inline script, HSTS, `no-referrer`, frame-ancestors none (`src/app.ts:66-86`); JSON-only bodies (`src/app.ts:64`); error handler hides internals (`src/app.ts:165-179`) |
 | 2 | Tenant isolation | Nearly | RLS everywhere that matters; three tables without RLS and a session-settable bypass flag (SECURITY_GAP_ANALYSIS S-1, S-2) |
-| 3 | Authentication | Nearly | Solid; lockout can be abused to lock out a known teacher or student before an exam (S-5); no breached-password check |
+| 3 | Authentication | Nearly | Solid; ~~lockout can be abused to lock out a known teacher or student before an exam (S-5)~~ fixed 2026-11-05: lockout per account and client, trusted browsers, no account-wide lock around a student's test (task 1.3); no breached-password check (S-6) |
 | 4 | Uploaded student files | Nearly | Magic-byte typing, 5 MB cap, ClamAV + image re-encoding before access, sandboxed CSP on download (`src/classroom/files.ts:13-149`); stored in the database, unencrypted at the application layer |
 | 5 | Secrets | Gap | All secrets in one `.env.production` on the host and passed to every container (`docker-compose.yml:15-64`); no secrets manager; rotation tool exists only for `DATA_ENCRYPTION_KEY` |
 | 6 | Third-party AI exposure | Nearly | Staff-only, no student data by design, no prompt/reply storage; provider terms, region and DPA undecided (B-10) |

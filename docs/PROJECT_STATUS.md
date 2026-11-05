@@ -25,6 +25,34 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Sign-in lockout that cannot be used against teachers and students (roadmap task 1.3) · COMPLETE (2026-11-05)
+- **Asked:** task 1.3 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings S-5 and S-7: five wrong
+  passwords from anywhere locked the account for everyone for 15 minutes, so anyone who knew a teacher's email or a
+  student's username could keep them out, for example just before an online test; and parallel failures were
+  undercounted.
+- **Implemented:**
+  - Failed passwords and second-factor codes are counted per account **and client**. A browser that has fully
+    signed in to the account before is recognised by a device cookie and has its own count; any other client is
+    counted by its address. Five failures lock out only that client, for 15 minutes.
+  - So that many addresses cannot guess without limit, failures from clients the account does not know are also
+    capped (20 in an hour lock them all out for an hour); browsers the account signed in from still work. For a
+    student whose class has a test open or opening within the hour, that account-wide lock is not applied.
+  - The sign-in rate limits count per account and client too, so someone on the same school network cannot use up
+    the allowance of a student's own browser, and an unlock gives the locked-out clients their attempts back.
+  - Each failure is counted in one statement (migration `0020_login_protection`: `login_failures`,
+    `login_devices`); the old columns on `users` stay unused until a later release (expand/contract). The
+    migration only adds tables, so going back to the previous release needs no down migration; it was applied,
+    reverted and applied again on a scratch database.
+  - **Unlock** on the Students page (school admins and the owner) lifts a student's locks without a new password;
+    "New password", a password reset and the platform administrator's unlock lift them too.
+- **Remaining case:** on one shared network, a browser the account never signed in from is locked out together
+  with the attacker's; the teacher unlocks the student in one click (attempts included).
+- **Tests:** 20 failures from address A, then a correct sign-in from address B; a known browser on a locked-out
+  address; a forged device cookie; two accounts on one browser; an unlock giving the attempts back (staff and
+  students); the account-wide cap and the administrator's unlock; 8 parallel failures all
+  counted; second-factor codes; a classmate on the school network; a test about to open; the Unlock button in the
+  student journey (Playwright). Lint, typecheck and the full suite pass (TEST_REPORT §2).
+
 ### Going back to the previous release after an upgrade with a migration (roadmap task 1.2) · COMPLETE (2026-11-05; drilled on Docker here, not yet on staging)
 - **Asked:** task 1.2 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding I-3: the documented rollback
   (`APP_IMAGE_TAG=previous` and `ops/start.sh`) stopped at the `migrate` job after any release that added a

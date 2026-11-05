@@ -15,9 +15,9 @@ student data · **Low** = hardening.
 | S-2 | The RLS bypass flag is a session setting any SQL run by the app role can set | Medium | Tenant isolation · **fixed by task 1.1** |
 | S-3 | 33 `withSystemContext` call sites (cross-tenant) without an enforced inventory | Medium | Tenant isolation · **fixed by task 1.1** |
 | S-4 | Runtime role can `DELETE` audit rows | Low | Audit integrity · **fixed by task 1.1** |
-| S-5 | Account lockout lets anyone lock a known teacher or student out for 15 minutes, repeatably | High (exam days) | Authentication |
+| S-5 | Account lockout lets anyone lock a known teacher or student out for 15 minutes, repeatably | High (exam days) | Authentication · **fixed by task 1.3** |
 | S-6 | No breached/common-password check; student passwords set by schools | Medium | Authentication |
-| S-7 | Lockout counter is read-modify-write (non-atomic) | Low | Authentication |
+| S-7 | Lockout counter is read-modify-write (non-atomic) | Low | Authentication · **fixed by task 1.3** |
 | S-8 | Homework files stored in PostgreSQL without application-level encryption; disk encryption not configured | Medium | Student files |
 | S-9 | Every secret is in one host file and passed to every container | High | Secrets |
 | S-10 | No documented rotation for `SESSION_SECRET`, provider keys, DB passwords | Medium | Secrets |
@@ -110,13 +110,28 @@ limit (10 per 15 min, `routes.ts:200`) does not prevent it.
 *Fix:* lock per (account, client address) or use progressive delays instead of a hard lock; never hard-lock
 student accounts during a running test window; let teachers unlock (reset exists, `src/students/routes.ts:126`).
 *Acceptance:* integration test — 20 failed logins from address A do not stop a correct login from address B.
+**Fixed 2026-11-05 (task 1.3) [V-run].** Failures are counted per account and client
+(`src/auth/login-protection.ts`, migration `0020_login_protection`): a browser that has fully signed in to the
+account before is recognised by a device cookie and has its own count; any other client is counted by its address.
+Five failures lock out only that client, for 15 minutes. Failures from clients the account does not know are also
+capped for the account (20 in an hour lock out every unknown client for an hour; trusted browsers still sign in), so
+that many addresses cannot guess without limit; for a student whose class has a test open or opening within the hour
+that account-wide lock is not applied. The sign-in rate limits count per account and client too, so someone on the same school network cannot use up the
+allowance of a student's own browser. A school admin can **Unlock** a student without a new password
+(`POST /api/orgs/:orgId/students/:userId/unlock`); an unlock also gives the locked-out clients their sign-in
+attempts back. Verified by `tests/integration/auth.test.ts` (20 failures from A,
+correct sign-in from B; a known browser on a locked-out address; the account-wide cap and the admin unlock; second
+factor) and `students.test.ts` (classmate on the school network; unlock; a test about to open).
+*Remaining:* on one shared network, a browser the account never signed in from is locked out together with the
+attacker's; the teacher unlocks the student in one click, which also gives that address its attempts back.
 
 **S-6 — Password quality [V-code].** No check against breached or common passwords. *Fix:* a local list of the
 most common passwords (no external call, avoids sending hashes abroad), minimum length 10 for staff.
 
 **S-7 — Non-atomic counter [V-code].** `failed_login_count + 1` is computed in the application and written back
 (`routes.ts:215-219`); parallel attempts undercount. *Fix:* `SET failed_login_count = failed_login_count + 1
-RETURNING`. Low.
+RETURNING`. Low. **Fixed 2026-11-05 (task 1.3):** each failure is one `INSERT … ON CONFLICT DO UPDATE` on
+`login_failures`; a test sends 8 wrong passwords at once and finds every checked one counted.
 
 Not present (acceptable for launch, track for enterprise): WebAuthn/passkeys, SSO (SAML/OIDC), session listing
 for users beyond revocation **[DOC]** `SECURITY_DESIGN.md §6`.

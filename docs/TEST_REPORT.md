@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**57 files, 397 tests, 397 passed, 0 failed** (2026-10-29, with homework suggestions and teaching plans). Integration tests ran against a real
+**59 files, 405 tests, 405 passed, 0 failed** (2026-11-05, with the tenant isolation hardening and the migrator's rollback test). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -57,7 +57,9 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/reminders | 3 | Pass — reminder wording in English and Arabic (today, tomorrow, dates across month and year ends, month in words in Arabic with no direction marks), overdue listed first, long lists shortened, notice titles |
 | unit/test-marking | 5 | Pass — online test rules (`docs/ONLINE_TESTS.md` §4): typed answers normalised as a teacher would accept them (Arabic diacritics, tatweel, alef forms, ى/ي, ة/ه, Arabic-Indic digits, case, spaces, edge punctuation); marks for every type, partial credit for several choices never below 0, written answers left to the teacher; question and answer checks; the attempt deadline (time limit or the test's end, plus extra time); shuffles and start codes |
 | integration/auth | 13 | Pass |
-| integration/tenancy | 17 | Pass |
+| integration/tenancy | 21 | Pass |
+| unit/system-context-allowlist | 1 | Pass — every cross-tenant (system context) call site in `src/` matches the reviewed list |
+| integration/migrator | 3 | Pass — migrations and rollbacks (`src/db/migrator.ts`), on a scratch database with the CLI run as its own process: a new database gets every migration in order, then nothing more; on a database a later release migrated, Kysely alone fails ("previously executed migration … is missing") while `migrateToLatest` and `migrate-cli up` succeed, readiness finds nothing pending and `migrate-cli down` refuses; an unknown migration among the release's own, or a newer database lacking one of the release's, is refused with what was found |
 | integration/scopes | 10 | Pass |
 | integration/scope-compare | 3 | Pass — same catalogue with CSV (counted, audited); last year against this year; other organization 404, same scope 400, viewer allowed, CSV refused on Free |
 | integration/scope-carry-forward | 4 | Pass — preview, copy with replacements, move at the Free limit, validation and roles |
@@ -657,6 +659,24 @@ a second time; the certificate volume made by the restore drew a Compose warning
 closing the window during a restore left the lock and decrypted files behind (now taken over and deleted);
 a saved SSH key could not be swapped for a password (answer `none`).
 
+### Rollback after a release that added a migration (2026-11-05) — `scripts/rollback-drill.sh`
+
+Production finding I-3 (`docs/production/INFRASTRUCTURE_PLAN.md` §6), roadmap task 1.2. The script runs its own
+Compose project (`midad-drill`) with throwaway settings and secrets on the production files
+(`docker-compose.yml` + `docker-compose.prod.yml`: two app instances, worker, ClamAV, Caddy, PostgreSQL).
+Release N is built from the checkout; release N+1 is N plus migration `9000_rollback_drill` (a new table and a new
+column on `organizations`, an expanding change). Images were built with the proxy settings
+(`DOCKER_BUILD_ARGS`); everything is removed afterwards.
+
+| Step | On `main` before the fix | With the fix |
+| --- | --- | --- |
+| N+1 with `ops/start.sh`: migration applied, `/readyz` 200 on `app` and `app2` | Pass | Pass |
+| Back to N with `ops/start.sh` (`APP_IMAGE_TAG`) | **Fail**: N's `migrate` stopped with `corrupted migrations: previously executed migration 9000_rollback_drill is missing`; `app` and `app2` did not start | Pass: `migrate` printed "Database is ahead of this release (rollback): 9000_rollback_drill stay applied; this release's migrations are all applied"; both instances `/readyz` 200 on `midad:drill-n`; the migration stays recorded |
+| Forward to N+1 with `ops/start.sh` | not reached | Pass |
+| Back to N with `scripts/rolling-restart.sh` | not reached | Pass: both instances `/readyz` 200 on `midad:drill-n` |
+
+With the fix the whole drill took 1 min 30 s (images already built). No drill containers or images were left.
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,
@@ -802,5 +822,6 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - The AI adapters and the suggested questions against the real Gemini API (no key in this environment; the simulator follows the documented APIs, and `npm run ai:check` with a real key is the next step). The quality of real suggestions in Arabic and English is therefore not yet judged; a teacher's review of a sample is needed.
 - Branded browsers and devices (Safari on macOS and iOS, Firefox and Chrome on Windows and Android, phones and tablets); the accessibility tests in Firefox and WebKit; manual screen-reader review; external penetration test.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
+- The rollback drill (`scripts/rollback-drill.sh`) on a staging host (launch checklist E-2); it ran on Docker in this container only.
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).
 - The Windows operations scripts on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler), backup copies to a real cloud bucket (Amazon S3, Backblaze B2, Cloudflare R2), and the `start` script's image rebuild (builds here need the proxy settings).

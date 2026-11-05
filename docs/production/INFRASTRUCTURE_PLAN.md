@@ -28,7 +28,7 @@ database not published to the host (`docker-compose.yml:90-91`); app ports remov
 | --- | --- | --- | --- |
 | I-1 | No memory or CPU limits on any container; one runaway (ClamAV reload, image decode) can push PostgreSQL into the OOM killer | High | No `mem_limit`/`deploy.resources` in either compose file [V-code] |
 | I-2 | PostgreSQL runs with stock settings (`shared_buffers` 128 MB etc.) | Medium | `docker-compose.yml:67-91` has no `command:` or config mount [V-code] |
-| I-3 | **Rollback through `ops/start.sh` fails after a release that added a migration** | High | See §6 [V-code, not executed] |
+| I-3 | ~~Rollback through `ops/start.sh` fails after a release that added a migration~~ **Fixed 2026-11-05 (task 1.2)** | — | See §6 [V-run] |
 | I-4 | Images are built on the production host; only one `previous` tag is kept; no registry, no digests | Medium | `ops/midad.sh:206-231`, `scripts/rolling-restart.sh:26-35` [V-code] |
 | I-5 | Bundled database has daily logical backups only: RPO 24 h, no point-in-time recovery | Medium | `docs/DEPLOYMENT_GUIDE.md §5` [DOC] |
 | I-6 | Homework files live in PostgreSQL (`bytea`), default quota 1 GB per school | Medium | `0013_classroom.ts:127`, `src/billing/entitlements.ts:9` [V-code] |
@@ -97,24 +97,32 @@ bundled container with pgBackRest or WAL-G to the same off-site bucket. Target R
 
 ## 6. Migrations and rollback
 
-**What exists [V-code].** Kysely migrator with a static registry (`src/db/migrator.ts:21-52`); migrations run by the
-schema owner, then privileges granted to the runtime role (`migrator.ts:64-73`); readiness fails while migrations
-are pending (`src/http/health.ts:17-18`); documented rule: migrations must be backward compatible so a rollback only
-needs the old image (`docs/DEPLOYMENT_GUIDE.md §4`). Down migrations exist but are not part of the rollback runbook.
+**What exists [V-code].** Kysely migrator with a static registry (`src/db/migrator.ts`); migrations run by the
+schema owner, then privileges granted to the runtime roles; readiness fails while migrations are pending
+(`src/http/health.ts`); documented rule: migrations must be backward compatible (expand/contract) so a rollback only
+needs the old image (`docs/DEPLOYMENT_GUIDE.md §4`). A down migration is part of the runbook only for a migration
+that breaks that rule (0019, below).
 
-**I-3 — rollback via `ops/start.sh` [V-code, not executed].** The documented rollback is "set
+**I-3 — rollback via `ops/start.sh`: fixed 2026-11-05 (task 1.2) [V-run].** The documented rollback is "set
 `APP_IMAGE_TAG=previous` and run `ops/start.sh --env prod`" (`docs/DEPLOYMENT_GUIDE.md §4.3`). That runs
-`docker compose up -d` (`ops/midad.sh:217, 233`), which starts the `migrate` service from the previous image.
-Its `migrateToLatest` (`src/db/migrator.ts:54-58`) uses Kysely, which throws
+`docker compose up -d`, which starts the `migrate` service from the previous image, and `app`, `app2` and `worker`
+start only when `migrate` succeeds (`docker-compose.yml`). Kysely's migrator throws
 `corrupted migrations: previously executed migration X is missing` when the database has a migration the old code
-does not know (`node_modules/kysely/dist/esm/migration/migrator.js:496`). `app`, `app2` and `worker` depend on
-`migrate` completing successfully (`docker-compose.yml:114-116, 131-133`), so they would not start.
-The other documented path, `APP_IMAGE_TAG=previous scripts/rolling-restart.sh` without `--build`, uses
-`up -d --no-deps` (`scripts/rolling-restart.sh:38-44`) and skips `migrate`, so it should work.
-*Fix options:* (a) make `migrate-cli up` treat "database ahead of code" as success when all known migrations are
-applied; or (b) change the runbook to the rolling path only and make `ops/start.sh` skip `migrate` when
-`APP_IMAGE_TAG=previous`. (a) is safer. *Acceptance:* a scripted drill — release N+1 with a new migration, roll back
-to N with both paths, `/readyz` 200 on both instances.
+does not know, so before the fix the stack did not come back.
+*Fix (option (a) of this plan):* `migrateToLatest` (`src/db/migrator.ts`) compares the database's applied
+migrations with the release's (`migrationStatus`). A database ahead of the release is accepted when the unknown
+migrations all sort after the release's latest and every one of the release's is applied; `migrate-cli up` then
+prints `Database is ahead of this release (rollback): … stay applied`. It still refuses, with what it found, an
+unknown migration among the release's own (another branch) and a newer database that lacks one of the release's.
+`migrate-cli down` refuses while the database has migrations the release does not know.
+*Verification:*
+- `tests/integration/migrator.test.ts` (3 tests): reproduces Kysely's error on a database a later release migrated,
+  then shows `migrateToLatest` and the CLI succeed on it, and the two refusals.
+- `scripts/rollback-drill.sh` on Docker (2026-11-05): builds release N from the checkout and N+1 = N plus migration
+  `9000_rollback_drill` (a new table and a new column), starts N+1 with `ops/start.sh`, rolls back to N with
+  `ops/start.sh`, goes forward again, and rolls back with `scripts/rolling-restart.sh`; after each step both app
+  instances answer `/readyz` 200 on the expected image. On `main` before the fix it failed at the first rollback with
+  the Kysely error above; with the fix it passed in 1 min 30 s. On staging it is launch item E-2 (task 2.7).
 
 **Migration 0019 (task 1.1) is not backward compatible**: releases before it rely on the `app.rls_bypass`
 setting it switched off, so going back past it needs `npm run db:migrate:down` once before the older
@@ -177,6 +185,6 @@ docker compose ... exec postgres psql -U postgres -d midad -c "SELECT pg_size_pr
 # Backup and restore drill
 ops/backup.sh --env prod && ops/restore.sh --env prod --only-verify
 
-# Rollback drill (after the I-3 fix), on staging
-APP_IMAGE_TAG=previous scripts/rolling-restart.sh && curl -fsS https://$STAGING/readyz
+# Rollback drill, on staging (own Compose project with throwaway settings; needs ports 80 and 443 free)
+scripts/rollback-drill.sh
 ```

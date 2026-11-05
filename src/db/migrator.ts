@@ -55,7 +55,42 @@ export function createMigrator(db: Database): Migrator {
 
 export const LATEST_MIGRATION = Object.keys(MIGRATIONS).sort().at(-1)!;
 
+export interface MigrationStatus {
+  /** This release's migrations the database has not applied. */
+  pending: string[];
+  /** Migrations the database has applied that this release does not know: a later release ran them. */
+  newer: string[];
+}
+
+/** Compares the migrations the database has applied with this release's. A database never migrated has them all pending. */
+export async function migrationStatus(db: Database): Promise<MigrationStatus> {
+  const { rows } = await sql<{ t: string | null }>`SELECT to_regclass('kysely_migration')::text AS t`.execute(db);
+  const applied = rows[0]?.t ? (await sql<{ name: string }>`SELECT name FROM kysely_migration`.execute(db)).rows.map((r) => r.name) : [];
+  const done = new Set(applied);
+  return { pending: Object.keys(MIGRATIONS).sort().filter((n) => !done.has(n)), newer: applied.filter((n) => !(n in MIGRATIONS)).sort() };
+}
+
+/**
+ * Applies this release's pending migrations and returns their names.
+ *
+ * A database ahead of this release is accepted: an older image started after a newer one migrated the
+ * database, which is a rollback (docs/DEPLOYMENT_GUIDE.md §4.3). Migrations follow the expand/contract rule,
+ * so the older release runs on the newer schema, provided the newer migrations all come after this release's
+ * and this release's are all applied. Anything else is refused with what was found. Kysely alone refuses any
+ * database with a migration it does not know, which stopped `migrate`, and with it the app, on every rollback.
+ */
 export async function migrateToLatest(db: Database): Promise<string[]> {
+  const { pending, newer } = await migrationStatus(db);
+  if (newer.length) {
+    const misplaced = newer.filter((n) => n < LATEST_MIGRATION);
+    if (misplaced.length) {
+      throw new Error(`The database has migrations this release does not know among its own (${misplaced.join(', ')}): it was migrated by another branch or release line.`);
+    }
+    if (pending.length) {
+      throw new Error(`The database has migrations from a later release (${newer.join(', ')}) but lacks this release's ${pending.join(', ')}: restore a backup, or migrate with the release that applied them.`);
+    }
+    return [];
+  }
   const { error, results } = await createMigrator(db).migrateToLatest();
   if (error) throw error instanceof Error ? error : new Error(String(error));
   return (results ?? []).filter((r) => r.status === 'Success').map((r) => r.migrationName);

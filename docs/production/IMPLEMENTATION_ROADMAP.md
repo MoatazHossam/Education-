@@ -36,7 +36,7 @@ scripts/ci-local.sh                                   # full CI locally (GitHub 
 | # | Task | Findings | Size | Acceptance criteria | Verification |
 | --- | --- | --- | --- | --- | --- |
 | 1.1 | **Done (PR #39).** **Tenant isolation hardening**: RLS on `billing_events`, `notifications`, `email_outbox`; separate `midad_system` DB role with `BYPASSRLS` for worker/webhook/admin aggregates; the web role can no longer bypass; allow-list test for `withSystemContext` call sites | S-1, S-2, S-3, S-4 | 3 d | As the web role, `set_config('app.rls_bypass','on',true)` exposes nothing; unfiltered selects on the three tables from another tenant return 0 rows; all 371 existing tests pass | `npm run test:integration -- tenancy authz-coverage`; SQL in SECURITY_GAP_ANALYSIS §9 |
-| 1.2 | **Rollback fix**: `migrate` succeeds when the database is ahead of the image; runbook updated; rollback drill script | I-3 | 1 d | Release N+1 with a new migration, roll back to N via `ops/start.sh` and via `rolling-restart.sh`: both instances `/readyz` 200 | New integration test on the migrator; drill on Docker |
+| 1.2 | **Done (2026-11-05).** **Rollback fix**: `migrate` succeeds when the database is ahead of the image; runbook updated; rollback drill script | I-3 | 1 d | Release N+1 with a new migration, roll back to N via `ops/start.sh` and via `rolling-restart.sh`: both instances `/readyz` 200 | New integration test on the migrator; drill on Docker |
 | 1.3 | **Lockout that cannot be weaponised**: per account+address lock or progressive delay; no hard lock of students during an open test window; atomic counter | S-5, S-7 | 2 d | 20 failures from address A do not block a correct login from B; existing lockout tests adapted | `npm run test:integration -- auth students` |
 | 1.4 | **Container limits and PostgreSQL tuning** in `docker-compose.prod.yml`; `ConcurrentDatabaseReload no` for ClamAV; Node heap caps | I-1, I-2, I-7 | 1 d | `docker compose config` shows limits; stack healthy; local load test unchanged (no 5xx) | `docker stats`; `scripts/load-exam.mjs` locally |
 | 1.5 | **Secrets split**: per-service env blocks (migrate gets DB only; web gets no backup creds); env file permissions checked by `ops/midad.sh`; rotation runbook | S-9, S-10 | 1 d | Each container's `env` lists only what it needs | `docker compose exec app env \| sort` review |
@@ -103,4 +103,5 @@ or a secret manager; per-school AI routing to a regional endpoint; card-on-file 
 regulator will ask about first (one school cannot see another's data, including minors' work), and the change is
 contained to migrations, `src/db/index.ts`, the worker/webhook entry points and tests. It should land before any
 real school data exists, because changing roles afterwards needs a data-free window. Task 1.2 (rollback fix) is the
-best second task, and must be done before the first production upgrade.
+best second task, and must be done before the first production upgrade. *Both are done:* 1.1 in PR #39, 1.2 on
+2026-11-05 (INFRASTRUCTURE_PLAN §6, I-3).

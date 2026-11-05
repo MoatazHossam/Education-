@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-10-29. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-11-05. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -24,6 +24,26 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Going back to the previous release after an upgrade with a migration (roadmap task 1.2) · COMPLETE (2026-11-05; drilled on Docker here, not yet on staging)
+- **Asked:** task 1.2 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding I-3: the documented rollback
+  (`APP_IMAGE_TAG=previous` and `ops/start.sh`) stopped at the `migrate` job after any release that added a
+  migration, so the app did not come back.
+- **Fixed:** an older release's `migrate` accepts a database a newer release migrated, when the newer migrations
+  all come after its own and its own are all applied, and says so: `Database is ahead of this release (rollback): …
+  stay applied`. It still refuses, saying what it found, a database migrated by another branch and a newer database
+  that lacks one of the release's migrations; `db:migrate:down` refuses while the database has migrations the
+  release does not know (`src/db/migrator.ts`, `src/db/migrate-cli.ts`).
+- **Drill:** `scripts/rollback-drill.sh` builds release N from the checkout and N+1 with one more migration (a new
+  table and a new column), then on its own Compose project with throwaway settings: N+1 with `ops/start.sh`, back to
+  N with `ops/start.sh`, forward again, back with `scripts/rolling-restart.sh`; both app instances must answer
+  `/readyz` on the expected image each time. Before the fix it failed at the first rollback with Kysely's
+  "corrupted migrations … 9000_rollback_drill is missing"; with the fix it passed in 1 min 30 s.
+- **Runbook:** DEPLOYMENT_GUIDE §4 step 3 (English and Arabic): both rollback paths work after a release with
+  migrations; only a migration that breaks the expand/contract rule (so far only 0019) needs
+  `npm run db:migrate:down` with the newer image first; run the drill on staging before the first upgrade (E-2).
+- **Tests:** `tests/integration/migrator.test.ts` (3 tests) on a scratch database, with the CLI run as its own
+  process; lint, typecheck and the full suite pass (TEST_REPORT §2).
 
 ### Production readiness audit and tenant isolation hardening · COMPLETE (2026-11-01)
 - **Audit:** seven documents in `docs/production/` (readiness, security gaps, infrastructure, billing, AI
@@ -796,7 +816,7 @@ user guides.
 | Backup and recovery tested | ✓ locally, with both scripts, including rebuilding a wiped server from an off-site copy; backup, verify and restore run again under the new names on 2026-10-29; ✗ not on production infrastructure; ✗ the Windows script not yet on Windows |
 | Deployment reproducible | ✓ locally (Docker/compose) |
 | Documentation accurate | ✓ |
-| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–8) with scripts for Linux and Windows; rolling restart and the backup and restore drill exercised on a local production-settings stack; ✗ not on the production host |
+| Operational support and release procedures defined | ✓ documented (DEPLOYMENT_GUIDE §4–8) with scripts for Linux and Windows; rolling restart, the backup and restore drill and the rollback after a release with a migration (`scripts/rollback-drill.sh`, 2026-11-05) exercised on a local production-settings stack; ✗ not on the production host |
 
 ## 4. Next development priorities
 

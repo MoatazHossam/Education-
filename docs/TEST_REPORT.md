@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**59 files, 415 tests, 415 passed, 0 failed** (2026-11-05, with the sign-in lockout per account and client, task 1.3). Integration tests ran against a real
+**61 files, 423 tests, 423 passed, 0 failed** (2026-11-05, with the settings split per container, task 1.5). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -58,6 +58,8 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/test-marking | 5 | Pass — online test rules (`docs/ONLINE_TESTS.md` §4): typed answers normalised as a teacher would accept them (Arabic diacritics, tatweel, alef forms, ى/ي, ة/ه, Arabic-Indic digits, case, spaces, edge punctuation); marks for every type, partial credit for several choices never below 0, written answers left to the teacher; question and answer checks; the attempt deadline (time limit or the test's end, plus extra time); shuffles and start codes |
 | integration/auth | 20 | Pass — includes the sign-in lockout per account and client (production findings S-5, S-7): 20 failures from address A, then a correct sign-in from address B; another browser on the locked-out address is refused, a browser that signed in before is not (its own count and rate limit), a made-up device cookie gets nothing; two accounts sharing a browser have their own allowance on it (fails without the per-account key: 429); a school admin's and a platform administrator's unlock give an address whose attempts someone used up its attempts back (fails without it: 429); 20 failures from four unknown addresses lock out every unknown client but not a known browser, and the platform administrator sees and lifts the lock; 8 parallel failures all counted; wrong second-factor codes lock out that client only and end its pending session, and a browser is trusted only after the code |
 | integration/tenancy | 21 | Pass |
+| unit/config-roles | 3 | Pass — the web app needs `SESSION_SECRET` and the provider keys its settings name; the worker starts without `SESSION_SECRET`, payment or AI keys (a random stand-in session secret, different in every process) and still checks what it uses; migrations need only the schema owner's database |
+| unit/compose-env | 5 | Pass — the environment of each production container as Compose resolves `docker-compose.yml` and `docker-compose.prod.yml`: `migrate` gets only the schema owner's address; the worker no session, payment, AI or alert keys; app and app2 the web app's secrets and not the owner's; role passwords only on `postgres`; every setting the app reads can still be set. On `main`'s compose files three of the five fail |
 | unit/system-context-allowlist | 1 | Pass — every cross-tenant (system context) call site in `src/` matches the reviewed list |
 | integration/migrator | 3 | Pass — migrations and rollbacks (`src/db/migrator.ts`), on a scratch database with the CLI run as its own process: a new database gets every migration in order, then nothing more; on a database a later release migrated, Kysely alone fails ("previously executed migration … is missing") while `migrateToLatest` and `migrate-cli up` succeed, readiness finds nothing pending and `migrate-cli down` refuses; an unknown migration among the release's own, or a newer database lacking one of the release's, is refused with what was found |
 | integration/scopes | 10 | Pass |
@@ -700,6 +702,26 @@ tail: p99 788 ms against 131 ms, the slowest 895 ms. Other latencies were the sa
 cause was not isolated: sign-in now also does the lockout's lookups (task 1.3), one instance reached 204 % CPU during
 the first minute's Argon2 hashing, and the load generator and `docker stats` ran on the same 4 vCPUs. The memory
 limits were far from reached. Repeat on staging hardware.
+
+### Settings per container (2026-11-05) — task 1.5
+
+Production finding S-9. The production-settings stack built from this branch and started with
+`ops/start.sh --env prod` under its own project name, with throwaway settings that set every provider key
+(`BILLING_PROVIDER=paymob` with its four keys, `AI_PROVIDER=gemini` with a key and model, an alert webhook address).
+The names of the secret settings in each container's environment (`docker inspect`, and `env` inside the running
+app and worker; names only, never values):
+
+| Container | Secret settings present |
+| --- | --- |
+| `migrate` | `MIGRATION_DATABASE_URL` |
+| `app`, `app2` | `AI_API_KEY`, `ALERT_WEBHOOK_URL`, `DATABASE_URL`, `DATA_ENCRYPTION_KEY`, `DATA_ENCRYPTION_KEYS_PREVIOUS`, `PAYMOB_HMAC_SECRET`, `PAYMOB_PUBLIC_KEY`, `PAYMOB_SECRET_KEY`, `SANDBOX_WEBHOOK_SECRET`, `SESSION_SECRET`, `SMTP_URL`, `SYSTEM_DATABASE_URL` |
+| `worker` | `DATABASE_URL`, `DATA_ENCRYPTION_KEY`, `DATA_ENCRYPTION_KEYS_PREVIOUS`, `SMTP_URL`, `SYSTEM_DATABASE_URL` |
+| `postgres` | `DB_APP_PASSWORD`, `DB_BACKUP_PASSWORD`, `DB_OWNER_PASSWORD`, `DB_SYSTEM_PASSWORD`, `POSTGRES_PASSWORD` |
+| `caddy`, `clamav` | none |
+
+`migrate` applied every migration and seeded the catalogue (exit 0); app, app2 and the worker were healthy, the worker
+having started without `SESSION_SECRET` or the Paymob and AI keys the settings file asked for. Everything was removed
+afterwards.
 
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 

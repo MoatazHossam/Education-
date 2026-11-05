@@ -123,6 +123,7 @@ missed; this document takes no position on the answers.
 6. Platform admin created with TOTP; demo data absent; student features off unless D-5 and counsel allow.
 7. Privacy notice, terms, support contact live in Arabic and English.
 8. Watch for 48 hours: error alerts, payment webhooks, backups, disk.
+9. Put the yearly secret rotation in the operations calendar (DEPLOYMENT_GUIDE §4, "Rotating the other secrets", and "Rotating `DATA_ENCRYPTION_KEY`"), the first one a year after launch.
 
 ## 6. Verification commands
 

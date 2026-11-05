@@ -92,13 +92,9 @@ services:
       start_period: 180s
       retries: 3
 
-  # Same scanner settings as the app: with FILE_SCAN=clamav in the env file, the app's
-  # configuration check also needs CLAMAV_HOST here (migrate does not use the scanner).
   migrate:
     environment:
       NODE_ENV: production
-      FILE_SCAN: ${FILE_SCAN:-clamav}
-      CLAMAV_HOST: clamav
       NODE_OPTIONS: --max-old-space-size=${APP_HEAP_MB:-512}
     deploy:
       resources:

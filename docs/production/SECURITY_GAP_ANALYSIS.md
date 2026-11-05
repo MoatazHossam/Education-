@@ -19,8 +19,8 @@ student data · **Low** = hardening.
 | S-6 | No breached/common-password check; student passwords set by schools | Medium | Authentication |
 | S-7 | Lockout counter is read-modify-write (non-atomic) | Low | Authentication · **fixed by task 1.3** |
 | S-8 | Homework files stored in PostgreSQL without application-level encryption; disk encryption not configured | Medium | Student files |
-| S-9 | Every secret is in one host file and passed to every container | High | Secrets |
-| S-10 | No documented rotation for `SESSION_SECRET`, provider keys, DB passwords | Medium | Secrets |
+| S-9 | Every secret is in one host file and passed to every container | High | Secrets · **fixed by task 1.5** |
+| S-10 | No documented rotation for `SESSION_SECRET`, provider keys, DB passwords | Medium | Secrets · **fixed by task 1.5** |
 | S-11 | AI provider: data terms, region and DPA not chosen; no output-content filter beyond schema | Medium | Third-party AI |
 | S-12 | Worker has unrestricted egress (customer webhooks, AI, Paymob from the same network) | Medium | Network |
 | S-13 | Flood guard is per process; no edge/CDN limit; client IP trust depends on Caddy defaults | Medium | Availability |
@@ -165,11 +165,24 @@ any container yields every secret.
 `x-app-env` so `migrate` gets only DB URLs and the web instances do not get the backup role; keep a copy of the
 file and the backup passphrase in a password manager (already advised, `docs/DEPLOYMENT_GUIDE.md §5`).
 *Later:* Docker secrets (files under `/run/secrets`) or a managed secret store, read by `loadConfig`.
+**Fixed 2026-11-05 (task 1.5) [V-run].** `docker-compose.yml` gives each container only what it uses: `migrate` only
+the schema owner's database address (`loadMigrationConfig`); the worker the app and system roles' addresses,
+`DATA_ENCRYPTION_KEY` and `SMTP_URL`, but no `SESSION_SECRET`, Paymob, AI or alert keys (`loadConfig(…, 'worker')`);
+the app instances no longer get the schema owner's address; the roles' passwords go to `postgres` only. Checked on
+the running production-settings stack (the names in each container's environment) and by
+`tests/unit/compose-env.test.ts`. The settings file's mode was already checked by the start script (`chmod 600`
+offered on Linux; other users' access removed on Windows). Still one file on the host: Docker secrets or a secret
+store remain the later step.
 
 **S-10 — Rotation [V-code].** `npm run keys:rotate` re-encrypts with a new `DATA_ENCRYPTION_KEY`
 (`src/cli/rotate-data-key.ts`). Rotating `SESSION_SECRET` logs everyone out and invalidates CSRF tokens (it is the
 HMAC key, `src/auth/sessions.ts:20-22`); Paymob/AI/SMTP keys are plain environment values. *Fix:* a written
 rotation runbook for each secret with its user impact, and a yearly rotation on the launch checklist.
+**Fixed 2026-11-05 (task 1.5):** DEPLOYMENT_GUIDE §4, "Rotating the other secrets" (English and Arabic), one row per
+secret with the steps and what users notice; the yearly rotation is item 9 of the launch-day runbook
+(PRODUCTION_LAUNCH_CHECKLIST §5). Correction: rotating `SESSION_SECRET` does not log anyone out. Session cookies are
+not signed with it (sessions are looked up by the SHA-256 of their token); only CSRF tokens, which the page fetches
+again by itself, and the keys of rate-limit and sign-in counters change.
 
 ## 5. Third-party AI data exposure
 

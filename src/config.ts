@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { KeyRing } from './lib/crypto.js';
 
@@ -5,7 +6,17 @@ const bool = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
   .transform((v) => v === 'true' || v === '1' || v === 'yes');
 
-const EnvSchema = z
+/**
+ * Which process reads the configuration. Each container gets only the settings it needs
+ * (docker-compose.yml, production finding S-9):
+ * - web (the app instances, and tools run in them): everything;
+ * - worker: no SESSION_SECRET (it signs no sessions or forms), no Paymob, sandbox or AI keys
+ *   (the payment provider and the AI provider are called from the web app only).
+ * Migrations use loadMigrationConfig instead: the schema owner's database address and little else.
+ */
+export type ConfigRole = 'web' | 'worker';
+
+const envSchema = (role: ConfigRole) => z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     HOST: z.string().default('0.0.0.0'),
@@ -128,6 +139,8 @@ const EnvSchema = z
     if (env.EMAIL_TRANSPORT === 'smtp' && !env.SMTP_URL) {
       ctx.addIssue({ code: 'custom', path: ['SMTP_URL'], message: 'SMTP_URL is required when EMAIL_TRANSPORT=smtp' });
     }
+    // Keys the worker never gets: only the web app calls the payment and AI providers.
+    if (role === 'worker') return;
     if (env.BILLING_PROVIDER === 'sandbox' && !env.SANDBOX_WEBHOOK_SECRET) {
       ctx.addIssue({ code: 'custom', path: ['SANDBOX_WEBHOOK_SECRET'], message: 'SANDBOX_WEBHOOK_SECRET is required for the sandbox provider' });
     }
@@ -143,7 +156,10 @@ const EnvSchema = z
     }
   });
 
-export type Env = z.infer<typeof EnvSchema>;
+export type Env = z.infer<ReturnType<typeof envSchema>>;
+
+/** Every setting the application reads (tests/unit/compose-env.test.ts checks that docker-compose.yml passes each one). */
+export const CONFIG_KEYS: readonly string[] = Object.keys(envSchema('web').shape);
 
 export interface AppConfig extends Env {
   /** DATA_ENCRYPTION_KEY and the previous keys, for encryptSecret/decryptSecret. */
@@ -154,16 +170,26 @@ export interface AppConfig extends Env {
   appOrigin: string;
 }
 
-export function loadConfig(source: Record<string, string | undefined> = process.env): AppConfig {
-  // Empty values (e.g. `SALES_EMAIL=` in an env file, or unset variables that
-  // Docker Compose interpolates to "") mean "not set".
-  const cleaned = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined && v.trim() !== ''));
-  const parsed = EnvSchema.safeParse(cleaned);
-  if (!parsed.success) {
-    const details = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+// Empty values (e.g. `SALES_EMAIL=` in an env file, or unset variables that
+// Docker Compose interpolates to "") mean "not set".
+function setValues(source: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(Object.entries(source).filter((e): e is [string, string] => e[1] !== undefined && e[1].trim() !== ''));
+}
+
+function parsed<T>(schema: z.ZodType<T>, values: Record<string, string>): T {
+  const result = schema.safeParse(values);
+  if (!result.success) {
+    const details = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid configuration:\n${details}`);
   }
-  const env = parsed.data;
+  return result.data;
+}
+
+export function loadConfig(source: Record<string, string | undefined> = process.env, role: ConfigRole = 'web'): AppConfig {
+  const values = setValues(source);
+  // The worker gets no SESSION_SECRET; a random one stands in, so nothing in it can depend on the real one.
+  if (role === 'worker') values.SESSION_SECRET ??= randomBytes(48).toString('base64');
+  const env = parsed(envSchema(role), values);
   return {
     ...env,
     dataKeys: { current: env.DATA_ENCRYPTION_KEY, previous: env.DATA_ENCRYPTION_KEYS_PREVIOUS },
@@ -171,5 +197,37 @@ export function loadConfig(source: Record<string, string | undefined> = process.
     isTest: env.NODE_ENV === 'test',
     secureCookies: env.APP_URL.startsWith('https://'),
     appOrigin: new URL(env.APP_URL).origin,
+  };
+}
+
+const MigrationEnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // The schema owner; DATABASE_URL in development, where one role may own everything.
+    MIGRATION_DATABASE_URL: z.string().min(1).optional(),
+    DATABASE_URL: z.string().min(1).optional(),
+    DATABASE_SSL: bool.default(false),
+    BILLING_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('EGP'),
+  })
+  .refine((env) => env.MIGRATION_DATABASE_URL || env.DATABASE_URL, { path: ['MIGRATION_DATABASE_URL'], message: 'MIGRATION_DATABASE_URL is required' });
+
+export interface MigrationConfig {
+  databaseUrl: string;
+  DATABASE_SSL: boolean;
+  BILLING_CURRENCY: string;
+  isProduction: boolean;
+}
+
+/**
+ * Settings of the migrate job (src/db/migrate-cli.ts, seed-cli --catalog-only): the schema owner's database and
+ * nothing of the application's secrets, which the migrate container does not get (docker-compose.yml).
+ */
+export function loadMigrationConfig(source: Record<string, string | undefined> = process.env): MigrationConfig {
+  const env = parsed(MigrationEnvSchema, setValues(source));
+  return {
+    databaseUrl: (env.MIGRATION_DATABASE_URL ?? env.DATABASE_URL)!,
+    DATABASE_SSL: env.DATABASE_SSL,
+    BILLING_CURRENCY: env.BILLING_CURRENCY,
+    isProduction: env.NODE_ENV === 'production',
   };
 }

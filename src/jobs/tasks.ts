@@ -5,6 +5,7 @@ import type { Mailer } from '../notifications/mailer.js';
 import { addDays } from '../lib/time.js';
 import { DELIVERY_RETENTION_DAYS } from '../webhooks/service.js';
 import { AI_REQUEST_RETENTION_DAYS } from '../ai/service.js';
+import { DEVICE_TTL_MS } from '../auth/login-protection.js';
 
 const MAX_ATTEMPTS = 8;
 
@@ -73,6 +74,14 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -DELIVERY_RETENTION_DAYS)).executeTakeFirst();
     // The AI usage log is kept for a year of cost reporting (ai/service.ts).
     const aiRequests = await trx.deleteFrom('ai_requests').where('created_at', '<=', addDays(now, -AI_REQUEST_RETENTION_DAYS)).executeTakeFirst();
+    // Failed sign-in counts end with their window or lock (auth/login-protection.ts); a day is past both.
+    const loginFailures = await trx
+      .deleteFrom('login_failures')
+      .where('window_started_at', '<=', sql<Date>`now() - interval '1 day'`)
+      .where((eb) => eb.or([eb('locked_until', 'is', null), eb('locked_until', '<=', sql<Date>`now()`)]))
+      .executeTakeFirst();
+    // A browser not used to sign in for a year is forgotten, as its cookie has expired.
+    const loginDevices = await trx.deleteFrom('login_devices').where('last_signed_in_at', '<=', new Date(now.getTime() - DEVICE_TTL_MS)).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -86,6 +95,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       digestItems: Number(digestItems.numDeletedRows),
       webhookDeliveries: Number(webhookDeliveries.numDeletedRows),
       aiRequests: Number(aiRequests.numDeletedRows),
+      loginFailures: Number(loginFailures.numDeletedRows),
+      loginDevices: Number(loginDevices.numDeletedRows),
     };
   });
 }

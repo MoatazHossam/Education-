@@ -185,6 +185,13 @@ export async function studentsView(ctx) {
     h('td', {}, s.locked ? h('span', { class: 'pill bad' }, t('students.locked')) : s.lastLoginAt ? fmtDate(s.lastLoginAt, true) : h('span', { class: 'muted' }, t('students.never'))),
     h('td', {}, h('div', { class: 'row' },
       h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('students.editFor', { name: s.name }), onclick: () => act(() => edit(s)) }, t('common.edit')),
+      s.locked ? h('button', {
+        type: 'button', class: 'btn small ghost', 'aria-label': t('students.unlockFor', { name: s.name }), onclick: () => act(async () => {
+          await post(`/api/orgs/${orgId}/students/${s.userId}/unlock`);
+          toast(t('students.unlocked', { name: s.name }));
+          refresh();
+        }),
+      }, t('students.unlock')) : null,
       h('button', {
         type: 'button', class: 'btn small ghost', 'aria-label': t('students.resetFor', { name: s.name }), onclick: () => act(async () => {
           if (!(await confirmDialog(t('students.resetTitle'), t('students.resetText', { name: s.name }), { confirmLabel: t('students.reset') }))) return;

@@ -111,8 +111,10 @@ Sign in with your email and password at `/login`.
 - **Students** have their own sign-in page, linked at the bottom
   (section 11).
 
-After several wrong passwords the account is locked for a while; a platform
-administrator can unlock it (section 18).
+After five wrong passwords or codes, the browser or address they came from
+is locked out of the account for 15 minutes; you can still sign in from a
+browser you have used before, or from another network. A platform
+administrator can lift the lock (section 18).
 
 ## 3. Roles: who can do what
 
@@ -476,6 +478,10 @@ of owners and admins.
 - The password is shown **once**, with the school code. Write it down or
   **Download passwords (CSV)**. **New password** in the list sets a fresh one
   and signs the student out everywhere.
+- After wrong passwords a student shows as **locked**. **Unlock** lets them
+  sign in again straight away with the same password (useful just before a
+  test). Wrong passwords lock out only the browser or address they came from,
+  and never lock a student out from elsewhere around a test.
 
   ![Student passwords: Omar Khaled's password and the school code](user-guide/images/student-passwords.png)
 

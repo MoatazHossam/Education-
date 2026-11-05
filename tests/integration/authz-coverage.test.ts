@@ -75,7 +75,7 @@ describe('authorization coverage (all registered routes)', () => {
 });
 
 describe('second-factor brute force', () => {
-  it('locks the account after repeated wrong codes and ends the pending session', async () => {
+  it('locks out the client after repeated wrong codes and ends the pending session', async () => {
     const { client, email } = await signUp(h);
     const setup = (await client.post('/api/auth/mfa/setup')).json();
     await client.post('/api/auth/mfa/enable', { code: totp(setup.secret) });
@@ -84,9 +84,11 @@ describe('second-factor brute force', () => {
     await c.refresh();
     const wrong = String((Number(authenticator.generate(setup.secret)) + 500_000) % 1_000_000).padStart(6, '0');
     for (let i = 0; i < 5; i++) expect((await c.post('/api/auth/mfa/verify', { code: wrong })).statusCode).toBe(401);
-    // Pending session is gone and the password alone no longer works during the lockout.
+    // Pending session is gone and the password alone no longer works from this address during the lockout.
     expect((await c.post('/api/auth/mfa/verify', { code: totp(setup.secret) })).statusCode).toBe(401);
-    const again = await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD });
+    const again = await new Client(h.app, c.ip).post('/api/auth/login', { email, password: PASSWORD });
     expect(again.json().error.code).toBe('INVALID_CREDENTIALS');
+    // Elsewhere the password still leads to the second factor (production finding S-5).
+    expect((await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD })).json()).toMatchObject({ mfaRequired: true });
   });
 });

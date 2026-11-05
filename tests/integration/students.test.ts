@@ -138,15 +138,17 @@ describe('student sign-in', () => {
     expect(cross.statusCode).toBe(401);
     const staff = await new Client(h.app).post('/api/auth/login', { email: 'same', password: sa.password });
     expect(staff.statusCode).toBe(400);
-    expect((await studentLogin(h, sb)).cookies.size).toBe(1);
+    // A session, and the device cookie that marks this browser as one the student signed in from.
+    expect([...(await studentLogin(h, sb)).cookies.keys()].sort()).toEqual(['midad_device', 'sid']);
   });
 
-  it('locks after five wrong passwords; a staff reset lifts the lock and ends existing sessions', async () => {
+  it('locks out an address after five wrong passwords; a staff reset lifts the lock and ends existing sessions', async () => {
     const owner = await school();
     const s = await createStudent(h, owner.client, owner.orgId);
     const early = await studentLogin(h, s);
-    for (let i = 0; i < 5; i++) await new Client(h.app).post('/api/auth/student-login', { school: s.school, username: s.username, password: 'wrong-password' });
-    const locked = await new Client(h.app).post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password });
+    const attacker = new Client(h.app);
+    for (let i = 0; i < 5; i++) await attacker.post('/api/auth/student-login', { school: s.school, username: s.username, password: 'wrong-password' });
+    const locked = await new Client(h.app, attacker.ip).post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password });
     expect(locked.statusCode).toBe(401);
     expect((await owner.client.get(`/api/orgs/${owner.orgId}/students`)).json().students[0].locked).toBe(true);
 
@@ -157,6 +159,58 @@ describe('student sign-in', () => {
     expect((await early.get('/api/auth/me')).statusCode).toBe(401);
     expect((await new Client(h.app).post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(401);
     await studentLogin(h, { ...s, password });
+  });
+
+  it('a classmate on the school network cannot lock a student out of a browser they signed in from', async () => {
+    const owner = await school();
+    const s = await createStudent(h, owner.client, owner.orgId);
+    const SCHOOL_NETWORK = '203.0.113.7';
+    const own = new Client(h.app, SCHOOL_NETWORK);
+    expect((await own.post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(200);
+    own.cookies.delete('sid');
+    const classmate = new Client(h.app, SCHOOL_NETWORK);
+    for (let i = 0; i < 8; i++) await classmate.post('/api/auth/student-login', { school: s.school, username: s.username, password: `guess-${i}` });
+    expect((await new Client(h.app, SCHOOL_NETWORK).post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(401);
+    expect((await own.post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(200);
+  });
+
+  it('a teacher unlocks a student without changing the password', async () => {
+    const owner = await school();
+    const s = await createStudent(h, owner.client, owner.orgId);
+    const c = new Client(h.app);
+    for (let i = 0; i < 5; i++) await c.post('/api/auth/student-login', { school: s.school, username: s.username, password: 'wrong-password' });
+    expect((await c.post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(401);
+    const viewer = await addMember(h, owner.client, owner.orgId, 'viewer');
+    expect((await viewer.client.post(`/api/orgs/${owner.orgId}/students/${s.userId}/unlock`)).statusCode).toBe(403);
+    expect((await owner.client.post(`/api/orgs/${owner.orgId}/students/${s.userId}/unlock`)).json()).toEqual({ status: 'unlocked' });
+    expect((await owner.client.get(`/api/orgs/${owner.orgId}/students`)).json().students[0].locked).toBe(false);
+    expect((await c.post('/api/auth/student-login', { school: s.school, username: s.username, password: s.password })).statusCode).toBe(200);
+    const audit = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('audit_logs').select(['action', 'metadata']).where('org_id', '=', owner.orgId).where('action', '=', 'student.unlocked').execute());
+    expect(audit).toEqual([{ action: 'student.unlocked', metadata: { username: s.username } }]);
+  });
+
+  it('around an open test nobody can lock a student out from elsewhere; otherwise unknown addresses are locked out after 20 failures', async () => {
+    const owner = await school();
+    const [ali, mona] = [await createStudent(h, owner.client, owner.orgId, { grade: 5 }), await createStudent(h, owner.client, owner.orgId, { grade: 5 })];
+    const classId = (await owner.client.post(`/api/orgs/${owner.orgId}/classes`, { name: '5A', grade: 5 })).json().class.id as string;
+    await owner.client.request('PUT', `/api/orgs/${owner.orgId}/classes/${classId}/students`, { studentIds: [ali.userId] });
+    // A test for Ali's class that opens in 30 minutes; Mona is not in the class.
+    const at = (m: number) => new Date(Date.now() + m * 60_000).toISOString();
+    const test = await owner.client.post(`/api/orgs/${owner.orgId}/classes/${classId}/tests`, { subjectEn: 'Science', subjectAr: 'العلوم', title: 'Quiz', opensAt: at(30), closesAt: at(90) });
+    expect(test.statusCode, test.body).toBe(201);
+    const testId = test.json().test.id as string;
+    await owner.client.post(`/api/orgs/${owner.orgId}/tests/${testId}/questions`, { type: 'true_false', prompt: 'The Nile flows north.', options: [], points: 1, key: true });
+    expect((await owner.client.post(`/api/orgs/${owner.orgId}/tests/${testId}/publish`)).statusCode).toBe(200);
+
+    for (const s of [ali, mona]) {
+      for (let n = 0; n < 4; n++) {
+        const attacker = new Client(h.app);
+        for (let i = 0; i < 5; i++) await attacker.post('/api/auth/student-login', { school: s.school, username: s.username, password: `guess-${n}-${i}` });
+      }
+    }
+    // Mona has no test: every address she never signed in from is locked out. Ali, before his test, is not.
+    expect((await new Client(h.app).post('/api/auth/student-login', { school: mona.school, username: mona.username, password: mona.password })).statusCode).toBe(401);
+    expect((await new Client(h.app).post('/api/auth/student-login', { school: ali.school, username: ali.username, password: ali.password })).statusCode).toBe(200);
   });
 
   it('a student can change their password; other sessions end', async () => {

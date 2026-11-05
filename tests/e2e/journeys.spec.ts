@@ -476,6 +476,15 @@ test('a platform admin turns on student accounts; the school adds students; a st
   await student.getByLabel('Password').fill('wrong-password');
   await student.getByRole('button', { name: 'Sign in' }).click();
   await expect(student.getByText('Incorrect school code, username or password')).toBeVisible();
+  // Four more wrong passwords lock this browser out; the school unlocks Laila without a new password.
+  const studentLoginApi = (pw: string) => studentCtx.request.post('/api/auth/student-login', { data: { school: schoolCode, username: 'laila.e2e', password: pw } });
+  for (let i = 0; i < 4; i++) expect((await studentLoginApi(`wrong-${i}`)).status()).toBe(401);
+  expect((await studentLoginApi(password)).status()).toBe(401);
+  await page.reload();
+  await expect(page.locator('table.data tbody tr', { hasText: 'Laila Hassan' }).getByText('locked', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Unlock Laila Hassan' }).click();
+  await expect(page.getByText('Laila Hassan can sign in again, with the same password.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock Laila Hassan' })).toHaveCount(0);
   await student.getByLabel('Password').fill(password);
   await student.getByRole('button', { name: 'Sign in' }).click();
   await student.waitForURL(/\/student$/);

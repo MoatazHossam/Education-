@@ -46,6 +46,11 @@ export class MemoryWindows implements Windows {
 
 const TTL = sql<string>`ceil(extract(epoch FROM expires_at - now()) * 1000)::bigint`;
 
+/** The rate_limits row of a client key under a route's namespace ('POST /api/auth/login'). */
+export function rateLimitRowKey(secret: string, namespace: string, key: string): string {
+  return hmacHex(secret, `rate-limit|${namespace}|${key}`);
+}
+
 /**
  * Fixed-window counters in PostgreSQL, shared by every app instance and timed
  * by the database clock; one atomic upsert per request. Keys are HMACs of the
@@ -56,7 +61,7 @@ export class PostgresWindows implements Windows {
   constructor(private readonly db: Database, private readonly secret: string, private readonly namespace: string) {}
 
   private keyOf(key: string): string {
-    return hmacHex(this.secret, `rate-limit|${this.namespace}|${key}`);
+    return rateLimitRowKey(this.secret, this.namespace, key);
   }
 
   async incr(key: string, windowMs: number): Promise<Result> {

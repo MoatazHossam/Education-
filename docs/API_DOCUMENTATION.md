@@ -135,7 +135,8 @@ Tree shape:
 | POST | `/:orgId/students` | admin | `{username, name, grade, scopeId?}` → `201 {student, password}` (password shown once); 402 `STUDENTS_NOT_ENABLED` / `PLAN_LIMIT_REACHED` |
 | POST | `/:orgId/students/import` | admin | `{csv, apply}`: preview `{rows, errors, limit, used}`, one error per problem `{line, code, params, message}` (see "Problems in an imported file" below); apply (all or nothing) → `{created[] with passwords, schoolCode}`; `400 FILE_NOT_UTF8` / `CSV_INVALID` for a file that cannot be read |
 | PATCH / DELETE | `/:orgId/students/:userId` | admin | `{name?, grade?, scopeId? (null clears)}` · delete the account |
-| POST | `/:orgId/students/:userId/reset-password` | admin | → `{password}`; ends the student's sessions and lifts a lockout |
+| POST | `/:orgId/students/:userId/reset-password` | admin | → `{password}`; ends the student's sessions and lifts every lockout |
+| POST | `/:orgId/students/:userId/unlock` | admin | → `{status: 'unlocked'}`; lifts every lockout (all browsers and addresses), keeps the password |
 
 ### Student portal (`/api/student`) — student session only; 404 for staff
 | Method | Path | Notes |

@@ -64,7 +64,9 @@ export interface UsersTable {
   mfa_pending_secret_enc: string | null;
   mfa_last_step: ColumnType<string | null, string | number | null | undefined, string | number | null>;
   mfa_recovery_hashes: Generated<string[]>;
+  /** No longer used (migration 0020: login_failures); kept for the previous release, to be dropped later. */
   failed_login_count: Generated<number>;
+  /** No longer used (migration 0020: login_failures); kept for the previous release, to be dropped later. */
   locked_until: NullableTimestamp;
   last_login_at: NullableTimestamp;
   password_changed_at: Generated<Date>;
@@ -480,6 +482,23 @@ export interface WorkerHeartbeatsTable {
   details: Json<Record<string, unknown>>;
 }
 
+/** Failed sign-ins per account and client (src/auth/login-protection.ts). */
+export interface LoginFailuresTable {
+  user_id: string;
+  /** 'device:<sha256>' (a browser the account signed in from), 'address:<hmac>', or 'account' (all unknown clients). */
+  client: string;
+  failures: number;
+  window_started_at: Timestamp;
+  locked_until: NullableTimestamp;
+}
+
+/** Browsers an account has fully signed in from: the SHA-256 of the token in the browser's device cookie. */
+export interface LoginDevicesTable {
+  user_id: string;
+  device_hash: string;
+  last_signed_in_at: Generated<Date>;
+}
+
 export interface RateLimitsTable {
   key: string;
   count: number;
@@ -828,6 +847,8 @@ export interface DB {
   email_outbox: EmailOutboxTable;
   worker_heartbeats: WorkerHeartbeatsTable;
   rate_limits: RateLimitsTable;
+  login_failures: LoginFailuresTable;
+  login_devices: LoginDevicesTable;
   ops_alerts: OpsAlertsTable;
 }
 

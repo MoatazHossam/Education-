@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { recordAudit, recordPlatformAudit, requestMeta } from '../audit/audit.js';
 import { getEntitlements } from '../billing/entitlements.js';
 import { setOrgContext, withOrgContext, withSystemContext, withUserContext, type Executor } from '../db/index.js';
+import { hasTestNow } from '../classroom/tests-service.js';
 import { studentsEnabled } from '../students/service.js';
 import type { Locale, StaffUser, User } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
@@ -14,6 +15,7 @@ import { parse, zEmail, zLocale, zName, zPassword } from '../lib/validation.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
 import { createOrganization } from '../orgs/service.js';
 import { asStaff, requireUser } from './guards.js';
+import { clearLoginFailures, isLocked, loginClient, loginRateKey, recordFailure, recordSuccess, type FailureResult, type LoginClient } from './login-protection.js';
 import { enrollmentPayload, generateRecoveryCodes, generateTotpSecret, normalizeRecoveryCode, verifyTotp } from './mfa.js';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password.js';
 import {
@@ -25,8 +27,6 @@ import {
   setSessionCookie,
 } from './sessions.js';
 
-const MAX_FAILED_LOGINS = 5;
-const LOCKOUT_MS = 15 * 60_000;
 const VERIFY_TTL_MS = 48 * 3_600_000;
 const RESET_TTL_MS = 3_600_000;
 
@@ -198,7 +198,19 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
   });
 
   // ------------------------------------------------------------ login / logout
-  app.post('/api/auth/login', rateLimited(10, '15 minutes', emailKey), async (req, reply) => {
+  // Lockout per account and client (login-protection.ts): what one client gets wrong locks out only
+  // that client, and a browser the account signed in from before has its own count and rate limit.
+  // The audit says which client failed and what a new lock covers: that client, or every unknown one.
+  const lockMeta = (client: LoginClient, r?: FailureResult) => ({
+    client: client.trusted ? 'trusted_device' : 'address',
+    ...(r?.accountLocked ? { locked: 'unknown_clients' } : r?.clientLocked ? { locked: 'client' } : {}),
+  });
+  const failAction = (r: FailureResult, failed: string, locked: string) => (r.clientLocked || r.accountLocked ? locked : failed);
+  const staffAccount = async (req: FastifyRequest) => {
+    const email = zEmail.safeParse((req.body as { email?: unknown } | undefined)?.email);
+    return email.success ? ((await staffByEmail(db, email.data))?.id ?? null) : null;
+  };
+  app.post('/api/auth/login', rateLimited(10, '15 minutes', loginRateKey(db, config, staffAccount, emailKey)), async (req, reply) => {
     const { email, password } = parse(z.object({ email: zEmail, password: z.string().min(1).max(256) }), req.body);
     const meta = requestMeta(req);
     const invalid = new AppError(401, 'INVALID_CREDENTIALS', 'Incorrect email or password, or the account is temporarily locked');
@@ -207,30 +219,23 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       await burnPasswordCheck(password);
       throw invalid;
     }
-    if (user.locked_until && user.locked_until > new Date()) {
+    const client = await loginClient(db, config, req, user.id);
+    if (await isLocked(db, client, { accountLock: true })) {
       await burnPasswordCheck(password);
-      await recordPlatformAudit(db, { type: 'anonymous', email }, { action: 'auth.login_blocked_locked', targetType: 'user', targetId: user.id }, meta);
+      await recordPlatformAudit(db, { type: 'anonymous', email }, { action: 'auth.login_blocked_locked', targetType: 'user', targetId: user.id, metadata: lockMeta(client) }, meta);
       throw invalid;
     }
     if (!(await verifyPassword(user.password_hash, password))) {
-      const failures = user.failed_login_count + 1;
-      const lock = failures >= MAX_FAILED_LOGINS;
-      await db
-        .updateTable('users')
-        .set({ failed_login_count: lock ? 0 : failures, locked_until: lock ? new Date(Date.now() + LOCKOUT_MS) : user.locked_until })
-        .where('id', '=', user.id)
-        .execute();
-      await recordPlatformAudit(db, { type: 'anonymous', email }, { action: lock ? 'auth.account_locked' : 'auth.login_failed', targetType: 'user', targetId: user.id }, meta);
+      const r = await recordFailure(db, client, { accountLock: true });
+      await recordPlatformAudit(db, { type: 'anonymous', email }, { action: failAction(r, 'auth.login_failed', 'auth.account_locked'), targetType: 'user', targetId: user.id, metadata: lockMeta(client, r) }, meta);
       throw invalid;
     }
     if (user.status !== 'active') throw forbidden('This account is suspended. Contact support.', 'ACCOUNT_SUSPENDED');
     if (!user.email_verified_at) throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'Confirm your email address before signing in');
 
-    await db
-      .updateTable('users')
-      .set({ ...(user.mfa_enabled ? {} : { failed_login_count: 0 }), locked_until: null, last_login_at: new Date() })
-      .where('id', '=', user.id)
-      .execute();
+    await db.updateTable('users').set({ last_login_at: new Date() }).where('id', '=', user.id).execute();
+    // With two-factor sign-in on, failed codes keep counting until the code is right (mfa/verify).
+    if (!user.mfa_enabled) await recordSuccess(db, config, reply, client);
     // Never keep a previous session alive across a new sign-in on this browser.
     if (req.auth?.kind === 'session') await revokeSession(db, req.auth.session.id);
     await startSession(ctx, req, reply, user, { mfaPending: user.mfa_enabled, mfaVerified: false });
@@ -246,7 +251,19 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const s = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
     return `${req.ip}|${s(b.school)}|${s(b.username)}`;
   };
-  app.post('/api/auth/student-login', rateLimited(10, '15 minutes', studentKey), async (req, reply) => {
+  const studentAccount = async (req: FastifyRequest) => {
+    const b = (req.body ?? {}) as { school?: unknown; username?: unknown };
+    if (typeof b.school !== 'string' || typeof b.username !== 'string') return null;
+    const school = b.school.trim().toLowerCase();
+    const username = b.username.trim().toLowerCase();
+    const org = await db.selectFrom('organizations').select('id').where('slug', '=', school).executeTakeFirst();
+    if (!org) return null;
+    const row = await withOrgContext(db, { orgId: org.id }, (trx) =>
+      trx.selectFrom('students').select('user_id').where('org_id', '=', org.id).where('username', '=', username).executeTakeFirst(),
+    );
+    return row?.user_id ?? null;
+  };
+  app.post('/api/auth/student-login', rateLimited(10, '15 minutes', loginRateKey(db, config, studentAccount, studentKey)), async (req, reply) => {
     const body = parse(
       z.object({ school: z.string().trim().toLowerCase().min(1).max(64), username: z.string().trim().toLowerCase().min(1).max(40), password: z.string().min(1).max(256) }),
       req.body,
@@ -264,22 +281,19 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       throw invalid;
     }
     const user: User = found;
-    const audit = (action: string) =>
-      withOrgContext(db, { orgId: org.id }, (trx) => recordAudit(trx, { type: 'user', userId: user.id }, { orgId: org.id, action, targetType: 'student', targetId: user.id, metadata: { username: body.username } }, meta));
-    if (user.locked_until && user.locked_until > new Date()) {
+    const audit = (action: string, extra: Record<string, unknown> = {}) =>
+      withOrgContext(db, { orgId: org.id }, (trx) => recordAudit(trx, { type: 'user', userId: user.id }, { orgId: org.id, action, targetType: 'student', targetId: user.id, metadata: { username: body.username, ...extra } }, meta));
+    const client = await loginClient(db, config, req, user.id);
+    // Nobody may keep a student out of a test from elsewhere: no account-wide lock around a test.
+    const accountLock = client.trusted || !(await withOrgContext(db, { orgId: org.id }, (trx) => hasTestNow(trx, org.id, user.id)));
+    if (await isLocked(db, client, { accountLock })) {
       await burnPasswordCheck(body.password);
-      await audit('auth.student_login_blocked_locked');
+      await audit('auth.student_login_blocked_locked', lockMeta(client));
       throw invalid;
     }
     if (!(await verifyPassword(user.password_hash, body.password))) {
-      const failures = user.failed_login_count + 1;
-      const lock = failures >= MAX_FAILED_LOGINS;
-      await db
-        .updateTable('users')
-        .set({ failed_login_count: lock ? 0 : failures, locked_until: lock ? new Date(Date.now() + LOCKOUT_MS) : user.locked_until })
-        .where('id', '=', user.id)
-        .execute();
-      await audit(lock ? 'auth.student_locked' : 'auth.student_login_failed');
+      const r = await recordFailure(db, client, { accountLock });
+      await audit(failAction(r, 'auth.student_login_failed', 'auth.student_locked'), lockMeta(client, r));
       throw invalid;
     }
     if (user.status !== 'active') throw forbidden('This account is suspended. Ask your school.', 'ACCOUNT_SUSPENDED');
@@ -287,7 +301,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const enabled = await withOrgContext(db, { orgId: org.id }, async (trx) => studentsEnabled(await getEntitlements(trx, org.id, config.GRACE_DAYS)));
     if (!enabled) throw forbidden('Your school has not turned on the student portal. Ask your school.', 'STUDENT_PORTAL_OFF');
 
-    await db.updateTable('users').set({ failed_login_count: 0, locked_until: null, last_login_at: new Date() }).where('id', '=', user.id).execute();
+    await db.updateTable('users').set({ last_login_at: new Date() }).where('id', '=', user.id).execute();
+    await recordSuccess(db, config, reply, client);
     if (req.auth?.kind === 'session') await revokeSession(db, req.auth.session.id);
     await startSession(ctx, req, reply, user, { mfaPending: false, mfaVerified: false });
     await audit('auth.student_login');
@@ -300,6 +315,17 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     const body = parse(z.object({ code: z.string().max(20).optional(), recoveryCode: z.string().max(40).optional() }), req.body);
     const user = auth.user;
     const meta = requestMeta(req);
+    const client = await loginClient(db, config, req, user.id);
+    const endPending = async () => {
+      await revokeSession(db, auth.session.id);
+      clearSessionCookie(reply, config);
+    };
+    if (await isLocked(db, client, { accountLock: true })) {
+      // Locked meanwhile (from this client, or every unknown one): the half-authenticated session ends.
+      await endPending();
+      await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: 'auth.mfa_blocked_locked', targetType: 'user', targetId: user.id, metadata: lockMeta(client) }, meta);
+      throw new AppError(401, 'MFA_INVALID', 'The code is incorrect or has already been used');
+    }
     let ok = false;
     if (body.code && user.mfa_secret_enc) {
       const step = verifyTotp(decryptSecret(config.dataKeys, user.mfa_secret_enc), body.code, user.mfa_last_step === null ? null : Number(user.mfa_last_step));
@@ -320,22 +346,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
     }
     if (!ok) {
       // Failed second factors count toward the same lockout as failed passwords,
-      // and a locked account loses its half-authenticated session.
-      const failures = user.failed_login_count + 1;
-      const lock = failures >= MAX_FAILED_LOGINS;
-      await db
-        .updateTable('users')
-        .set({ failed_login_count: lock ? 0 : failures, locked_until: lock ? new Date(Date.now() + LOCKOUT_MS) : user.locked_until })
-        .where('id', '=', user.id)
-        .execute();
-      if (lock) {
-        await revokeSession(db, auth.session.id);
-        clearSessionCookie(reply, config);
-      }
-      await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: lock ? 'auth.account_locked' : 'auth.mfa_failed', targetType: 'user', targetId: user.id }, meta);
+      // and a locked-out client loses its half-authenticated session.
+      const r = await recordFailure(db, client, { accountLock: true });
+      if (r.clientLocked || r.accountLocked) await endPending();
+      await recordPlatformAudit(db, { type: 'user', userId: user.id, email: user.email }, { action: failAction(r, 'auth.mfa_failed', 'auth.account_locked'), targetType: 'user', targetId: user.id, metadata: lockMeta(client, r) }, meta);
       throw new AppError(401, 'MFA_INVALID', 'The code is incorrect or has already been used');
     }
-    await db.updateTable('users').set({ failed_login_count: 0 }).where('id', '=', user.id).execute();
+    await recordSuccess(db, config, reply, client);
     // Rotate: the pre-MFA session token is discarded.
     await revokeSession(db, auth.session.id);
     await startSession(ctx, req, reply, user, { mfaPending: false, mfaVerified: true });
@@ -433,8 +450,6 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         .set({
           password_hash: passwordHash,
           password_changed_at: new Date(),
-          failed_login_count: 0,
-          locked_until: null,
           // Receiving the reset email proves control of the address.
           email_verified_at: sql`coalesce(email_verified_at, now())`,
         })
@@ -443,6 +458,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
         .executeTakeFirstOrThrow()
         .then(asStaff);
       await revokeUserSessions(trx, userId);
+      await clearLoginFailures(trx, config, userId);
       await enqueueEmail(trx, u.email, 'password_changed', u.locale, { name: u.name, resetLink: link(ctx, '/forgot-password') });
       return u;
     });

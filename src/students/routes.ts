@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { actorFromRequest, recordAudit, requestMeta } from '../audit/audit.js';
 import { inOrg, requireStudentSession } from '../auth/guards.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
+import { clearLoginFailures } from '../auth/login-protection.js';
 import { revokeUserSessions } from '../auth/sessions.js';
 import { getEntitlements, lockOrg } from '../billing/entitlements.js';
 import { gradeList } from '../catalog/service.js';
@@ -131,13 +132,26 @@ export function registerStudentRoutes(app: FastifyInstance, ctx: AppContext): vo
       const password = generateStudentPassword();
       await trx
         .updateTable('users')
-        .set({ password_hash: await hashPassword(password), password_changed_at: new Date(), failed_login_count: 0, locked_until: null })
+        .set({ password_hash: await hashPassword(password), password_changed_at: new Date() })
         .where('id', '=', userId)
         .where('kind', '=', 'student')
         .execute();
       await revokeUserSessions(trx, userId);
+      await clearLoginFailures(trx, ctx.config, userId);
       await recordAudit(trx, actorFromRequest(req), { orgId, action: 'student.password_reset', targetType: 'student', targetId: userId, metadata: { username: student.username } }, requestMeta(req));
       return { password };
+    });
+  });
+
+  // Lets the student sign in again from wherever they were locked out, keeping their password.
+  app.post('/api/orgs/:orgId/students/:userId/unlock', rateLimited(120, '1 hour'), async (req) => {
+    const { orgId, userId } = parse(StudentParams, req.params);
+    return inOrg(ctx, req, orgId, 'admin', async (trx) => {
+      const student = await trx.selectFrom('students').select(['user_id', 'username']).where('org_id', '=', orgId).where('user_id', '=', userId).executeTakeFirst();
+      if (!student) throw notFound('Student');
+      await clearLoginFailures(trx, ctx.config, userId);
+      await recordAudit(trx, actorFromRequest(req), { orgId, action: 'student.unlocked', targetType: 'student', targetId: userId, metadata: { username: student.username } }, requestMeta(req));
+      return { status: 'unlocked' };
     });
   });
 

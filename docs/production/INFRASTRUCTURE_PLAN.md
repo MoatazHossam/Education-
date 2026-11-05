@@ -26,31 +26,40 @@ database not published to the host (`docker-compose.yml:90-91`); app ports remov
 
 | ID | Finding | Severity | Evidence |
 | --- | --- | --- | --- |
-| I-1 | No memory or CPU limits on any container; one runaway (ClamAV reload, image decode) can push PostgreSQL into the OOM killer | High | No `mem_limit`/`deploy.resources` in either compose file [V-code] |
-| I-2 | PostgreSQL runs with stock settings (`shared_buffers` 128 MB etc.) | Medium | `docker-compose.yml:67-91` has no `command:` or config mount [V-code] |
+| I-1 | ~~No memory or CPU limits on any container; one runaway (ClamAV reload, image decode) can push PostgreSQL into the OOM killer~~ **Fixed 2026-11-05 (task 1.4):** a memory limit per container (§3) | — | `docker-compose.prod.yml` [V-run, §3] |
+| I-2 | ~~PostgreSQL runs with stock settings (`shared_buffers` 128 MB etc.)~~ **Fixed 2026-11-05 (task 1.4):** tuned for its memory limit (§5) | — | `docker-compose.prod.yml` [V-run, §5] |
 | I-3 | ~~Rollback through `ops/start.sh` fails after a release that added a migration~~ **Fixed 2026-11-05 (task 1.2)** | — | See §6 [V-run] |
 | I-4 | Images are built on the production host; only one `previous` tag is kept; no registry, no digests | Medium | `ops/midad.sh:206-231`, `scripts/rolling-restart.sh:26-35` [V-code] |
 | I-5 | Bundled database has daily logical backups only: RPO 24 h, no point-in-time recovery | Medium | `docs/DEPLOYMENT_GUIDE.md §5` [DOC] |
 | I-6 | Homework files live in PostgreSQL (`bytea`), default quota 1 GB per school | Medium | `0013_classroom.ts:127`, `src/billing/entitlements.ts:9` [V-code] |
-| I-7 | ClamAV needs ~1.5 GB and may briefly need about twice that while reloading signatures | High on 8 GB | `docker-compose.prod.yml:49-53` [V-code]; reload behaviour [ASSUMPTION — ClamAV default `ConcurrentDatabaseReload yes`; confirm in the image] |
+| I-7 | ~~ClamAV needs ~1.5 GB and may briefly need about twice that while reloading signatures~~ **Fixed 2026-11-05 (task 1.4):** measured 0.94 GB steady and 1.89 GB during a reload; with `ConcurrentDatabaseReload no` the reload stays at 0.96 GB | — | [V-run, §3] |
 | I-8 | Logs stay on the host (json-file, 50 MB per container); no central search or retention | Low | `docker-compose.yml:8-12` [V-code] |
 | I-9 | No host metrics (disk, memory, load) or external uptime check yet | Medium | `docs/DEPLOYMENT_GUIDE.md §6` [DOC] |
 | I-10 | `SHUTDOWN_DRAIN_MS` 5 s and Caddy health every 2 s are tuned; long AI requests (up to minutes) are cut at `stop_grace_period: 30s` | Low | `docker-compose.prod.yml:19,22`, AI_COST_CONTROL_PLAN §2 |
 
 ## 3. Memory and CPU budget on 4 vCPU / 8 GB
 
-Estimates **[ASSUMPTION]** from typical footprints; to be measured on the target host (§9).
+**In place since 2026-11-05 (task 1.4)** in `docker-compose.prod.yml`, each value changeable in the env file
+(`docs/DEPLOYMENT_GUIDE.md §3.6`, with columns for 4 GB and 16 GB hosts). Measured [V-run] on the production-settings
+stack under the 300-student exam load test (`docs/TEST_REPORT.md §4`, "Container memory limits"); the database there
+is small, so PostgreSQL's figure will grow with real data, up to its limit.
 
-| Component | Steady | Peak | Proposed limit | Notes |
-| --- | --- | --- | --- | --- |
-| Host OS, Docker, sshd | 0.5 GB | 0.7 GB | — | |
-| PostgreSQL 16 | 2.3 GB | 3.0 GB | 3.0 GB | `shared_buffers=2GB` + work_mem × active queries |
-| `app` ×2 (Node 22) | 2 × 0.25 GB | 2 × 0.6 GB | 768 MB each, `--max-old-space-size=512` | 5 MB uploads are buffered in memory; Argon2 uses 19 MiB per concurrent hash, 4 at a time (libuv pool) |
-| `worker` (Node + sharp/libvips) | 0.3 GB | 0.8 GB | 1 GB | `limitImageWork()` in `src/worker.ts:36`; images ≤ 100 MP |
-| `clamav` | 1.3 GB | 2.6 GB (reload) | 2.5 GB with `ConcurrentDatabaseReload no` | Without that setting the reload peak can exceed the limit |
-| `caddy` | 0.05 GB | 0.1 GB | 256 MB | |
-| Page cache headroom | rest | | | PostgreSQL relies on it |
-| **Total of limits** | | | **≈ 8.3 GB** | Slightly over 8 GB on purpose (not all peak together); add 2 GB swap as a safety net |
+| Component | Limit | Measured peak under load | Notes |
+| --- | --- | --- | --- |
+| Host OS, Docker, sshd | — | — | About 0.5–0.7 GB **[ASSUMPTION]** |
+| PostgreSQL 16 | 3 GB | 157 MiB | `shared_buffers` 1 GB (§5); `shm_size` 1 GB |
+| `app` ×2 (Node 22) | 768 MB each, heap 512 MB | 114 and 95 MiB | 5 MB uploads are buffered in memory; Argon2 uses 19 MiB per concurrent hash, 4 at a time (libuv pool) |
+| `worker` (Node + sharp/libvips) | 1 GB, heap 512 MB | 77 MiB | `limitImageWork()` in `src/worker.ts`; images ≤ 100 MP |
+| `clamav` | 2 GB | 962 MiB | 944 MiB steady; a signature reload reached 1,886 MiB with the default `ConcurrentDatabaseReload yes` and 956 MiB with `no` (set) |
+| `caddy` | 256 MB | 29 MiB | |
+| `migrate` (one-shot) | 768 MB, heap 512 MB | — | |
+| Page cache headroom | rest | | |
+| **Total of limits** | **≈ 8.3 GB** | | Slightly over 8 GB on purpose (not all peak together); add 2 GB swap as a safety net |
+
+A container over its limit is handled inside it: in the test, a process in `worker` that kept allocating was stopped
+by the kernel at its 1 GB limit (exit 137) while the worker itself, PostgreSQL and both app instances kept running
+and `/readyz` answered 200. No CPU limits are set: sign-in bursts need all cores for Argon2, and a fixed `cpus` value
+fails on a host with fewer cores.
 
 CPU: the measured exam load (300 students, 5 teachers, about 1,900 requests/min, p95 ≤ 79 ms) used a
 two-instance local stack **[DOC]** `docs/TEST_REPORT.md §5`. On 4 vCPU the expected bottleneck is Argon2 during
@@ -74,22 +83,32 @@ small second VM. Kubernetes is not warranted at this scale.
 
 ## 5. PostgreSQL
 
-Proposed settings for 8 GB host with ~3 GB for PostgreSQL **[ASSUMPTION — validate with pgtune-style checks and
-load test]**, passed as `command:` flags or a mounted `postgresql.conf`:
+**In place since 2026-11-05 (task 1.4)** as `command:` flags in `docker-compose.prod.yml`, each changeable in the env
+file; checked with `SHOW` on the running stack [V-run]:
 
 ```
-shared_buffers = 2GB
-effective_cache_size = 4GB
-work_mem = 16MB
-maintenance_work_mem = 256MB
-max_connections = 60          # 2×10 app + 3 worker + migrate + backup + admin, with margin
+shared_buffers = 1GB                    # POSTGRES_SHARED_BUFFERS
+effective_cache_size = 2GB              # POSTGRES_EFFECTIVE_CACHE_SIZE
+work_mem = 16MB                         # POSTGRES_WORK_MEM
+maintenance_work_mem = 256MB            # POSTGRES_MAINTENANCE_WORK_MEM
+max_connections = 80                    # POSTGRES_MAX_CONNECTIONS; about 50 in use (2×(10+5) app, 3+5 worker, migrate, backup, tools)
 wal_compression = on
 checkpoint_completion_target = 0.9
-random_page_cost = 1.1        # NVMe
+random_page_cost = 1.1                  # NVMe
 log_min_duration_statement = 500ms
-idle_in_transaction_session_timeout = 60s
-shm_size: 1gb                 # compose service setting, needed for shared memory
+idle_in_transaction_session_timeout = 2min
+shm_size: 1g                            # POSTGRES_SHM_SIZE; compose service setting, shared memory for parallel queries
+memory limit: 3g                        # POSTGRES_MEMORY_LIMIT
 ```
+
+Two changes from the first draft of this plan, for reasons found while doing it:
+- `shared_buffers` 1 GB and `effective_cache_size` 2 GB rather than 2 GB and 4 GB: the container's memory limit also
+  bounds the operating system's file cache for PostgreSQL's files, so the cache beyond `shared_buffers` is only what
+  the 3 GB limit leaves after shared buffers and connections.
+- `idle_in_transaction_session_timeout` 2 min rather than 60 s: the worker holds a transaction open while it waits
+  for ClamAV (up to 30 s, longer than that while signatures reload) and while it resizes a photo.
+
+No statement took 500 ms or more during the load test (none in the database log).
 
 Point-in-time recovery: either a managed PostgreSQL with PITR (recommended once revenue allows; the compose files
 already support `DATABASE_URL` + `--scale postgres=0`, `docker-compose.yml:20-24`) or WAL archiving from the

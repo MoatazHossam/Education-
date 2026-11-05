@@ -5,6 +5,12 @@
 
 # On SIGTERM an instance reports "draining" on /readyz for 5 s, so Caddy (which
 # checks every 2 s) stops sending it requests, then finishes the ones in flight.
+#
+# Memory: every container has a limit, sized for one 4 vCPU / 8 GB host
+# (docs/production/INFRASTRUCTURE_PLAN.md §3; other sizes: DEPLOYMENT_GUIDE §3.6).
+# A container that goes over its limit is stopped and restarted by Docker on its own,
+# instead of the host running out of memory and its kernel picking a process to kill,
+# possibly PostgreSQL. Each limit can be changed in the env file (*_MEMORY_LIMIT).
 x-logging: &logging
   driver: json-file
   options:
@@ -19,7 +25,14 @@ x-app-production: &app-production
     SHUTDOWN_DRAIN_MS: ${SHUTDOWN_DRAIN_MS:-5000}
     FILE_SCAN: ${FILE_SCAN:-clamav}
     CLAMAV_HOST: clamav
+    # Node's JavaScript heap stays well inside the container's limit, which also holds uploads
+    # in memory (5 MB each) and password hashing (19 MiB per hash, 4 at a time).
+    NODE_OPTIONS: --max-old-space-size=${APP_HEAP_MB:-512}
   stop_grace_period: 30s
+  deploy:
+    resources:
+      limits:
+        memory: ${APP_MEMORY_LIMIT:-768m}
 
 services:
   app:
@@ -42,12 +55,18 @@ services:
       NODE_ENV: production
       FILE_SCAN: ${FILE_SCAN:-clamav}
       CLAMAV_HOST: clamav
+      # Photos are resized by libvips outside the JavaScript heap (src/worker.ts limits that work).
+      NODE_OPTIONS: --max-old-space-size=${WORKER_HEAP_MB:-512}
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEMORY_LIMIT:-1g}
     depends_on:
       clamav:
         condition: service_started
 
   # ClamAV's daemon, reached by the worker on port 3310 inside the compose network only.
-  # It needs about 1.5 GB of memory, takes a minute or two to load its signatures after a
+  # It needs about 1 GB of memory, takes a minute or two to load its signatures after a
   # start (files wait meanwhile), and updates them itself (freshclam) from
   # database.clamav.net, so allow that host out. FILE_SCAN=off in the env file turns
   # scanning off; the service can then be left out (docker compose up without it).
@@ -55,6 +74,15 @@ services:
     image: clamav/clamav:1.5
     restart: unless-stopped
     logging: *logging
+    environment:
+      # New signatures (several times a day) replace the loaded ones in place instead of being
+      # loaded beside them, so a reload does not need twice the memory. Scans wait for the reload
+      # (seconds to a minute); the worker retries files that time out.
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+    deploy:
+      resources:
+        limits:
+          memory: ${CLAMAV_MEMORY_LIMIT:-2g}
     volumes:
       - clamav_db:/var/lib/clamav
     healthcheck:
@@ -71,6 +99,48 @@ services:
       NODE_ENV: production
       FILE_SCAN: ${FILE_SCAN:-clamav}
       CLAMAV_HOST: clamav
+      NODE_OPTIONS: --max-old-space-size=${APP_HEAP_MB:-512}
+    deploy:
+      resources:
+        limits:
+          memory: ${APP_MEMORY_LIMIT:-768m}
+
+  # The bundled database, tuned for the memory it is given (unused with a managed database).
+  # The limit also bounds the operating system's file cache for its files, so shared_buffers,
+  # PostgreSQL's own cache, is the larger part of it, and effective_cache_size counts only what
+  # the limit leaves. Connections: 2 app instances × (10 + 5), the worker 3 + 5, migrate, backups,
+  # the health check and tools come to about 50 of max_connections.
+  postgres:
+    shm_size: ${POSTGRES_SHM_SIZE:-1g}
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT:-3g}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-1GB}
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-2GB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-16MB}
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-80}
+      - -c
+      - wal_compression=on
+      - -c
+      - checkpoint_completion_target=0.9
+      # SSD or NVMe storage
+      - -c
+      - random_page_cost=1.1
+      # Slow statements in the database log (docker compose logs postgres)
+      - -c
+      - log_min_duration_statement=500ms
+      # Longer than the worker's 30 s wait for the virus scanner, the longest a transaction stays idle
+      - -c
+      - idle_in_transaction_session_timeout=2min
 
   mailpit:
     profiles: ["dev-only"]
@@ -79,6 +149,10 @@ services:
     image: caddy:2.10-alpine
     restart: unless-stopped
     logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: ${CADDY_MEMORY_LIMIT:-256m}
     ports:
       - "80:80"
       - "443:443"

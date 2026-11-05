@@ -12,53 +12,77 @@ x-logging: &logging
     max-file: "5"
 
 # Every setting the app reads (src/config.ts) can be set in the env file; empty means the default.
-x-app-env: &app-env
+# Each container gets only the settings it needs (production finding S-9), so one that is broken
+# into gives away only its own: migrate gets the schema owner's database and no application
+# secret; the worker gets no SESSION_SECRET and no payment or AI keys; only the app instances get
+# those, and they do not get the schema owner's password. The backup role's password goes to the
+# postgres service only, which creates the roles.
+
+# Every Node container.
+x-env-base: &env-base
   NODE_ENV: ${NODE_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_SSL: ${DATABASE_SSL:-}
+
+# migrate: migrations and the catalogue seed, as the schema owner, then grants to the runtime roles.
+x-env-migrate: &env-migrate
+  <<: *env-base
+  MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}}
+  APP_DB_ROLE: ${DB_APP_USER}
+  SYSTEM_DB_ROLE: ${DB_SYSTEM_USER:-midad_system}
+  BILLING_CURRENCY: ${BILLING_CURRENCY:-EGP}
+
+# The app instances and the worker.
+x-env-runtime: &env-runtime
+  <<: *env-base
   APP_URL: ${APP_URL:-http://localhost:3000}
   TRUST_PROXY: ${TRUST_PROXY:-false}
-  LOG_LEVEL: ${LOG_LEVEL:-info}
   # The bundled postgres service by default. For a managed database, set DATABASE_URL,
   # MIGRATION_DATABASE_URL and DATABASE_SSL=true in the env file and start without the
   # bundled one (--scale postgres=0; the ops scripts do this when DATABASE_URL is set).
   DATABASE_URL: ${DATABASE_URL:-postgres://${DB_APP_USER}:${DB_APP_PASSWORD}@postgres:5432/${DB_NAME}}
-  MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgres://${DB_OWNER_USER}:${DB_OWNER_PASSWORD}@postgres:5432/${DB_NAME}}
   # The system role (BYPASSRLS) for cross-tenant work; the app role above never bypasses row-level security.
   SYSTEM_DATABASE_URL: ${SYSTEM_DATABASE_URL:-postgres://${DB_SYSTEM_USER:-midad_system}:${DB_SYSTEM_PASSWORD}@postgres:5432/${DB_NAME}}
   SYSTEM_DATABASE_POOL_MAX: ${SYSTEM_DATABASE_POOL_MAX:-}
-  DATABASE_SSL: ${DATABASE_SSL:-}
   DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
-  APP_DB_ROLE: ${DB_APP_USER}
-  SYSTEM_DB_ROLE: ${DB_SYSTEM_USER:-midad_system}
-  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  # Decrypts two-factor secrets (app) and webhook signing secrets (both).
   DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
   DATA_ENCRYPTION_KEYS_PREVIOUS: ${DATA_ENCRYPTION_KEYS_PREVIOUS:-}
   WEBHOOK_ALLOW_INSECURE_TARGETS: ${WEBHOOK_ALLOW_INSECURE_TARGETS:-false}
+  # The worker sends the queued emails; the app sends operational alerts (by email too).
   EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-smtp}
   SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
   EMAIL_FROM: ${EMAIL_FROM:-Midad <no-reply@localhost>}
-  SALES_EMAIL: ${SALES_EMAIL:-}
   BILLING_PROVIDER: ${BILLING_PROVIDER:-sandbox}
   BILLING_CURRENCY: ${BILLING_CURRENCY:-EGP}
+  TRIAL_DAYS: ${TRIAL_DAYS:-}
+  GRACE_DAYS: ${GRACE_DAYS:-}
+  RENEWAL_NOTICE_DAYS: ${RENEWAL_NOTICE_DAYS:-}
+  AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-}
+  # The worker's pass; the app's alert checks also use it to tell a stopped worker.
+  WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-}
+  # Virus scan of homework files (docs/CLASSROOM.md §5); production turns it on (docker-compose.prod.yml).
+  FILE_SCAN: ${FILE_SCAN:-off}
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  CLAMAV_PORT: ${CLAMAV_PORT:-}
+
+# The app instances: sessions and forms, payments, AI.
+x-env-web: &env-web
+  <<: *env-runtime
+  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  SALES_EMAIL: ${SALES_EMAIL:-}
   SANDBOX_WEBHOOK_SECRET: ${SANDBOX_WEBHOOK_SECRET:-}
   PAYMOB_SECRET_KEY: ${PAYMOB_SECRET_KEY:-}
   PAYMOB_PUBLIC_KEY: ${PAYMOB_PUBLIC_KEY:-}
   PAYMOB_HMAC_SECRET: ${PAYMOB_HMAC_SECRET:-}
   PAYMOB_INTEGRATION_IDS: ${PAYMOB_INTEGRATION_IDS:-}
   PAYMOB_API_BASE: ${PAYMOB_API_BASE:-}
-  TRIAL_DAYS: ${TRIAL_DAYS:-}
-  GRACE_DAYS: ${GRACE_DAYS:-}
-  RENEWAL_NOTICE_DAYS: ${RENEWAL_NOTICE_DAYS:-}
-  AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-}
   RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-}
-  WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-}
   SHUTDOWN_DRAIN_MS: ${SHUTDOWN_DRAIN_MS:-}
+  # Operational alerts are checked and sent by the app instances (src/ops/alerts.ts).
   ALERT_EMAILS: ${ALERT_EMAILS:-}
   ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
   ALERT_CHECK_INTERVAL_MS: ${ALERT_CHECK_INTERVAL_MS:-}
-  # Virus scan of homework files (docs/CLASSROOM.md §5); production turns it on (docker-compose.prod.yml).
-  FILE_SCAN: ${FILE_SCAN:-off}
-  CLAMAV_HOST: ${CLAMAV_HOST:-}
-  CLAMAV_PORT: ${CLAMAV_PORT:-}
   # AI assistance (docs/AI_LAYER.md); off unless AI_PROVIDER is set.
   AI_PROVIDER: ${AI_PROVIDER:-none}
   AI_API_KEY: ${AI_API_KEY:-}
@@ -103,7 +127,7 @@ services:
     image: midad:${APP_IMAGE_TAG:-local}
     command: ["sh", "-c", "node dist/db/migrate-cli.js up && node dist/db/seed-cli.js --catalog-only"]
     logging: *logging
-    environment: *app-env
+    environment: *env-migrate
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,7 +138,7 @@ services:
     image: midad:${APP_IMAGE_TAG:-local}
     restart: unless-stopped
     logging: *logging
-    environment: *app-env
+    environment: *env-web
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
@@ -133,7 +157,7 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
-    environment: *app-env
+    environment: *env-runtime
     depends_on:
       migrate:
         condition: service_completed_successfully

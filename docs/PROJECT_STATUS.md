@@ -25,6 +25,31 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Each container gets only its own secrets, and every secret has a rotation procedure (roadmap task 1.5) · COMPLETE (2026-11-05)
+- **Asked:** task 1.5 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings S-9 and S-10: every secret in the
+  settings file reached every container, so a container broken into gave away all of them; and only
+  `DATA_ENCRYPTION_KEY` had a written rotation procedure.
+- **Implemented:**
+  - `docker-compose.yml` gives each container only what it uses. `migrate` gets only the schema owner's database
+    address. The worker gets the app and system roles' addresses, `DATA_ENCRYPTION_KEY` and `SMTP_URL`, and no
+    `SESSION_SECRET`, Paymob, AI or alert keys. The app instances no longer get the schema owner's address. The
+    roles' passwords go to `postgres` only.
+  - Each process checks only what it uses: the worker starts without the keys it does not get
+    (`loadConfig(…, 'worker')`), and migrations read only their own settings (`loadMigrationConfig`).
+  - DEPLOYMENT_GUIDE (English and Arabic): which container gets which secret (§3.2), and "Rotating the other
+    secrets" (§4), one row per secret with the steps and what users notice. The yearly rotation is on the
+    launch-day runbook.
+  - The start script already checked the settings file's permissions (`chmod 600` offered on Linux; other users'
+    access removed on Windows).
+- **Correction found on the way:** rotating `SESSION_SECRET` does not sign anyone out (S-10 said it did): sessions are
+  not signed with it.
+- **Tests:** `tests/unit/config-roles.test.ts` and `tests/unit/compose-env.test.ts` (on `main`'s compose files three
+  of its five tests fail, as they should); the production-settings stack started with every provider key set, and the
+  names in each running container's environment matched (TEST_REPORT §4).
+- **Rollback note:** going back to an image older than this release also needs that release's compose files (older
+  images expect every setting in every container); DEPLOYMENT_GUIDE §4 step 3. Nothing is deployed yet.
+- **Still later:** Docker secrets or a secret store instead of one settings file (S-9, "later").
+
 ### Memory limits for every container and a tuned database (roadmap task 1.4) · COMPLETE (2026-11-05; measured in this sandbox, not yet on the production host)
 - **Asked:** task 1.4 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings I-1, I-2 and I-7: no container had a
   memory limit, so one runaway (a virus-signature reload, a large photo) could make the host's kernel kill PostgreSQL;

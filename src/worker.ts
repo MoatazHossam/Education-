@@ -18,7 +18,7 @@ const REMINDERS_EVERY_MS = 900_000;
 const FILE_CHECKS_EVERY_MS = 2_000;
 
 async function main() {
-  const config = loadConfig();
+  const config = loadConfig(process.env, 'worker');
   const log = pino({ level: config.LOG_LEVEL });
   const db = createAppDatabase(config, 3);
   for (const msg of await databaseRoleProblems(db)) {

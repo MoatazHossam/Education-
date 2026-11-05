@@ -93,6 +93,21 @@ Create `.env.production` from `.env.docker.example`:
 The app refuses to start in production with the sandbox provider, a non-SMTP mailer, a non-HTTPS
 `APP_URL`, `FILE_SCAN` unset, an AI provider without its key and model, or a database role that bypasses RLS.
 
+**Who gets which secret.** The settings file holds every secret, but each container receives only the
+ones it uses (`docker-compose.yml`), so a container that is broken into gives away only its own:
+
+| Container | Secrets it receives |
+| --- | --- |
+| `app`, `app2` | the app and system roles' database addresses, `SESSION_SECRET`, `DATA_ENCRYPTION_KEY`, `SMTP_URL`, the Paymob and AI keys, `ALERT_WEBHOOK_URL` |
+| `worker` | the app and system roles' database addresses, `DATA_ENCRYPTION_KEY`, `SMTP_URL` |
+| `migrate` | the schema owner's database address only |
+| `postgres` | the database roles' passwords (it creates the roles) |
+| `caddy`, `clamav` | none |
+
+Keep the settings file readable by its owner only: the start script offers `chmod 600` on Linux and
+removes other users' access on Windows. Keep a copy of it, and of the backup passphrase, in a password
+manager. How to change each secret: §4, "Rotating the other secrets".
+
 ### 3.3 Start
 `ops/start.sh --env prod` (Linux) or `ops\start.bat --env prod` (Windows) checks the settings, builds
 the image the first time, starts everything and waits until both app instances are ready (§8.2).
@@ -221,7 +236,12 @@ PostgreSQL. Each value can be set in the env file (`.env.docker.example` lists t
      know among its own (another branch or release line), or lacks one of the release's own.
    - A migration that is not backwards-compatible (the release notes say so; so far only 0019, see
      "Installations made before migration 0019" above) must first be reverted with the newer image:
-     `npm run db:migrate:down` (or `node dist/db/migrate-cli.js down` in its container).
+     `npm run db:migrate:down` (or `docker compose … run --rm migrate node dist/db/migrate-cli.js down`: the
+     `migrate` service is the only one with the schema owner's password).
+   - Going back past a release that changed `docker-compose.yml` or `docker-compose.prod.yml`: also put back
+     that release's files (`git checkout <previous release> -- docker-compose.yml docker-compose.prod.yml`),
+     then put the new ones back before the next upgrade. So far one release did: the one that gives each
+     container only its own secrets (§3.2), whose `migrate` and worker settings older images do not accept.
    - To revert data, restore the pre-upgrade backup (§8.6).
    - `scripts/rollback-drill.sh` rehearses all of this on a throwaway installation (its own Compose project, about
      10 minutes): it starts a release with one extra migration, then rolls back to the release without
@@ -255,6 +275,25 @@ year, when someone who had access to it leaves, or if it may have leaked. There 
    those backups is deleted.
 
 Locally: `npm run keys:check` and `npm run keys:rotate`.
+
+### Rotating the other secrets
+
+Change every secret about once a year, at once when someone who knew it leaves, and at once if it may
+have leaked. Back up first (`ops/backup.sh --env prod`), and after each change put the new value in the
+password manager's copy of `.env.production`. `scripts/rolling-restart.sh` recreates `app`, `app2` and
+the worker one after the other with the new settings, without downtime.
+
+| Secret | How | What users notice |
+| --- | --- | --- |
+| `SESSION_SECRET` | `openssl rand -base64 48` into the settings file, then `scripts/rolling-restart.sh` | Nobody is signed out: sessions do not depend on it. Open pages fetch a new form token (CSRF) on their next change, automatically. Sign-in attempt counts per address start again. |
+| `DATA_ENCRYPTION_KEY` | The section above | Nothing |
+| A database role's password: `DB_APP_PASSWORD`, `DB_SYSTEM_PASSWORD`, `DB_OWNER_PASSWORD`, `DB_BACKUP_PASSWORD` | 1. Generate it with `openssl rand -hex 24`. 2. Set it in the database: `docker compose … exec postgres psql -U postgres -d <DB_NAME> -c "ALTER ROLE <role> PASSWORD '<new>'"`. 3. Put it in the settings file. 4. `scripts/rolling-restart.sh`. Changing the settings file alone does nothing: the roles are created from it only when the database is first set up. With a managed database, change the password in its console instead of step 2, then update the database addresses in the settings file. | Nothing: connections already open keep working until the restart replaces them |
+| `POSTGRES_SUPERUSER_PASSWORD` | Step 2 above for the role `postgres`, then the settings file. Nothing else uses it: the ops scripts reach the database from inside its container. | Nothing |
+| `PAYMOB_SECRET_KEY`, `PAYMOB_PUBLIC_KEY`, `PAYMOB_HMAC_SECRET` | New keys in the Paymob dashboard, into the settings file, `scripts/rolling-restart.sh`; then check `/admin/events` | A payment callback signed with the old HMAC secret during the switch is refused and recorded: do it at a quiet time and check the events after |
+| `AI_API_KEY` | A new key in the provider's console, into the settings file, `scripts/rolling-restart.sh`; check with **Test the connection** (Platform admin, AI) or `npm run ai:check`; then revoke the old key in the console | AI requests during the restart may fail once |
+| `SMTP_URL` (its user and password) | New credentials at the email provider, into the settings file, `scripts/rolling-restart.sh` | Emails waiting in the queue are sent after the restart |
+| `ALERT_WEBHOOK_URL` | A new webhook address in the chat tool, into the settings file, `scripts/rolling-restart.sh`; then **Send test alert** (Platform admin) | Nothing |
+| The backup passphrase | Give the new one when the backup script asks for it (§8.3), and in the passphrase file of scheduled backups (§8.5) | Nothing. Keep the old passphrase for as long as you keep backups made with it: restoring one of them needs it. |
 
 ## 5. Backups and recovery
 

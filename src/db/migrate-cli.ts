@@ -1,14 +1,15 @@
-import { loadConfig } from '../config.js';
+import { loadMigrationConfig } from '../config.js';
 import { createDatabase } from './index.js';
 import { createMigrator, grantAppRole, migrateToLatest, migrationStatus } from './migrator.js';
 
 // Usage: migrate-cli up|down
 // Connects with MIGRATION_DATABASE_URL (schema owner). When APP_DB_ROLE and
 // SYSTEM_DB_ROLE are set, grants those runtime roles their permissions afterwards.
+// Reads no other setting: the migrate container gets none of the application's secrets.
 // `up` on a database a later release migrated (a rollback) succeeds with nothing to apply.
 async function main() {
-  const config = loadConfig();
-  const db = createDatabase(config.MIGRATION_DATABASE_URL ?? config.DATABASE_URL, { poolMax: 1, ssl: config.DATABASE_SSL });
+  const config = loadMigrationConfig();
+  const db = createDatabase(config.databaseUrl, { poolMax: 1, ssl: config.DATABASE_SSL });
   const cmd = process.argv[2] ?? 'up';
   try {
     if (cmd === 'up') {

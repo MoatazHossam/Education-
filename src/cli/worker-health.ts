@@ -5,7 +5,8 @@ import { workerStaleAfterMs } from '../ops/alerts.js';
 // Container health check for the worker: exits 0 when the worker wrote a
 // heartbeat within the last few intervals, 1 otherwise.
 async function main() {
-  const config = loadConfig();
+  // Runs in the worker's container, with the worker's settings.
+  const config = loadConfig(process.env, 'worker');
   const db = createDatabase(config.DATABASE_URL, { poolMax: 1, ssl: config.DATABASE_SSL });
   try {
     const row = await db.selectFrom('worker_heartbeats').select('last_beat_at').where('name', '=', 'worker').executeTakeFirst();

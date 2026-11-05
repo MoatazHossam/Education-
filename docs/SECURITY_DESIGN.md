@@ -62,12 +62,22 @@ webhooks, platform administrators (insider risk), and attackers with a copy of a
 
 | Secret | Purpose | Rotation impact |
 | --- | --- | --- |
-| `SESSION_SECRET` | CSRF token HMAC | Rotating invalidates CSRF tokens; the SPA refetches automatically |
+| `SESSION_SECRET` | CSRF token HMAC; the HMAC of rate-limit and sign-in lockout keys | Rotating invalidates CSRF tokens (the SPA refetches automatically) and restarts sign-in counts; sessions are not affected |
 | `DATA_ENCRYPTION_KEY` | Encrypts TOTP secrets and customer webhook signing secrets | No downtime: the old key moves to `DATA_ENCRYPTION_KEYS_PREVIOUS`, `rotate-data-key` re-encrypts every value, then the old key is removed (DEPLOYMENT_GUIDE §4, "Rotating `DATA_ENCRYPTION_KEY`"). Keep the old key with backups made before the rotation |
-| Database passwords (owner/app/backup) | DB access | Standard role password rotation |
+| Database passwords (owner/app/system/backup, superuser) | DB access | `ALTER ROLE … PASSWORD`, then the env file and a rolling restart; no downtime |
 | `PAYMOB_*`, `SANDBOX_WEBHOOK_SECRET` | Provider API and webhook verification | Rotate in provider dashboard + env |
 | `AI_API_KEY` | The AI provider's API (docs/AI_LAYER.md) | Create a new key in the provider's console, set it, restart, then delete the old key; check with `npm run ai:check` |
 | SMTP credentials | Email | Provider dashboard |
+| `ALERT_WEBHOOK_URL` | Alerts to a chat tool | A new webhook address, then a test alert |
+
+The steps for each, with what users notice: DEPLOYMENT_GUIDE §4, "Rotating the other secrets"; once a year, and at
+once when someone who knew a secret leaves.
+
+Each container receives only the secrets it uses (`docker-compose.yml`; DEPLOYMENT_GUIDE §3.2, "Who gets which
+secret"): `migrate` only the schema owner's database address; the worker no `SESSION_SECRET`, payment, AI or alert
+keys; the app instances not the schema owner's password; only `postgres` the roles' passwords. Each process checks
+only what it uses (`loadConfig(…, 'worker')`, `loadMigrationConfig`); `tests/unit/compose-env.test.ts` fails if a
+secret reaches a container that should not have it.
 
 Secrets come only from the environment (or Docker env files kept out of git — `.gitignore`
 excludes `.env*` except the examples). Nothing secret is committed; demo credentials are generated

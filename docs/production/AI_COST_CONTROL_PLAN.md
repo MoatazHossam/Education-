@@ -28,7 +28,7 @@ The foundation (atomic quota, logging without content, staff-only) is good. What
 | A-1 | Quotas count **requests**, not tokens or money. One request can use up to 60,000 prompt characters and 16,000 output tokens, and a JSON retry costs a second full call without a second unit | High | `service.ts:26, 29, 88, 154` [V-code] |
 | A-2 | **No platform-wide spend cap** or circuit breaker: if many schools get allowances, nothing stops the monthly bill except per-school counts | High | No such check in `src/ai/` [V-code] |
 | A-3 | No cost model: tokens are stored but never priced; no per-plan or per-school margin view | Medium | `src/ai/routes.ts:42-50` sums tokens only [V-code] |
-| A-4 | Worst-case latency is very long: `AI_TIMEOUT_MS` 120 s per attempt, SDK retries 2 (3 attempts), and 2 attempts for valid JSON — up to about 12 minutes holding one HTTP request | Medium | `src/config.ts:87`, `src/ai/providers/gemini.ts:28`, `anthropic.ts:32`, `openai.ts:23`, `service.ts:29` [V-code] |
+| A-4 | Worst-case latency is very long: `AI_TIMEOUT_MS` 120 s per attempt, SDK retries 2 (3 attempts), and 2 attempts for valid JSON — up to about 12 minutes holding one HTTP request. **Fixed by task 1.6**: 60 s, 1 retry (`AI_MAX_RETRIES`), and a deadline on each provider call; at most 4 min 20 s, a provider that never answers gives 503 after about 2 min (docs/AI_LAYER.md §2) | Medium · **fixed** | `src/config.ts:87`, `src/ai/providers/gemini.ts:28`, `anthropic.ts:32`, `openai.ts:23`, `service.ts:29` [V-code] |
 | A-5 | Allowances are per school only; no per-user daily cap beyond the 30/hour route limit | Low | [V-code] |
 | A-6 | Monthly period is UTC (`periodKey`), while schools work in local time | Low | `src/lib/time.ts:22-25` [V-code] |
 | A-7 | No plan includes AI; pricing of AI for customers undecided | Business | B-10 [DOC] |
@@ -49,8 +49,10 @@ Layered, cheapest first:
    refuse new requests with `AI_BUSY` when month-to-date estimated spend ≥ cap; operational alert at 80 % and
    100 %.
 4. **Per-user daily cap** (e.g. 50 requests/day) to stop one account draining a school's allowance.
-5. **Shorter worst case**: `AI_TIMEOUT_MS` 60 s, provider retries 1, keep 2 JSON attempts → worst case about
-   4 minutes; longer tasks (teaching plans) as background jobs with a status endpoint, not a held HTTP request.
+5. **Shorter worst case** (**done, task 1.6**): `AI_TIMEOUT_MS` 60 s, provider retries 1 (`AI_MAX_RETRIES`), keep 2
+   JSON attempts, and a deadline on each provider call ((1 + retries) × timeout + 10 s per retry), because the
+   Anthropic and OpenAI SDKs otherwise wait up to 60 s for a `retry-after` → worst case 4 min 20 s. Still open:
+   longer tasks (teaching plans) as background jobs with a status endpoint, not a held HTTP request.
 6. **Model routing**: a small/fast model for structured suggestions; a larger one only for features that need it.
    Configuration becomes `AI_MODEL_DEFAULT` + per-feature override, still one provider.
 7. **Prompt caching** where the provider supports it for repeated system prompts **[ASSUMPTION]**.
@@ -80,7 +82,7 @@ privacy notice and DPA; keep students out (already enforced). See SECURITY_GAP_A
 | Step | Depends on | Acceptance criteria | Verification |
 | --- | --- | --- | --- |
 | AI-1 Provider console budget + key on staging | Key (C-5) | `npm run ai:check` passes; console alert configured | `npm run ai:check` |
-| AI-2 Timeouts and retries reduced (config + adapter default) | — | Worst case ≤ 4 min in a simulator test with a hanging provider | `npm run test:integration -- ai ai-providers-contract` |
+| AI-2 **Done (task 1.6).** Timeouts and retries reduced (config + adapter default) | — | Worst case ≤ 4 min in a simulator test with a hanging provider (measured with the defaults: 503 `AI_UNAVAILABLE` after 120–122 s on all three adapters, TEST_REPORT §4) | `npm run test:integration -- ai ai-providers-contract` |
 | AI-3 Price table + month-to-date spend + platform cap | D-6 | With cap reached, new calls get 503 `AI_BUSY` and an alert fires; existing tests pass | New integration test using `tests/helpers/ai-simulator.ts` |
 | AI-4 Token budget per school (estimate then settle) | AI-3 | Concurrent requests cannot exceed the token budget by more than one request's estimate | Concurrency test like the existing quota test |
 | AI-5 Per-user daily cap | — | 51st request in a day by one user gets 429 | Integration test |

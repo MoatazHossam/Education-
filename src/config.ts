@@ -100,7 +100,11 @@ const envSchema = (role: ConfigRole) => z
     AI_API_KEY: z.string().min(8).optional(),
     AI_MODEL: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/, 'AI_MODEL must be a model id such as gemini-2.5-pro or claude-opus-5-5').optional(),
     AI_API_BASE: z.url().regex(/^https?:\/\//, 'AI_API_BASE must be an http(s) URL').optional(),
-    AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(600_000).default(120_000),
+    // Per attempt, and retries after the first attempt of one provider call. With two attempts for a
+    // reply of the right shape, a request waits at most about 2 × ((1 + retries) × timeout + 10 s
+    // per retry): 4 min 20 s with these defaults (src/ai/service.ts aiWorstCaseMs, finding A-4).
+    AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(600_000).default(60_000),
+    AI_MAX_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
     AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(64_000).default(16_000),
   })
   .superRefine((env, ctx) => {

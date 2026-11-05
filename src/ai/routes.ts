@@ -9,7 +9,7 @@ import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { periodKey } from '../lib/time.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from './schema.js';
-import { aiNotConfigured } from './service.js';
+import { aiNotConfigured, aiWorstCaseMs } from './service.js';
 import { AiProviderError } from './types.js';
 
 // Platform administration of AI assistance (docs/AI_LAYER.md): the configured
@@ -74,7 +74,7 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
       }
       return {
         provider: ctx.ai ? { name: ctx.ai.name, model: ctx.ai.model, customEndpoint: Boolean(config.AI_API_BASE) } : null,
-        settings: { timeoutMs: config.AI_TIMEOUT_MS, maxOutputTokens: config.AI_MAX_OUTPUT_TOKENS },
+        settings: { timeoutMs: config.AI_TIMEOUT_MS, maxRetries: config.AI_MAX_RETRIES, worstCaseMs: aiWorstCaseMs(config), maxOutputTokens: config.AI_MAX_OUTPUT_TOKENS },
         period,
         schools,
       };

@@ -1,15 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AiProviderError, errorKindForStatus, type AiProvider, type AiReply, type AiRequest } from '../types.js';
+import { AiProviderError, callDeadlineMs, DEFAULT_MAX_RETRIES, errorKindForStatus, type AiProvider, type AiReply, type AiRequest, type ProviderConfig } from '../types.js';
 
-export interface AnthropicConfig {
-  apiKey: string;
-  model: string;
-  /** Messages API endpoint; the SDK's own when unset. */
-  apiBase?: string;
-  timeoutMs: number;
-  /** Retries after the first attempt (default 2). */
-  maxRetries?: number;
-}
+/** apiBase: the Messages API endpoint. */
+export type AnthropicConfig = ProviderConfig;
 
 // Models whose safety classifiers can decline a request: on these the request
 // opts into Anthropic's server-side fallback, which re-runs a declined request on
@@ -25,11 +18,14 @@ export class AnthropicProvider implements AiProvider {
   readonly name = 'anthropic' as const;
   readonly model: string;
   private readonly client: Anthropic;
+  private readonly deadlineMs: number;
 
   constructor(config: AnthropicConfig) {
     this.model = config.model;
-    // Retries 408, 409, 429, 5xx and connection errors twice, honouring retry-after.
-    this.client = new Anthropic({ apiKey: config.apiKey, timeout: config.timeoutMs, maxRetries: config.maxRetries ?? 2, ...(config.apiBase ? { baseURL: config.apiBase } : {}) });
+    const maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.deadlineMs = callDeadlineMs(config.timeoutMs, maxRetries, config.retryWaitMs);
+    // Retries timeouts, 408, 409, 429, 5xx and connection errors, honouring retry-after up to 60 s.
+    this.client = new Anthropic({ apiKey: config.apiKey, timeout: config.timeoutMs, maxRetries, ...(config.apiBase ? { baseURL: config.apiBase } : {}) });
   }
 
   async generate(req: AiRequest): Promise<AiReply> {
@@ -40,11 +36,13 @@ export class AnthropicProvider implements AiProvider {
       messages: [{ role: 'user' as const, content: req.prompt }],
       ...(req.jsonSchema ? { output_config: { format: { type: 'json_schema' as const, schema: req.jsonSchema } } } : {}),
     };
+    // The whole call, retries included.
+    const options = { signal: AbortSignal.timeout(this.deadlineMs) };
     let res;
     try {
       res = SERVER_FALLBACK_MODELS.has(this.model)
-        ? await this.client.beta.messages.create({ ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' })
-        : await this.client.messages.create(params);
+        ? await this.client.beta.messages.create({ ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }, options)
+        : await this.client.messages.create(params, options);
     } catch (err) {
       throw toProviderError(err);
     }
@@ -58,6 +56,8 @@ export class AnthropicProvider implements AiProvider {
 }
 
 function toProviderError(err: unknown): AiProviderError {
+  // The call's deadline passed (the only abort signal it is given).
+  if (err instanceof Anthropic.APIUserAbortError) return new AiProviderError('Anthropic API: no answer before the deadline', 'timeout');
   if (err instanceof Anthropic.APIConnectionTimeoutError) return new AiProviderError('Anthropic API: request timed out', 'timeout');
   if (err instanceof Anthropic.APIConnectionError) return new AiProviderError(`Anthropic API: ${err.message}`, 'unavailable');
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) return new AiProviderError(`Anthropic API ${err.status}: ${err.message}`, 'auth', err.status);

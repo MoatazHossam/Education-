@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**61 files, 423 tests, 423 passed, 0 failed** (2026-11-05, with the settings split per container, task 1.5). Integration tests ran against a real
+**61 files, 432 tests, 432 passed, 0 failed** (2026-11-05, with the shorter AI wait, task 1.6). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -38,8 +38,8 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/scope-compare | 2 | Pass — same version (only in each, in both); across versions (renamed, missing books and subjects, block renamed) |
 | unit/carry-forward | 4 | Pass — natural-key matching, loose renames, removed subjects, ambiguous keys |
 | unit/csv | 3 | Pass — quotes, line breaks, Arabic, formula guard round trip, Excel semicolons and CRLF |
-| unit/ai-layer | 7 | Pass — AI reply schemas in the form all three providers accept (limits dropped from what is sent, every object closed, optional fields refused); JSON replies checked against the full schema, Markdown fences removed; provider error kinds; configuration (off by default, key and model required, https endpoint in production) |
-| integration/ai-providers-contract | 24 | Pass — the Gemini, Anthropic and OpenAI adapters against a local simulator of each documented API (`tests/helpers/ai-simulator.ts`): instructions, task and JSON schema in the documented fields with the key in the right header; reply, tokens and model read; refusals and truncated replies reported; a refused key not retried and never echoed; 429, 5xx and 400 mapped; a temporary failure retried; timeouts; Anthropic's server-side fallback requested on the models that have it |
+| unit/ai-layer | 8 | Pass — AI reply schemas in the form all three providers accept (limits dropped from what is sent, every object closed, optional fields refused); JSON replies checked against the full schema, Markdown fences removed; provider error kinds; configuration (off by default, key and model required, https endpoint in production); the default timings (60 s, 1 retry) and the longest wait they allow, 260 s (task 1.6) |
+| integration/ai-providers-contract | 30 | Pass — the Gemini, Anthropic and OpenAI adapters against a local simulator of each documented API (`tests/helpers/ai-simulator.ts`): instructions, task and JSON schema in the documented fields with the key in the right header; reply, tokens and model read; refusals and truncated replies reported; a refused key not retried and never echoed; 429, 5xx and 400 mapped; a temporary failure retried; timeouts; a provider that never answers retried once by default, then a timeout; the call cancelled at its deadline when a 429 asks to wait 20 s (task 1.6); Anthropic's server-side fallback requested on the models that have it |
 | unit/question-suggestions | 6 | Pass — the instructions and task sent for suggested questions (grade and stage, subject, books, topic, lesson text, count, kinds, language), the reply schema every provider can be held to, each kind turned into the test's question form, and what is left out (two correct choices on a one-answer question, an index outside the choices, one choice, no true/false, no accepted answer, an empty question, a kind not asked for) |
 | integration/test-question-suggestions | 6 | Pass — against the Gemini simulator: off without AI requests (and the test page says so); what is sent (topic, lesson text, grade, subject, title; no student) and returned (checked questions, two left out), nothing saved, one request counted and logged, a kept suggestion added like any question; only the subject's teachers and admins; not after a student starts; no more than the test's room; request checks; refusals and failures, with the request given back |
 | unit/homework-suggestions | 4 | Pass — the instructions and task for a homework suggestion (grade and stage, subject, books, topic, lesson text, kind, minutes, language), defaults and English, the reply schema within the homework form's limits, trimming |
@@ -47,7 +47,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/plan-suggestions | 9 | Pass — lesson and pacing plan drafts (`docs/TEACHING_PLANS.md` §4): the instructions and task (grade and stage, subject, books, topic, lesson text, length; the term's start, weeks, periods, contents, a revision week only in terms of 6 weeks or more), defaults, the reply schemas (exactly one entry per week), conversion to a plan the editor can save (trimmed, empty items left out), refused requests |
 | integration/teaching-plans | 4 | Pass — teaching plans: any member writes plans for the scope's grades and subjects with books, everyone reads them, missing parts saved empty; the audit names plans without their content; only the author and admins change or delete; the grade and subject, the content against its kind (unknown fields refused) and the 500-plan limit checked; another school and another scope get 404; plans go with their scope |
 | integration/plan-suggestions | 4 | Pass — plan drafts against the Gemini simulator: off without AI requests; a lesson plan from the topic and lesson text (what is sent, the scope's books in the draft), nothing saved until the member saves it, then marked as started from AI; a pacing plan with exactly the weeks asked, asking again once when the count is wrong (2 attempts logged); checks of the subject, the request and the school before any request |
-| integration/ai | 17 | Pass — the AI layer end to end against the simulator: off for every school until a platform administrator sets an allowance, nothing sent before; off without a provider; student accounts refused; the usage log and audit entry with no text; a second attempt on an unusable reply; refusals and truncated replies; the unit given back when the provider fails; the monthly limit held under 8 concurrent requests; an unlimited allowance; row-level security between schools; retention; the platform administration endpoints and the connection test |
+| integration/ai | 19 | Pass — the AI layer end to end against the simulator: off for every school until a platform administrator sets an allowance, nothing sent before; off without a provider; student accounts refused; the usage log and audit entry with no text; a second attempt on an unusable reply; refusals and truncated replies; the unit given back when the provider fails; a provider that never answers: 503 `AI_UNAVAILABLE` after one call of two attempts, and a slow provider with unusable replies within the bound (task 1.6); the monthly limit held under 8 concurrent requests; an unlimited allowance; row-level security between schools; retention; the platform administration endpoints and the connection test |
 | unit/catalog-sheet | 6 | Pass — export layout, published vs draft rules, mark clearing, errors (with their codes), encoding, semicolons |
 | unit/import-problems | 2 | Pass — a problem in an imported file carries its code, parameters and English text; every code has an Arabic text with the same placeholders, and no Arabic text is left without a code |
 | unit/alerts | 2 | Pass — 5xx counter windows; worker-stopped threshold |
@@ -722,6 +722,24 @@ app and worker; names only, never values):
 `migrate` applied every migration and seeded the catalogue (exit 0); app, app2 and the worker were healthy, the worker
 having started without `SESSION_SECRET` or the Paymob and AI keys the settings file asked for. Everything was removed
 afterwards.
+
+### AI request time with a provider that never answers (2026-11-05) — task 1.6
+
+Production finding A-4. A one-off test (not kept in the suite, as it takes two minutes) ran `runAiTask` for three
+schools at once, one per adapter, with the **default** settings (`AI_TIMEOUT_MS` 60000, `AI_MAX_RETRIES` 1) against
+the provider simulator scripted never to answer:
+
+| Adapter | Result | Time | Requests to the provider |
+| --- | --- | --- | --- |
+| Gemini | 503 `AI_UNAVAILABLE` | 121.6 s | 2 |
+| Anthropic | 503 `AI_UNAVAILABLE` | 120.4 s | 2 |
+| OpenAI | 503 `AI_UNAVAILABLE` | 120.4 s | 2 |
+
+With the settings before this task (120 s, 2 retries) the same case makes three attempts, about 6 minutes (computed, not run). The longest
+possible wait with the defaults is 260 s (`aiWorstCaseMs`): it needs a first reply of the wrong shape, asked for once
+more (docs/AI_LAYER.md §2). Measured before the change, with the SDKs the app uses: a `retry-after` of 4 s was waited
+for by the Anthropic and OpenAI SDKs (up to 60 s is honoured) and not by Gemini's, so each provider call now has a
+deadline; the contract tests show a 20 s `retry-after` cut at that deadline on all three.
 
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 

@@ -1,15 +1,8 @@
 import { ApiError, FinishReason, GoogleGenAI } from '@google/genai';
-import { AiProviderError, errorKindForStatus, type AiProvider, type AiReply, type AiRequest } from '../types.js';
+import { AiProviderError, callDeadlineMs, DEFAULT_MAX_RETRIES, errorKindForStatus, type AiProvider, type AiReply, type AiRequest, type ProviderConfig } from '../types.js';
 
-export interface GeminiConfig {
-  apiKey: string;
-  model: string;
-  /** Gemini API endpoint; the SDK's own when unset. */
-  apiBase?: string;
-  timeoutMs: number;
-  /** Retries after the first attempt (default 2). */
-  maxRetries?: number;
-}
+/** apiBase: the Gemini API endpoint. */
+export type GeminiConfig = ProviderConfig;
 
 // Finish reasons that mean the provider's safety or policy rules stopped the reply.
 const REFUSED = new Set<string>([FinishReason.SAFETY, FinishReason.RECITATION, FinishReason.BLOCKLIST, FinishReason.PROHIBITED_CONTENT, FinishReason.SPII]);
@@ -19,13 +12,16 @@ export class GeminiProvider implements AiProvider {
   readonly name = 'gemini' as const;
   readonly model: string;
   private readonly client: GoogleGenAI;
+  private readonly deadlineMs: number;
 
   constructor(config: GeminiConfig) {
     this.model = config.model;
+    const maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.deadlineMs = callDeadlineMs(config.timeoutMs, maxRetries, config.retryWaitMs);
     this.client = new GoogleGenAI({
       apiKey: config.apiKey,
-      // Per-attempt timeout; retries on 408, 429 and 5xx with backoff.
-      httpOptions: { timeout: config.timeoutMs, retryOptions: { attempts: (config.maxRetries ?? 2) + 1 }, ...(config.apiBase ? { baseUrl: config.apiBase } : {}) },
+      // Per-attempt timeout; retries timeouts, 408, 429 and 5xx after a short backoff (not retry-after).
+      httpOptions: { timeout: config.timeoutMs, retryOptions: { attempts: maxRetries + 1 }, ...(config.apiBase ? { baseUrl: config.apiBase } : {}) },
     });
   }
 
@@ -38,6 +34,8 @@ export class GeminiProvider implements AiProvider {
         config: {
           systemInstruction: req.system,
           maxOutputTokens: req.maxOutputTokens,
+          // The whole call, retries included.
+          abortSignal: AbortSignal.timeout(this.deadlineMs),
           ...(req.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: req.jsonSchema } : {}),
         },
       });

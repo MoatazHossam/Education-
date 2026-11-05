@@ -2,7 +2,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAiProvider } from '../../src/ai/providers/index.js';
-import { MAX_PROMPT_CHARS, runAiTask, type AiTask } from '../../src/ai/service.js';
+import { aiWorstCaseMs, MAX_PROMPT_CHARS, runAiTask, type AiTask } from '../../src/ai/service.js';
 import { withOrgContext, withSystemContext } from '../../src/db/index.js';
 import type { StaffUser } from '../../src/db/types.js';
 import type { AppContext } from '../../src/http/context.js';
@@ -188,6 +188,42 @@ describe('AI layer: a request', () => {
     expect(await used(s.orgId)).toBe(0);
   });
 
+  it('a provider that never answers: 503 AI_UNAVAILABLE after one call, within the bound (finding A-4)', async () => {
+    const s = await school();
+    await allow(s.orgId, 5);
+    // The server's settings with short times: two attempts of 300 ms per call.
+    const times = { AI_TIMEOUT_MS: 300, AI_MAX_RETRIES: 1 };
+    const hanging = { ...ctx, ai: createAiProvider({ ...h.config, ...times }) };
+    sim.script('gemini', { kind: 'hang' }, { kind: 'hang' }, { kind: 'hang' }, { kind: 'hang' });
+    const started = Date.now();
+    const err = await rejection(runAiTask(hanging, s.caller, TASK));
+    const elapsed = Date.now() - started;
+    expect([err.statusCode, err.code]).toEqual([503, 'AI_UNAVAILABLE']);
+    // The first attempt and one retry; a provider that did not answer is not asked again for a valid reply.
+    expect(sim.requests).toHaveLength(2);
+    expect(elapsed).toBeGreaterThanOrEqual(600);
+    expect(elapsed).toBeLessThan(aiWorstCaseMs(times) / 2);
+    expect((await log(s.orgId)).map((r) => [r.status, r.error_kind, r.attempts])).toEqual([['failed', 'timeout', 1]]);
+    expect(await used(s.orgId)).toBe(0);
+  });
+
+  it('the longest case, a slow provider whose replies have the wrong shape, stays within the bound', async () => {
+    const s = await school();
+    await allow(s.orgId, 5);
+    const times = { AI_TIMEOUT_MS: 300, AI_MAX_RETRIES: 1 };
+    const slow = { ...ctx, ai: createAiProvider({ ...h.config, ...times }) };
+    // Each call: the first attempt times out, the retry answers with a reply that does not match the schema.
+    sim.script('gemini', { kind: 'hang' }, { kind: 'ok', text: '{"wrong":1}' }, { kind: 'hang' }, { kind: 'ok', text: '{"wrong":2}' });
+    const started = Date.now();
+    const err = await rejection(runAiTask(slow, s.caller, TASK));
+    const elapsed = Date.now() - started;
+    expect([err.statusCode, err.code]).toEqual([502, 'AI_INVALID_REPLY']);
+    expect(sim.requests).toHaveLength(4);
+    expect(elapsed).toBeGreaterThanOrEqual(600);
+    expect(elapsed).toBeLessThan(aiWorstCaseMs(times));
+    expect((await log(s.orgId)).map((r) => [r.status, r.attempts])).toEqual([['invalid_output', 2]]);
+  });
+
   it('a text reply (no schema) is returned as text', async () => {
     const s = await school();
     await allow(s.orgId, 5);
@@ -265,6 +301,8 @@ describe('AI layer: platform administration', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.provider).toEqual({ name: 'gemini', model: 'gemini-2.5-pro', customEndpoint: true });
+    // AI_TIMEOUT_MS 5000 in this harness: 2 × (2 × 5 s + 10 s).
+    expect(body.settings).toEqual({ timeoutMs: 5000, maxRetries: 1, worstCaseMs: 40_000, maxOutputTokens: 16_000 });
     expect(body.period).toBe(periodKey());
     expect(body.schools).toEqual([{ orgId: a.orgId, name: 'Alpha School', planName: 'Professional', limit: 50, used: 1, requests: 1, ok: 1, failed: 0, inputTokens: 400, outputTokens: 70 }]);
   });

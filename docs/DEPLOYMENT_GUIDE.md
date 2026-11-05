@@ -179,8 +179,19 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
 3. Rollback: both ways of rebuilding keep the image they replace as `midad:previous`.
    Add `APP_IMAGE_TAG=previous` to `.env.production` and run `ops/start.sh --env prod`
    (or `APP_IMAGE_TAG=previous scripts/rolling-restart.sh`); remove the line again before the
-   next upgrade, which would otherwise build into that tag. If a migration must be reverted,
-   restore the pre-upgrade backup (§8.6).
+   next upgrade, which would otherwise build into that tag.
+   - Both work after a release that added migrations. The previous release's `migrate` finds the
+     database ahead of it, prints `Database is ahead of this release (rollback): … stay applied`
+     and succeeds; the newer migrations stay, and the app instances become ready.
+   - `migrate` still stops, saying what it found, when the database has a migration the release does not
+     know among its own (another branch or release line), or lacks one of the release's own.
+   - A migration that is not backwards-compatible (the release notes say so; so far only 0019, see
+     "Installations made before migration 0019" above) must first be reverted with the newer image:
+     `npm run db:migrate:down` (or `node dist/db/migrate-cli.js down` in its container).
+   - To revert data, restore the pre-upgrade backup (§8.6).
+   - `scripts/rollback-drill.sh` rehearses all of this on a throwaway installation (its own Compose project, about
+     10 minutes): it starts a release with one extra migration, then rolls back to the release without
+     it by both paths, checking `/readyz` on both instances. Run it on staging before the first upgrade.
 
 ### Rotating `DATA_ENCRYPTION_KEY`
 

@@ -121,7 +121,7 @@ needed before launch) · **Blocked** (needs an external decision or credential).
 | 5 | Secrets | Gap | All secrets in one `.env.production` on the host and passed to every container (`docker-compose.yml:15-64`); no secrets manager; rotation tool exists only for `DATA_ENCRYPTION_KEY` |
 | 6 | Third-party AI exposure | Nearly | Staff-only, no student data by design, no prompt/reply storage; provider terms, region and DPA undecided (B-10) |
 | 7 | Docker Compose deployment | Nearly | Healthy design (two instances, drain, readiness, log caps); no container memory limits, no PostgreSQL tuning, images built on the production host |
-| 8 | Database migrations | Nearly | Forward-only in practice; documented expand/contract rule; **rollback through `ops/start.sh` breaks after a release that added a migration** (INFRASTRUCTURE_PLAN §6, finding I-3) |
+| 8 | Database migrations | Nearly | Forward-only in practice; documented expand/contract rule; ~~rollback through `ops/start.sh` breaks after a release that added a migration~~ fixed 2026-11-05: an older release's `migrate` accepts a database a newer release migrated, shown by `scripts/rollback-drill.sh` on Docker (INFRASTRUCTURE_PLAN §6, I-3); still to run on staging (E-2) |
 | 9 | Health checks and monitoring | Nearly | `/healthz`, `/readyz` (DB + schema + draining), worker heartbeat, ClamAV check, 8 built-in alerts; external uptime check and log shipping not set up |
 | 10 | Backups and restore | Nearly | Encrypted backups with off-site copies and restore drill **[DOC]**; not run on production hardware; no point-in-time recovery with the bundled database |
 | 11 | Billing / payments | Blocked | No Paymob credentials (B-2), tax position (B-3); recurring renewals are manual pay-by-link; no reconciliation |
@@ -142,7 +142,7 @@ Ordered by how early they block. "External" means it needs the owner, a provider
 | L-3 | Paymob merchant account(s) and keys per country, and a test-mode run | External + code | `src/cli/paymob-check.ts`; B-2 |
 | L-4 | Production host, region, domain, SMTP with SPF/DKIM/DMARC, alert channels | External | B-4 |
 | L-5 | ~~CI not running on GitHub~~ Resolved 2026-11-01 | — | B-7 cleared; all five checks green on PR #39 |
-| L-6 | Rollback path through `ops/start.sh` fails after a migration (I-3) | Code | Must be fixed or the runbook changed before the first upgrade in production |
+| L-6 | ~~Rollback path through `ops/start.sh` fails after a migration (I-3)~~ Resolved 2026-11-05 | — | Task 1.2; drill passed on Docker by both rollback paths; staging run is E-2 |
 | L-7 | No platform-wide AI spend cap; billing currency and quotas are per deployment, not per country | Code | AI_COST_CONTROL_PLAN, BILLING_INTEGRATION_PLAN |
 | L-8 | Catalogue content unverified (0 of 231 subjects) | External | B-6 **[DOC]** |
 
@@ -215,7 +215,7 @@ per-service secrets; PITR; staging and production hosts; external monitoring; mu
 time zones, currencies are Egypt-only).
 
 **Critical launch blockers:** legal advice per country, above all on minors' data and cross-border hosting (L-1);
-company/tax position (L-2); Paymob credentials and a test-mode run (L-3); host, domain, SMTP (L-4); the rollback path that fails after a migration (L-6); no
+company/tax position (L-2); Paymob credentials and a test-mode run (L-3); host, domain, SMTP (L-4); no
 platform AI spend cap (L-7); unverified catalogue (L-8).
 
 **Recommended hosting:** one 4 vCPU / 8 GB / 160 GB+ NVMe VPS with an encrypted disk, Ubuntu 24.04, the existing
@@ -225,3 +225,4 @@ monitoring, and an identical smaller staging VPS. Region chosen after legal revi
 
 **Recommended first implementation task:** roadmap task 1.1, tenant isolation hardening (RLS on the three
 uncovered tables and a separate system role so the web role cannot bypass RLS), followed by 1.2, the rollback fix.
+Both are done (1.1 in PR #39; 1.2 on 2026-11-05).

@@ -16,7 +16,7 @@ student data · **Low** = hardening.
 | S-3 | 33 `withSystemContext` call sites (cross-tenant) without an enforced inventory | Medium | Tenant isolation · **fixed by task 1.1** |
 | S-4 | Runtime role can `DELETE` audit rows | Low | Audit integrity · **fixed by task 1.1** |
 | S-5 | Account lockout lets anyone lock a known teacher or student out for 15 minutes, repeatably | High (exam days) | Authentication · **fixed by task 1.3** |
-| S-6 | No breached/common-password check; student passwords set by schools | Medium | Authentication |
+| S-6 | No breached/common-password check; student passwords set by schools | Medium | Authentication · **fixed by task 1.8** |
 | S-7 | Lockout counter is read-modify-write (non-atomic) | Low | Authentication · **fixed by task 1.3** |
 | S-8 | Homework files stored in PostgreSQL without application-level encryption; disk encryption not configured | Medium | Student files |
 | S-9 | Every secret is in one host file and passed to every container | High | Secrets · **fixed by task 1.5** |
@@ -127,6 +127,13 @@ attacker's; the teacher unlocks the student in one click, which also gives that 
 
 **S-6 — Password quality [V-code].** No check against breached or common passwords. *Fix:* a local list of the
 most common passwords (no external call, avoids sending hashes abroad), minimum length 10 for staff.
+**Fixed 2026-11-06 (task 1.8):** every password a person chooses (sign-up, reset, change, and a student changing
+the one the school gave them) is refused when it is in the UK NCSC's list of the 100,000 passwords most often found
+in breaches (the 9,113 of 10 characters or more; shipped in the code, `src/lib/common-passwords.ts`, from a
+pinned SecLists commit), is one character repeated, or is a common word (password, qwerty, welcome…) or this
+service's words (Midad, مداد, school, student…) with only digits and symbols added. Minimum 10 characters for
+everyone, as before. The refusal carries a code (`PASSWORD_TOO_COMMON`) shown in English or Arabic. Passwords
+the server generates (students', the first platform administrator's) are random and unchanged.
 
 **S-7 — Non-atomic counter [V-code].** `failed_login_count + 1` is computed in the application and written back
 (`routes.ts:215-219`); parallel attempts undercount. *Fix:* `SET failed_login_count = failed_login_count + 1

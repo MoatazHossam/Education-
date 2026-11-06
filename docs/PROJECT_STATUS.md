@@ -17,13 +17,36 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-3 | Company registration country / tax position undecided | Provider choice, VAT on invoices, ETA e-invoicing | Founder + accountant |
 | B-4 | No production host, domain, SMTP account | No deployment, TLS, real email, monitoring | Ops budget/accounts |
 | B-5 | Legal review not done (PDPL licensing, privacy policy, terms, hosting location) | Cannot onboard paying customers responsibly | Legal counsel |
-| B-7 | GitHub Actions jobs are rejected: "your account is locked due to a billing issue" (runs on 2026-10-22 and 2026-10-23; still the case for PR #23 on 2026-10-26) | No CI on GitHub; use `scripts/ci-local.sh` meanwhile. PRs #22 and #23 were merged on local checks only | Account owner: resolve billing on the account that owns the repository |
+| B-7 | ~~GitHub Actions jobs rejected because of a billing lock on the account~~ — **resolved 2026-11-01** (launch checklist C-11): CI runs on every PR again. PRs #22 to #37 were merged on local checks only; every PR since #38 has run the full CI (lint, typecheck, unit and integration tests, E2E in Chromium, Firefox and WebKit, container image) | — | — |
 | B-6 | Catalogue content unverified (sourced from news articles in the original). Tools to record verification now exist (Platform admin → Catalogue: one by one, per grade, or a whole spreadsheet); 0 of 231 subjects verified so far | Product value and liability | Curriculum specialist |
 | B-8 | Wise EduAgent (`wise-eduagent.ai.studio`) cannot be inspected: the environment's network policy denies the host and no source export exists in the session | The Wise integration cannot go beyond documentation (`docs/wise-integration/`) | Owner: AI Studio source export, and/or allow the host in the environment's network settings with an authorized test account |
 | B-9 | ~~The product stores no student records by design~~ — **owner decided 2026-10-25: student accounts created by schools.** Built and off for every school (see student accounts), and since 2026-10-26 the teacher and student portal on the same switch (classes, homework, online tests with monitoring, gradebook). Still open: the legal assessment for minors' data (SECURITY_DESIGN §7). The PDPL Executive Regulations' grace period ends around 31 October–1 November 2026 | No school should use student accounts or the portal with real students until the assessment is done | Legal counsel (consent, controller/processor terms with schools, retention, privacy notice) |
 | B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Common passwords refused, with the reason in English or Arabic (roadmap task 1.8) · COMPLETE (2026-11-06)
+- **Asked:** task 1.8 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding S-6: only 14 common passwords were
+  refused, and the message ("This password is too common") was shown in English in the Arabic interface too.
+- **Implemented:**
+  - A password a person chooses (sign-up, reset, change, and a student changing the school's one) is refused when it
+    is in the UK NCSC's list of the 100,000 passwords most often found in breaches (the 9,113 of 10 characters or
+    more), is one character repeated, or is a common word (password, qwerty, welcome…) or this service's words
+    (Midad, مداد, school, student…) with only digits and symbols added. Still at least 10 characters, no
+    composition rules.
+  - The list ships in the code (`src/lib/common-passwords.ts`, made by `scripts/build-common-passwords.mjs` from a
+    pinned SecLists commit, checked by SHA-256, its MIT licence kept with it): no password or hash leaves the server.
+  - The refusal carries a code (`PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_TOO_COMMON`) under the field,
+    and the interface shows it in Arabic in the Arabic interface.
+  - Also fixed, found by PR #45's CI: both language buttons set the page's language at once but redrew only after
+    the preference was saved, so a screen reader could read Arabic text with the English voice for that moment. They
+    now redraw first and save afterwards.
+- **Verified:** `npm run test:integration -- auth students` (35 files, 323 tests) and `npm test` (62 files, 457 tests) pass; 21 new unit
+  tests; integration tests for sign-up, reset, change and a student's change (the old password and the reset link
+  still work after a refusal); in the browser, `password123` refused in English and `Password2026!` in Arabic with
+  the Arabic text; a test that holds the language save for 3 s fails with the old buttons and passes with the fix.
+- **Not done:** no check against the full Have I Been Pwned set (that needs an online service or a 30 GB copy);
+  the NCSC top 100,000 covers the passwords attackers try first.
 
 ### Limits on the payment provider's callback (roadmap task 1.7) · COMPLETE (2026-11-06; not yet against Paymob)
 - **Asked:** task 1.7 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding B-G7: the route that receives payment

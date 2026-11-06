@@ -70,11 +70,12 @@ export function frame(ctx, ...content) {
     h('div', { class: 'tools' },
       bell,
       h('button', {
-        type: 'button', class: 'iconbtn', lang: locale() === 'ar' ? 'en' : 'ar', onclick: async () => {
+        type: 'button', class: 'iconbtn', lang: locale() === 'ar' ? 'en' : 'ar', onclick: () => {
           const next = locale() === 'ar' ? 'en' : 'ar';
           setLocale(next);
-          try { await patch('/api/student/profile', { locale: next }); me.user.locale = next; } catch { /* preference stays local */ }
+          // Redraw at once, then save the preference (as the staff interface does): lang and text change together.
           ctx.render();
+          patch('/api/student/profile', { locale: next }).then(() => { me.user.locale = next; }, () => { /* preference stays local */ });
         },
       }, locale() === 'ar' ? 'English' : 'العربية'),
       h('button', { type: 'button', class: 'iconbtn', onclick: () => changePassword().catch((e) => toast(errorMessage(e), 'error')) }, t('student.changePassword')),

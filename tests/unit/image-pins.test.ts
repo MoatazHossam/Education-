@@ -74,6 +74,13 @@ describe('operations scripts', () => {
     expect(sh).toMatch(/^TOOL_IMAGE=\$\(pinned docker-compose\.prod\.yml caddy\)$/m);
   });
 
+  it('the Windows script works from the folder a double-clicked .bat starts in (ops\\), not only from the root', () => {
+    // Set-Location alone leaves .NET's current directory where the process started, and the script
+    // reads the settings file with [IO.File]: both must point at the root before any file is read.
+    const head = ps.slice(0, ps.indexOf('function '));
+    expect(head).toMatch(/^Set-Location -LiteralPath \$Root\n(?:#.*\n)*\[Environment\]::CurrentDirectory = \$Root$/m);
+  });
+
   it('read each image from the file that pins it (Windows), with the same pattern', () => {
     expect(ps).toMatch(/^\$RcloneImage = Get-PinnedImage 'ops\/images\.Dockerfile' 'rclone\/rclone'$/m);
     expect(ps).toMatch(/^\$PgImage = Get-PinnedImage 'docker-compose\.yml' 'postgres'$/m);

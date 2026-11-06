@@ -1,6 +1,6 @@
 // Webhooks card on the organization's settings page (owners and admins): the
 // endpoints told about scope changes, their deliveries, tests and secrets.
-import { ApiError, del, get, patch, post } from '../api.js';
+import { ApiError, del, get, patch, post, request } from '../api.js';
 import { confirmDialog, dialog, downloadText, errorMessage, fmtDate, fmtNum, form, h, th, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { planLimitHint } from './shell.js';
@@ -38,7 +38,7 @@ const chosenEvents = (events, v) => events.filter((_, i) => v[`ev${i}`]);
 /** Every kept delivery as CSV (the server names the file). */
 async function downloadHistory(orgId, w) {
   try {
-    const res = await fetch(`/api/orgs/${orgId}/webhooks/${w.id}/deliveries/export`, { credentials: 'same-origin' });
+    const res = await request(`/api/orgs/${orgId}/webhooks/${w.id}/deliveries/export`, { credentials: 'same-origin' });
     if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
     const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'webhook-deliveries.csv';
     downloadText(name, await res.text(), 'text/csv');

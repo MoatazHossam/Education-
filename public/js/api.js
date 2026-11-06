@@ -6,12 +6,32 @@ let onUnauthorized = () => {};
 export function setCsrf(token) { csrfToken = token; }
 export function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
 
+// The proxy in front of the app (Caddy) answers these, without the app's JSON, when no app instance answers.
+const GATEWAY = new Set([502, 503, 504]);
+
 export class ApiError extends Error {
   constructor(status, body) {
     super(body?.error?.message || `Request failed (${status})`);
     this.status = status;
-    this.code = body?.error?.code || 'HTTP_' + status;
+    this.code = body?.error?.code || (GATEWAY.has(status) ? 'SERVER_UNAVAILABLE' : 'HTTP_' + status);
     this.details = body?.error?.details;
+  }
+}
+
+/**
+ * fetch, with "no answer at all" (no connection, the server stopped, the connection cut) as an ApiError
+ * of status 0 and code NETWORK_ERROR, so the page can say so in the reader's language rather than show
+ * the browser's own English text ("Failed to fetch", "NetworkError when attempting to fetch resource.").
+ * Code that tries again on a lost connection checks `!err.status`, which status 0 keeps true.
+ */
+export async function request(path, init) {
+  try {
+    return await fetch(path, init);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    const e = new ApiError(0, { error: { code: 'NETWORK_ERROR' } });
+    e.cause = err;
+    throw e;
   }
 }
 
@@ -24,7 +44,7 @@ async function raw(method, path, body, { keepalive = false } = {}) {
     headers['x-file-name'] = encodeURIComponent(body.name);
   } else if (body !== undefined) headers['content-type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['x-csrf-token'] = csrfToken;
-  const res = await fetch(path, { method, headers, credentials: 'same-origin', keepalive, body: isFile ? body : body !== undefined ? JSON.stringify(body) : undefined });
+  const res = await request(path, { method, headers, credentials: 'same-origin', keepalive, body: isFile ? body : body !== undefined ? JSON.stringify(body) : undefined });
   let data = null;
   if (res.status !== 204) { try { data = await res.json(); } catch { data = null; } }
   return { res, data };

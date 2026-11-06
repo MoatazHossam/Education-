@@ -195,6 +195,8 @@ const en = {
   'students.importOverLimit': 'Your plan has room for {room} more student accounts (limit {limit}).', 'students.importApply': 'Import', 'students.imported': 'Imported {n} students',
   'students.privacyTitle': 'Privacy', 'students.privacyText': 'Only each student’s name, username, grade and curriculum are stored: no email, birth date or contact details. Removing a student deletes their account. Platform staff see only the number of accounts.',
   'err.generic': 'Something went wrong. Please try again.',
+  'err.NETWORK_ERROR': 'Could not reach the server. Check your internet connection, then try again in a moment.',
+  'err.SERVER_UNAVAILABLE': 'The server is not answering right now. Try again in a minute.',
   'err.PASSWORD_TOO_SHORT': 'Password must be at least 10 characters', 'err.PASSWORD_TOO_LONG': 'Password must be at most 128 characters',
   'err.PASSWORD_TOO_COMMON': 'This password is too common or easy to guess. Choose a longer phrase that is not a common word with numbers added.',
   // Classes and homework (docs/CLASSROOM.md)
@@ -550,6 +552,8 @@ const ar = {
   'verify.adminCoverage': 'تم التحقق: {sv}/{s} مادة، {mv}/{m} عنصرًا · {r} تحتاج مراجعة', 'verify.colVerified': 'تم التحقق',
   'verify.publicHint': 'يرى العملاء الحالة والتاريخ والمصدر والملاحظة، ولا يرون من راجع البيانات. تعديل محتوى عنصر في مسودة يلغي علامة التحقق الخاصة به.',
   'err.generic': 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
+  'err.NETWORK_ERROR': 'تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت، ثم حاول مرة أخرى بعد قليل.',
+  'err.SERVER_UNAVAILABLE': 'الخادم لا يستجيب الآن. حاول مرة أخرى بعد دقيقة.',
   'err.PASSWORD_TOO_SHORT': 'يجب ألا تقل كلمة المرور عن 10 أحرف.', 'err.PASSWORD_TOO_LONG': 'يجب ألا تزيد كلمة المرور على 128 حرفًا.',
   'err.PASSWORD_TOO_COMMON': 'كلمة المرور هذه شائعة أو سهلة التخمين. اختر عبارة أطول، لا تكون كلمة شائعة أُضيفت إليها أرقام.',
   'err.INVALID_CREDENTIALS': 'البريد الإلكتروني أو كلمة المرور غير صحيحة، أو أن الحساب مقفل مؤقتًا.', 'err.EMAIL_NOT_VERIFIED': 'يرجى تأكيد بريدك الإلكتروني قبل تسجيل الدخول.', 'err.ACCOUNT_SUSPENDED': 'هذا الحساب موقوف. تواصل مع الدعم.', 'err.RATE_LIMITED': 'محاولات كثيرة جدًا. انتظر قليلًا ثم حاول مرة أخرى.',

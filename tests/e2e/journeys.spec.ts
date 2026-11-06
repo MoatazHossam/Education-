@@ -259,6 +259,41 @@ test('Arabic interface switches to right-to-left and the picker fits a phone scr
   await ctx.close();
 });
 
+test('when the server cannot be reached, signing in says so in the reader’s language, not the browser’s English', async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const page = await openPage(ctx);
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  const signIn = async () => {
+    await page.getByLabel('البريد الإلكتروني').fill(ownerEmail);
+    await page.getByLabel('كلمة المرور').fill(PASSWORD);
+    await page.getByRole('button', { name: 'تسجيل الدخول' }).click();
+  };
+  const alert = page.locator('form .alert.error');
+  // No answer at all: the app stopped, or no connection (the browser's text differs: "Failed to fetch", "NetworkError…", "Load failed").
+  await page.route('**/api/auth/login', (route) => route.abort('connectionrefused'));
+  await signIn();
+  await expect(alert).toHaveText('تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت، ثم حاول مرة أخرى بعد قليل.');
+  // The proxy answers for an app that does not: 502 without the app's JSON.
+  await page.unroute('**/api/auth/login');
+  await page.route('**/api/auth/login', (route) => route.fulfill({ status: 502, contentType: 'text/html', body: '<h1>Bad Gateway</h1>' }));
+  await signIn();
+  await expect(alert).toHaveText('الخادم لا يستجيب الآن. حاول مرة أخرى بعد دقيقة.');
+  await page.unroute('**/api/auth/login');
+  // In English too, and the server answers again once it is back.
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await page.route('**/api/auth/login', (route) => route.abort('internetdisconnected'));
+  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(alert).toHaveText('Could not reach the server. Check your internet connection, then try again in a moment.');
+  await page.unroute('**/api/auth/login');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/org\//);
+  await ctx.close();
+});
+
 test('a newer catalogue is published and the owner carries a scope forward after reviewing what changed', async ({ page, browser }) => {
   // The platform admin prepares 2027/2028 from the admin UI; one book in the owner's scope is dropped from the new year.
   await signInAsPlatformAdmin(page);

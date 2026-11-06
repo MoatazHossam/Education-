@@ -20,7 +20,7 @@ and logs the request. Changing provider is a configuration change; features do n
 | File | Role |
 | --- | --- |
 | `src/ai/types.ts` | The provider interface (`AiProvider.generate`), the reply, error kinds |
-| `src/ai/providers/gemini.ts`, `anthropic.ts`, `openai.ts` | One adapter per provider, each through the provider's official SDK (`@google/genai` 2.29.1, `@anthropic-ai/sdk` 0.133.0, `openai` 7.32.0, pinned) |
+| `src/ai/providers/gemini.ts`, `anthropic.ts`, `openai.ts` | One adapter per provider, each through the provider's official SDK (`@google/genai` 2.32.0, `@anthropic-ai/sdk` 0.133.0, `openai` 7.45.1, pinned) |
 | `src/ai/providers/index.ts` | The configured provider, or none |
 | `src/ai/schema.ts` | Reply schemas in the form every provider accepts; checking a JSON reply |
 | `src/ai/service.ts` | `runAiTask`: allowance, request, checks, log, audit |

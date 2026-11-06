@@ -34,6 +34,9 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         update-types: [minor, patch]
+        # Kysely is still 0.x, where a minor version may break (0.29 moved the migrator to
+        # kysely/migration): it gets a pull request of its own, so it cannot hold up the rest.
+        exclude-patterns: [kysely]
 
   # The application's base image (Dockerfile).
   - package-ecosystem: docker

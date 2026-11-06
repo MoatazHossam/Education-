@@ -25,6 +25,26 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Dependabot's first updates: npm group and actions v7 · COMPLETE (2026-11-06)
+- **Asked:** the owner asked for the small Dependabot pull requests on `main` to be reviewed: the weekly npm group
+  (#52, 10 minor and patch updates) and the three actions (#60 to #62, v4 to v7).
+- **Found:** the npm group failed CI. Kysely is still 0.x, and its 0.29 "minor" moved the migration tools to
+  `kysely/migration`. The actions' release notes change nothing this workflow uses; their pins match the release tags.
+- **Implemented:** one pull request with the npm group, the import fix in `src/db/migrator.ts`, the three actions,
+  and Kysely kept out of the weekly group so a breaking 0.x release cannot hold up the other updates. The AI SDK
+  versions in `docs/AI_LAYER.md` follow (`@google/genai` 2.32.0, `openai` 7.45.1; both still pinned).
+- **Found by the new accessibility checker:** axe-core 4.14 (with `@axe-core/playwright` 4.14) checks WCAG 2.5.3
+  (label in name). Seven controls had a name without their visible text (the picker's grade buttons, the homework
+  "Mark" button, "Save mark", "Send test", "Send again", "Submit now", the catalogue editor's "verify"); their
+  names now start with or contain what they show, in English and Arabic, so voice control users can say what they see.
+- **Verified:** lint, typecheck, build and `npm test` (63 files, 468 tests) on the new versions; the audit gate passes.
+  The journeys and accessibility tests, 30 passed with the new axe on Playwright 1.56.1 here (1.64.1's browsers cannot
+  be downloaded in this container); with the old grade buttons the accessibility test fails. All browsers run in CI.
+- **Also:** the 7 Dependabot pull requests opened against the working branch (#49, #51, #54 to #58) now target
+  `main`. Closing them would have made Dependabot skip those versions. The majors among them (TypeScript 7,
+  ESLint 10, otplib 13, the Anthropic SDK 1.x) fail CI and each need work of their own; Mailpit 1.33 and rclone 1.75
+  are left for review.
+
 ### Images pinned by digest, and dependency updates by Dependabot (roadmap task 1.9) · COMPLETE (2026-11-06)
 - **Asked:** task 1.9 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding S-15: images were tags (a rebuild or
   restart could pick up different software), the CI's actions were floating tags, and nothing proposed updates.

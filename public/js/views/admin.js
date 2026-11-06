@@ -351,7 +351,7 @@ export async function catalogVersionView(ctx) {
             ] : null)),
         h('div', { class: 'mats' },
           s.materials.map((m) => h('span', { class: `mat ${m.kind}` }, m.title, materialMark(m),
-            editable ? h('button', { type: 'button', class: 'linkbtn', 'aria-label': `${t('verify.set')} ${m.title}`, onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${m.title}`, current: m.verification, materialIds: [m.id] })) reload(); } }, t('verify.short')) : null,
+            editable ? h('button', { type: 'button', class: 'linkbtn', 'aria-label': t('verify.setFor', { title: m.title }), onclick: async () => { if (await verifyDialog({ title: `${t('verify.dialogTitle')}: ${m.title}`, current: m.verification, materialIds: [m.id] })) reload(); } }, t('verify.short')) : null,
             draft ? h('button', { type: 'button', class: 'linkbtn', 'aria-label': `${t('common.delete')} ${m.title}`, onclick: async () => { if (await safe(() => del(`/api/admin/catalog/materials/${m.id}`))) reload(); } }, '×') : null)),
           draft ? h('button', {
             type: 'button', class: 'btn small ghost', onclick: async () => {

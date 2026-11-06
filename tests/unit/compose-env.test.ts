@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { CONFIG_KEYS } from '../../src/config.js';
+import { CONFIG_KEYS, FILE_SETTINGS } from '../../src/config.js';
 
 // Which settings each production container receives (production finding S-9): every container gets
 // only what it needs, so one that is broken into gives away only its own secrets. The environment
@@ -52,5 +52,47 @@ describe('settings per production container', () => {
     expect(CONFIG_KEYS.filter((k) => !fixed.includes(k) && !env('app').includes(k))).toEqual([]);
     const known = new Set([...CONFIG_KEYS, 'NODE_OPTIONS', 'APP_DB_ROLE', 'SYSTEM_DB_ROLE']);
     for (const name of ['app', 'app2', 'worker', 'migrate']) expect(env(name).filter((k) => !known.has(k)), name).toEqual([]);
+  });
+});
+
+// Production add-on: the session secret and the data encryption key as Docker secrets (files), so they are in no
+// container's environment. The application reads them from <NAME>_FILE (src/config.ts, FILE_SETTINGS).
+describe('secrets as files (docker-compose.secrets.yml)', () => {
+  type Extra = { secrets: Record<string, { file: string }>; services: Record<string, { secrets?: string[]; environment?: Record<string, string> }> };
+  const extra = parse(readFileSync('docker-compose.secrets.yml', 'utf8'), { merge: true, logLevel: 'error' }) as Extra;
+
+  it('gives the session secret to the app instances only, and the encryption key to them and the worker', () => {
+    expect(Object.keys(extra.secrets).sort()).toEqual(['data_encryption_key', 'session_secret']);
+    expect(extra.secrets.session_secret!.file).toMatch(/^\$\{SESSION_SECRET_FILE:\?/);
+    expect(extra.secrets.data_encryption_key!.file).toMatch(/^\$\{DATA_ENCRYPTION_KEY_FILE:\?/);
+    expect(Object.keys(extra.services).sort()).toEqual(['app', 'app2', 'worker']);
+    for (const app of ['app', 'app2']) {
+      expect(extra.services[app]).toEqual({
+        secrets: ['session_secret', 'data_encryption_key'],
+        environment: { SESSION_SECRET_FILE: '/run/secrets/session_secret', DATA_ENCRYPTION_KEY_FILE: '/run/secrets/data_encryption_key' },
+      });
+    }
+    expect(extra.services.worker).toEqual({ secrets: ['data_encryption_key'], environment: { DATA_ENCRYPTION_KEY_FILE: '/run/secrets/data_encryption_key' } });
+  });
+
+  it('each _FILE names a setting the application reads from a file, mounted in a container that gets that setting', () => {
+    for (const [name, service] of Object.entries(extra.services)) {
+      for (const [key, path] of Object.entries(service.environment ?? {})) {
+        const setting = key.replace(/_FILE$/, '');
+        expect(FILE_SETTINGS).toContain(setting);
+        expect(env(name), name).toContain(setting); // the base file passes it, empty when the file is used
+        expect(path).toBe(`/run/secrets/${setting.toLowerCase()}`);
+        expect(service.secrets).toContain(setting.toLowerCase());
+      }
+    }
+  });
+
+  it('the base file still stops before starting anything when neither a secret nor its file is set', () => {
+    const raw = readFileSync('docker-compose.yml', 'utf8');
+    expect(raw).toContain('${SESSION_SECRET_FILE:-${SESSION_SECRET:?');
+    expect(raw).toContain('${DATA_ENCRYPTION_KEY_FILE:-${DATA_ENCRYPTION_KEY:?');
+    // The secrets' files stay out of the repository and of the image.
+    expect(readFileSync('.gitignore', 'utf8').split('\n')).toContain('secrets/');
+    expect(readFileSync('.dockerignore', 'utf8').split('\n')).toContain('secrets');
   });
 });

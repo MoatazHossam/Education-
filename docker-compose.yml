@@ -18,6 +18,12 @@ x-logging: &logging
 # those, and they do not get the schema owner's password. The backup role's password goes to the
 # postgres service only, which creates the roles.
 
+# The two secrets every installation needs, from the env file or, with docker-compose.secrets.yml, from files
+# (SESSION_SECRET_FILE, DATA_ENCRYPTION_KEY_FILE): Compose stops before starting anything when neither is set.
+x-required:
+  - ${SESSION_SECRET_FILE:-${SESSION_SECRET:?set SESSION_SECRET, or SESSION_SECRET_FILE with docker-compose.secrets.yml}}
+  - ${DATA_ENCRYPTION_KEY_FILE:-${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY, or DATA_ENCRYPTION_KEY_FILE with docker-compose.secrets.yml}}
+
 # Every Node container.
 x-env-base: &env-base
   NODE_ENV: ${NODE_ENV:-development}
@@ -46,7 +52,7 @@ x-env-runtime: &env-runtime
   SYSTEM_DATABASE_POOL_MAX: ${SYSTEM_DATABASE_POOL_MAX:-}
   DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
   # Decrypts two-factor secrets (app) and webhook signing secrets (both).
-  DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
+  DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-}
   DATA_ENCRYPTION_KEYS_PREVIOUS: ${DATA_ENCRYPTION_KEYS_PREVIOUS:-}
   WEBHOOK_ALLOW_INSECURE_TARGETS: ${WEBHOOK_ALLOW_INSECURE_TARGETS:-false}
   # The worker sends the queued emails; the app sends operational alerts (by email too).
@@ -69,7 +75,7 @@ x-env-runtime: &env-runtime
 # The app instances: sessions and forms, payments, AI.
 x-env-web: &env-web
   <<: *env-runtime
-  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  SESSION_SECRET: ${SESSION_SECRET:-}
   SALES_EMAIL: ${SALES_EMAIL:-}
   SANDBOX_WEBHOOK_SECRET: ${SANDBOX_WEBHOOK_SECRET:-}
   PAYMOB_SECRET_KEY: ${PAYMOB_SECRET_KEY:-}

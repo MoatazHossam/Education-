@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import type { KeyRing } from './lib/crypto.js';
 
@@ -179,16 +180,58 @@ export interface AppConfig extends Env {
   appOrigin: string;
 }
 
+/**
+ * The secret settings, each of which can instead be read from a file named by `<NAME>_FILE` (Docker or Kubernetes
+ * secrets, systemd credentials, a secret manager's agent; docker-compose.secrets.yml). A secret read from a file is
+ * not in the process environment, so `docker inspect`, `/proc/<pid>/environ` and child processes do not show it.
+ */
+export const FILE_SETTINGS = [
+  'SESSION_SECRET', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS',
+  'DATABASE_URL', 'SYSTEM_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'SMTP_URL',
+  'SANDBOX_WEBHOOK_SECRET', 'PAYMOB_SECRET_KEY', 'PAYMOB_PUBLIC_KEY', 'PAYMOB_HMAC_SECRET', 'AI_API_KEY', 'ALERT_WEBHOOK_URL',
+] as const;
+
+/**
+ * Each `<NAME>_FILE` replaced by the file's contents, without the line ending a text editor adds. A setting and its
+ * file cannot both be given; an empty file means "not set", like an empty variable. Messages name the setting and
+ * the path, never what a file holds.
+ */
+function withFiles(source: Record<string, string | undefined>): Record<string, string | undefined> {
+  const values = { ...source };
+  const problems: string[] = [];
+  for (const key of FILE_SETTINGS) {
+    const path = source[`${key}_FILE`]?.trim();
+    if (!path) continue;
+    if (source[key]?.trim()) {
+      problems.push(`  - ${key}: set ${key} or ${key}_FILE, not both`);
+      continue;
+    }
+    try {
+      values[key] = readFileSync(path, 'utf8').replace(/[\r\n]+$/, '');
+    } catch (err) {
+      problems.push(`  - ${key}_FILE: cannot read ${path} (${(err as NodeJS.ErrnoException).code ?? 'error'})`);
+    }
+  }
+  if (problems.length) throw new Error(`Invalid configuration:\n${problems.join('\n')}`);
+  return values;
+}
+
 // Empty values (e.g. `SALES_EMAIL=` in an env file, or unset variables that
 // Docker Compose interpolates to "") mean "not set".
 function setValues(source: Record<string, string | undefined>): Record<string, string> {
-  return Object.fromEntries(Object.entries(source).filter((e): e is [string, string] => e[1] !== undefined && e[1].trim() !== ''));
+  return Object.fromEntries(Object.entries(withFiles(source)).filter((e): e is [string, string] => e[1] !== undefined && e[1].trim() !== ''));
 }
 
 function parsed<T>(schema: z.ZodType<T>, values: Record<string, string>): T {
   const result = schema.safeParse(values);
   if (!result.success) {
-    const details = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+    const message = (i: z.core.$ZodIssue) => {
+      const key = i.path.join('.');
+      // A required setting that is not set at all: say so, and where else it can come from.
+      if (i.code !== 'invalid_type' || key in values) return i.message;
+      return (FILE_SETTINGS as readonly string[]).includes(key) ? `${key} is required (or ${key}_FILE, a file that holds it)` : `${key} is required`;
+    };
+    const details = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${message(i)}`).join('\n');
     throw new Error(`Invalid configuration:\n${details}`);
   }
   return result.data;
@@ -218,7 +261,7 @@ const MigrationEnvSchema = z
     DATABASE_SSL: bool.default(false),
     BILLING_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('EGP'),
   })
-  .refine((env) => env.MIGRATION_DATABASE_URL || env.DATABASE_URL, { path: ['MIGRATION_DATABASE_URL'], message: 'MIGRATION_DATABASE_URL is required' });
+  .refine((env) => env.MIGRATION_DATABASE_URL || env.DATABASE_URL, { path: ['MIGRATION_DATABASE_URL'], message: 'MIGRATION_DATABASE_URL is required (or MIGRATION_DATABASE_URL_FILE, a file that holds it)' });
 
 export interface MigrationConfig {
   databaseUrl: string;

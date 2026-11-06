@@ -1,4 +1,6 @@
-import { Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
+import { sql } from 'kysely';
+// Since Kysely 0.29 the migration tools have their own entry point.
+import { Migrator, type Migration, type MigrationProvider } from 'kysely/migration';
 import type { Database } from './index.js';
 import * as m0001 from './migrations/0001_initial.js';
 import * as m0002 from './migrations/0002_checkout_sessions.js';

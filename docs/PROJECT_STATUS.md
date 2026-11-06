@@ -25,7 +25,27 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
-### Images pinned by digest, and dependency updates by Dependabot (roadmap task 1.9) · COMPLETE (2026-11-06; Dependabot starts once merged)
+### Dependabot's first updates: npm group and actions v7 · COMPLETE (2026-11-06)
+- **Asked:** the owner asked for the small Dependabot pull requests on `main` to be reviewed: the weekly npm group
+  (#52, 10 minor and patch updates) and the three actions (#60 to #62, v4 to v7).
+- **Found:** the npm group failed CI. Kysely is still 0.x, and its 0.29 "minor" moved the migration tools to
+  `kysely/migration`. The actions' release notes change nothing this workflow uses; their pins match the release tags.
+- **Implemented:** one pull request with the npm group, the import fix in `src/db/migrator.ts`, the three actions,
+  and Kysely kept out of the weekly group so a breaking 0.x release cannot hold up the other updates. The AI SDK
+  versions in `docs/AI_LAYER.md` follow (`@google/genai` 2.32.0, `openai` 7.45.1; both still pinned).
+- **Found by the new accessibility checker:** axe-core 4.14 (with `@axe-core/playwright` 4.14) checks WCAG 2.5.3
+  (label in name). Seven controls had a name without their visible text (the picker's grade buttons, the homework
+  "Mark" button, "Save mark", "Send test", "Send again", "Submit now", the catalogue editor's "verify"); their
+  names now start with or contain what they show, in English and Arabic, so voice control users can say what they see.
+- **Verified:** lint, typecheck, build and `npm test` (63 files, 468 tests) on the new versions; the audit gate passes.
+  The journeys and accessibility tests, 30 passed with the new axe on Playwright 1.56.1 here (1.64.1's browsers cannot
+  be downloaded in this container); with the old grade buttons the accessibility test fails. All browsers run in CI.
+- **Also:** the 7 Dependabot pull requests opened against the working branch (#49, #51, #54 to #58) now target
+  `main`. Closing them would have made Dependabot skip those versions. The majors among them (TypeScript 7,
+  ESLint 10, otplib 13, the Anthropic SDK 1.x) fail CI and each need work of their own; Mailpit 1.33 and rclone 1.75
+  are left for review.
+
+### Images pinned by digest, and dependency updates by Dependabot (roadmap task 1.9) · COMPLETE (2026-11-06)
 - **Asked:** task 1.9 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding S-15: images were tags (a rebuild or
   restart could pick up different software), the CI's actions were floating tags, and nothing proposed updates.
 - **Implemented:**
@@ -35,18 +55,23 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
     those files instead of naming tags, so the backup tools always match the database the stack runs.
   - The CI's actions pinned by commit SHA, with the release in a comment.
   - `.github/dependabot.yml`: every Monday, npm (minor and patch in one pull request, majors one by one, a week's
-    cooldown), the base image, the compose images, the ops image and the actions (a week's cooldown). No Node.js
-    or PostgreSQL major versions: those need a planned upgrade.
+    cooldown), the base image, the compose images, the ops image and the actions (a week's cooldown), all as pull
+    requests against `main`. No Node.js (or `@types/node`) or PostgreSQL major versions: those need a planned upgrade.
   - The update routine in the deployment guide (EN/AR §4): weekly merges, a monthly patch window, high and critical
     security updates within a week, and how to do a Node.js or PostgreSQL major upgrade.
 - **Verified:** all six pinned digests pulled by digest; the image built from the pinned base and passes CI's smoke
   test; `docker compose config` shows every third-party image with its digest; the ops scripts' lookups run the
-  pinned rclone, PostgreSQL client and tool images; the Dependabot file is valid against the public schema; 10 new
-  unit tests (`tests/unit/image-pins.test.ts`), 4 of which fail when a pin is removed; `npm test` (63 files, 467
-  tests), lint and typecheck pass.
+  pinned rclone, PostgreSQL client and tool images; the Dependabot file is valid against the public schema and
+  GitHub's own check of it passed; 11 new unit tests (`tests/unit/image-pins.test.ts`), 4 of which fail when a pin
+  is removed; `npm test` (63 files, 468 tests), lint and typecheck pass.
+  - **Bot opens PRs:** Dependabot opened 12 pull requests (#47 to #58) within three minutes of the push: npm
+    minor and patch updates grouped (10 packages), npm majors one by one (TypeScript 7, ESLint 10 and `@eslint/js` 10,
+    otplib 13, the Anthropic SDK 1.x, `@types/node` 26), Mailpit 1.33, rclone 1.75 and the three actions' v7 releases. They target
+    `claude/friendly-rubin-hmemjl`, because that is the repository's default branch on GitHub; since then every
+    entry has `target-branch: main`, and `@types/node` majors are left out (the image runs Node.js 22).
 - **Owner, on GitHub:** Settings > Code security, turn on **Dependabot alerts** and **Dependabot security updates**
-  (security updates come as soon as an advisory is published). Dependabot's first pull requests come after the
-  merge; the roadmap's "Bot opens PRs" is checked then.
+  (security updates come as soon as an advisory is published), and Settings > General > Default branch, make it
+  `main`: security updates always go to the default branch, and Dependabot reads its file from there.
 - **Not done:** the CI's test database (`services.postgres`) keeps the `16-alpine` tag on purpose (it is only the
   test database); `ops/midad.ps1`'s lookup was not run with PowerShell here (the unit test applies its pattern).
 

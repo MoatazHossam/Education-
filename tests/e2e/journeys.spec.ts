@@ -835,7 +835,7 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     await expect(row).toContainText('Active');
     await expect(row).toContainText('Scope created, Scope renamed or described, Books added or removed, Notes, assignees, statuses or due dates changed');
 
-    await page.getByRole('button', { name: `Send a test to ${url}` }).click();
+    await page.getByRole('button', { name: `Send test to ${url}` }).click();
     await expect(page.locator('#toasts').getByText('Test delivered (200)')).toBeVisible();
     expect(JSON.parse(received[0]!.body)).toMatchObject({ type: 'ping', organizationId: orgId });
     expect(signedBy(secret, received[0]!)).toBe(true);
@@ -968,7 +968,7 @@ test('classes and homework: the school sets up a class, a student hands in work 
   const laila = page.locator('table.data tbody tr', { hasText: 'Laila Hassan' });
   await expect(laila).toContainText('Handed in');
   await expect(page.locator('table.data tbody tr', { hasText: 'Omar Adel' })).toContainText('Not handed in');
-  await laila.getByRole('button', { name: 'Open the work of Laila Hassan' }).click();
+  await laila.getByRole('button', { name: 'Mark the work of Laila Hassan' }).click();
   dlg = page.getByRole('dialog', { name: 'Work of Laila Hassan' });
   await expect(dlg.locator('.answer')).toHaveText('1) The Nile. 2) Upper Egypt. 3) Aswan.');
   await expect(dlg.locator('.file img')).toBeVisible();
@@ -1097,7 +1097,7 @@ test('online test: the teacher writes and publishes it, watches it live, the stu
   await expect(page.locator('.question').nth(1)).toContainText('1 / 1');
   await page.getByLabel('Mark (out of 3)').fill('2.5');
   await page.getByLabel('Comments for the student').nth(2).fill('Good. Mention the annual flood too.');
-  await page.getByRole('button', { name: 'Save the mark for question 3' }).click();
+  await page.getByRole('button', { name: 'Save mark for question 3' }).click();
   await expect(page.getByText('Saved. Total: 5.5 / 6')).toBeVisible();
 
   // Laila sees her mark and the comment.
@@ -1184,7 +1184,7 @@ test('keeping classroom data: the owner sets how long work is kept, keeps a test
   await page.getByRole('link', { name: '7A' }).click();
   await page.getByRole('link', { name: 'Read chapter 1' }).click();
   await expect(page.getByText(/^Students’ work was deleted on .+, under your school’s retention periods\. Hand-in times, marks and comments are kept\.$/)).toBeVisible();
-  await page.getByRole('button', { name: 'Open the work of Laila Hassan' }).click();
+  await page.getByRole('button', { name: /^(Mark|Open) the work of Laila Hassan$/ }).click();
   const work = page.getByRole('dialog');
   await expect(work).toContainText('The answer and files were deleted under the school’s retention periods.');
   await expect(work.getByLabel('Mark (out of 10)')).toHaveValue('9');

@@ -571,9 +571,10 @@ export async function homeworkView(ctx) {
     h('td', { class: 'nowrap' }, r.submittedAt ? fmtDate(r.submittedAt, true) : none()),
     h('td', {}, r.files ? String(r.files) : none()),
     h('td', {}, markText(r, hw.maxPoints)),
-    h('td', {}, h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t('hw.openFor', { name: r.name }), onclick: () => act(async () => {
+    // The button's name starts with its visible word (WCAG 2.5.3), which is Mark for work waiting to be marked.
+    h('td', {}, ((toMark) => h('button', { type: 'button', class: 'btn small ghost', 'aria-label': t(toMark ? 'hw.markFor' : 'hw.openFor', { name: r.name }), onclick: () => act(async () => {
       if (await markDialog(orgId, hw, r, data.canEdit)) refresh();
-    }) }, data.canEdit ? (r.status === 'submitted' ? t('hw.mark') : t('hw.open')) : t('hw.open')))));
+    }) }, t(toMark ? 'hw.mark' : 'hw.open')))(data.canEdit && r.status === 'submitted'))));
 
   const roster = h('section', { class: 'card', 'aria-labelledby': 'r-h' },
     h('div', { class: 'row spread' }, h('h2', { id: 'r-h' }, t('hw.studentWork')), returnAll),

@@ -52,8 +52,8 @@ const startsWith = (key: string) => new RegExp(`^${escapeRe(L(key))}`);
  * ("StatusNot verifiedVerified…"), so the label is matched as the start of the name.
  */
 const field = (key: string) => new RegExp(`^${escapeRe(L(key))}`);
-/** The name of a grade button in the picker ("Grade 1", "الصف 1"). */
-const grade = (n: number, lang = LANG) => `${word(lang, 'picker.grade')} ${n}`;
+/** A grade button in the picker by the grade its name ends with ("P1 G1, Grade 1", "ب1 G1، الصف 1"). */
+const grade = (n: number, lang = LANG) => new RegExp(`${escapeRe(word(lang, 'picker.grade'))} ${n}$`);
 /** The language button in the top bar or on a signed-out page switches to the other language. */
 const switchLabel = (to: 'en' | 'ar') => (to === 'ar' ? 'العربية' : 'English');
 /** A number as the interface writes it (Arabic-Indic digits in Arabic). */
@@ -668,7 +668,7 @@ test('user guide screenshots', async ({ browser }) => {
   await karim.getByRole('link', { name: DEMO.hwTitle }).click();
   await expect(karim.locator('table.data tbody tr', { hasText: DEMO.omar })).toContainText(L('hw.status.submitted'));
   await shot(karim, 'homework-roster', undefined, { fullPage: true });
-  await karim.getByRole('button', { name: L('hw.openFor', { name: DEMO.omar }) }).click();
+  await karim.getByRole('button', { name: L('hw.markFor', { name: DEMO.omar }) }).click();
   await dialog(karim).getByLabel(L('hw.markOutOf', { max: 10 })).fill('9');
   await dialog(karim).getByLabel(L('hw.feedback')).fill(DEMO.hwFeedback);
   await shot(karim, 'homework-mark-dialog', dialog(karim));

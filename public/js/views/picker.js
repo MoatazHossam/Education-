@@ -170,7 +170,7 @@ export async function pickerView(ctx) {
     tracksEl.replaceChildren(...TRACKS.map((k) => mkBtn('chipbtn', t(`track.${k}`), st.track === k, () => { st.track = k; drawControls(); render(); })));
     const gb = [];
     for (let i = 1; i <= 12; i++) {
-      gb.push(mkBtn('gbtn', [gradeShort(i), h('small', {}, `G${i}`)], st.grades.has(i), () => { if (st.grades.has(i)) st.grades.delete(i); else st.grades.add(i); drawControls(); render(); }, { 'aria-label': `${t('picker.grade')} ${i}` }));
+      gb.push(mkBtn('gbtn', [gradeShort(i), ' ', h('small', {}, `G${i}`)], st.grades.has(i), () => { if (st.grades.has(i)) st.grades.delete(i); else st.grades.add(i); drawControls(); render(); }, { 'aria-label': t('picker.gradeBtn', { short: gradeShort(i), n: i }) }));
     }
     gradesEl.replaceChildren(...gb);
     kindsEl.replaceChildren(...KINDS.map((k) => mkBtn('chipbtn', t(`kind.${k}`), st.kinds.has(k), () => { if (st.kinds.has(k)) st.kinds.delete(k); else st.kinds.add(k); drawControls(); render(); })));

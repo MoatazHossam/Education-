@@ -760,6 +760,17 @@ Production finding S-15. On Docker 29.9 in this container:
 
 Not run: `ops/midad.ps1`'s lookup with PowerShell (the unit test applies its pattern to the same files instead).
 
+### Dependabot's first updates (2026-11-06)
+
+Dependabot's weekly npm group (10 minor and patch updates) and the three actions' v7 releases, in one pull request.
+
+| Check | Result |
+| --- | --- |
+| The npm group as Dependabot proposed it | Typecheck failed: Kysely 0.29 (a 0.x "minor") moved `Migrator`, `Migration` and `MigrationProvider` to `kysely/migration`. Fixed in `src/db/migrator.ts`; Kysely now gets its own pull requests (`exclude-patterns` in `.github/dependabot.yml`) |
+| With the fix, on the new versions | `npm run lint`, `npm run typecheck`, `npm run build` pass; `npm test` 63 files, 468 tests pass (migrations run on the new Kysely in every integration file); `npm audit --omit=dev --audit-level=high` passes (3 moderate, as before) |
+| Actions v7 (`checkout` 7.0.1, `setup-node` 7.1.0, `upload-artifact` 7.0.2) | Dependabot's pins compared with each action's release tag (`git ls-remote`): same commits. Release notes read: nothing this workflow uses changed (fork checkouts under `pull_request_target`, `NODE_AUTH_TOKEN`, an optional unzipped upload); they run on Node.js 24, which ends the runner's "Node.js 20 is deprecated" warning. Each one's own pull request passed all five CI jobs before they were combined |
+| End-to-end | Playwright is now 1.64.1; this container has only 1.56.1's browser builds (and cannot download others), so the journeys and accessibility tests ran in CI only |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

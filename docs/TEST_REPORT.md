@@ -790,6 +790,9 @@ Arabic interface), and the Windows `ops\status.bat` could not find `.env.docker`
 | `tests/unit/ops-status.test.ts` (new) | The Linux script's functions run against a stand-in for `docker compose`: the missing-setting note, start's refusal, status showing the `migrate:` lines of the last run (and the first error line of any other failure), nothing when the update succeeded; the Windows script has the same steps, setting names and markers. Fails with the log lines left out |
 | `tests/e2e/journeys.spec.ts` (new journey) | The Arabic sign-in page with the request refused, then answered 502 by a proxy, then refused in English, shows each message; the next attempt signs in |
 
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build` pass; `npm test` 65 files, 480 tests pass |
+| End-to-end, here (Playwright 1.56.1, whose browsers are in this container) | Chromium: journeys and accessibility, 31 passed. Firefox and WebKit journeys: 27 passed each on the second run. On the first run each stopped at one navigation in an older journey that never finished (Firefox: opening the student sign-in page; WebKit: a reload left on "Loading…"), the faults of these browser builds that `tests/e2e/helpers.ts` works around; `main` passed once in both, and the same Firefox reload had failed once in CI on `main`'s code (PR #51) |
+
 Not run here: `ops/midad.ps1` (no PowerShell in this container). Its new lines mirror the Linux ones and the unit
 test checks they are there; the owner ran the Windows repair commands in the guide on their own installation.
 

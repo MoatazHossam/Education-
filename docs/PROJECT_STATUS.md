@@ -25,6 +25,27 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Clear messages when the server or the database update fails · COMPLETE (2026-11-06)
+- **Reported:** the owner's local installation, set up before migration 0019, did not start. `migrate` stopped with
+  a raw `role "midad_system" does not exist`, the start script showed only compose's "service "migrate" didn't
+  complete successfully", the Arabic sign-in page said "Failed to fetch" (the browser's own English), and a
+  double-clicked `ops\status.bat` could not find `.env.docker`. Fixed on the owner's machine with the steps now in
+  the deployment guide.
+- **Implemented:**
+  - The web client turns "no answer from the server" into its own message in English and Arabic, for API calls and
+    downloads alike; a 502/503/504 from the proxy without the app's answer gets a second message ("the server is
+    not answering right now"). An online test's answer saves are still retried on a lost connection.
+  - `migrate` checks the runtime roles before it changes anything: a missing role is named, with the guide section
+    that adds it ("Nothing was changed in the database"), and no stack trace.
+  - The ops scripts (Linux and Windows): **start** names `DB_SYSTEM_PASSWORD` with that section when it is empty,
+    and when the database update fails it shows `migrate`'s own message instead of compose's one line;
+    **status** says what keeps the installation from running (an empty required setting, a failed update).
+  - The Windows scripts work when a `.bat` is double-clicked (they start in `ops\`).
+  - DEPLOYMENT_GUIDE EN/AR: the repair as tested commands for Linux and Windows, and what start and status now say.
+- **Verified:** on Docker, a database without the system role and a settings file without its password, before and
+  after the repair; the Arabic sign-in page with the app really stopped; new unit, integration and E2E tests, each
+  failing without its change. Not run here: the PowerShell script (no PowerShell in this container).
+
 ### Dependabot's first updates: npm group and actions v7 · COMPLETE (2026-11-06)
 - **Asked:** the owner asked for the small Dependabot pull requests on `main` to be reviewed: the weekly npm group
   (#52, 10 minor and patch updates) and the three actions (#60 to #62, v4 to v7).

@@ -95,10 +95,10 @@ for ($i = 0; $i -lt $argv.Count; $i++) {
 }
 
 # ------------------------------------------------------------------ running programs
-# Native ARGV [-Quiet] [-Capture] [-AllowFail]: runs a program; its output goes to the screen, or is
+# Native ARGV [-Quiet] [-Capture [-NoStderr]] [-AllowFail]: runs a program; its output goes to the screen, or is
 # returned with -Capture (one string per line). Sets $script:Code; stops the script on failure unless
 # -AllowFail. Error records from programs' error output never stop the script.
-function Native([string[]]$Argv, [switch]$Quiet, [switch]$Capture, [switch]$AllowFail) {
+function Native([string[]]$Argv, [switch]$Quiet, [switch]$Capture, [switch]$AllowFail, [switch]$NoStderr) {
   $exe = $Argv[0]
   $rest = @()
   if ($Argv.Count -gt 1) { $rest = @($Argv[1..($Argv.Count - 1)]) }
@@ -106,7 +106,8 @@ function Native([string[]]$Argv, [switch]$Quiet, [switch]$Capture, [switch]$Allo
   $ErrorActionPreference = 'Continue'
   $out = $null
   try {
-    if ($Capture) { $out = & $exe @rest }
+    if ($Capture -and $NoStderr) { $out = & $exe @rest 2>$null }
+    elseif ($Capture) { $out = & $exe @rest }
     elseif ($Quiet) { & $exe @rest *> $null }
     else { & $exe @rest | Out-Host }
     $script:Code = $LASTEXITCODE
@@ -114,9 +115,9 @@ function Native([string[]]$Argv, [switch]$Quiet, [switch]$Capture, [switch]$Allo
   if ($script:Code -ne 0 -and -not $AllowFail) { Die "this step failed (exit code $($script:Code)): $exe $(($rest | Select-Object -First 3) -join ' ')" }
   if ($Capture) { return , @($out | ForEach-Object { [string]$_ }) }
 }
-function DC([string[]]$A, [switch]$Quiet, [switch]$Capture, [switch]$AllowFail) {
+function DC([string[]]$A, [switch]$Quiet, [switch]$Capture, [switch]$AllowFail, [switch]$NoStderr) {
   $all = @('docker', 'compose') + $script:Files + @('--env-file', $script:EnvFile) + $A
-  if ($Capture) { return , (Native $all -Capture -AllowFail:$AllowFail) }
+  if ($Capture) { return , (Native $all -Capture -AllowFail:$AllowFail -NoStderr:$NoStderr) }
   Native $all -Quiet:$Quiet -AllowFail:$AllowFail
 }
 function Tool-User { # containers that write into the backup folder: as root on Linux (the folder is private)
@@ -261,13 +262,21 @@ function Get-DbName { # DB_NAME, or the database named in DATABASE_URL (managed 
   if (-not $n -and $script:Managed -and (EnvGet 'DATABASE_URL') -match '^[^/]*//[^/]*/([^?]*)') { $n = $Matches[1] }
   return $n
 }
-function Check-Env {
+function Get-MissingSettings { # the settings the installation cannot run without that are empty
   $keys = @('SESSION_SECRET', 'DATA_ENCRYPTION_KEY')
   if ($script:Managed) { $keys += @('MIGRATION_DATABASE_URL', 'SYSTEM_DATABASE_URL') }
   else { $keys += @('POSTGRES_SUPERUSER_PASSWORD', 'DB_NAME', 'DB_OWNER_USER', 'DB_OWNER_PASSWORD', 'DB_APP_USER', 'DB_APP_PASSWORD', 'DB_SYSTEM_PASSWORD', 'DB_BACKUP_PASSWORD') }
   if ($script:EnvName -eq 'prod') { $keys += @('APP_URL', 'DOMAIN', 'ACME_EMAIL') }
-  $missing = @($keys | Where-Object { -not (EnvGet $_) })
-  if ($missing.Count) { Die "set these in $($script:EnvFile) first: $($missing -join ' ')" }
+  return , @($keys | Where-Object { -not (EnvGet $_) })
+}
+function Get-SystemRoleNote([string[]]$Missing) { # the step a database older than the system role needs too
+  if (-not (($Missing -contains 'DB_SYSTEM_PASSWORD') -or ($Missing -contains 'SYSTEM_DATABASE_URL'))) { return '' }
+  return "`n  The system role came with migration 0019: a database set up before it also needs the role created," +
+    "`n  as docs/DEPLOYMENT_GUIDE.md section 3.3 `"Installations made before migration 0019`" shows."
+}
+function Check-Env {
+  $missing = Get-MissingSettings
+  if ($missing.Count) { Die "set these in $($script:EnvFile) first: $($missing -join ' ')$(Get-SystemRoleNote $missing)" }
   if ($script:EnvName -eq 'prod') {
     if (Select-String -LiteralPath $script:EnvFile -Pattern '=change-me' -Quiet) { Die "$($script:EnvFile) still has change-me values: replace every password (docs/DEPLOYMENT_GUIDE.md section 3.2)" }
     if (-not (EnvGet 'APP_URL').StartsWith('https://')) { Die 'APP_URL must start with https:// in production' }
@@ -323,7 +332,12 @@ function Cmd-Start {
     if (Test-Image) { Native @('docker', 'tag', $script:Image, 'midad:previous') -Quiet }
   }
   Step "Starting the $($script:EnvName) installation ($($script:Project))"
-  DC $a
+  # Compose stops at a failed database update with only "service "migrate" didn't complete successfully".
+  DC $a -AllowFail
+  if ($script:Code -ne 0) {
+    Show-Problems
+    Die "the $($script:EnvName) installation did not start: see above"
+  }
   Step 'Waiting for the app'
   foreach ($s in (Apps)) { [void](Wait-Ready $s) }
   Show-Status
@@ -339,7 +353,28 @@ function Show-Status {
   Step "Status of the $($script:EnvName) installation ($($script:Project))"
   DC @('ps', '--format', 'table {{.Service}}\t{{.State}}\t{{.Status}}')
   foreach ($s in (Apps)) { if (Test-Ready $s) { Say "  ${s}: ready" } else { Say "  ${s}: not ready" } }
+  Show-Problems
   Say "Address: $(EnvGet 'APP_URL')"
+}
+function Show-Problems { # what keeps an installation from running, as far as this script can tell
+  $missing = Get-MissingSettings
+  if ($missing.Count) { Warn "empty in $($script:EnvFile): $($missing -join ' ') (the app cannot run without them)$(Get-SystemRoleNote $missing)" }
+  $state = @(DC @('ps', '-a', '--format', '{{.State}} {{.ExitCode}}', 'migrate') -Capture -AllowFail -NoStderr) | Select-Object -First 1
+  if (-not $state -or -not $state.StartsWith('exited ') -or $state -eq 'exited 0') { return }
+  $name = @(DC @('ps', '-a', '--format', '{{.Name}}', 'migrate') -Capture -AllowFail -NoStderr) | Select-Object -First 1
+  # Its last run only: a container's log keeps every earlier run (each start runs migrate again).
+  $since = @()
+  if ($name) {
+    $started = @(Native @('docker', 'inspect', '-f', '{{.State.StartedAt}}', $name) -Capture -AllowFail -NoStderr) | Select-Object -First 1
+    if ($started) { $since = @('--since', $started) }
+  }
+  # The migrate command says a step for the operator on lines of its own; any other failure by its first error line.
+  $log = @(DC (@('logs') + $since + @('--no-log-prefix', '--no-color', 'migrate')) -Capture -AllowFail -NoStderr)
+  $lines = @($log | Where-Object { $_.StartsWith('migrate: ') } | ForEach-Object { $_.Substring(9) })
+  if (-not $lines.Count) { $lines = @($log | Where-Object { $_ -match '^[a-z]*error\b' } | Select-Object -First 1) }
+  Warn 'the database update (the migrate service) failed, so the app does not start:'
+  foreach ($l in $lines) { Write-Host "  $l" -ForegroundColor Yellow }
+  Say "  Full log: docker logs $(if ($name) { $name } else { 'migrate' })"
 }
 function Cmd-Status { Pick-Env; Show-Status }
 

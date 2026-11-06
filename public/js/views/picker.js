@@ -2,7 +2,7 @@
 // Rendering follows the original artifact (grade ruler, track/kind filters,
 // search, blocks of subjects, selection tray, copy list). Selections are saved
 // to a server-side "content scope" instead of localStorage.
-import { ApiError, del, get, post } from '../api.js';
+import { ApiError, del, get, post, request } from '../api.js';
 import { confirmDialog, dialog, downloadText, errorMessage, h, link, setText, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
@@ -293,7 +293,7 @@ export async function pickerView(ctx) {
     if (!scope) return explainReadOnly();
     await flushing;
     try {
-      const res = await fetch(`/api/orgs/${orgId}/scopes/${scope.id}/export?format=${format}`, { credentials: 'same-origin' });
+      const res = await request(`/api/orgs/${orgId}/scopes/${scope.id}/export?format=${format}`, { credentials: 'same-origin' });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new ApiError(res.status, body);

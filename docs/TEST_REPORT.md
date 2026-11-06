@@ -772,6 +772,27 @@ Dependabot's weekly npm group (10 minor and patch updates) and the three actions
 | End-to-end, first CI run | Chromium's accessibility test failed: `@axe-core/playwright` 4.14 brings axe-core 4.14, whose rule `label-content-name-mismatch` (WCAG 2.5.3, label in name) found 7 controls whose name did not contain their visible text: the picker's grade buttons ("P1 G1" named "Grade 1"), the homework button showing "Mark" named "Open the work of …", "Save mark" named "Save the mark for question 2", "Send test", "Send again", "Submit now" on the live monitor, and the catalogue editor's "verify" links. Each name now holds its visible text (EN and AR); the tests and SCREEN_READER_REVIEW.md use the new names |
 | End-to-end, here | Playwright 1.64.1's browsers cannot be downloaded in this container, so the same tests ran with the new axe on Playwright 1.56.1 (whose browsers are here): journeys and accessibility, 30 passed. With only the grade buttons put back, the accessibility test fails with the same 7 picker findings as CI |
 
+### Clear messages when the server or the database update fails (2026-11-06)
+
+The owner's local installation predated migration 0019: `migrate` stopped with a raw `role "midad_system" does
+not exist`, the app never started, the sign-in page said only "Failed to fetch" (the browser's English, in the
+Arabic interface), and the Windows `ops\status.bat` could not find `.env.docker` when double-clicked.
+
+| Check | Result |
+| --- | --- |
+| A database without the system role (Docker: a fresh development installation, then `DROP ROLE midad_system`), `ops/midad.sh start` | `migrate` stops before changing anything: "The database has no role "midad_system" (the system role, SYSTEM_DB_ROLE) … docs/DEPLOYMENT_GUIDE.md section 3.3 …" (plain ASCII, so Windows PowerShell shows it intact), "Nothing was changed in the database." Start shows these lines under compose's own "service "migrate" didn't complete successfully", then the path of the full log, and exits 1. Before the fix, start stopped at compose's line alone |
+| `ops/midad.sh status` on the same installation | The same lines, once (only the last run of the `migrate` container is read; its log keeps every earlier run) |
+| The settings file without `DB_SYSTEM_PASSWORD` | Start refuses: "set these in .env.docker first: DB_SYSTEM_PASSWORD" with a note naming the guide section; status warns with the same note |
+| The repair in the deployment guide, Linux commands exactly as written there | Role created, password added to the settings file; start runs `migrate` ("Granted runtime privileges to the system role midad_system"), app ready, `/readyz` 200 |
+| The sign-in page in Arabic with the app container stopped (Chromium, real connection refused) | "تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت، ثم حاول مرة أخرى بعد قليل." instead of "Failed to fetch" |
+| `tests/integration/migrator.test.ts` (new test) | `migrate-cli up` as its own process on a new database with a missing system role, then a missing app role: exit 1, the role named, the guide section named, no stack trace, no table created; with the role present, the same command migrates and grants. Fails without the role check |
+| `tests/unit/api-client.test.ts` (new) | Chrome's, Firefox's and Safari's network errors become `NETWORK_ERROR` (status 0, still retried by an online test's answer saves), from API calls and downloads; a cancelled request stays a cancellation; 502/503/504 without the app's JSON become `SERVER_UNAVAILABLE` while the app's own 5xx codes stay; no page calls `fetch` itself; both messages exist in English and Arabic. Fails without the change |
+| `tests/unit/ops-status.test.ts` (new) | The Linux script's functions run against a stand-in for `docker compose`: the missing-setting note, start's refusal, status showing the `migrate:` lines of the last run (and the first error line of any other failure), nothing when the update succeeded; the Windows script has the same steps, setting names and markers. Fails with the log lines left out |
+| `tests/e2e/journeys.spec.ts` (new journey) | The Arabic sign-in page with the request refused, then answered 502 by a proxy, then refused in English, shows each message; the next attempt signs in |
+
+Not run here: `ops/midad.ps1` (no PowerShell in this container). Its new lines mirror the Linux ones and the unit
+test checks they are there; the owner ran the Windows repair commands in the guide on their own installation.
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

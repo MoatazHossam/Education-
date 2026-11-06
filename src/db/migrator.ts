@@ -100,6 +100,32 @@ export async function migrateToLatest(db: Database): Promise<string[]> {
   return (results ?? []).filter((r) => r.status === 'Success').map((r) => r.migrationName);
 }
 
+/** A problem the operator fixes with a step in the deployment guide: the migrate command prints its message alone. */
+export class SetupError extends Error {
+  override name = 'SetupError';
+}
+
+/**
+ * Refuses, before anything changes, a database that lacks a runtime role. A database set up before
+ * migration 0019 has no system role: the roles script runs only when the database is first created.
+ * Checked first, so the database stays as the release it ran with left it.
+ */
+export async function checkRuntimeRoles(db: Database, roles: { app?: string; system?: string }): Promise<void> {
+  const wanted = Object.entries(roles).filter((e): e is [string, string] => Boolean(e[1]));
+  if (!wanted.length) return;
+  const { rows } = await sql<{ rolname: string }>`SELECT rolname FROM pg_roles WHERE rolname IN (${sql.join(wanted.map(([, r]) => r))})`.execute(db);
+  const present = new Set(rows.map((r) => r.rolname));
+  const missing = wanted.filter(([, r]) => !present.has(r));
+  if (!missing.length) return;
+  const lines = missing.map(([kind, r]) =>
+    kind === 'system'
+      ? `The database has no role "${r}" (the system role, SYSTEM_DB_ROLE). A database set up before migration 0019 lacks it: ` +
+        'create it as docs/DEPLOYMENT_GUIDE.md section 3.3 "Installations made before migration 0019" shows, set its password in the settings file, then start again.'
+      : `The database has no role "${r}" (the app role, APP_DB_ROLE, from DB_APP_USER): check DB_APP_USER in the settings file, or create the role (docs/DEPLOYMENT_GUIDE.md section 3).`,
+  );
+  throw new SetupError(`${lines.join('\n')}\nNothing was changed in the database.`);
+}
+
 /**
  * Grants a runtime role the minimum privileges it needs:
  * - "app", the web application's role (no BYPASSRLS): audit_logs is append-only for

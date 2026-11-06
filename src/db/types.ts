@@ -442,6 +442,24 @@ export interface AiModelPricesTable {
   updated_at: Generated<Date>;
 }
 
+export interface BillingReviewsTable {
+  id: Generated<string>;
+  org_id: string;
+  invoice_id: string | null;
+  payment_id: string | null;
+  provider: string;
+  event_id: string;
+  provider_txn_id: string | null;
+  kind: 'refund' | 'void' | 'amount_mismatch' | 'payment_on_closed_invoice';
+  amount_cents: number | null;
+  currency: string | null;
+  status: Generated<'open' | 'resolved'>;
+  resolution: string | null;
+  resolved_by: string | null;
+  resolved_at: NullableTimestamp;
+  created_at: Generated<Date>;
+}
+
 export interface BillingNoticesTable {
   org_id: string;
   kind: string;
@@ -867,6 +885,7 @@ export interface DB {
   ai_model_prices: AiModelPricesTable;
   ai_user_daily: AiUserDailyTable;
   billing_notices: BillingNoticesTable;
+  billing_reviews: BillingReviewsTable;
   audit_logs: AuditLogsTable;
   support_access_grants: SupportAccessGrantsTable;
   notifications: NotificationsTable;

@@ -825,6 +825,19 @@ test checks they are there; the owner ran the Windows repair commands in the gui
 | `tests/unit/system-context-allowlist.test.ts` | The new cross-school reads recorded with their reasons (the platform's spending, sums only; the admin cost report and prices) | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 68 files, 506 tests; E2E in Chromium (Playwright 1.56.1) journeys and accessibility, 31 tests, the platform admin journey now entering the model's prices (a negative one refused next to the field). The first two runs found two faults in the new card, both fixed: the price form was not shown (the form helper's element was not used), and the remove button's spoken name did not contain its visible text (axe `label-content-name-mismatch`) | Pass |
 
+### Payment tools without Paymob keys (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/billing-reprocess.test.ts` (new, 3 tests) | A failed notification, stored as the webhook route stores it (the normalized event from a signed sandbox callback), is reprocessed by a platform administrator: invoice paid, plan active, event processed, audited; a second request gets 409 `EVENT_NOT_FAILED`; the provider's retry is a duplicate; one payment. A reprocess that fails in the database leaves the event failed with the new error and audits the attempt. 404 for non-admins and unknown events, 400 for a bad id, 409 for an ignored event | Pass |
+| The same file with the "failed only" check removed | 2 tests fail | The tests catch it |
+| `tests/integration/billing-reviews.test.ts` (new, 3 tests) | A refund of a received payment opens one review linked to it (a replay opens none), the invoice stays paid and the plan active, audited as `billing.payment_reversed`, invisible to another school (row-level security); a void, a short payment and a second payment on a paid invoice each open one; listing, resolving with a note (audited), 409 `REVIEW_RESOLVED` the second time, 400 without a note, 404 for non-admins; the `billing_review_needed` alert fires while one is open and clears once resolved | Pass |
+| `tests/integration/paymob-contract.test.ts` (updated) | A refunded and a voided Paymob transaction (simulator, the assumed shape: the original transaction with `is_refunded` / `is_voided`) open reviews resolved to the invoice through the signed order id; pending and wrong-amount ones are not applied | Pass |
+| E2E, platform admin journey | A signed sandbox "voided" notification on a paid invoice shows under "Payments to review (1)"; resolved with a note through the dialog; the list empties | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 70 files, 512 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
+
+Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob.com`, `docs.paymob.com`) are not reachable from this environment, so its transaction inquiry API could not be confirmed.
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

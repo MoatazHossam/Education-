@@ -222,6 +222,25 @@ export async function markInvoicePaid(trx: Trx, config: AppConfig, invoice: Invo
  * Applies one verified provider event. Runs inside the webhook transaction
  * (system context). Returns how the event was handled for billing_events.
  */
+type ReviewKind = 'refund' | 'void' | 'amount_mismatch' | 'payment_on_closed_invoice';
+
+/**
+ * Records a payment for an operator to review (docs/production/BILLING_INTEGRATION_PLAN.md P-4): once per
+ * provider notification, so a retry or a reprocess does not add another.
+ */
+async function openReview(
+  trx: Trx,
+  provider: string,
+  event: { eventId: string; providerTxnId: string; amountCents: number; currency: string },
+  r: { orgId: string; invoiceId: string; paymentId: string | null; kind: ReviewKind },
+): Promise<void> {
+  await trx
+    .insertInto('billing_reviews')
+    .values({ org_id: r.orgId, invoice_id: r.invoiceId, payment_id: r.paymentId, provider, event_id: event.eventId, provider_txn_id: event.providerTxnId, kind: r.kind, amount_cents: event.amountCents, currency: event.currency })
+    .onConflict((oc) => oc.columns(['provider', 'event_id']).doNothing())
+    .execute();
+}
+
 export async function applyProviderEvent(
   trx: Trx,
   config: AppConfig,
@@ -249,6 +268,14 @@ export async function applyProviderEvent(
       : undefined;
   if (event.type === 'ignored') return { status: 'ignored', orgId: invoice?.org_id ?? null, note: event.reason };
   if (!invoice) return { status: 'ignored', orgId: null, note: 'unknown invoice' };
+  if (event.type === 'payment.reversed') {
+    // Money went back to the customer. Nothing changes on its own: the operator decides whether to reopen the
+    // invoice or change the plan (an automatic downgrade on a disputed refund would be worse than a review).
+    const paid = await trx.selectFrom('payments').select('id').where('provider', '=', provider).where('provider_txn_id', '=', event.providerTxnId).executeTakeFirst();
+    await openReview(trx, provider, event, { orgId: invoice.org_id, invoiceId: invoice.id, paymentId: paid?.id ?? null, kind: event.kind });
+    await recordAudit(trx, SYSTEM, { orgId: invoice.org_id, action: 'billing.payment_reversed', targetType: 'invoice', targetId: invoice.id, metadata: { kind: event.kind, providerTxnId: event.providerTxnId, amountCents: event.amountCents, currency: event.currency } });
+    return { status: 'processed', orgId: invoice.org_id, note: `${event.kind} recorded for review` };
+  }
   const org = await trx.selectFrom('organizations').select(['name']).where('id', '=', invoice.org_id).executeTakeFirstOrThrow();
   const owner = await ownerOf(trx, invoice.org_id);
   const billingLink = `${config.APP_URL}/org/${invoice.org_id}/billing`;
@@ -282,10 +309,12 @@ export async function applyProviderEvent(
 
   if (event.amountCents !== invoice.amount_cents || event.currency !== invoice.currency) {
     await recordAudit(trx, SYSTEM, { orgId: invoice.org_id, action: 'billing.amount_mismatch', targetType: 'invoice', targetId: invoice.id, metadata: { expected: invoice.amount_cents, received: event.amountCents, currency: event.currency } });
+    await openReview(trx, provider, event, { orgId: invoice.org_id, invoiceId: invoice.id, paymentId: payment.id, kind: 'amount_mismatch' });
     return { status: 'ignored', orgId: invoice.org_id, note: 'amount or currency mismatch — manual review' };
   }
   if (invoice.status !== 'open') {
     await recordAudit(trx, SYSTEM, { orgId: invoice.org_id, action: 'billing.payment_on_closed_invoice', targetType: 'invoice', targetId: invoice.id, metadata: { status: invoice.status } });
+    await openReview(trx, provider, event, { orgId: invoice.org_id, invoiceId: invoice.id, paymentId: payment.id, kind: 'payment_on_closed_invoice' });
     return { status: 'ignored', orgId: invoice.org_id, note: `invoice already ${invoice.status} — refund review` };
   }
 

@@ -141,7 +141,12 @@ export class PaymobProvider implements PaymentProvider {
     // One transaction can produce several callbacks (processed, voided, refunded).
     const eventId = `txn_${txn.id}_${txn.success}_${txn.pending}_${txn.is_voided}_${txn.is_refunded}`;
     if (txn.pending) return { type: 'ignored', eventId, reason: 'pending', invoiceId };
-    if (txn.is_refunded || txn.is_voided) return { type: 'ignored', eventId, reason: 'refund/void requires manual review', invoiceId };
+    // Assumption until the test-mode run (P-1): a refund or void is reported as the original transaction with
+    // is_refunded or is_voided set, as tests/helpers/paymob-simulator.ts does. The amount is the transaction's;
+    // a partial refund's amount is in Paymob's dashboard.
+    if (txn.is_refunded || txn.is_voided) {
+      return { type: 'payment.reversed', eventId, invoiceId, checkoutRef, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency, kind: txn.is_voided ? 'void' : 'refund' };
+    }
     if (txn.success) {
       return { type: 'payment.succeeded', eventId, invoiceId, checkoutRef, providerTxnId: String(txn.id), amountCents: txn.amount_cents, currency: txn.currency };
     }

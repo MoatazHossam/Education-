@@ -566,14 +566,43 @@ export async function auditView(ctx) {
 
 export async function eventsView(ctx) {
   const status = ctx.query.get('status') || '';
-  const { events } = await get(`/api/admin/billing-events?limit=100${status ? `&status=${status}` : ''}`);
+  const [{ events }, { reviews, open }] = await Promise.all([get(`/api/admin/billing-events?limit=100${status ? `&status=${status}` : ''}`), get('/api/admin/billing-reviews')]);
+  const resolve = (r) => h('button', {
+    type: 'button', class: 'btn small', 'aria-label': t('admin.reviewResolveFor', { invoice: r.invoiceNumber || r.providerTxnId || '' }), onclick: async () => {
+      const resolution = await promptDialog(t('admin.reviewResolve'), t('admin.reviewResolution'), { hint: t('admin.reviewResolutionHint') });
+      if (resolution && (await safe(() => post(`/api/admin/billing-reviews/${r.id}/resolve`, { resolution }), t('admin.reviewResolved')))) ctx.render();
+    },
+  }, t('admin.reviewResolve'));
+  const reviewsCard = open
+    ? tableCard(t('admin.reviews', { n: fmtNum(open) }), h('table', { class: 'data' },
+      h('thead', {}, h('tr', {}, [t('admin.col.received'), t('admin.col.org'), t('admin.col.invoice'), t('admin.col.type'), t('admin.col.amount'), t('admin.col.transaction'), t('common.actions')].map(th))),
+      h('tbody', {}, reviews.map((r) => h('tr', {},
+        h('td', {}, fmtDate(r.createdAt, true)), h('td', {}, link(`/admin/orgs/${r.orgId}`, r.orgName)),
+        h('td', {}, r.invoiceNumber ? `${r.invoiceNumber} · ${t(`invoice.status.${r.invoiceStatus}`)}` : '—'),
+        h('td', {}, t(`admin.reviewKind.${r.kind}`)), h('td', {}, r.amountCents === null ? '—' : fmtMoney(r.amountCents, r.currency)),
+        h('td', { class: 'mono' }, `${r.provider} ${r.providerTxnId ?? ''}`), h('td', {}, resolve(r)))))))
+    : null;
+  // A failed notification is applied again from the event as received, with the same checks as the provider's retry.
+  const reprocess = (e) => h('button', {
+    type: 'button', class: 'btn small', 'aria-label': t('admin.reprocessFor', { event: e.eventId }), onclick: async () => {
+      if (!(await confirmDialog(t('admin.reprocess'), t('admin.reprocessConfirm', { event: e.eventId })))) return;
+      await safe(async () => {
+        const r = (await post(`/api/admin/billing-events/${e.id}/reprocess`)).event;
+        if (r.status === 'failed') toast(t('admin.reprocessFailed', { error: r.error }), 'error');
+        else toast(t('admin.reprocessDone', { status: t(`admin.eventStatus.${r.status}`) }));
+      });
+      ctx.render();
+    },
+  }, t('admin.reprocess'));
   return h('div', {},
     pageHead(t('admin.events'), t('admin.eventsSub')),
+    reviewsCard,
     h('div', { class: 'seg' }, ['', 'processed', 'ignored', 'failed'].map((s) => link(`/admin/events${s ? `?status=${s}` : ''}`, t(`admin.eventStatus.${s || 'all'}`), { class: 'chipbtn', 'aria-current': s === status ? 'page' : null }))),
     tableCard(t('admin.events'), h('table', { class: 'data' },
-      h('thead', {}, h('tr', {}, [t('admin.col.received'), t('admin.col.provider'), t('admin.col.event'), t('admin.col.type'), t('admin.col.status'), t('admin.col.note')].map(th))),
+      h('thead', {}, h('tr', {}, [t('admin.col.received'), t('admin.col.provider'), t('admin.col.event'), t('admin.col.type'), t('admin.col.status'), t('admin.col.note'), t('common.actions')].map(th))),
       h('tbody', {}, events.map((e) => h('tr', {},
         h('td', {}, fmtDate(e.receivedAt, true)), h('td', {}, e.provider), h('td', { class: 'mono' }, e.eventId), h('td', { class: 'mono' }, e.type),
         h('td', {}, h('span', { class: `pill ${e.status === 'processed' ? 'ok' : e.status === 'failed' ? 'bad' : ''}` }, t(`admin.eventStatus.${e.status}`))),
-        h('td', { class: 'muted' }, e.error || '')))))));
+        h('td', { class: 'muted' }, e.error || ''),
+        h('td', {}, e.status === 'failed' ? reprocess(e) : null)))))));
 }

@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Payment tools that need no Paymob keys (BILLING_INTEGRATION_PLAN P-2, P-4) · COMPLETE in code (2026-11-06; sandbox provider and Paymob simulator; P-3 BLOCKED)
+- **Reprocess (P-2):** a payment notification that failed to process (a database error, a deploy in the middle) can be
+  applied again from Platform admin → Webhooks. It uses the normalized event stored when it was received and
+  verified, with the same checks as the provider's retry, and only once. A second request, or the provider's own
+  retry afterwards, changes nothing. If it fails again it stays failed, with the new error.
+- **Payments to review (P-4):** a refund or void the provider reports, a payment whose amount or currency does not
+  match its invoice, and a payment on a closed invoice each open one review (Platform admin → Webhooks → Payments to
+  review). Before, they were only audited and marked ignored. Nothing changes on the invoice or plan by itself; an
+  operator resolves each with a note of what was done (audited), and an operational alert fires while any is open.
+  How Paymob reports refunds and voids is an assumption until the test-mode run (P-1).
+- **Reconciliation (P-3): BLOCKED.** It must call Paymob's transaction inquiry API, which has to be confirmed in
+  Paymob's documentation or test mode first. Paymob's documentation hosts are not reachable from this environment, and
+  no code was written against an unconfirmed API.
+
 ### What AI costs, a monthly spending cap for the platform, and a cost report (AI cost control AI-3, AI-6) · COMPLETE in code (2026-11-06; against the provider simulator; the budget and the model's prices are for the owner to enter)
 - **Prices:** a platform administrator enters what the provider charges for a model (US dollars per million input and
   output tokens, from the provider's price page) in Platform admin → AI assistance. Nothing assumes a price, and none

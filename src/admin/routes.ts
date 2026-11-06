@@ -8,7 +8,8 @@ import { revokeUserSessions } from '../auth/sessions.js';
 import { effectivePlan } from '../billing/entitlements.js';
 import { FREE_PLAN_ID } from '../billing/plans.js';
 import { publicPlan } from '../billing/routes.js';
-import { markInvoicePaid } from '../billing/service.js';
+import type { NormalizedEvent } from '../billing/providers/types.js';
+import { applyProviderEvent, markInvoicePaid } from '../billing/service.js';
 import { notifyFlaggedForReview, notifyScopesBehind } from '../catalog/notify.js';
 import { invalidateCatalogCache, loadCatalogTree } from '../catalog/service.js';
 import { applyImport, exportSheet, loadSheetState, planImport, UNVERIFIED } from '../catalog/sheet.js';
@@ -405,6 +406,96 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       const rows = await query.execute();
       return { events: rows.map((e) => ({ id: e.id, provider: e.provider, eventId: e.event_id, type: e.event_type, orgId: e.org_id, status: e.status, error: e.error, receivedAt: e.received_at, processedAt: e.processed_at })) };
     });
+  });
+
+  // Payments an operator must look at (BILLING_INTEGRATION_PLAN P-4): refunds and voids the provider reported,
+  // amounts that did not match, payments on closed invoices. Open ones first, oldest first.
+  app.get('/api/admin/billing-reviews', async (req) => {
+    requirePlatformAdmin(req);
+    const q = parse(z.object({ status: z.enum(['open', 'resolved']).default('open'), limit: z.coerce.number().int().min(1).max(200).default(100) }), req.query);
+    return sys(async (trx) => {
+      const rows = await trx
+        .selectFrom('billing_reviews as r')
+        .innerJoin('organizations as o', 'o.id', 'r.org_id')
+        .leftJoin('invoices as i', 'i.id', 'r.invoice_id')
+        .leftJoin('users as u', 'u.id', 'r.resolved_by')
+        .select(['r.id', 'r.org_id', 'o.name as org_name', 'r.invoice_id', 'i.number as invoice_number', 'i.status as invoice_status', 'r.provider', 'r.provider_txn_id', 'r.kind', 'r.amount_cents', 'r.currency', 'r.status', 'r.resolution', 'u.email as resolved_by_email', 'r.resolved_at', 'r.created_at'])
+        .where('r.status', '=', q.status)
+        .orderBy('r.created_at', q.status === 'open' ? 'asc' : 'desc')
+        .limit(q.limit)
+        .execute();
+      const open = await trx.selectFrom('billing_reviews').select((eb) => eb.fn.countAll<string>().as('n')).where('status', '=', 'open').executeTakeFirstOrThrow();
+      return {
+        open: Number(open.n),
+        reviews: rows.map((r) => ({
+          id: r.id, orgId: r.org_id, orgName: r.org_name, invoiceId: r.invoice_id, invoiceNumber: r.invoice_number, invoiceStatus: r.invoice_status,
+          provider: r.provider, providerTxnId: r.provider_txn_id, kind: r.kind, amountCents: r.amount_cents, currency: r.currency,
+          status: r.status, resolution: r.resolution, resolvedBy: r.resolved_by_email, resolvedAt: r.resolved_at, createdAt: r.created_at,
+        })),
+      };
+    });
+  });
+
+  // The operator says what was done (reopened the invoice, changed the plan, refunded in the provider's
+  // dashboard, nothing needed); the note goes to the audit log.
+  app.post('/api/admin/billing-reviews/:id/resolve', async (req) => {
+    const { user } = requirePlatformAdmin(req);
+    const actor = adminActor(req);
+    const { id } = parse(z.object({ id: zUuid }), req.params);
+    const body = parse(z.object({ resolution: z.string().trim().min(1).max(1000) }), req.body);
+    return sys(async (trx) => {
+      const r = await trx
+        .updateTable('billing_reviews')
+        .set({ status: 'resolved', resolution: body.resolution, resolved_by: user.id, resolved_at: new Date() })
+        .where('id', '=', id)
+        .where('status', '=', 'open')
+        .returning(['id', 'org_id', 'kind', 'invoice_id'])
+        .executeTakeFirst();
+      if (!r) {
+        const exists = await trx.selectFrom('billing_reviews').select('id').where('id', '=', id).executeTakeFirst();
+        throw exists ? conflict('This review is already resolved', 'REVIEW_RESOLVED') : notFound('Review');
+      }
+      await recordAudit(trx, actor, { orgId: r.org_id, action: 'admin.billing_review_resolved', targetType: 'billing_review', targetId: r.id, metadata: { kind: r.kind, invoiceId: r.invoice_id, resolution: body.resolution } }, requestMeta(req));
+      return { review: { id: r.id, status: 'resolved' } };
+    });
+  });
+
+  // A payment provider notification that failed to process (the error is shown in the list) is applied
+  // again from the event as it was received and verified: the stored payload is the normalized event, so
+  // the provider's signature is not needed again. The same rules apply as for the provider's own retry
+  // (one payment per transaction id, amounts must match), and only a failed event can be reprocessed:
+  // once processed, a second request is refused (production finding B-G2 context, step P-2).
+  app.post('/api/admin/billing-events/:id/reprocess', rateLimited(30, '1 minute'), async (req) => {
+    const actor = adminActor(req);
+    const { id } = parse(z.object({ id: zUuid }), req.params);
+    let attempted: { eventId: string; provider: string; type: string } | null = null;
+    try {
+      return await sys(async (trx) => {
+        const row = await trx.selectFrom('billing_events').select(['id', 'provider', 'event_id', 'event_type', 'status', 'payload']).where('id', '=', id).forUpdate().executeTakeFirst();
+        if (!row) throw notFound('Event');
+        if (row.status !== 'failed') throw conflict('Only a failed event can be reprocessed', 'EVENT_NOT_FAILED');
+        attempted = { eventId: row.event_id, provider: row.provider, type: row.event_type };
+        const applied = await applyProviderEvent(trx, config, row.provider, row.payload as NormalizedEvent);
+        await trx
+          .updateTable('billing_events')
+          .set({ status: applied.status, org_id: applied.orgId, error: applied.note ?? null, processed_at: new Date() })
+          .where('id', '=', row.id)
+          .execute();
+        await recordAudit(trx, actor, { orgId: applied.orgId, action: 'admin.billing_event_reprocessed', targetType: 'billing_event', targetId: row.id, metadata: { ...attempted, result: applied.status, note: applied.note ?? null } }, requestMeta(req));
+        return { event: { id: row.id, status: applied.status, error: applied.note ?? null } };
+      });
+    } catch (err) {
+      if (!attempted) throw err;
+      // The event stays failed, with the new error; the attempt is audited.
+      const error = String((err as Error).message).slice(0, 500);
+      req.log.error({ err, billingEventId: id }, 'reprocessing a payment notification failed');
+      const failed: { eventId: string; provider: string; type: string } = attempted;
+      await sys(async (trx) => {
+        await trx.updateTable('billing_events').set({ error }).where('id', '=', id).where('status', '=', 'failed').execute();
+        await recordAudit(trx, actor, { action: 'admin.billing_event_reprocessed', targetType: 'billing_event', targetId: id, metadata: { ...failed, result: 'failed' } }, requestMeta(req));
+      });
+      return { event: { id, status: 'failed', error } };
+    }
   });
 
   // ------------------------------------------------------------ plans

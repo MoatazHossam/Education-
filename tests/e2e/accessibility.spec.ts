@@ -225,6 +225,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await studentPage.emulateMedia({ colorScheme: 'dark' });
   await audit(studentPage, 'student portal (Arabic, dark)');
   await studentPage.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+  await expect(studentPage.locator('.topbar').getByRole('link', { name: 'My books' })).toBeVisible();
   await audit(studentPage, 'student portal (dark)');
   const studentPhone = await newPage(browser, { viewport: { width: 390, height: 844 } });
   await studentPhone.goto(`/student-login?school=${schoolCode}`);
@@ -699,10 +700,27 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
     await expect(page).toHaveTitle(`${(await page.locator('#main h1').innerText()).trim()} · Midad`);
   }
   await page.goto('/account');
+  // The page's language and its text change together, while the preference is still being saved (held
+  // here for 3 s): a screen reader never reads the old language's text with the new language's voice.
+  await page.route('**/api/auth/profile', async (route) => {
+    if (route.request().method() === 'PATCH') await new Promise((r) => setTimeout(r, 3_000));
+    await route.continue();
+  });
+  const saved = (locale: string) =>
+    page.waitForResponse((r) => r.url().endsWith('/api/auth/profile') && r.request().method() === 'PATCH' && r.request().postDataJSON()?.locale === locale);
+  const toArabic = saved('ar');
   await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
-  await expect(page).toHaveTitle(/ · مِداد$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page).toHaveTitle(/ · مِداد$/, { timeout: 1_000 });
+  await expect(page.locator('#main h1')).toHaveText(/[؀-ۿ]/, { timeout: 1_000 });
+  const toEnglish = saved('en');
   await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
-  await expect(page).toHaveTitle(/ · Midad$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page).toHaveTitle(/ · Midad$/, { timeout: 1_000 });
+  await expect(page.locator('#main h1')).not.toHaveText(/[؀-ۿ]/, { timeout: 1_000 });
+  // Both saves, held until now, still reach the server. (The route stays: this test makes no other profile request.)
+  expect((await toArabic).status()).toBe(200);
+  expect((await toEnglish).status()).toBe(200);
 
   // The unread count is part of the notifications button's name, until the list is opened.
   await ownerQuery(

@@ -9,13 +9,13 @@ function navLink(href, label) {
   return link(href, label, current ? { 'aria-current': 'page' } : {});
 }
 
-async function toggleLocale(rerender) {
+function toggleLocale(rerender) {
   const next = locale() === 'ar' ? 'en' : 'ar';
   setLocale(next);
-  if (session.me) {
-    try { await patch('/api/auth/profile', { locale: next }); session.me.user.locale = next; } catch { /* preference stays local */ }
-  }
+  // Redraw at once, then save the preference: the page's lang attribute and its text change together, so a
+  // screen reader never reads one language with the other's voice while the save is on its way.
   rerender();
+  if (session.me) patch('/api/auth/profile', { locale: next }).then(() => { session.me.user.locale = next; }, () => { /* preference stays local */ });
 }
 
 async function showNotifications(btn) {

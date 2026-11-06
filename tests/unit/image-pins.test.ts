@@ -96,7 +96,12 @@ describe('operations scripts', () => {
 });
 
 describe('dependency updates', () => {
-  type Update = { 'package-ecosystem': string; directory: string; ignore?: { 'dependency-name': string; 'update-types'?: string[] }[] };
+  type Update = {
+    'package-ecosystem': string;
+    directory: string;
+    'target-branch'?: string;
+    ignore?: { 'dependency-name': string; 'update-types'?: string[] }[];
+  };
   const updates = (parse(read('.github/dependabot.yml')) as { version: number; updates: Update[] }).updates;
   const covered = updates.map((u) => `${u['package-ecosystem']} ${u.directory}`).sort();
 
@@ -104,10 +109,15 @@ describe('dependency updates', () => {
     expect(covered).toEqual(['docker /', 'docker /ops', 'docker-compose /', 'github-actions /', 'npm /']);
   });
 
-  it('Dependabot proposes no new major version of Node.js or PostgreSQL', () => {
+  it('Dependabot opens its pull requests against main, whatever the default branch', () => {
+    for (const u of updates) expect(u['target-branch'], `${u['package-ecosystem']} ${u.directory}`).toBe('main');
+  });
+
+  it('Dependabot proposes no new major version of Node.js (nor its types) or PostgreSQL', () => {
     const ignored = (eco: string, dir: string) =>
       updates.find((u) => u['package-ecosystem'] === eco && u.directory === dir)?.ignore?.map((i) => `${i['dependency-name']} ${i['update-types']?.join()}`);
     expect(ignored('docker', '/')).toEqual(['node version-update:semver-major']);
+    expect(ignored('npm', '/')).toEqual(['@types/node version-update:semver-major']);
     expect(ignored('docker-compose', '/')).toEqual(['postgres version-update:semver-major']);
   });
 

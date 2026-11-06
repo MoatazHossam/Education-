@@ -245,10 +245,13 @@ and rclone for the backup scripts (`ops/images.Dockerfile`); the operations scri
 files instead of naming tags. The CI's actions are pinned by commit SHA. `.github/dependabot.yml` has Dependabot
 propose updates every Monday for npm, both Dockerfiles, the compose files and the actions: npm minor and patch
 updates grouped in one pull request, new npm and action releases a week after publication (cooldown), and no
-Node.js or PostgreSQL major version (those are planned upgrades). Every proposal runs the full CI.
+Node.js (or `@types/node`) or PostgreSQL major version (those are planned upgrades); the pull requests target `main`.
+Every proposal runs the full CI. Dependabot opened its first 12 pull requests within three minutes of the file
+reaching the repository's default branch.
 `tests/unit/image-pins.test.ts` fails if an unpinned image or action comes back. The CI's own test database
 (`services.postgres`) follows the `16-alpine` tag on purpose. Still to do on GitHub, by the repository owner:
-turn on Dependabot alerts and security updates (Settings > Code security). The update routine (weekly merges,
+turn on Dependabot alerts and security updates (Settings > Code security), and make `main` the default branch
+(security updates go to the default branch). The update routine (weekly merges,
 monthly patch window, security updates within a week) is in `DEPLOYMENT_GUIDE.md` §4.
 
 **S-16.** An external penetration test focused on tenant isolation, the student portal, uploads and billing

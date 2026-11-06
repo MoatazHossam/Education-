@@ -20,7 +20,7 @@ and logs the request. Changing provider is a configuration change; features do n
 | File | Role |
 | --- | --- |
 | `src/ai/types.ts` | The provider interface (`AiProvider.generate`), the reply, error kinds |
-| `src/ai/providers/gemini.ts`, `anthropic.ts`, `openai.ts` | One adapter per provider, each through the provider's official SDK (`@google/genai` 2.32.0, `@anthropic-ai/sdk` 0.133.0, `openai` 7.45.1, pinned) |
+| `src/ai/providers/gemini.ts`, `anthropic.ts`, `openai.ts` | One adapter per provider, each through the provider's official SDK (`@google/genai` 2.32.0, `@anthropic-ai/sdk` 1.6.0, `openai` 7.45.1, pinned) |
 | `src/ai/providers/index.ts` | The configured provider, or none |
 | `src/ai/schema.ts` | Reply schemas in the form every provider accepts; checking a JSON reply |
 | `src/ai/service.ts` | `runAiTask`: allowance, request, checks, log, audit |
@@ -159,7 +159,7 @@ row-level security like every school's data, and the worker removes rows after 4
 | Output tokens | answer + thinking tokens | as reported (thinking included) | `max_completion_tokens` (reasoning included) |
 | Refusal | `promptFeedback.blockReason`, finish `SAFETY` etc. | `stop_reason: refusal` (checked before the text) | `message.refusal`, `content_filter` |
 | Retries (`AI_MAX_RETRIES`) | timeouts, 408, 429, 5xx, after 1–2 s (more for later retries); `retry-after` not used | timeouts, connection errors, 408, 409, 429, 5xx; waits for `retry-after` up to 60 s | as Anthropic |
-| Notes | an invalid key is a 400 `API_KEY_INVALID`, mapped to `auth` | no sampling parameters (current models reject them); on Claude Opus 5.5, Opus 5, Sonnet 5.5 and Fable 5.1 the request opts into Anthropic's server-side fallback (`fallbacks: "default"`), which re-runs a declined request on the model Anthropic recommends; the log records the model that answered | `AI_API_BASE` includes `/v1` |
+| Notes | an invalid key is a 400 `API_KEY_INVALID`, mapped to `auth` | API version `2026-10-21` (SDK 1.x), with the key sent as `Authorization: Bearer`: a gateway behind `AI_API_BASE` must accept that header; no sampling parameters (current models reject them, and `2026-10-21` refuses them); on Claude Opus 5.5, Opus 5, Sonnet 5.5 and Fable 5.1 the request opts into Anthropic's server-side fallback (`fallbacks: "default"`), which re-runs a declined request on the model Anthropic recommends; the log records the model that answered | `AI_API_BASE` includes `/v1` |
 
 ## 5. Platform administration
 

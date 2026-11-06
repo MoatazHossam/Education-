@@ -4,7 +4,8 @@ import type { AddressInfo } from 'node:net';
 /**
  * Local stand-in for the three AI providers' HTTP APIs, written from their API
  * references: Gemini `models/{model}:generateContent` (x-goog-api-key), Anthropic
- * Messages `/v1/messages` (x-api-key, anthropic-version), OpenAI Chat
+ * Messages `/v1/messages` (the key as `Authorization: Bearer` or x-api-key, which the API accepts
+ * alike; anthropic-version), OpenAI Chat
  * Completions `/v1/chat/completions` (Bearer). It checks the key, records each
  * request, and answers with the providers' documented response and error
  * shapes. Passing against it does not replace a run against the provider
@@ -99,7 +100,10 @@ export class AiSimulator {
 
   private authorized(provider: SimProvider, req: IncomingMessage): boolean {
     if (provider === 'gemini') return req.headers['x-goog-api-key'] === this.apiKey;
-    if (provider === 'anthropic') return req.headers['x-api-key'] === this.apiKey && typeof req.headers['anthropic-version'] === 'string';
+    if (provider === 'anthropic') {
+      const key = req.headers['x-api-key'] === this.apiKey || req.headers.authorization === `Bearer ${this.apiKey}`;
+      return key && typeof req.headers['anthropic-version'] === 'string';
+    }
     return req.headers.authorization === `Bearer ${this.apiKey}`;
   }
 

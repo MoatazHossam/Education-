@@ -63,7 +63,10 @@ describe.each(['gemini', 'anthropic', 'openai'] as const)('%s adapter', (name) =
       expect(body.output_config).toEqual({ format: { type: 'json_schema', schema: REQUEST.jsonSchema } });
       // Current models reject sampling parameters.
       expect(body).not.toHaveProperty('temperature');
-      expect(req!.headers['anthropic-version']).toBeTruthy();
+      // SDK 1.x: API version 2026-10-21, and the key as a bearer token (no x-api-key).
+      expect(req!.headers['anthropic-version']).toBe('2026-10-21');
+      expect(req!.headers.authorization).toMatch(/^Bearer \S+$/);
+      expect(req!.headers).not.toHaveProperty('x-api-key');
     } else {
       expect(body).toMatchObject({ model: MODELS.openai, max_completion_tokens: 2000, messages: [{ role: 'system', content: REQUEST.system }, { role: 'user', content: REQUEST.prompt }] });
       expect(body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'reply', schema: REQUEST.jsonSchema, strict: true } });

@@ -838,6 +838,16 @@ test checks they are there; the owner ran the Windows repair commands in the gui
 
 Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob.com`, `docs.paymob.com`) are not reachable from this environment, so its transaction inquiry API could not be confirmed.
 
+### Each school's time zone (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/org-time-zone.test.ts` (new, 5 tests) | Cairo by default; owners set the zone and country (Asia/Riyadh, SA), kept and audited; an unknown zone is refused with the error on `timeZone`; bad country codes refused, null clears; editors refused (403). Overdue: with two schools 25 hours apart (Pacific/Kiritimati and Pacific/Niue), a book due on Niue's today is overdue in the first school only. Reminders: at 04:30 UTC no school is in its hours (skipped); at 05:30 UTC (08:30 Riyadh, 07:30 Cairo) only the Riyadh school is reminded; at 06:30 UTC Cairo's is, and Riyadh's is not sent twice. The daily summary goes out at 08:30 Riyadh, not before. A retention date at 21:30 UTC reads 11 Nov in Riyadh and 10 Nov in Cairo | Pass |
+| The same file with "today" fixed to Cairo, then with the sending hours fixed to Cairo | 1 and 2 tests fail | The tests catch both |
+| Existing reminder, summary, retention, notes and all-schools tests (48) | Unchanged for Cairo schools. One case first failed: a summary pass with only a suspended school was skipped as outside hours, so it no longer dropped that school's waiting books. Fixed: the hours check counts suspended schools | Pass |
+| E2E, webhooks journey | The settings page shows Africa/Cairo; Asia/Riyadh and Saudi Arabia are saved and shown after a reload, then set back | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 71 files, 517 tests, of which the reviewed list of cross-school reads failed until the new hours check was recorded in it; after that the unit tests (31 files, 166) pass; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

@@ -15,7 +15,10 @@ import { DUE_SOON_DAYS } from './notes.js';
 // address and the member's `due_reminder_emails` choice.
 
 export const OVERDUE_WINDOW_DAYS = 7;
-/** Reminders and daily summaries go out between these hours, Cairo time (a worker that was down catches up within the window). */
+/**
+ * Reminders, daily summaries and retention notices go out between these hours, in the school's time zone
+ * (organizations.time_zone; a worker that was down catches up within the window).
+ */
 export const SEND_FROM_HOUR = 8;
 export const SEND_UNTIL_HOUR = 21;
 const MEMBERS_PER_RUN = 500;
@@ -93,24 +96,34 @@ export function reminderTitle(locale: Locale, overdue: number, soon: number): st
   return overdue ? `${books(overdue)} overdue` : `${books(soon)} due soon`;
 }
 
-/** Cairo's date and hour at `now` (the database's time-zone rules, as for "overdue" in the app). */
-export async function cairoClock(db: Database, now: Date): Promise<{ today: string; hour: number }> {
-  const { rows } = await sql<{ today: string; hour: number }>`
-    SELECT (${now}::timestamptz AT TIME ZONE 'Africa/Cairo')::date AS today,
-           extract(hour FROM ${now}::timestamptz AT TIME ZONE 'Africa/Cairo')::int AS hour`.execute(db);
-  const [clock] = rows;
-  if (!clock) throw new Error('no clock');
-  return clock;
+/** The school's date at `now`, in a query joining `organizations o` (the database's time-zone rules, as for "overdue"). */
+export const schoolDay = (now: Date) => sql<string>`(${now}::timestamptz AT TIME ZONE o.time_zone)::date`;
+
+/** Whether `now` falls within the sending hours in the school's zone, in a query joining `organizations o`. */
+export const inSendingHours = (now: Date) => sql<boolean>`extract(hour FROM ${now}::timestamptz AT TIME ZONE o.time_zone) >= ${SEND_FROM_HOUR}
+  AND extract(hour FROM ${now}::timestamptz AT TIME ZONE o.time_zone) < ${SEND_UNTIL_HOUR}`;
+
+/**
+ * Whether any school is within its sending hours at `now` (otherwise a pass reports outside_hours). Suspended
+ * schools count: the passes leave them out themselves, and the daily summary drops what waits for them.
+ */
+export async function anySchoolInSendingHours(db: Database, now: Date): Promise<boolean> {
+  const { rows } = await withSystemContext(db, (trx) =>
+    sql<{ ok: boolean }>`SELECT EXISTS (SELECT 1 FROM organizations o WHERE ${inSendingHours(now)}) AS ok`.execute(trx),
+  );
+  return Boolean(rows[0]?.ok);
 }
 
-/** Assigned, not done, with a due date in the reminder window. Uses scope_items_due_idx. */
-function dueFilter(today: string): RawBuilder<boolean> {
+/** Assigned, not done, with a due date in the reminder window around the school's `today`. Uses scope_items_due_idx. */
+function dueFilter(today: RawBuilder<string>): RawBuilder<boolean> {
   return sql<boolean>`i.assignee_id IS NOT NULL AND i.due_on IS NOT NULL
     AND i.due_on BETWEEN ${today}::date - ${OVERDUE_WINDOW_DAYS}::int AND ${today}::date + ${DUE_SOON_DAYS}::int
     AND i.status IS DISTINCT FROM 'done'`;
 }
 
-const kindOf = (today: string) => sql<ReminderKind>`CASE WHEN i.due_on < ${today}::date THEN 'overdue' ELSE 'due_soon' END`;
+const kindOf = (today: RawBuilder<string>) => sql<ReminderKind>`CASE WHEN i.due_on < ${today}::date THEN 'overdue' ELSE 'due_soon' END`;
+/** A date already computed (YYYY-MM-DD), as a query value. */
+const day = (today: string) => sql<string>`${today}`;
 
 /**
  * One worker pass. Safe to run often and on several workers at once: each
@@ -119,14 +132,15 @@ const kindOf = (today: string) => sql<ReminderKind>`CASE WHEN i.due_on < ${today
  */
 export async function runDueReminders(db: Database, config: AppConfig, now = new Date()): Promise<ReminderSummary> {
   const summary: ReminderSummary = { members: 0, reminded: 0, emails: 0, failed: 0 };
-  const { today, hour } = await cairoClock(db, now);
-  if (hour < SEND_FROM_HOUR || hour >= SEND_UNTIL_HOUR) return { ...summary, skipped: 'outside_hours' };
+  if (!(await anySchoolInSendingHours(db, now))) return { ...summary, skipped: 'outside_hours' };
 
+  // Each school's own date and sending hours (its time zone).
+  const today = schoolDay(now);
   const members = await withSystemContext(db, async (trx) => {
-    const { rows } = await sql<{ org_id: string; assignee_id: string }>`
-      SELECT DISTINCT i.org_id, i.assignee_id
+    const { rows } = await sql<{ org_id: string; assignee_id: string; today: string }>`
+      SELECT DISTINCT i.org_id, i.assignee_id, ${today}::text AS today
       FROM scope_items i
-      JOIN organizations o ON o.id = i.org_id AND o.status = 'active'
+      JOIN organizations o ON o.id = i.org_id AND o.status = 'active' AND ${inSendingHours(now)}
       JOIN users u ON u.id = i.assignee_id AND u.status = 'active'
       WHERE ${dueFilter(today)}
         AND NOT EXISTS (
@@ -139,7 +153,7 @@ export async function runDueReminders(db: Database, config: AppConfig, now = new
 
   for (const m of members) {
     try {
-      const sent = await withSystemContext(db, (trx) => remindMember(trx, config, m.org_id, m.assignee_id, today));
+      const sent = await withSystemContext(db, (trx) => remindMember(trx, config, m.org_id, m.assignee_id, m.today));
       if (sent) {
         summary.members++;
         summary.reminded += sent.items;
@@ -158,9 +172,9 @@ async function remindMember(trx: Trx, config: AppConfig, orgId: string, userId: 
   const { rows: items } = await sql<DueItem>`
     WITH claimed AS (
       INSERT INTO item_reminders (org_id, scope_id, material_id, assignee_id, due_on, kind)
-      SELECT i.org_id, i.scope_id, i.material_id, i.assignee_id, i.due_on, ${kindOf(today)}
+      SELECT i.org_id, i.scope_id, i.material_id, i.assignee_id, i.due_on, ${kindOf(day(today))}
       FROM scope_items i
-      WHERE i.org_id = ${orgId} AND i.assignee_id = ${userId} AND ${dueFilter(today)}
+      WHERE i.org_id = ${orgId} AND i.assignee_id = ${userId} AND ${dueFilter(day(today))}
       ON CONFLICT DO NOTHING
       RETURNING scope_id, material_id, due_on, kind)
     SELECT s.name AS "scopeName", m.title, c.due_on AS "dueOn", c.kind

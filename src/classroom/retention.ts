@@ -6,7 +6,8 @@ import { withOrgContext, withSystemContext, type Database, type Executor } from 
 import type { Locale, RetentionStage } from '../db/types.js';
 import { addDays } from '../lib/time.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
-import { cairoClock, SEND_FROM_HOUR, SEND_UNTIL_HOUR } from '../scopes/reminders.js';
+import { DEFAULT_TIME_ZONE, hourIn } from '../lib/zone.js';
+import { SEND_FROM_HOUR, SEND_UNTIL_HOUR } from '../scopes/reminders.js';
 
 // How long a school keeps classroom data (migration 0015, docs/CLASSROOM.md §11).
 //
@@ -209,8 +210,9 @@ export async function itemRetention(exec: Executor, kind: ItemKind, item: { id: 
 
 // ------------------------------------------------------------ telling owners and admins
 
-const fmtDay = (d: Date, locale: Locale) =>
-  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: locale === 'ar' ? 'long' : 'short', year: 'numeric', timeZone: 'Africa/Cairo' }).format(d);
+/** A deletion date as the school reads it, in its time zone. */
+const fmtDay = (d: Date, locale: Locale, timeZone: string) =>
+  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: locale === 'ar' ? 'long' : 'short', year: 'numeric', timeZone }).format(d);
 
 const WHAT: Record<Locale, Record<RetentionStage, Record<ItemKind, string>>> = {
   en: {
@@ -225,12 +227,12 @@ const WHAT: Record<Locale, Record<RetentionStage, Record<ItemKind, string>>> = {
   },
 };
 
-export function noticeLines(locale: Locale, items: NoticeItem[]): string {
+export function noticeLines(locale: Locale, items: NoticeItem[], timeZone = DEFAULT_TIME_ZONE): string {
   const lines = items.slice(0, LIST_MAX).map((i) => {
     const what = WHAT[locale][i.stage][i.kind];
     return locale === 'ar'
-      ? `• ${i.className} — «${i.title}»: ${what}، في ${fmtDay(i.deleteAfter, locale)} أو بعده`
-      : `• ${i.className} — “${i.title}”: ${what}, on or after ${fmtDay(i.deleteAfter, locale)}`;
+      ? `• ${i.className} — «${i.title}»: ${what}، في ${fmtDay(i.deleteAfter, locale, timeZone)} أو بعده`
+      : `• ${i.className} — “${i.title}”: ${what}, on or after ${fmtDay(i.deleteAfter, locale, timeZone)}`;
   });
   const more = items.length - LIST_MAX;
   if (more > 0) lines.push(locale === 'ar' ? `• و${more} غيرها` : `• and ${more} more`);
@@ -240,7 +242,7 @@ export function noticeLines(locale: Locale, items: NoticeItem[]): string {
 /** One in-app notification and one email (verified address) per owner and admin, listing the new notices. */
 async function tellAdmins(exec: Executor, config: AppConfig, orgId: string, items: NoticeItem[]): Promise<number> {
   if (!items.length) return 0;
-  const org = await exec.selectFrom('organizations').select(['name']).where('id', '=', orgId).executeTakeFirstOrThrow();
+  const org = await exec.selectFrom('organizations').select(['name', 'time_zone']).where('id', '=', orgId).executeTakeFirstOrThrow();
   const admins = await exec
     .selectFrom('memberships as m')
     .innerJoin('users as u', 'u.id', 'm.user_id')
@@ -252,7 +254,7 @@ async function tellAdmins(exec: Executor, config: AppConfig, orgId: string, item
   const first = items.reduce((d, i) => (i.deleteAfter < d ? i.deleteAfter : d), items[0]!.deleteAfter);
   const path = `/org/${orgId}/classes/retention`;
   for (const a of admins) {
-    const date = fmtDay(first, a.locale);
+    const date = fmtDay(first, a.locale, org.time_zone);
     await notify(exec, {
       userId: a.id,
       orgId,
@@ -265,7 +267,7 @@ async function tellAdmins(exec: Executor, config: AppConfig, orgId: string, item
       link: path,
     });
     if (a.email && a.email_verified_at) {
-      await enqueueEmail(exec, a.email, 'classroom_retention', a.locale, { name: a.name, orgName: org.name, date, items: noticeLines(a.locale, items), link: `${config.APP_URL}${path}` });
+      await enqueueEmail(exec, a.email, 'classroom_retention', a.locale, { name: a.name, orgName: org.name, date, items: noticeLines(a.locale, items, org.time_zone), link: `${config.APP_URL}${path}` });
     }
   }
   return admins.length;
@@ -421,16 +423,16 @@ export interface RetentionSummary {
  * Worker pass for every active school with retention settings. Each school is
  * handled in its own tenant transaction, so its row-level security limits every
  * deletion to that school. Notices go out only between SEND_FROM_HOUR and
- * SEND_UNTIL_HOUR, Cairo time; deletions whose date has come happen at any hour.
+ * SEND_UNTIL_HOUR in the school's time zone; deletions whose date has come happen at any hour.
  */
 export async function runClassroomRetention(db: Database, config: AppConfig, now = new Date()): Promise<RetentionSummary> {
   const summary: RetentionSummary = { schools: 0, removed: 0, dropped: 0, waiting: 0, notices: 0, failed: 0 };
-  const { hour } = await cairoClock(db, now);
-  const sendNotices = hour >= SEND_FROM_HOUR && hour < SEND_UNTIL_HOUR;
   const orgs = await withSystemContext(db, (trx) =>
-    trx.selectFrom('classroom_retention as r').innerJoin('organizations as o', 'o.id', 'r.org_id').select('r.org_id').where('o.status', '=', 'active').orderBy('r.org_id').execute(),
+    trx.selectFrom('classroom_retention as r').innerJoin('organizations as o', 'o.id', 'r.org_id').select(['r.org_id', 'o.time_zone']).where('o.status', '=', 'active').orderBy('r.org_id').execute(),
   );
-  for (const { org_id: orgId } of orgs) {
+  for (const { org_id: orgId, time_zone: tz } of orgs) {
+    const hour = hourIn(tz, now);
+    const sendNotices = hour >= SEND_FROM_HOUR && hour < SEND_UNTIL_HOUR;
     try {
       await withOrgContext(db, { orgId }, async (trx) => {
         const periods = await getPeriods(trx, orgId);

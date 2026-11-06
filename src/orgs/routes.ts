@@ -11,6 +11,7 @@ import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
 import { randomToken, sha256Hex } from '../lib/crypto.js';
 import { AppError, conflict, forbidden, notFound } from '../lib/errors.js';
+import { isKnownTimeZone } from '../lib/zone.js';
 import { addDays } from '../lib/time.js';
 import { parse, zEmail, zLocale, zUuid } from '../lib/validation.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
@@ -49,7 +50,7 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
       const scopes = await countScopes(trx, org.id);
       const usage = await usageFor(trx, org.id);
       return {
-        organization: { id: org.id, name: org.name, slug: org.slug, locale: org.locale, status: org.status, requireMfaForAdmins: org.require_mfa_for_admins, createdAt: org.created_at },
+        organization: { id: org.id, name: org.name, slug: org.slug, locale: org.locale, status: org.status, requireMfaForAdmins: org.require_mfa_for_admins, timeZone: org.time_zone, country: org.country, createdAt: org.created_at },
         role,
         plan: { id: ent.planId, name: ent.planName, state: ent.state, limits: ent.limits, features: ent.features, trialEndsAt: ent.subscription?.trial_ends_at ?? null },
         usage: { members: seats.members, pendingInvites: seats.pendingInvites, scopes, ...usage },
@@ -64,7 +65,15 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.patch('/api/orgs/:orgId', async (req) => {
     const { orgId } = parse(OrgParams, req.params);
     const body = parse(
-      z.object({ name: z.string().trim().min(2).max(120).optional(), locale: zLocale.optional(), requireMfaForAdmins: z.boolean().optional() }),
+      z.object({
+        name: z.string().trim().min(2).max(120).optional(),
+        locale: zLocale.optional(),
+        requireMfaForAdmins: z.boolean().optional(),
+        // An IANA zone such as Asia/Riyadh: the school's dates (overdue, reminder hours) follow it (task 5.1).
+        timeZone: z.string().min(1).max(64).optional(),
+        // ISO 3166-1 alpha-2, e.g. EG or SA; null clears it.
+        country: z.string().regex(/^[A-Z]{2}$/, 'A two-letter country code such as EG').nullable().optional(),
+      }),
       req.body,
     );
     return inOrg(ctx, req, orgId, 'admin', async (trx, { org, role }) => {
@@ -72,18 +81,23 @@ export function registerOrgRoutes(app: FastifyInstance, ctx: AppContext): void {
         if (role !== 'owner') throw forbidden('Only the owner can change the two-factor policy');
         if (body.requireMfaForAdmins) requireFeature(await getEntitlements(trx, org.id, grace), 'require_mfa_policy', 'the two-factor policy');
       }
+      if (body.timeZone !== undefined && !(await isKnownTimeZone(trx, body.timeZone))) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Unknown time zone', [{ path: 'timeZone', message: 'Choose a time zone from the list, such as Africa/Cairo' }]);
+      }
       const updated = await trx
         .updateTable('organizations')
         .set({
           ...(body.name ? { name: body.name } : {}),
           ...(body.locale ? { locale: body.locale } : {}),
           ...(body.requireMfaForAdmins !== undefined ? { require_mfa_for_admins: body.requireMfaForAdmins } : {}),
+          ...(body.timeZone !== undefined ? { time_zone: body.timeZone } : {}),
+          ...(body.country !== undefined ? { country: body.country } : {}),
         })
         .where('id', '=', org.id)
         .returningAll()
         .executeTakeFirstOrThrow();
       await recordAudit(trx, actorFromRequest(req), { orgId: org.id, action: 'org.updated', targetType: 'organization', targetId: org.id, metadata: body }, requestMeta(req));
-      return { organization: { id: updated.id, name: updated.name, slug: updated.slug, locale: updated.locale, requireMfaForAdmins: updated.require_mfa_for_admins } };
+      return { organization: { id: updated.id, name: updated.name, slug: updated.slug, locale: updated.locale, requireMfaForAdmins: updated.require_mfa_for_admins, timeZone: updated.time_zone, country: updated.country } };
     });
   });
 

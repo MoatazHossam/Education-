@@ -7,6 +7,7 @@ import type { Database, Executor } from '../db/index.js';
 import { withSystemContext } from '../db/index.js';
 import type { Homework, HomeworkMaterial, Locale, SchoolClass, SubmissionStatus } from '../db/types.js';
 import { AppError, notFound } from '../lib/errors.js';
+import { orgTimeZone } from '../lib/zone.js';
 import { notify } from '../notifications/email.js';
 import { studentsEnabled } from '../students/service.js';
 
@@ -279,8 +280,9 @@ export async function homeworkRoster(exec: Executor, hw: Homework) {
 
 // ------------------------------------------------------------ notifications to students
 
-const fmtWhen = (d: Date, locale: Locale) =>
-  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: locale === 'ar' ? 'long' : 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(d);
+/** A time as students read it, in the school's time zone. */
+const fmtWhen = (d: Date, locale: Locale, timeZone: string) =>
+  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: locale === 'ar' ? 'long' : 'short', hour: 'numeric', minute: '2-digit', timeZone }).format(d);
 
 const ASSIGNED: Record<Locale, (p: { title: string; subject: string; due: string }) => { title: string; body: string }> = {
   en: (p) => ({ title: `New homework: ${p.title}`, body: `${p.subject} · due ${p.due}` }),
@@ -300,8 +302,9 @@ export async function notifyHomeworkPublished(exec: Executor, hw: Homework): Pro
     .select(['u.id', 'u.locale'])
     .where('cs.class_id', '=', hw.class_id)
     .execute();
+  const tz = await orgTimeZone(exec, hw.org_id);
   for (const s of students) {
-    const text = ASSIGNED[s.locale]({ title: hw.title, subject: s.locale === 'ar' ? hw.subject_ar : hw.subject_en, due: fmtWhen(hw.due_at, s.locale) });
+    const text = ASSIGNED[s.locale]({ title: hw.title, subject: s.locale === 'ar' ? hw.subject_ar : hw.subject_en, due: fmtWhen(hw.due_at, s.locale, tz) });
     await notify(exec, { userId: s.id, orgId: hw.org_id, kind: 'homework_assigned', title: text.title, body: text.body, link: `/student/homework/${hw.id}` });
   }
   await exec.updateTable('homework').set({ notified_at: new Date() }).where('id', '=', hw.id).execute();

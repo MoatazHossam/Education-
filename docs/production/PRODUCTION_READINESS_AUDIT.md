@@ -127,7 +127,7 @@ needed before launch) · **Blocked** (needs an external decision or credential).
 | 11 | Billing / payments | Blocked | No Paymob credentials (B-2), tax position (B-3); recurring renewals are manual pay-by-link; no reconciliation |
 | 12 | AI cost control | Gap | Count-based quotas only; no global spend cap; worst-case request latency very high (AI_COST_CONTROL_PLAN §2) |
 | 13 | Performance on 8 GB | Nearly | Load-tested 300 students on one exam locally **[DOC]**; memory budget is tight with ClamAV; files in PostgreSQL grow the database |
-| 14 | Multi-country readiness (KSA, UAE, others) | Gap | Catalogue is Egypt-only; Cairo time zone hard-coded in 6 files; single billing currency; no organization country or time zone |
+| 14 | Multi-country readiness (KSA, UAE, others) | Gap | Catalogue is Egypt-only; ~~Cairo time zone hard-coded in 6 files~~ (each school's time zone since task 5.1); single billing currency; no organization country or time zone |
 | 15 | Legal and compliance | Blocked | No privacy policy, terms or DPA; student data features must stay off until counsel advises (B-5, B-9) |
 | 16 | CI | Ready | Was blocked by an account billing lock (B-7); on 2026-11-01 all five checks ran green on GitHub for PR #39 |
 

@@ -1,10 +1,32 @@
 import { del, get, patch, post } from '../api.js';
 import { confirmDialog, dialog, errorMessage, fmtDate, form, h, tableCard, toast } from '../dom.js';
-import { t } from '../i18n.js';
+import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
 import { can, invalidateOrg, loadSession } from '../state.js';
 import { pageHead, planLimitHint } from './shell.js';
 import { webhooksCard } from './webhooks.js';
+
+// Arabic-speaking countries first offered for a school's country; the school's own value is kept if it is another.
+const COUNTRIES = ['EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'IQ', 'SY', 'PS', 'YE', 'LY', 'TN', 'DZ', 'MA', 'SD', 'MR'];
+
+/** Every time zone the browser knows (with its current UTC offset), the school's own first if it is missing. */
+function timeZoneOptions(current) {
+  const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
+  const list = zones.includes(current) ? zones : [current, ...zones];
+  const offset = (tz) => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value ?? '';
+    } catch { return ''; }
+  };
+  return list.map((tz) => ({ value: tz, label: `${tz.replaceAll('_', ' ')} (${offset(tz)})` }));
+}
+
+function countryOptions(current) {
+  let names = null;
+  try { names = new Intl.DisplayNames([locale() === 'ar' ? 'ar' : 'en'], { type: 'region' }); } catch { /* codes alone */ }
+  const codes = current && !COUNTRIES.includes(current) ? [current, ...COUNTRIES] : COUNTRIES;
+  return [{ value: '', label: t('settings.countryNone') }, ...codes.map((c) => ({ value: c, label: names ? `${names.of(c)} (${c})` : c }))];
+}
 
 export async function settingsView(ctx) {
   const { orgId } = ctx.params;
@@ -17,11 +39,13 @@ export async function settingsView(ctx) {
     fields: [
       { name: 'name', label: t('settings.orgName'), value: org.name, required: true, maxlength: 120 },
       { name: 'locale', label: t('settings.orgLocale'), type: 'select', value: org.locale, options: [{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }], hint: t('settings.orgLocaleHint') },
+      { name: 'timeZone', label: t('settings.timeZone'), type: 'select', value: org.timeZone, options: timeZoneOptions(org.timeZone), hint: t('settings.timeZoneHint') },
+      { name: 'country', label: t('settings.country'), type: 'select', value: org.country ?? '', options: countryOptions(org.country), hint: t('settings.countryHint') },
       ...(isOwner ? [{ name: 'requireMfaForAdmins', label: t('settings.requireMfa'), type: 'checkbox', value: org.requireMfaForAdmins }] : []),
     ],
     submitLabel: t('common.save'),
     onSubmit: async (v) => {
-      await patch(`/api/orgs/${orgId}`, v);
+      await patch(`/api/orgs/${orgId}`, { ...v, country: v.country || null });
       await loadSession();
       toast(t('common.saved'));
       refresh();

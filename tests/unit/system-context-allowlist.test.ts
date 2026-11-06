@@ -25,7 +25,7 @@ const ALLOWED: Record<string, { calls: number; why: string }> = {
   'src/ops/data-keys.ts': { calls: 2, why: 'command-line: re-encrypting secrets with a new key' },
   'src/orgs/routes.ts': { calls: 1, why: 'organization deletion after the owner check (inOrg)' },
   'src/scopes/digest.ts': { calls: 2, why: 'worker: daily assignment summaries across schools' },
-  'src/scopes/reminders.ts': { calls: 2, why: 'worker: due-date reminders across schools' },
+  'src/scopes/reminders.ts': { calls: 3, why: 'worker: due-date reminders across schools; whether any school is in its sending hours (time zones only)' },
   'src/webhooks/service.ts': { calls: 2, why: 'worker: customer webhook deliveries' },
 };
 

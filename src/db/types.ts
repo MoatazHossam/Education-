@@ -90,6 +90,10 @@ export interface OrganizationsTable {
   suspended_reason: string | null;
   locale: Generated<Locale>;
   require_mfa_for_admins: Generated<boolean>;
+  /** IANA time zone (migration 0024); Africa/Cairo by default. */
+  time_zone: Generated<string>;
+  /** ISO 3166-1 alpha-2, or null when not set. */
+  country: string | null;
   created_by: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;

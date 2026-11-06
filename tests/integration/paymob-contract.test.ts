@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { paymobHmac } from '../../src/billing/providers/paymob.js';
+import { WEBHOOK_BODY_LIMIT } from '../../src/billing/routes.js';
 import { withSystemContext } from '../../src/db/index.js';
 import { Client, createHarness, PASSWORD, resetData, signUp, type Harness } from '../helpers/harness.js';
 import { PaymobSimulator, type Intention } from '../helpers/paymob-simulator.js';
@@ -105,6 +106,8 @@ describe('Paymob transaction callbacks', () => {
     const owner = await signUp(h);
     const { invoiceId, intention } = await startCheckout(owner);
     const cb = paymob.callback(paymob.transaction(intention, 'success'));
+    // The webhook route refuses larger requests (production finding B-G7); a callback is far smaller.
+    expect(Buffer.byteLength(cb.body)).toBeLessThan(WEBHOOK_BODY_LIMIT / 8);
 
     const first = await deliver(intention, cb);
     expect(first.statusCode, first.body).toBe(200);

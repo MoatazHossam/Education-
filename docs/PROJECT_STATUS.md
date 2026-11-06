@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-11-05. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-11-06. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -24,6 +24,21 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Limits on the payment provider's callback (roadmap task 1.7) · COMPLETE (2026-11-06; not yet against Paymob)
+- **Asked:** task 1.7 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding B-G7: the route that receives payment
+  callbacks (`/api/billing/webhooks/:provider`) had no limit of its own, only the global flood guard, which counts
+  per app instance, and accepted bodies up to the app-wide 1 MB.
+- **Implemented:** a limit of 600 requests a minute per sending address, counted in PostgreSQL so it holds across
+  app instances (429 above it), and a 64 KiB body cap on that route (413 while the body is read, before the
+  signature is checked). A flood from other addresses does not use up the provider's allowance.
+- **Verified:** two new integration tests (a signed event of exactly 64 KiB is processed, one byte more is refused
+  and nothing is recorded; 600 callbacks a minute alternating between two app instances, then 429, while another
+  address still gets through). Both fail with the limits removed. The Paymob contract tests pass, and the
+  simulator's callback (686 bytes) is checked to be well under the cap. `npm run test:integration -- billing
+  paymob-contract`: 36 files, 330 tests passed; `npm test`: 61 files, 434 tests passed.
+- **Not done:** the size of Paymob's real callbacks is not measured (no keys, B-2); DEPLOYMENT_GUIDE §3.5 now
+  asks to check it in test mode.
 
 ### A teacher waits at most about 4 minutes for an AI request (roadmap task 1.6) · COMPLETE (2026-11-05; against the provider simulator, not yet against the real Gemini API)
 - **Asked:** task 1.6 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding A-4: with a 120 s timeout per attempt,

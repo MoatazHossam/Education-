@@ -177,6 +177,8 @@ Prints a one-time password. Sign in, change the password, enrol TOTP (required b
 3. Copy secret key, public key, HMAC secret into the env file; restart `app` and `worker`.
 4. In Paymob test mode, run: subscribe → pay → check the invoice turns paid; decline a payment;
    replay a callback; verify `/admin/events`. Record results in TEST_REPORT.md before going live.
+   The callback route refuses bodies over 64 KiB (413) and more than 600 requests a minute from one
+   address (429): check in the app log that Paymob's callbacks get 200 and note their size.
 
 ### 3.6 Memory and database sizing
 `docker-compose.prod.yml` gives every container a memory limit and tunes the bundled PostgreSQL for

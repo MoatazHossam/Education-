@@ -25,6 +25,26 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### A teacher waits at most about 4 minutes for an AI request (roadmap task 1.6) · COMPLETE (2026-11-05; against the provider simulator, not yet against the real Gemini API)
+- **Asked:** task 1.6 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding A-4: with a 120 s timeout per attempt,
+  two SDK retries and a second attempt for a reply of the wrong shape, one AI request could hold a teacher's page for
+  about 12 minutes.
+- **Implemented:**
+  - `AI_TIMEOUT_MS` defaults to 60 s, and the new setting `AI_MAX_RETRIES` (0–3, default 1) sets the retries of one
+    provider call for all three adapters (and `npm run ai:check`).
+  - Each provider call has a deadline: (1 + retries) × timeout, plus 10 s before each retry. Measured first: the
+    Anthropic and OpenAI SDKs wait as long as a provider's `retry-after` asks, up to 60 s, which the timeout alone does
+    not bound; a call still running at its deadline is cancelled and counts as a timeout.
+  - The longest wait is now 4 min 20 s (two calls of 130 s), and a provider that never answers gives 503
+    `AI_UNAVAILABLE` after about 2 minutes. `GET /api/admin/ai` shows the settings with this bound (`worstCaseMs`).
+- **Verified:** with the default settings and a simulator that never answers, all three adapters returned 503
+  `AI_UNAVAILABLE` after 120–122 s, two requests each (TEST_REPORT §4). New tests: the default timings and bound
+  (unit), a hanging provider retried once then a timeout, and a 20 s `retry-after` cut at the deadline on all three
+  adapters (contract), the 503 path and the longest case through `runAiTask` (integration).
+  `npm run test:integration -- ai ai-providers-contract`: 37 files, 329 tests passed; `npm test`: 61 files, 432 tests passed.
+- **Not done:** longer AI tasks (teaching plans) still hold the HTTP request; moving them to background jobs is in
+  AI_COST_CONTROL_PLAN control 5. Not run against the real Gemini API (no key yet, B-10).
+
 ### Each container gets only its own secrets, and every secret has a rotation procedure (roadmap task 1.5) · COMPLETE (2026-11-05)
 - **Asked:** task 1.5 of `docs/production/IMPLEMENTATION_ROADMAP.md`, findings S-9 and S-10: every secret in the
   settings file reached every container, so a container broken into gave away all of them; and only

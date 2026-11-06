@@ -3,7 +3,7 @@ import { AnthropicProvider } from '../ai/providers/anthropic.js';
 import { GeminiProvider } from '../ai/providers/gemini.js';
 import { OpenAiProvider } from '../ai/providers/openai.js';
 import { parseJsonReply, portableSchema } from '../ai/schema.js';
-import { AI_PROVIDERS, AiProviderError, type AiProvider } from '../ai/types.js';
+import { AI_PROVIDERS, AiProviderError, DEFAULT_MAX_RETRIES, type AiProvider } from '../ai/types.js';
 
 // Usage (the same variables as the application; the key is read from the environment, never from the command line):
 //   AI_PROVIDER=gemini AI_API_KEY=… AI_MODEL=gemini-2.5-pro [AI_API_BASE=…] npm run ai:check
@@ -19,10 +19,25 @@ function required(name: string): string {
   return value;
 }
 
+function whole(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) throw new Error(`${name} must be a whole number`);
+  return value;
+}
+
 async function main() {
   const name = required('AI_PROVIDER');
   if (!(AI_PROVIDERS as readonly string[]).includes(name)) throw new Error(`AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}`);
-  const config = { apiKey: required('AI_API_KEY'), model: required('AI_MODEL'), apiBase: process.env.AI_API_BASE?.trim() || undefined, timeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 120_000) };
+  const config = {
+    apiKey: required('AI_API_KEY'),
+    model: required('AI_MODEL'),
+    apiBase: process.env.AI_API_BASE?.trim() || undefined,
+    // The application's defaults (src/config.ts).
+    timeoutMs: whole('AI_TIMEOUT_MS', 60_000),
+    maxRetries: whole('AI_MAX_RETRIES', DEFAULT_MAX_RETRIES),
+  };
   const provider: AiProvider = name === 'gemini' ? new GeminiProvider(config) : name === 'anthropic' ? new AnthropicProvider(config) : new OpenAiProvider(config);
 
   console.log(`Provider ${provider.name}, model ${provider.model}${config.apiBase ? `, endpoint ${config.apiBase}` : ''}`);

@@ -4,7 +4,7 @@ import { AnthropicProvider } from '../../src/ai/providers/anthropic.js';
 import { GeminiProvider } from '../../src/ai/providers/gemini.js';
 import { OpenAiProvider } from '../../src/ai/providers/openai.js';
 import { portableSchema } from '../../src/ai/schema.js';
-import { AiProviderError, type AiProvider } from '../../src/ai/types.js';
+import { AiProviderError, type AiProvider, type ProviderConfig } from '../../src/ai/types.js';
 import { AiSimulator, DEFAULT_REPLY, type SimProvider } from '../helpers/ai-simulator.js';
 
 // Each adapter against a local simulator of its provider's documented API
@@ -19,9 +19,12 @@ beforeEach(() => sim.reset());
 
 const MODELS: Record<SimProvider, string> = { gemini: 'gemini-2.5-pro', anthropic: 'claude-opus-5-5', openai: 'gpt-5' };
 
-function provider(name: SimProvider, opts: { key?: string; model?: string; maxRetries?: number; timeoutMs?: number } = {}): AiProvider {
-  const config = { apiKey: opts.key ?? KEY, model: opts.model ?? MODELS[name], apiBase: sim.base(name), timeoutMs: opts.timeoutMs ?? 10_000, maxRetries: opts.maxRetries ?? 0 };
+function adapter(name: SimProvider, config: ProviderConfig): AiProvider {
   return name === 'gemini' ? new GeminiProvider(config) : name === 'anthropic' ? new AnthropicProvider(config) : new OpenAiProvider(config);
+}
+
+function provider(name: SimProvider, opts: { key?: string; model?: string; maxRetries?: number; timeoutMs?: number; retryWaitMs?: number } = {}): AiProvider {
+  return adapter(name, { apiKey: opts.key ?? KEY, model: opts.model ?? MODELS[name], apiBase: sim.base(name), timeoutMs: opts.timeoutMs ?? 10_000, maxRetries: opts.maxRetries ?? 0, retryWaitMs: opts.retryWaitMs });
 }
 
 const Reply = z.object({ title: z.string().min(1).max(80), items: z.array(z.string()).min(1) });
@@ -108,6 +111,27 @@ describe.each(['gemini', 'anthropic', 'openai'] as const)('%s adapter', (name) =
     sim.script(name, { kind: 'hang' });
     const err = await failure(provider(name, { timeoutMs: 300 }).generate(REQUEST));
     expect(err.kind).toBe('timeout');
+  });
+
+  it('retries a provider that never answers once by default, then reports a timeout (finding A-4)', async () => {
+    sim.script(name, { kind: 'hang' }, { kind: 'hang' }, { kind: 'hang' });
+    const err = await failure(adapter(name, { apiKey: KEY, model: MODELS[name], apiBase: sim.base(name), timeoutMs: 300 }).generate(REQUEST));
+    expect(err.kind).toBe('timeout');
+    expect(sim.requests).toHaveLength(2);
+  });
+
+  it('cancels the call at its deadline, however long the provider asks to wait', async () => {
+    // The Anthropic and OpenAI SDKs would wait the 20 s asked for; Gemini's backs off for 1–2 s.
+    sim.script(name, { kind: 'error', status: 429, retryAfterMs: 20_000 });
+    const started = Date.now();
+    // Deadline: 2 attempts of 300 ms and 100 ms before the retry, 700 ms. Gemini's own wait before
+    // the retry is 1–2 s, so ending within 1 s shows the call stopped at the deadline.
+    const err = await failure(provider(name, { timeoutMs: 300, maxRetries: 1, retryWaitMs: 100 }).generate(REQUEST));
+    expect(err.kind).toBe('timeout');
+    expect(Date.now() - started).toBeLessThan(1_000);
+    // Nothing reaches the provider afterwards, once the SDK's own wait is over.
+    await new Promise((r) => setTimeout(r, 2_100));
+    expect(sim.requests).toHaveLength(1);
   });
 });
 

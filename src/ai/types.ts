@@ -40,6 +40,37 @@ export interface AiProvider {
 
 export type AiErrorKind = 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'bad_request' | 'other';
 
+/** Retries after the first attempt of one provider call, when the server's settings do not say (AI_MAX_RETRIES). */
+export const DEFAULT_MAX_RETRIES = 1;
+/**
+ * Wait allowed before each retry. The SDKs' own backoff is 0.5–8 s; the Anthropic and OpenAI SDKs
+ * also wait as long as a provider's retry-after header asks, up to 60 s (Gemini's does not).
+ */
+export const RETRY_WAIT_MS = 10_000;
+
+/**
+ * Deadline of one provider call, retries included (production finding A-4): each attempt may take
+ * the whole per-attempt timeout, plus RETRY_WAIT_MS before each retry. A call still running then is
+ * cancelled and reported as a timeout, however long the provider asked to wait.
+ */
+export function callDeadlineMs(timeoutMs: number, maxRetries: number, retryWaitMs = RETRY_WAIT_MS): number {
+  return (1 + maxRetries) * timeoutMs + maxRetries * retryWaitMs;
+}
+
+/** Settings shared by the provider adapters. */
+export interface ProviderConfig {
+  apiKey: string;
+  model: string;
+  /** The provider's API endpoint; the SDK's own when unset. */
+  apiBase?: string;
+  /** Per attempt. */
+  timeoutMs: number;
+  /** Retries after the first attempt (DEFAULT_MAX_RETRIES when unset). */
+  maxRetries?: number;
+  /** Wait allowed before each retry (RETRY_WAIT_MS when unset; shorter in tests). */
+  retryWaitMs?: number;
+}
+
 /** The provider refused or failed the request. The message is for server logs only. */
 export class AiProviderError extends Error {
   constructor(

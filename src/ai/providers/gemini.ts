@@ -1,15 +1,8 @@
 import { ApiError, FinishReason, GoogleGenAI } from '@google/genai';
-import { AiProviderError, errorKindForStatus, type AiProvider, type AiReply, type AiRequest } from '../types.js';
+import { AiProviderError, callDeadlineMs, DEFAULT_MAX_RETRIES, errorKindForStatus, type AiProvider, type AiReply, type AiRequest, type ProviderConfig } from '../types.js';
 
-export interface GeminiConfig {
-  apiKey: string;
-  model: string;
-  /** Gemini API endpoint; the SDK's own when unset. */
-  apiBase?: string;
-  timeoutMs: number;
-  /** Retries after the first attempt (default 2). */
-  maxRetries?: number;
-}
+/** apiBase: the Gemini API endpoint. */
+export type GeminiConfig = ProviderConfig;
 
 // Finish reasons that mean the provider's safety or policy rules stopped the reply.
 const REFUSED = new Set<string>([FinishReason.SAFETY, FinishReason.RECITATION, FinishReason.BLOCKLIST, FinishReason.PROHIBITED_CONTENT, FinishReason.SPII]);
@@ -19,28 +12,37 @@ export class GeminiProvider implements AiProvider {
   readonly name = 'gemini' as const;
   readonly model: string;
   private readonly client: GoogleGenAI;
+  private readonly deadlineMs: number;
 
   constructor(config: GeminiConfig) {
     this.model = config.model;
+    const maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.deadlineMs = callDeadlineMs(config.timeoutMs, maxRetries, config.retryWaitMs);
     this.client = new GoogleGenAI({
       apiKey: config.apiKey,
-      // Per-attempt timeout; retries on 408, 429 and 5xx with backoff.
-      httpOptions: { timeout: config.timeoutMs, retryOptions: { attempts: (config.maxRetries ?? 2) + 1 }, ...(config.apiBase ? { baseUrl: config.apiBase } : {}) },
+      // Per-attempt timeout; retries timeouts, 408, 429 and 5xx after a short backoff (not retry-after).
+      httpOptions: { timeout: config.timeoutMs, retryOptions: { attempts: maxRetries + 1 }, ...(config.apiBase ? { baseUrl: config.apiBase } : {}) },
     });
   }
 
   async generate(req: AiRequest): Promise<AiReply> {
+    // The whole call, retries included.
+    const deadline = AbortSignal.timeout(this.deadlineMs);
     let res;
     try {
-      res = await this.client.models.generateContent({
-        model: this.model,
-        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
-        config: {
-          systemInstruction: req.system,
-          maxOutputTokens: req.maxOutputTokens,
-          ...(req.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: req.jsonSchema } : {}),
-        },
-      });
+      res = await settleByDeadline(
+        this.client.models.generateContent({
+          model: this.model,
+          contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+          config: {
+            systemInstruction: req.system,
+            maxOutputTokens: req.maxOutputTokens,
+            abortSignal: deadline,
+            ...(req.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: req.jsonSchema } : {}),
+          },
+        }),
+        deadline,
+      );
     } catch (err) {
       throw toProviderError(err);
     }
@@ -53,6 +55,19 @@ export class GeminiProvider implements AiProvider {
     const finish = reason === FinishReason.STOP ? 'stop' : reason === FinishReason.MAX_TOKENS ? 'length' : reason && REFUSED.has(reason) ? 'refused' : 'other';
     return { ...reply, text: res.text ?? '', finish };
   }
+}
+
+/**
+ * The SDK cancels a request in flight when the signal aborts, but not its wait before a retry (1–2 s
+ * before the first): settle at the deadline anyway. The retry it then starts carries the aborted
+ * signal and sends nothing.
+ */
+function settleByDeadline<T>(call: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    call.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }
 
 function toProviderError(err: unknown): AiProviderError {

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAiProvider } from '../../src/ai/providers/index.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from '../../src/ai/schema.js';
-import { errorKindForStatus } from '../../src/ai/types.js';
+import { aiWorstCaseMs } from '../../src/ai/service.js';
+import { callDeadlineMs, errorKindForStatus } from '../../src/ai/types.js';
 import { loadConfig } from '../../src/config.js';
 import { TEST_ENV } from '../helpers/env.js';
 
@@ -88,6 +89,19 @@ describe('AI configuration', () => {
     const prod = { ...TEST_ENV, NODE_ENV: 'production', BILLING_PROVIDER: 'disabled', EMAIL_TRANSPORT: 'smtp', SMTP_URL: 'smtp://x', APP_URL: 'https://app.example', FILE_SCAN: 'off' };
     const ai = { AI_PROVIDER: 'openai', AI_API_KEY: 'k-0123456789', AI_MODEL: 'gpt-5' };
     expect(() => loadConfig({ ...prod, ...ai, AI_API_BASE: 'http://llm.internal/v1' })).toThrow(/AI_API_BASE must use https in production/);
-    expect(loadConfig({ ...prod, ...ai, AI_API_BASE: 'https://llm.example/v1' }).AI_TIMEOUT_MS).toBe(120_000);
+    expect(loadConfig({ ...prod, ...ai, AI_API_BASE: 'https://llm.example/v1' }).AI_TIMEOUT_MS).toBe(60_000);
+  });
+
+  it('waits at most about 4 minutes for the provider by default (finding A-4)', () => {
+    const config = loadConfig({ ...TEST_ENV, AI_PROVIDER: 'gemini', AI_API_KEY: 'k-0123456789', AI_MODEL: 'gemini-2.5-pro' });
+    expect([config.AI_TIMEOUT_MS, config.AI_MAX_RETRIES]).toEqual([60_000, 1]);
+    // One call: two attempts of 60 s and 10 s before the retry. A reply of the wrong shape is asked for once more.
+    expect(callDeadlineMs(60_000, 1)).toBe(130_000);
+    expect(aiWorstCaseMs(config)).toBe(260_000);
+    // Before task 1.6: 120 s and 2 retries.
+    expect(aiWorstCaseMs({ AI_TIMEOUT_MS: 120_000, AI_MAX_RETRIES: 2 })).toBe(760_000);
+    expect(loadConfig({ ...TEST_ENV, AI_MAX_RETRIES: '0' }).AI_MAX_RETRIES).toBe(0);
+    expect(() => loadConfig({ ...TEST_ENV, AI_MAX_RETRIES: '4' })).toThrow(/AI_MAX_RETRIES/);
+    expect(() => loadConfig({ ...TEST_ENV, AI_TIMEOUT_MS: '1000' })).toThrow(/AI_TIMEOUT_MS/);
   });
 });

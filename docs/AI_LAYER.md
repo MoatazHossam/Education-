@@ -36,8 +36,22 @@ and logs the request. Changing provider is a configuration change; features do n
 | `AI_API_KEY` | — | The provider's API key. Required with a provider. An environment secret, never in git or a chat |
 | `AI_MODEL` | — | The model id, e.g. `gemini-2.5-pro` or `claude-opus-5-5`. Required with a provider |
 | `AI_API_BASE` | the provider's | Another endpoint: regional, a compatible service, or the simulator in tests. https in production |
-| `AI_TIMEOUT_MS` | 120000 | Per attempt; the SDKs retry 429, 5xx and connection errors twice |
+| `AI_TIMEOUT_MS` | 60000 | Per attempt, 5000–600000 |
+| `AI_MAX_RETRIES` | 1 | Retries after the first attempt of one provider call, 0–3. The SDKs retry timeouts, connection errors, 408, 429 and 5xx |
 | `AI_MAX_OUTPUT_TOKENS` | 16000 | Most output tokens one request may use (thinking included on models that think) |
+
+**How long a teacher can wait** (production finding A-4). Each provider call has a deadline:
+(1 + `AI_MAX_RETRIES`) × `AI_TIMEOUT_MS`, plus 10 s before each retry for the SDK's backoff. The
+Anthropic and OpenAI SDKs wait as long as a provider's `retry-after` asks, up to 60 s; a call still
+running at its deadline is cancelled and counts as a timeout. A reply of the wrong shape is asked
+for once more (§3), so the longest wait is two calls:
+
+| | Defaults (60 s, 1 retry) | Before task 1.6 (120 s, 2 retries) |
+| --- | --- | --- |
+| Provider never answers | 503 `AI_UNAVAILABLE` after about 2 min (2 attempts and the backoff) | about 6 min |
+| Longest possible | 2 × (2 × 60 s + 10 s) = 4 min 20 s | about 12 min, more with long `retry-after` waits |
+
+`GET /api/admin/ai` shows the settings in force, with this bound as `settings.worstCaseMs`.
 
 The app refuses to start with a provider but no key or model, and with a non-https `AI_API_BASE` in
 production. After setting a key, run `npm run ai:check` (same variables): it sends one small request
@@ -101,6 +115,7 @@ row-level security like every school's data, and the worker removes rows after 4
 | JSON replies | `responseMimeType` + `responseJsonSchema` | `output_config.format` (`json_schema`) | `response_format` `json_schema`, `strict` |
 | Output tokens | answer + thinking tokens | as reported (thinking included) | `max_completion_tokens` (reasoning included) |
 | Refusal | `promptFeedback.blockReason`, finish `SAFETY` etc. | `stop_reason: refusal` (checked before the text) | `message.refusal`, `content_filter` |
+| Retries (`AI_MAX_RETRIES`) | timeouts, 408, 429, 5xx, after 1–2 s (more for later retries); `retry-after` not used | timeouts, connection errors, 408, 409, 429, 5xx; waits for `retry-after` up to 60 s | as Anthropic |
 | Notes | an invalid key is a 400 `API_KEY_INVALID`, mapped to `auth` | no sampling parameters (current models reject them); on Claude Opus 5.5, Opus 5, Sonnet 5.5 and Fable 5.1 the request opts into Anthropic's server-side fallback (`fallbacks: "default"`), which re-runs a declined request on the model Anthropic recommends; the log records the model that answered | `AI_API_BASE` includes `/v1` |
 
 ## 5. Platform administration
@@ -149,11 +164,11 @@ language rule, the lesson text limit) is in `src/ai/teaching.ts`.
 
 ## 7. Tests
 
-- `tests/unit/ai-layer.test.ts` (7): portable schemas, JSON reply checks, error kinds, configuration.
-- `tests/integration/ai-providers-contract.test.ts` (24): each adapter against a local simulator of its
+- `tests/unit/ai-layer.test.ts` (8): portable schemas, JSON reply checks, error kinds, configuration, the longest wait.
+- `tests/integration/ai-providers-contract.test.ts` (30): each adapter against a local simulator of its
   provider's documented API (`tests/helpers/ai-simulator.ts`): request fields and key header, reply
-  parsing, refusals, truncation, error mapping, retries, timeouts, Anthropic's fallback opt-in.
-- `tests/integration/ai.test.ts` (17): off by default, AI not configured, students refused, the admin
+  parsing, refusals, truncation, error mapping, retries, timeouts, the call deadline, Anthropic's fallback opt-in.
+- `tests/integration/ai.test.ts` (19): off by default, AI not configured, students refused, the admin
   override, the log and audit without text, a second attempt on a bad reply, refusals, units given back
   on failure, the monthly limit under 8 concurrent requests, unlimited allowances, row-level security,
   retention, the admin endpoints.

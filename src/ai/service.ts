@@ -1,13 +1,14 @@
 import type { z } from 'zod';
 import { recordAudit, type RequestMeta } from '../audit/audit.js';
 import { consumeUsage, getEntitlements, releaseUsage, usageFor } from '../billing/entitlements.js';
+import type { AppConfig } from '../config.js';
 import { withOrgContext, type Executor } from '../db/index.js';
 import type { AiRequestsTable, StaffUser } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, featureUnavailable, forbidden } from '../lib/errors.js';
 import { periodKey } from '../lib/time.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from './schema.js';
-import { AiProviderError, type AiErrorKind, type AiReply } from './types.js';
+import { AiProviderError, callDeadlineMs, type AiErrorKind, type AiReply } from './types.js';
 
 // Every use of AI goes through runAiTask (docs/AI_LAYER.md):
 //  - only staff of a school run it, never students, and features pass only
@@ -27,6 +28,15 @@ export const MAX_PROMPT_CHARS = 60_000;
 /** Kept in ai_requests for cost reporting, then removed by the worker. */
 export const AI_REQUEST_RETENTION_DAYS = 400;
 const ATTEMPTS_FOR_VALID_JSON = 2;
+
+/**
+ * The longest a school member waits for an AI request before an answer or an error (production finding
+ * A-4). A provider that does not answer fails the request after one call (timeout: 503 AI_UNAVAILABLE);
+ * the bound is reached only when the first call's reply has the wrong shape and is asked for once more.
+ */
+export function aiWorstCaseMs(config: Pick<AppConfig, 'AI_TIMEOUT_MS' | 'AI_MAX_RETRIES'>): number {
+  return ATTEMPTS_FOR_VALID_JSON * callDeadlineMs(config.AI_TIMEOUT_MS, config.AI_MAX_RETRIES);
+}
 
 export interface AiTask<T> {
   /** Name recorded in the usage log, e.g. "test_questions". */

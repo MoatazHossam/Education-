@@ -166,7 +166,7 @@ export class PaymobSimulator {
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
     const raw = Buffer.concat(chunks).toString('utf8');
-    let body: unknown = null;
+    let body: unknown;
     try {
       body = raw ? JSON.parse(raw) : null;
     } catch {

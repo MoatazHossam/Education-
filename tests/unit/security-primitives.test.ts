@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { describe, expect, it } from 'vitest';
 import { generateRecoveryCodes, normalizeRecoveryCode, verifyTotp } from '../../src/auth/mfa.js';
 import { hashPassword, verifyPassword } from '../../src/auth/password.js';
@@ -35,8 +35,8 @@ describe('secret encryption', () => {
 
 describe('TOTP', () => {
   it('accepts a current code once and rejects replay of the same step', () => {
-    const secret = authenticator.generateSecret();
-    const code = authenticator.generate(secret);
+    const secret = generateSecret();
+    const code = generateSync({ secret });
     const step = verifyTotp(secret, code, null);
     expect(step).not.toBeNull();
     expect(verifyTotp(secret, code, step)).toBeNull();

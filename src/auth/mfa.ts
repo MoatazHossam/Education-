@@ -1,18 +1,18 @@
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 import { randomBytes } from 'node:crypto';
 import { sha256Hex } from '../lib/crypto.js';
 
-authenticator.options = { window: 1, step: 30 };
-
 const ISSUER = 'Midad';
+/** RFC 6238 defaults (30-second steps, SHA-1, 6 digits), which every authenticator app uses. */
+const STEP_SECONDS = 30;
 
 export function generateTotpSecret(): string {
-  return authenticator.generateSecret(20);
+  return generateSecret({ length: 20 }); // 160 bits, base32
 }
 
 export async function enrollmentPayload(email: string, secret: string): Promise<{ secret: string; otpauthUrl: string; qrSvg: string }> {
-  const otpauthUrl = authenticator.keyuri(email, ISSUER, secret);
+  const otpauthUrl = generateURI({ issuer: ISSUER, label: email, secret });
   const qrSvg = await QRCode.toString(otpauthUrl, { type: 'svg', margin: 1, width: 192 });
   return { secret, otpauthUrl, qrSvg };
 }
@@ -25,11 +25,10 @@ export async function enrollmentPayload(email: string, secret: string): Promise<
 export function verifyTotp(secret: string, code: string, lastStep: number | null): number | null {
   const token = code.replace(/\s+/g, '');
   if (!/^\d{6}$/.test(token)) return null;
-  const delta = authenticator.checkDelta(token, secret);
-  if (delta === null) return null;
-  const step = Math.floor(Date.now() / 30_000) + delta;
-  if (lastStep !== null && step <= lastStep) return null;
-  return step;
+  // One step either side of now, for clock drift (as before: window 1). A code whose step is at or
+  // before the last accepted one is refused here too.
+  const result = verifySync({ secret, token, period: STEP_SECONDS, epochTolerance: STEP_SECONDS, afterTimeStep: lastStep ?? undefined });
+  return result.valid && 'timeStep' in result ? result.timeStep : null;
 }
 
 export function generateRecoveryCodes(count = 10): { codes: string[]; hashes: string[] } {

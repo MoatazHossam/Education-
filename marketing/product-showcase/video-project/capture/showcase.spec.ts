@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { hashPassword } from '../../../../src/auth/password.js';
 import { encryptSecret } from '../../../../src/lib/crypto.js';
 import { parseCsv, toCsv, unguardCell } from '../../../../src/lib/csv.js';
@@ -168,7 +168,7 @@ test('showcase recordings', async ({ browser }) => {
 
   // ================================================================ platform administrator: two-factor sign-in, verification, students switch
   const admin = await newPage(browser);
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
   await ownerQuery(
     `INSERT INTO users (email, name, password_hash, email_verified_at, is_platform_admin, mfa_enabled, mfa_secret_enc, locale) VALUES ($1, $2, $3, now(), true, true, $4, 'ar')`,
     [ADMIN, DEMO.support, await hashPassword(PASSWORD), encryptSecret(E2E_ENV.DATA_ENCRYPTION_KEY!, secret)],
@@ -176,7 +176,7 @@ test('showcase recordings', async ({ browser }) => {
   await signIn(admin, ADMIN);
   await expect(admin.getByRole('heading', { name: L('mfa.title') })).toBeVisible();
   r = await shots.start(admin, 'admin-2fa');
-  await r.type(admin.getByLabel(field('mfa.code')), authenticator.generate(secret), 'code', 3);
+  await r.type(admin.getByLabel(field('mfa.code')), generateSync({ secret }), 'code', 3);
   await r.click(admin.getByRole('button', { name: L('mfa.verify') }), 'signed in', () => admin.waitForURL((u) => !u.pathname.startsWith('/mfa')));
 
   await admin.goto('/admin/catalog');
@@ -633,7 +633,7 @@ test('showcase recordings', async ({ browser }) => {
 
   await karim.goto(`${classPath}/gradebook`);
   await expect(karim.locator('table.gradebook tbody tr', { hasText: DEMO.omar })).toContainText(L('grades.percent', { n: fmt(90.6) }));
-  r = await shots.start(karim, 'gradebook');
+  await shots.start(karim, 'gradebook');
   await karim.goto(classPath);
   r = await shots.start(karim, 'class-page');
   await r.scroll(9999, 'class');

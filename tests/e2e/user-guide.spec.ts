@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { encryptSecret } from '../../src/lib/crypto.js';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
@@ -250,7 +250,7 @@ test('user guide screenshots', async ({ browser }) => {
 
   // ================================================================ platform administrator: two-factor sign-in, verification, students
   const admin = await newPage(browser);
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
   await ownerQuery(
     `INSERT INTO users (email, name, password_hash, email_verified_at, is_platform_admin, mfa_enabled, mfa_secret_enc, locale) VALUES ($1, $2, $3, now(), true, true, $4, $5)`,
     [ADMIN, DEMO.support, await hashPassword(PASSWORD), encryptSecret(E2E_ENV.DATA_ENCRYPTION_KEY!, secret), LANG],
@@ -258,7 +258,7 @@ test('user guide screenshots', async ({ browser }) => {
   await signIn(admin, ADMIN);
   await expect(admin.getByRole('heading', { name: L('mfa.title') })).toBeVisible();
   await shot(admin, 'two-factor-sign-in', card(admin), { pad: 32 });
-  await admin.getByLabel(field('mfa.code')).fill(authenticator.generate(secret));
+  await admin.getByLabel(field('mfa.code')).fill(generateSync({ secret }));
   await admin.getByRole('button', { name: L('mfa.verify') }).click();
   await admin.waitForURL((u) => !u.pathname.startsWith('/mfa'));
 

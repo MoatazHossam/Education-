@@ -796,6 +796,15 @@ Arabic interface), and the Windows `ops\status.bat` could not find `.env.docker`
 Not run here: `ops/midad.ps1` (no PowerShell in this container). Its new lines mirror the Linux ones and the unit
 test checks they are there; the owner ran the Windows repair commands in the guide on their own installation.
 
+### Dependabot's major versions (2026-11-06)
+
+| Change | Check | Result |
+| --- | --- | --- |
+| Remove `@types/nodemailer` | `tsc --traceResolution`: `nodemailer` resolves to `node_modules/nodemailer/dist/esm/nodemailer.d.ts` (10.3.1's own types); without the package: lint, typecheck, build, unit tests | Pass |
+| ESLint 10, `@eslint/js` 10 | `npm run lint` before the fix: 5 `no-useless-assignment` errors (initial values always overwritten); after: lint, typecheck, build, `npm test` 65 files, 480 tests | Pass |
+| otplib 13 | New `tests/unit/totp.test.ts`: RFC 6238 appendix B values (T = 59 s → 287082; T = 1111111109 → 081804), drift ±1 step accepted and ±2 refused, replays refused, 160-bit base32 secrets, `otpauth://totp/Midad:…` link with `issuer=Midad`. The same test passes unchanged on otplib 12.0.1 and 13.5.0. `npm test` 66 files, 484 tests | Pass |
+| TypeScript 7.0.2 | `tsc --noEmit` on the code: no errors. `eslint`: exits 2, "typescript-eslint does not support TS 7.0" | Held on 5.9.3 |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

@@ -29,7 +29,7 @@ This is a sound base: idempotency, signature verification and amount checks are 
 | --- | --- | --- | --- |
 | B-G1 | **No automatic recurring charge.** Each renewal is an invoice the owner pays through a new hosted checkout link; nothing is charged automatically | High (revenue, churn) | `service.ts:411-452` issues renewal invoices; there is no saved card/token in the schema [V-code]. Paymob offers card tokenisation and a subscriptions product [ASSUMPTION] |
 | B-G2 | **No reconciliation.** A lost or delayed callback leaves an invoice open although the customer paid; nothing queries Paymob for the transaction state | High | No inquiry call in `paymob.ts` [V-code] |
-| B-G3 | Refunds, voids and chargebacks are ignored with "manual review" and no operator queue | Medium | `paymob.ts:193` returns `ignored` [V-code] |
+| B-G3 | Refunds, voids and chargebacks are ignored with "manual review" and no operator queue. **Fixed by P-4** for refunds and voids (and mismatched or late payments): each opens a review in `billing_reviews` for an operator, with an alert; chargebacks wait for Paymob's documented callback | Medium · **fixed in code** | `src/billing/service.ts` (`openReview`) [V-code] |
 | B-G4 | One currency per deployment (`BILLING_CURRENCY`); plans seeded in it | High for KSA/UAE | `src/config.ts:39`, `src/db/seed-cli.ts:13` [V-code] |
 | B-G5 | No tax: invoices are net; no VAT number, rate, or tax-compliant invoice layout; no e-invoicing (Egypt ETA, Saudi ZATCA) | High (legal) | `SECURITY_DESIGN.md §7` [DOC] |
 | B-G6 | Customer billing details are minimal: `billing_data` sends `phone_number: 'NA'` and splits the owner's name | Medium | `paymob.ts:150` [V-code]; Paymob may require real phone/address for some methods [ASSUMPTION] |
@@ -63,8 +63,9 @@ Already correct [V-code]: claim-by-insert on `(provider, event_id)`, retry only 
 id, amount/currency match, signed checkout binding. Add:
 - **Done (task 1.7).** A route rate limit (600/min per sending address) and request-size cap (64 KiB) on
   `/api/billing/webhooks/:provider`.
-- Platform admin view of `billing_events` with status `failed`/`ignored` and a "reprocess" action (exists partly:
-  "Platform admin → Webhooks" **[DOC]**).
+- **Done (P-2).** Platform admin view of `billing_events` (Platform admin → Webhooks, filter by status) and
+  **Reprocess** on a failed one: applied again from the normalized event stored when it was received and verified, once
+  (`POST /api/admin/billing-events/:id/reprocess`).
 
 ### 3.3 Reconciliation (B-G2, B-G3)
 
@@ -93,9 +94,9 @@ A worker job every 15 minutes, and a daily full pass:
 | Step | Depends on | Acceptance criteria | Verification |
 | --- | --- | --- | --- |
 | P-1 Paymob test-mode run | Test keys (C-3) | One card payment and one failure in test mode reach the webhook, mark/leave the invoice correctly; HMAC accepted | `npm run paymob:check`; Platform admin → Webhooks shows `processed` |
-| P-2 Webhook route limit + admin reprocess | — | 601st request/min gets 429; a failed event can be reprocessed once | `npm run test:integration -- billing paymob-contract` |
-| P-3 Reconciliation job | P-1 | Dropping the webhook in staging still marks the invoice paid within 15 min; mismatch raises an alert | Integration test with the Paymob simulator (`tests/helpers/paymob-simulator.ts`) extended with an inquiry endpoint |
-| P-4 Refund/void handling | P-1 | Refund callback creates an operator task and audit entry | Integration test |
+| P-2 **Done.** Webhook route limit + admin reprocess | — | 601st request/min gets 429; a failed event can be reprocessed once | `npm run test:integration -- billing billing-reprocess paymob-contract` |
+| P-3 Reconciliation job (**blocked**: Paymob's transaction inquiry API must be confirmed in its documentation or test mode before code calls it; its documentation hosts are not reachable from the build environment) | P-1 | Dropping the webhook in staging still marks the invoice paid within 15 min; mismatch raises an alert | Integration test with the Paymob simulator (`tests/helpers/paymob-simulator.ts`) extended with an inquiry endpoint |
+| P-4 **Done in code; the Paymob callback shape is confirmed in P-1.** Refund/void handling | P-1 | Refund callback creates an operator task and audit entry | `npm run test:integration -- billing-reviews paymob-contract` |
 | P-5 Saved card + automatic renewal | P-1, Paymob confirmation | Renewal invoice is charged without user action; failure falls back to pay-by-link | Simulator contract test + test-mode run with a test card |
 | P-6 Multi-currency plans | D-3 | A Saudi org sees SAR prices and is charged in SAR; EGP orgs unchanged | Integration tests per currency |
 | P-7 Tax on invoices | D-1, accountant | Invoice shows net, rate, tax, gross; totals reconcile | Unit tests on totals; accountant sign-off |

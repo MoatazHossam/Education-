@@ -50,6 +50,9 @@ export class SandboxProvider implements PaymentProvider {
     if (evt.type === 'payment.failed') {
       return { type: 'payment.failed', eventId: evt.id, invoiceId: evt.data.invoice_id, providerTxnId: evt.data.txn_id, amountCents: evt.data.amount_cents, currency: evt.data.currency, reason: evt.data.reason ?? 'declined' };
     }
+    if (evt.type === 'payment.refunded' || evt.type === 'payment.voided') {
+      return { type: 'payment.reversed', eventId: evt.id, invoiceId: evt.data.invoice_id, providerTxnId: evt.data.txn_id, amountCents: evt.data.amount_cents, currency: evt.data.currency, kind: evt.type === 'payment.voided' ? 'void' : 'refund' };
+    }
     return { type: 'ignored', eventId: evt.id, reason: `unhandled type ${evt.type}` };
   }
 }

@@ -66,6 +66,10 @@ P-3 reconciliation → P-4 refunds/voids → P-5 saved card renewals (after Paym
 (after D-3) → P-7 tax (after D-1 and the accountant). Launch can proceed with P-1, P-3, P-4 and pay-by-link
 renewals (already built) if P-5 is not ready. Size ≈ 8–12 days excluding tax e-invoicing.
 
+Done without keys: P-2 (route limit in task 1.7; **Reprocess** for a failed notification) and P-4 in code (refunds,
+voids and mismatched payments open a review for an operator, with an alert). P-3 waits for Paymob's inquiry API to
+be confirmed (P-1).
+
 ## Phase 4 — AI cost control (needs AI key C-5 and budget decision D-6)
 
 Tasks AI-1 to AI-7 in [AI_COST_CONTROL_PLAN.md §6](AI_COST_CONTROL_PLAN.md). Minimum before any school gets an AI

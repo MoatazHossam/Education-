@@ -202,14 +202,25 @@ describe('Paymob transaction callbacks', () => {
     expect((await invoice(invoiceId)).status).toBe('open');
   });
 
-  it('does not apply pending, refunded or wrong-amount transactions', async () => {
+  it('does not apply pending, refunded, voided or wrong-amount transactions; refunds, voids and wrong amounts go to review', async () => {
     const owner = await signUp(h);
     const { invoiceId, intention } = await startCheckout(owner);
-    for (const txn of [paymob.transaction(intention, 'pending'), paymob.transaction(intention, 'refunded'), paymob.transaction(intention, 'success', { amountCents: 50_000 })]) {
+    const pending = paymob.transaction(intention, 'pending');
+    const refunded = paymob.transaction(intention, 'refunded');
+    const voided = paymob.transaction(intention, 'voided');
+    const short = paymob.transaction(intention, 'success', { amountCents: 50_000 });
+    for (const [txn, status] of [[pending, 'ignored'], [refunded, 'processed'], [voided, 'processed'], [short, 'ignored']] as const) {
       const res = await deliver(intention, paymob.callback(txn));
-      expect(res.json().status, JSON.stringify(txn)).toBe('ignored');
+      expect(res.json().status, JSON.stringify(txn)).toBe(status);
     }
     expect((await invoice(invoiceId)).status).toBe('open');
     expect((await sub(owner.orgId)).status).toBe('trialing');
+    // Resolved to the invoice through the signed Paymob order id, as payments are.
+    const reviews = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('billing_reviews').select(['kind', 'invoice_id', 'provider', 'provider_txn_id']).orderBy('created_at').execute());
+    expect(reviews).toEqual([
+      { kind: 'refund', invoice_id: invoiceId, provider: 'paymob', provider_txn_id: String(refunded.id) },
+      { kind: 'void', invoice_id: invoiceId, provider: 'paymob', provider_txn_id: String(voided.id) },
+      { kind: 'amount_mismatch', invoice_id: invoiceId, provider: 'paymob', provider_txn_id: String(short.id) },
+    ]);
   });
 });

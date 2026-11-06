@@ -42,7 +42,7 @@ export interface RecordedRequest {
   body: unknown;
 }
 
-export type Outcome = 'success' | 'declined' | 'pending' | 'refunded';
+export type Outcome = 'success' | 'declined' | 'pending' | 'refunded' | 'voided';
 
 const SIGNED_KEYS = [
   'success', 'source_data.type', 'source_data.sub_type', 'source_data.pan', 'pending', 'owner', 'order', 'is_voided',
@@ -116,7 +116,7 @@ export class PaymobSimulator {
 
   /** The transaction object Paymob reports after a payment attempt on `intention`. */
   transaction(intention: Intention, outcome: Outcome, overrides: { amountCents?: number } = {}): Record<string, unknown> {
-    const success = outcome === 'success' || outcome === 'refunded';
+    const success = outcome === 'success' || outcome === 'refunded' || outcome === 'voided';
     const created = new Date().toISOString().replace('Z', '000');
     return {
       id: this.nextTxnId++,
@@ -126,8 +126,8 @@ export class PaymobSimulator {
       is_auth: false,
       is_capture: false,
       is_standalone_payment: true,
-      is_voided: false,
-      // Assumption: a refund is reported as the original transaction with is_refunded=true.
+      // Assumption: a refund or void is reported as the original transaction with is_refunded or is_voided=true.
+      is_voided: outcome === 'voided',
       is_refunded: outcome === 'refunded',
       is_3d_secure: true,
       integration_id: intention.payment_methods[0],

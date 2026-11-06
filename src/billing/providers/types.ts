@@ -28,6 +28,9 @@ export interface CheckoutResult {
 export type NormalizedEvent =
   | { type: 'payment.succeeded'; eventId: string; invoiceId: string; checkoutRef?: string; providerTxnId: string; amountCents: number; currency: string }
   | { type: 'payment.failed'; eventId: string; invoiceId: string; checkoutRef?: string; providerTxnId: string; amountCents: number; currency: string; reason: string }
+  // A refund or void the provider reports: money back to the customer. Recorded for an operator to review
+  // (billing_reviews); the invoice and subscription are not changed automatically.
+  | { type: 'payment.reversed'; eventId: string; invoiceId: string; checkoutRef?: string; providerTxnId: string; amountCents: number; currency: string; kind: 'refund' | 'void' }
   | { type: 'ignored'; eventId: string; reason: string; invoiceId?: string | null };
 
 export interface WebhookInput {

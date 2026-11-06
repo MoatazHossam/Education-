@@ -421,11 +421,12 @@ are also written to the logs (`"msg":"operational alert"`), and contain counts o
 | Emails failing | an email gave up in the last hour, or 3+ are being retried | SMTP settings and the provider; worker logs |
 | Email backlog | an email has waited more than 15 minutes | whether the worker runs |
 | Server errors | 10+ responses with status 500–599 in 5 minutes on one instance | `docker compose … logs app app2` |
-| Payment notifications failing | a provider webhook failed to process in the last hour | Platform admin → Webhooks |
+| Payment notifications failing | a provider webhook failed to process in the last hour | Platform admin → Webhooks; once the cause is fixed, **Reprocess** each failed one (or wait for the provider's retry) |
 | Migrations pending | the schema is behind the code | `docker compose … run --rm migrate` |
 | Homework files waiting | a homework file has waited more than 10 minutes for its check (virus scan, photo resizing); nobody can open it meanwhile | `docker compose … ps clamav worker`, `logs clamav worker` (the worker logs the scanner's error) |
 | Database unreachable | two checks in a row cannot reach PostgreSQL (one message per instance) | `ps postgres` / the managed database status |
 | AI spending high / AI budget reached | with `AI_MONTHLY_BUDGET_USD` set: the month's AI spending has reached 80 % of it / all of it (new AI requests are refused until the month ends) | Platform admin → AI assistance (spending per school and per feature); raise the budget and restart the app to allow more |
+| Payments to review | a refund, void, mismatched amount or payment on a closed invoice waits for an operator | Platform admin → Webhooks → Payments to review; resolve each with what was done |
 | AI model without a price | with `AI_MONTHLY_BUDGET_USD` set, the configured model has no price, so AI requests are refused | enter the model's prices in Platform admin → AI assistance |
 
 **Outside the host (needed as well).** Nothing on the host can report that the host itself, Caddy or both app

@@ -22,8 +22,8 @@ export const SERVER_ERROR_THRESHOLD = 10; // 5xx responses in 5 minutes on one i
 export type AlertKey =
   | 'worker_stalled' | 'email_failing' | 'email_backlog' | 'server_errors'
   | 'payment_webhooks_failing' | 'migrations_pending' | 'file_checks_stalled' | 'database_unreachable'
-  | 'ai_budget_high' | 'ai_budget_reached' | 'ai_price_missing';
-const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending', 'file_checks_stalled', 'ai_budget_high', 'ai_budget_reached', 'ai_price_missing'];
+  | 'ai_budget_high' | 'ai_budget_reached' | 'ai_price_missing' | 'billing_review_needed';
+const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending', 'file_checks_stalled', 'ai_budget_high', 'ai_budget_reached', 'ai_price_missing', 'billing_review_needed'];
 /** Homework files waiting longer than this for the worker's check (virus scan, photo resizing). */
 export const FILE_CHECK_STALE_MINUTES = 10;
 
@@ -37,13 +37,14 @@ const HINTS: Record<AlertMessage['key'], string> = {
   email_failing: 'Check the SMTP settings and the email provider. The worker logs show the delivery errors (docker compose logs worker).',
   email_backlog: 'The worker is not sending queued emails: see whether it is running (docker compose ps worker) and its logs.',
   server_errors: 'See the app logs for the failing requests: docker compose logs app app2 (look for statusCode 500).',
-  payment_webhooks_failing: 'Open Platform admin → Webhooks for the failed events and their errors.',
+  payment_webhooks_failing: 'Open Platform admin → Webhooks for the failed events and their errors; once the cause is fixed, Reprocess each one (or wait for the provider to retry).',
   migrations_pending: 'Apply the migrations: docker compose run --rm migrate. Instances report not ready until then.',
   file_checks_stalled: 'Check the virus scanner and the worker: docker compose ps clamav worker; docker compose logs clamav worker. Teachers and students cannot open these files until they are checked.',
   database_unreachable: 'Check the database: docker compose ps postgres and its logs, or the managed database status page.',
   ai_budget_high: 'Platform admin → AI assistance shows the spending per school and per feature. New AI requests are refused once the budget (AI_MONTHLY_BUDGET_USD) is reached.',
   ai_budget_reached: 'New AI requests are refused until the month ends. To allow more, raise AI_MONTHLY_BUDGET_USD and restart the app; Platform admin → AI assistance shows where the spending went.',
   ai_price_missing: "Enter the model's prices in Platform admin → AI assistance, from the provider's price page. With a platform budget set, AI requests are refused until the model has a price.",
+  billing_review_needed: 'Open Platform admin → Webhooks → Payments to review, and resolve each with what was done.',
   test: 'This is a test sent from Platform admin → Overview.',
 };
 
@@ -106,6 +107,13 @@ export async function evaluate(db: Database, config: AppConfig, errors: ServerEr
     const failedHooks = Number(hooks.rows[0]!.n);
     if (failedHooks > 0) {
       found.push({ key: 'payment_webhooks_failing', summary: `${failedHooks} payment provider notifications failed to process in the last hour`, details: { failedLastHour: failedHooks } });
+    }
+
+    // Refunds, voids and mismatched payments wait for an operator (billing_reviews).
+    const reviews = await sql<{ n: string }>`SELECT count(*) AS n FROM billing_reviews WHERE status = 'open'`.execute(trx);
+    const openReviews = Number(reviews.rows[0]!.n);
+    if (openReviews > 0) {
+      found.push({ key: 'billing_review_needed', summary: `${openReviews} ${openReviews === 1 ? 'payment needs' : 'payments need'} review (refund, void or mismatched amount)`, details: { openReviews } });
     }
 
     const files = await sql<{ n: string }>`

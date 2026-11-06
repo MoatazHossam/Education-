@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { parseCsv, toCsv, unguardCell } from '../../src/lib/csv.js';
 import { createScope, login, navigable, openPage, orgIdFromUrl, PASSWORD, payInSandbox, registerAndVerify, signInAsPlatformAdmin, token, uid } from './helpers.js';
-import { latestEmailText, ownerQuery, runDigestPass, runFileCheckPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
+import { E2E_ENV, latestEmailText, ownerQuery, runDigestPass, runFileCheckPass, runReminderPass, runRetentionPass, runWebhookPass, startServer, stopServer } from './server.js';
 
 test.describe.configure({ mode: 'serial' });
 // The built-in page navigates like the others (helpers.ts, navigable).
@@ -200,6 +200,21 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   const aiRow = page.getByRole('region', { name: /^Schools with AI assistance/ }).getByRole('row', { name: /Nile Learning/ });
   await expect(aiRow).toContainText('0 / 100');
   await expect(aiRow).toContainText('0 of 200,000');
+  // A void the payment provider reports on a paid invoice goes to "Payments to review", resolved with a note.
+  const [paid] = await ownerQuery(`SELECT id, number, amount_cents, currency FROM invoices WHERE status = 'paid' ORDER BY created_at LIMIT 1`);
+  const voidBody = JSON.stringify({ id: `evt_void_${uid()}`, type: 'payment.voided', data: { invoice_id: paid.id, txn_id: `txn_void_${uid()}`, amount_cents: paid.amount_cents, currency: paid.currency } });
+  const ts = Math.floor(Date.now() / 1000);
+  const voidSig = `t=${ts},v1=${createHmac('sha256', E2E_ENV.SANDBOX_WEBHOOK_SECRET!).update(`${ts}.${voidBody}`).digest('hex')}`;
+  const voided = await page.request.post('/api/billing/webhooks/sandbox', { headers: { 'content-type': 'application/json', 'x-sandbox-signature': voidSig }, data: voidBody });
+  expect(await voided.json()).toMatchObject({ received: true, status: 'processed' });
+  await page.goto('/admin/events');
+  const toReview = page.getByRole('region', { name: 'Payments to review (1)' });
+  await expect(toReview.getByRole('row', { name: new RegExp(paid.number) })).toContainText('Void');
+  await toReview.getByRole('button', { name: `Resolve ${paid.number}` }).click();
+  await page.getByRole('dialog').getByLabel('What was done').fill('E2E: voided by the bank, nothing to change');
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+  await expect(page.getByText('Resolved', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: /^Payments to review/ })).toHaveCount(0);
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByText('No active grant. Customer business data is not accessible.')).toBeVisible();
   await page.getByRole('button', { name: 'Suspend organization' }).click();

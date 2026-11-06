@@ -102,5 +102,5 @@ and tax position are open business decisions** (PROJECT_STATUS.md).
 | Webhook security (signature, replay, idempotency, amount check) | COMPLETE (sandbox tested; Paymob contract-tested, HMAC matches an independent implementation) |
 | Paymob checkout + webhook against Paymob servers | **BLOCKED** — needs Paymob test-mode keys (secret/public keys, HMAC secret, card integration id); then `npm run paymob:check` |
 | Card-on-file automatic renewal | NOT STARTED (deliberate; invoice-per-period first) |
-| Refunds | Manual in the provider dashboard; refund/void callbacks are recorded as "ignored — manual review" |
+| Refunds | Made in the provider dashboard. A refund or void the provider reports, a payment whose amount or currency does not match its invoice, and a payment on a closed invoice open a review for an operator (Platform admin → Webhooks → Payments to review, with an operational alert); nothing changes on the invoice or plan by itself. Not yet run against Paymob |
 | Tax (VAT 14%) on invoices, ETA e-invoicing | NOT STARTED — needs the company's tax registration details |

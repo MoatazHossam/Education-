@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`, `0023_billing_reviews`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -91,7 +91,8 @@ erDiagram
 | `invoices` | Invoices | `number` unique (sequence `invoice_number_seq`); kind; status `open/paid/void` | ✓ |
 | `payments` | Payment attempts | unique `(provider, provider_txn_id)` — idempotency | ✓ |
 | `checkout_sessions` | Hosted-checkout attempts | unique `(provider, provider_ref)`; a callback's invoice is resolved from the signed provider reference (Paymob order id), not from the echoed merchant reference | ✓ |
-| `billing_events` | Webhook receipts | unique `(provider, event_id)` — idempotency; normalized payload only | — (system only) |
+| `billing_events` | Webhook receipts | unique `(provider, event_id)` — idempotency; normalized payload only (a failed one is reprocessed from it) | — (system only) |
+| `billing_reviews` | Payments an operator must look at: refunds and voids the provider reported, amounts that do not match the invoice, payments on closed invoices (migration `0023`) | unique `(provider, event_id)`, one per notification; `invoice_id`, `payment_id` (set null when deleted), `kind`, amount, currency; `status` open/resolved with `resolution` (1–1000), `resolved_by`, `resolved_at` | ✓ |
 | `usage_counters` | Monthly metering | PK `(org_id, metric, period)`; metric `exports`, `api_requests`, `ai_requests` or `ai_tokens` (input and output tokens, against `ai_tokens_per_month`) | ✓ |
 | `billing_notices` | Sent lifecycle notices (dedupe) | PK `(org_id, kind, ref)` | ✓ |
 | `audit_logs` | Security & change history | bigint identity; indexes by org/time, action, actor; **app role has no UPDATE** | ✓ |

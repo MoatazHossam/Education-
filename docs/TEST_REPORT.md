@@ -804,6 +804,7 @@ test checks they are there; the owner ran the Windows repair commands in the gui
 | ESLint 10, `@eslint/js` 10 | `npm run lint` before the fix: 5 `no-useless-assignment` errors (initial values always overwritten); after: lint, typecheck, build, `npm test` 65 files, 480 tests | Pass |
 | otplib 13 | New `tests/unit/totp.test.ts`: RFC 6238 appendix B values (T = 59 s → 287082; T = 1111111109 → 081804), drift ±1 step accepted and ±2 refused, replays refused, 160-bit base32 secrets, `otpauth://totp/Midad:…` link with `issuer=Midad`. The same test passes unchanged on otplib 12.0.1 and 13.5.0. `npm test` 66 files, 484 tests | Pass |
 | TypeScript 7.0.2 | `tsc --noEmit` on the code: no errors. `eslint`: exits 2, "typescript-eslint does not support TS 7.0" | Held on 5.9.3 |
+| `@anthropic-ai/sdk` 1.6.0 (after the owner confirmed no gateway reads `X-Api-Key`) | `tests/integration/ai-providers-contract.test.ts` now checks the request the SDK sends: `anthropic-version: 2026-10-21`, the key as `Authorization: Bearer`, no `x-api-key`; the provider simulator accepts either header, as the API does. AI tests (`ai.test.ts`, `ai-providers-contract.test.ts`, `unit/ai-layer.test.ts`, 62 tests); lint, typecheck, build; `npm test` 71 files, 517 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
 
 ### AI limits per member and per school (2026-11-06)
 

@@ -219,6 +219,10 @@ describe('student sign-in', () => {
     const one = await studentLogin(h, s);
     const two = await studentLogin(h, s);
     expect((await one.post('/api/student/password', { currentPassword: 'nope', newPassword: 'a-new-password-1' })).statusCode).toBe(400);
+    // A common password is refused (production finding S-6); the school's password still works.
+    const common = await one.post('/api/student/password', { currentPassword: s.password, newPassword: 'password123' });
+    expect(common.statusCode).toBe(400);
+    expect(common.json().error.details).toEqual([expect.objectContaining({ path: 'newPassword', code: 'PASSWORD_TOO_COMMON' })]);
     expect((await one.post('/api/student/password', { currentPassword: s.password, newPassword: 'a-new-password-1' })).statusCode).toBe(200);
     expect((await one.get('/api/auth/me')).statusCode).toBe(200);
     expect((await two.get('/api/auth/me')).statusCode).toBe(401);

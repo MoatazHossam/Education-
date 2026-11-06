@@ -55,6 +55,16 @@ describe('registration and email verification', () => {
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
     const paths = res.json().error.details.map((d: { path: string }) => d.path);
     expect(paths).toEqual(expect.arrayContaining(['name', 'email', 'password']));
+    expect(res.json().error.details.find((d: { path: string }) => d.path === 'password').code).toBe('PASSWORD_TOO_SHORT');
+  });
+
+  it('refuses a common password, with a code the interface translates (production finding S-6)', async () => {
+    const c = new Client(h.app);
+    const email = uniqueEmail();
+    const res = await c.post('/api/auth/register', { name: 'Amal', email, password: 'password123', organizationName: 'Nile Tutors' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.details).toEqual([{ path: 'password', code: 'PASSWORD_TOO_COMMON', message: expect.stringContaining('too common') }]);
+    expect(await latestEmail(h, email, 'verify_email')).toBeFalsy();
   });
 });
 
@@ -242,6 +252,23 @@ describe('password reset', () => {
     expect((await client.get('/api/auth/me')).statusCode).toBe(401);
     expect((await anon.post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(401);
     expect((await anon.post('/api/auth/login', { email, password: 'a-brand-new-passphrase' })).statusCode).toBe(200);
+  });
+
+  it('a reset or a change to a common password is refused; the old password and the reset link still work', async () => {
+    const { client, email } = await signUp(h);
+    const anon = new Client(h.app);
+    await anon.post('/api/auth/password/forgot', { email });
+    const token = tokenFrom((await latestEmail(h, email, 'reset_password'))!.text_body);
+    const reset = await anon.post('/api/auth/password/reset', { token, password: 'Password2026!' });
+    expect(reset.statusCode).toBe(400);
+    expect(reset.json().error.details).toEqual([expect.objectContaining({ path: 'password', code: 'PASSWORD_TOO_COMMON' })]);
+    const change = await client.post('/api/auth/password/change', { currentPassword: PASSWORD, newPassword: 'qwertyuiop' });
+    expect(change.statusCode).toBe(400);
+    expect(change.json().error.details).toEqual([expect.objectContaining({ path: 'newPassword', code: 'PASSWORD_TOO_COMMON' })]);
+    expect((await client.get('/api/auth/me')).statusCode).toBe(200);
+    expect((await new Client(h.app).post('/api/auth/login', { email, password: PASSWORD })).statusCode).toBe(200);
+    // The refused attempt did not use up the link.
+    expect((await anon.post('/api/auth/password/reset', { token, password: 'a-brand-new-passphrase' })).statusCode).toBe(200);
   });
 
   it('changing the password requires the current one and signs out other sessions', async () => {

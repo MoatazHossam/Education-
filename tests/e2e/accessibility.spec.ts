@@ -684,6 +684,21 @@ test('screen readers get page titles, the unread count, each book\'s kind and fi
   await expect(fresh).toHaveAccessibleDescription(hint);
   await expect(fresh).not.toHaveAttribute('aria-invalid');
 
+  // A common password is refused with a clear message, in English and in Arabic (production finding S-6).
+  await current.fill(PASSWORD);
+  await fresh.fill('password123');
+  await page.getByRole('button', { name: 'Change password' }).click();
+  await expect(fresh).toBeFocused();
+  await expect(fresh).toHaveAccessibleDescription(`${hint} This password is too common or easy to guess. Choose a longer phrase that is not a common word with numbers added.`);
+  await page.locator('.topbar').getByRole('button', { name: 'العربية', exact: true }).click();
+  const freshAr = page.getByLabel('كلمة المرور الجديدة');
+  await page.getByLabel('كلمة المرور الحالية').fill(PASSWORD);
+  await freshAr.fill('Password2026!');
+  await page.getByRole('button', { name: 'تغيير كلمة المرور' }).click();
+  await expect(freshAr).toBeFocused();
+  await expect(freshAr).toHaveAccessibleDescription('10 أحرف على الأقل. يمكنك استخدام عبارة مرور. كلمة المرور هذه شائعة أو سهلة التخمين. اختر عبارة أطول، لا تكون كلمة شائعة أُضيفت إليها أرقام.');
+  await page.locator('.topbar').getByRole('button', { name: 'English', exact: true }).click();
+
   // Page titles follow the heading, in both languages; picker books say their kind.
   await page.getByLabel('Organization name').fill('Reader School');
   await page.getByRole('button', { name: 'Create organization' }).click();

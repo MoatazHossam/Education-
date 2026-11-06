@@ -69,7 +69,8 @@ only.
 ### Creating an account
 
 Click **Start free trial** (or **Create an account** on the sign-in page).
-Enter your name, email, a password of at least 10 characters, and your
+Enter your name, email, a password of at least 10 characters that is not a
+common one (such as `password123`, or a common word with numbers added), and your
 organization's name: your company, school or team.
 
 ![The sign-up form, filled in for Mona Hassan of Nile Valley Language School](user-guide/images/register.png)

@@ -195,6 +195,8 @@ const en = {
   'students.importOverLimit': 'Your plan has room for {room} more student accounts (limit {limit}).', 'students.importApply': 'Import', 'students.imported': 'Imported {n} students',
   'students.privacyTitle': 'Privacy', 'students.privacyText': 'Only each student’s name, username, grade and curriculum are stored: no email, birth date or contact details. Removing a student deletes their account. Platform staff see only the number of accounts.',
   'err.generic': 'Something went wrong. Please try again.',
+  'err.PASSWORD_TOO_SHORT': 'Password must be at least 10 characters', 'err.PASSWORD_TOO_LONG': 'Password must be at most 128 characters',
+  'err.PASSWORD_TOO_COMMON': 'This password is too common or easy to guess. Choose a longer phrase that is not a common word with numbers added.',
   // Classes and homework (docs/CLASSROOM.md)
   'nav.classes': 'Classes', 'nav.classesCount': 'Classes ({n} to mark)',
   'classes.title': 'Classes', 'classes.sub': 'Your school’s classes, their students and teachers. Teachers set homework for the classes they teach.',
@@ -548,6 +550,8 @@ const ar = {
   'verify.adminCoverage': 'تم التحقق: {sv}/{s} مادة، {mv}/{m} عنصرًا · {r} تحتاج مراجعة', 'verify.colVerified': 'تم التحقق',
   'verify.publicHint': 'يرى العملاء الحالة والتاريخ والمصدر والملاحظة، ولا يرون من راجع البيانات. تعديل محتوى عنصر في مسودة يلغي علامة التحقق الخاصة به.',
   'err.generic': 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
+  'err.PASSWORD_TOO_SHORT': 'يجب ألا تقل كلمة المرور عن 10 أحرف.', 'err.PASSWORD_TOO_LONG': 'يجب ألا تزيد كلمة المرور على 128 حرفًا.',
+  'err.PASSWORD_TOO_COMMON': 'كلمة المرور هذه شائعة أو سهلة التخمين. اختر عبارة أطول، لا تكون كلمة شائعة أُضيفت إليها أرقام.',
   'err.INVALID_CREDENTIALS': 'البريد الإلكتروني أو كلمة المرور غير صحيحة، أو أن الحساب مقفل مؤقتًا.', 'err.EMAIL_NOT_VERIFIED': 'يرجى تأكيد بريدك الإلكتروني قبل تسجيل الدخول.', 'err.ACCOUNT_SUSPENDED': 'هذا الحساب موقوف. تواصل مع الدعم.', 'err.RATE_LIMITED': 'محاولات كثيرة جدًا. انتظر قليلًا ثم حاول مرة أخرى.',
   'err.CSRF_TOKEN_INVALID': 'انتهت صلاحية الصفحة. أعد تحميلها وحاول مرة أخرى.', 'err.CSRF_ORIGIN_MISMATCH': 'تم حظر الطلب لأسباب أمنية.', 'err.PLAN_LIMIT_REACHED': 'وصلت إلى حد خطتك الحالية.', 'err.FEATURE_NOT_IN_PLAN': 'هذه الميزة غير متاحة في خطتك الحالية.',
   'err.MFA_INVALID': 'الرمز غير صحيح أو تم استخدامه من قبل.', 'err.TOKEN_INVALID': 'الرابط غير صالح أو منتهي الصلاحية.', 'err.INVITATION_INVALID': 'الدعوة غير صالحة أو منتهية الصلاحية.', 'err.INVITATION_EMAIL_MISMATCH': 'استخدم البريد الإلكتروني الذي أُرسلت إليه الدعوة.', 'err.ACCOUNT_EXISTS': 'يوجد حساب بهذا البريد. سجّل الدخول لقبول الدعوة.',

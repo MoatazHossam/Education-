@@ -118,6 +118,12 @@ export function toast(message, kind = 'info') {
 }
 
 /** Server messages are specific English text; Arabic uses the translated message for the error code. */
+/** A field's problem from the server: in Arabic the translation of its code when it has one (a password's), otherwise the server's text. */
+export function fieldMessage(detail) {
+  const key = `err.${detail?.code}`;
+  return detail?.code && locale() === 'ar' && hasKey(key) ? t(key) : detail?.message;
+}
+
 export function errorMessage(err) {
   const key = `err.${err?.code}`;
   if (locale() === 'ar' && hasKey(key)) return t(key);
@@ -249,7 +255,7 @@ export function form({ fields, submitLabel, onSubmit, extra }) {
         for (const d of err.details) {
           const inp = inputs[d.path];
           const errEl = inp && document.getElementById(`${inp.id}-err`);
-          if (errEl) { errEl.textContent = d.message; errEl.hidden = false; inp.setAttribute('aria-invalid', 'true'); shown = true; }
+          if (errEl) { errEl.textContent = fieldMessage(d); errEl.hidden = false; inp.setAttribute('aria-invalid', 'true'); shown = true; }
         }
       }
       if (shown && err.code === 'VALIDATION_ERROR') {

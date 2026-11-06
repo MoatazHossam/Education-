@@ -101,6 +101,7 @@ describe('dependency updates', () => {
     directory: string;
     'target-branch'?: string;
     ignore?: { 'dependency-name': string; 'update-types'?: string[] }[];
+    groups?: Record<string, { 'update-types'?: string[]; 'exclude-patterns'?: string[] }>;
   };
   const updates = (parse(read('.github/dependabot.yml')) as { version: number; updates: Update[] }).updates;
   const covered = updates.map((u) => `${u['package-ecosystem']} ${u.directory}`).sort();
@@ -118,6 +119,8 @@ describe('dependency updates', () => {
       updates.find((u) => u['package-ecosystem'] === eco && u.directory === dir)?.ignore?.map((i) => `${i['dependency-name']} ${i['update-types']?.join()}`);
     expect(ignored('docker', '/')).toEqual(['node version-update:semver-major']);
     expect(ignored('npm', '/')).toEqual(['@types/node version-update:semver-major']);
+    // Kysely (0.x, where a minor version may break) is kept out of the weekly group.
+    expect(updates.find((u) => u['package-ecosystem'] === 'npm')?.groups?.['npm-minor-and-patch']?.['exclude-patterns']).toEqual(['kysely']);
     expect(ignored('docker-compose', '/')).toEqual(['postgres version-update:semver-major']);
   });
 

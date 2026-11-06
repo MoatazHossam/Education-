@@ -89,8 +89,9 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   `no-useless-assignment` found five initial values that every path overwrites, now removed.
 - **otplib 13 (#56):** two-step sign-in codes moved to its functions. A new test checks codes against RFC 6238's own
   values and an independent HMAC; it passes unchanged on otplib 12 and 13, so the same codes are accepted.
-- **Anthropic SDK 1.x (#57):** prepared (API version 2026-10-21, key sent as `Authorization: Bearer`); merged
-  after the owner confirms no gateway in front of Anthropic reads `X-Api-Key`.
+- **Anthropic SDK 1.6.0 (#57):** merged after the owner confirmed no gateway sits in front of Anthropic. Requests
+  now use API version 2026-10-21 and send the key as `Authorization: Bearer` instead of `X-Api-Key`; the request and
+  answer shapes the adapter uses are unchanged.
 - **TypeScript 7 (#58): held.** It type-checks this code, but typescript-eslint 8.72 refuses to run with it.
   Dependabot no longer proposes TypeScript majors; the entry in `.github/dependabot.yml` says when to remove it.
 

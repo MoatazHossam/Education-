@@ -25,6 +25,21 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Each school's own time zone and country (roadmap task 5.1) · COMPLETE (2026-11-06)
+- **Settings:** owners and admins choose the school's **Time zone** (any zone both the browser and the database
+  know; Africa/Cairo by default) and **Country** (ISO code; not set by default) on the school's settings page.
+- **Follows the school's zone:**
+  - "overdue" and "due soon" on books;
+  - the hours when due-date reminders and retention notices go out (08:00 to 21:00 there);
+  - the morning of the daily summary (the zone of the school where the member's oldest waiting book was assigned);
+  - the dates and times in students' notifications and retention notices.
+- **Nothing changes for current schools:** they all start on Africa/Cairo, and the existing reminder, summary and
+  retention tests pass unchanged.
+- **Kept per UTC month:** monthly allowances (exports, API calls, AI), for every school, so Egyptian schools' month
+  boundaries do not move.
+- The country is recorded for the country-specific prices and curricula to come (5.2, 5.3); nothing uses it yet.
+- The settings screenshots in the user guides predate the two new fields; the guides' text describes them.
+
 ### Payment tools that need no Paymob keys (BILLING_INTEGRATION_PLAN P-2, P-4) · COMPLETE in code (2026-11-06; sandbox provider and Paymob simulator; P-3 BLOCKED)
 - **Reprocess (P-2):** a payment notification that failed to process (a database error, a deploy in the middle) can be
   applied again from Platform admin → Webhooks. It uses the normalized event stored when it was received and

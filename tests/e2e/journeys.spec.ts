@@ -887,6 +887,19 @@ test('webhooks: the owner adds an endpoint, sends a test, and a scope change rea
     const orgId = notesTeam.orgId;
     await login(page, notesTeam.ownerEmail);
     await page.goto(`/org/${orgId}/settings`);
+    // The school's time zone and country (task 5.1): Cairo by default; set, kept, and set back for the journeys after.
+    await expect(page.getByLabel('Time zone')).toHaveValue('Africa/Cairo');
+    await page.getByLabel('Time zone').selectOption('Asia/Riyadh');
+    await page.getByLabel('Country').selectOption('SA');
+    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel('Time zone')).toHaveValue('Asia/Riyadh');
+    await expect(page.getByLabel('Country')).toHaveValue('SA');
+    await page.getByLabel('Time zone').selectOption('Africa/Cairo');
+    await page.getByLabel('Country').selectOption('');
+    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+    await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Webhooks' })).toBeVisible();
     await page.getByLabel('Endpoint URL').fill(url);
     await page.getByLabel('Description (optional)').fill('Content pipeline');

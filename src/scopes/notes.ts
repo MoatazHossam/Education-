@@ -2,6 +2,7 @@ import { sql, type NotNull } from 'kysely';
 import type { Executor } from '../db/index.js';
 import type { ItemStatus, Locale } from '../db/types.js';
 import { AppError } from '../lib/errors.js';
+import { orgToday } from '../lib/zone.js';
 import { enqueueEmail, notify } from '../notifications/email.js';
 
 // Follow-up on a scope's selected books: a note, the member responsible, a
@@ -10,11 +11,8 @@ import { enqueueEmail, notify } from '../notifications/email.js';
 
 export const ITEM_STATUSES = ['todo', 'in_progress', 'done'] as const satisfies readonly ItemStatus[];
 
-/**
- * Due dates are calendar days for Egyptian schools: "today" and "overdue" use
- * Cairo's date, so a book due today is not overdue at 1 a.m. Cairo time.
- */
-const TODAY = sql<string>`(now() AT TIME ZONE 'Africa/Cairo')::date`;
+// Due dates are calendar days in the school's time zone (organizations.time_zone, Cairo by default):
+// "today" and "overdue" use the school's date, so a book due today is not overdue at 1 a.m. there.
 /** "Due soon": due today or in the next two days (the app's marker and the reminder emails). */
 export const DUE_SOON_DAYS = 2;
 
@@ -76,9 +74,10 @@ export async function annotationCounts(exec: Executor, orgId: string, userId: st
 
 /** The member's open assignments in the organization (not done), and how many are overdue or due soon. */
 export async function assignmentCounts(exec: Executor, orgId: string, userId: string): Promise<{ open: number; overdue: number; dueSoon: number }> {
+  const today = orgToday(orgId);
   const { rows } = await sql<{ open: string; overdue: string; due_soon: string }>`
-    SELECT count(*) AS open, count(*) FILTER (WHERE due_on < ${TODAY}) AS overdue,
-           count(*) FILTER (WHERE due_on BETWEEN ${TODAY} AND ${TODAY} + ${DUE_SOON_DAYS}::int) AS due_soon
+    SELECT count(*) AS open, count(*) FILTER (WHERE due_on < ${today}) AS overdue,
+           count(*) FILTER (WHERE due_on BETWEEN ${today} AND ${today} + ${DUE_SOON_DAYS}::int) AS due_soon
     FROM scope_items
     WHERE org_id = ${orgId} AND assignee_id = ${userId} AND status IS DISTINCT FROM 'done'`.execute(exec);
   return { open: Number(rows[0]?.open ?? 0), overdue: Number(rows[0]?.overdue ?? 0), dueSoon: Number(rows[0]?.due_soon ?? 0) };
@@ -99,7 +98,7 @@ export async function myAssignments(exec: Executor, orgId: string, userId: strin
     .select([
       'i.scope_id', 's.name as scopeName', 'v.academic_year', 'i.material_id', 'm.title', 'm.kind', 'c.grade', 'c.name_en', 'c.name_ar',
       'i.note', 'i.status', 'i.due_on', 'i.annotated_at', 'b.name as annotatedBy',
-      sql<boolean>`coalesce(i.due_on < ${TODAY} AND i.status IS DISTINCT FROM 'done', false)`.as('overdue'),
+      sql<boolean>`coalesce(i.due_on < ${orgToday(orgId)} AND i.status IS DISTINCT FROM 'done', false)`.as('overdue'),
     ])
     .where('i.org_id', '=', orgId)
     .where('i.assignee_id', '=', userId);

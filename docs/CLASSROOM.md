@@ -199,7 +199,7 @@ Errors: `CLASSROOM_NOT_ENABLED` (402), `CLASS_NAME_TAKEN`, `ALREADY_TEACHER` (40
 ## 8. Notifications and audit
 
 - Students get an in-app notification, in their language, when homework appears ("New homework: …",
-  with subject and due time in Cairo time) and when work is returned (with the mark). Homework set for
+  with subject and due time in the school's time zone) and when work is returned (with the mark). Homework set for
   later is announced by the worker once its time comes (`runHomeworkAnnouncements`, every worker pass,
   once per homework). Students have no email address, so nothing is emailed.
 - Audit log: `class.created`, `class.updated`, `class.deleted`, `class.students_changed` (counts),
@@ -279,7 +279,7 @@ Added 2026-10-27. Owners and admins decide how long the school keeps classroom d
   The gradebook keeps every mark until the homework or test itself is deleted.
 - **Worker.** `runClassroomRetention` runs with the hourly cleanup, for each active school with
   settings, in that school's own tenant transaction (row-level security limits every statement to it).
-  Notices go out between 08:00 and 21:00 Cairo time; due deletions happen at any hour. A suspended
+  Notices go out between 08:00 and 21:00 in the school's time zone; due deletions happen at any hour. A suspended
   school is skipped until it is active again.
 - **Re-marking after deletion.** Marking an attempt again (a teacher's new mark on another answer)
   keeps the stored automatic mark of a deleted answer instead of recomputing it from nothing.

@@ -117,7 +117,7 @@ Tree shape:
 | Method | Path | Role | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/orgs` | user | `{name}` → new org (owner); trial only for a user's first org |
-| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage + `myAssignments {open, overdue, dueSoon}` (not done; past due; due today or in the next 2 days, by Cairo's date) · `{name?, locale?, requireMfaForAdmins?}` · `{password, confirmName}` |
+| GET / PATCH / DELETE | `/:orgId` | viewer / admin / owner | details + plan + usage + `myAssignments {open, overdue, dueSoon}` (not done; past due; due today or in the next 2 days, by the school's date) and `organization.timeZone` (IANA, `Africa/Cairo` by default), `organization.country` (ISO 3166-1 alpha-2 or null) · `{name?, locale?, requireMfaForAdmins?, timeZone?, country?}` (`timeZone` must be a zone the server knows, else 400 with `details` on `timeZone`; `country` two capital letters, or null to clear) · `{password, confirmName}` |
 | GET | `/:orgId/members` | viewer | |
 | PATCH / DELETE | `/:orgId/members/:userId` | admin | `{role}` · remove (members may remove themselves) |
 | POST | `/:orgId/transfer-ownership` | owner | `{userId, password}` |

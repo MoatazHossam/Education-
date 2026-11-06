@@ -3,13 +3,15 @@ import type { AppConfig } from '../config.js';
 import { withSystemContext, type Database, type Trx } from '../db/index.js';
 import type { Locale } from '../db/types.js';
 import { enqueueEmail } from '../notifications/email.js';
-import { cairoClock, SEND_FROM_HOUR, SEND_UNTIL_HOUR } from './reminders.js';
+import { anySchoolInSendingHours, inSendingHours, SEND_FROM_HOUR } from './reminders.js';
 
 // One summary a day of the books assigned to a member, for members who chose
 // it (users.assignment_email_frequency = 'daily', migration 0011) instead of an
 // email per assignment. Assignments wait in assignment_digest_items. From
-// SEND_FROM_HOUR each morning (Cairo time) the worker sends each waiting member
-// one email, across all their organizations, and deletes what it took. What is
+// SEND_FROM_HOUR each morning the worker sends each waiting member one email,
+// across all their organizations, and deletes what it took. The morning is in the
+// time zone of the school where the member's oldest waiting book was assigned
+// (organizations.time_zone, Cairo by default). What is
 // assigned after that morning's sending time waits for the next morning, so a
 // member gets at most one summary a day. Books unassigned or removed since,
 // and suspended organizations, are left out. The in-app notification is not
@@ -72,14 +74,20 @@ export function digestSections(locale: Locale, entries: DigestEntry[], appUrl: s
  */
 export async function runAssignmentDigests(db: Database, config: AppConfig, now = new Date()): Promise<DigestSummary> {
   const summary: DigestSummary = { members: 0, emails: 0, books: 0, failed: 0 };
-  const { today, hour } = await cairoClock(db, now);
-  if (hour < SEND_FROM_HOUR || hour >= SEND_UNTIL_HOUR) return { ...summary, skipped: 'outside_hours' };
+  if (!(await anySchoolInSendingHours(db, now))) return { ...summary, skipped: 'outside_hours' };
 
-  // This morning's sending time: members with something assigned before it get today's summary.
-  const morning = sql<Date>`(${today}::date + make_interval(hours => ${SEND_FROM_HOUR}::int)) AT TIME ZONE 'Africa/Cairo'`;
+  // Each member's oldest waiting book decides the zone: within its sending hours, members with something
+  // assigned before that morning's sending time get today's summary.
+  const morning = sql<Date>`(((${now}::timestamptz AT TIME ZONE o.time_zone)::date + make_interval(hours => ${SEND_FROM_HOUR}::int)) AT TIME ZONE o.time_zone)`;
   const members = await withSystemContext(db, async (trx) => {
     const { rows } = await sql<{ user_id: string }>`
-      SELECT DISTINCT user_id FROM assignment_digest_items WHERE assigned_at < ${morning} LIMIT ${MEMBERS_PER_RUN}`.execute(trx);
+      SELECT f.user_id FROM (
+        SELECT DISTINCT ON (d.user_id) d.user_id, d.assigned_at, d.org_id
+        FROM assignment_digest_items d
+        ORDER BY d.user_id, d.assigned_at) f
+      JOIN organizations o ON o.id = f.org_id
+      WHERE ${inSendingHours(now)} AND f.assigned_at < ${morning}
+      LIMIT ${MEMBERS_PER_RUN}`.execute(trx);
     return rows;
   });
 

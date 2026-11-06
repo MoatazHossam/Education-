@@ -84,7 +84,7 @@ budget and allowances (D-6), and the model's prices from the provider's price pa
 
 | # | Task | Size | Acceptance criteria |
 | --- | --- | --- | --- |
-| 5.1 | `organizations.country` and `time_zone`; replace the 6 hard-coded `Africa/Cairo` uses with the org's zone; quota periods per org zone | 2 d | A Riyadh school's reminders and "overdue" follow Asia/Riyadh; Egyptian behaviour unchanged |
+| 5.1 | **Done.** `organizations.country` and `time_zone`; replace the 6 hard-coded `Africa/Cairo` uses with the org's zone; quota periods per org zone (**not done, by choice**: monthly allowances stay per UTC month for every school, so Egyptian schools' month boundaries do not move) | 2 d | A Riyadh school's reminders and "overdue" follow Asia/Riyadh; Egyptian behaviour unchanged |
 | 5.2 | Per-currency plan prices and checkout (P-6) | 3 d | SAR/AED/EGP prices per plan; invoices in the org's currency |
 | 5.3 | Curriculum catalogues beyond Egypt: data model allows other countries' grade/track systems | 3–5 d + content | A KSA catalogue version can be published without affecting Egypt's |
 | 5.4 | Arabic copy reviewed by a native editor (regional variants if needed); Hijri date display if required | content | Reviewer sign-off |

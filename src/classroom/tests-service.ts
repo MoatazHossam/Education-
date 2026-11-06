@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Database, Executor } from '../db/index.js';
 import { withSystemContext } from '../db/index.js';
 import type { AnswerKey, GivenAnswer, Locale, QuestionOption, QuestionType, Test, TestAttempt, TestEventKind } from '../db/types.js';
+import { orgTimeZone } from '../lib/zone.js';
 import { notify } from '../notifications/email.js';
 import { attemptDeadline, autoMark } from './marking.js';
 import { num } from './service.js';
@@ -294,8 +295,9 @@ export async function monitorRows(exec: Executor, test: Test, now = new Date()) 
 
 // ------------------------------------------------------------ notifications
 
-const fmtWhen = (d: Date, locale: Locale) =>
-  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'short', day: 'numeric', month: locale === 'ar' ? 'long' : 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(d);
+/** A time as students read it, in the school's time zone. */
+const fmtWhen = (d: Date, locale: Locale, timeZone: string) =>
+  new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'short', day: 'numeric', month: locale === 'ar' ? 'long' : 'short', hour: 'numeric', minute: '2-digit', timeZone }).format(d);
 
 const PUBLISHED: Record<Locale, (p: { title: string; subject: string; opens: string; closes: string; exam: boolean; open: boolean }) => { title: string; body: string }> = {
   en: (p) => ({ title: `${p.exam ? 'New exam' : 'New test'}: ${p.title}`, body: p.open ? `${p.subject} · open now until ${p.closes}` : `${p.subject} · opens ${p.opens}` }),
@@ -312,8 +314,9 @@ async function classStudentLocales(exec: Executor, classId: string) {
 
 export async function notifyTestPublished(exec: Executor, t: Test): Promise<void> {
   const now = new Date();
+  const tz = await orgTimeZone(exec, t.org_id);
   for (const s of await classStudentLocales(exec, t.class_id)) {
-    const text = PUBLISHED[s.locale]({ title: t.title, subject: s.locale === 'ar' ? t.subject_ar : t.subject_en, opens: fmtWhen(t.opens_at, s.locale), closes: fmtWhen(testEnd(t), s.locale), exam: t.kind === 'exam', open: now >= t.opens_at });
+    const text = PUBLISHED[s.locale]({ title: t.title, subject: s.locale === 'ar' ? t.subject_ar : t.subject_en, opens: fmtWhen(t.opens_at, s.locale, tz), closes: fmtWhen(testEnd(t), s.locale, tz), exam: t.kind === 'exam', open: now >= t.opens_at });
     await notify(exec, { userId: s.id, orgId: t.org_id, kind: 'test_published', title: text.title, body: text.body, link: `/student/tests/${t.id}` });
   }
   await exec.updateTable('tests').set({ notified_at: now }).where('id', '=', t.id).execute();

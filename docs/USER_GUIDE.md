@@ -778,7 +778,11 @@ keeps work for a limited time; their mark and the teacher's comments stay.
 The organization's **Name** and **Default language**, which is used for
 invitation emails. **Require two-factor authentication for owners and
 admins** (Starter plan and above) makes them set it up before they can open
-the organization.
+the organization. The **Time zone** (Africa/Cairo unless you choose another)
+decides the school's dates: when a book becomes overdue, the hours when
+reminders and daily summaries are sent, and the times in students'
+notifications. The **Country** is recorded for prices and curricula offered
+per country.
 
 ### API keys (Professional and above)
 
@@ -864,7 +868,7 @@ Click your name in the top bar.
 - **Profile**: your name and language, and your email choices:
   - emails when the catalogue changes for your scopes;
   - emails when books are assigned to you: right away, one summary each
-    morning (from 8:00 Cairo time, across all your organizations), or none;
+    morning (from 8:00 in your school's time zone, across all your organizations), or none;
   - reminders when your books are due soon or overdue.
 - **Password**: change it with your current password; your other sessions
   are signed out.
@@ -947,7 +951,7 @@ You receive this because books were assigned to you. Turn these emails off in yo
 ```
 
 **Books due soon or overdue** (each book is reminded once when due soon and
-once when overdue; sent from 8:00 Cairo time)
+once when overdue; sent from 8:00 in the school's time zone)
 
 ```text
 Hello Karim Adel,

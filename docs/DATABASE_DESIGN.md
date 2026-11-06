@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`, `0023_billing_reviews`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`, `0023_billing_reviews`, `0024_org_time_zone`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -50,7 +50,7 @@ erDiagram
 | Table | Purpose | Key constraints | RLS |
 | --- | --- | --- | --- |
 | `users` | Accounts | `kind` `staff`/`student` (never changes: trigger); `email` lower-case, unique, required for staff and absent for students (check `users_kind_identity`, which also forbids students from being platform admins or using MFA); status; MFA fields (secret AES-GCM encrypted); `failed_login_count` and `locked_until`, unused since `0020` (sign-in lockout is in `login_failures`) and to be dropped in a later release; `trial_used`; `catalog_emails` (catalogue update emails opt-out); `assignment_emails` (emails when books are assigned) and `assignment_email_frequency` (`instant`, the default, or `daily` for one summary each morning); `due_reminder_emails` (due-date reminder emails) | — |
-| `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended` | — (read via membership) |
+| `organizations` | Tenants | slug unique & pattern-checked; status `active/suspended`; `time_zone` (IANA, `Africa/Cairo` by default: "overdue", reminder and summary hours, notification times) and `country` (ISO 3166-1 alpha-2 or null), migration `0024` | — (read via membership) |
 | `memberships` | User ↔ org with role | PK `(org_id, user_id)`; **partial unique index: one owner per org**; staff accounts only (trigger) | org **or** own user rows |
 | `students` | School-created student accounts (`docs/STUDENT_ACCOUNTS.md`) | PK `user_id` (a `kind = 'student'` user: trigger); unique `(org_id, username)`; username pattern; grade 1–12; `(scope_id, org_id)` references `scopes(id, org_id)` with `ON DELETE SET NULL (scope_id)`; deleting the row deletes the account (trigger) | org **or** own user row |
 | `classes` | A school's classes (`docs/CLASSROOM.md`) | name 1–60, unique per school among active classes (`lower(name)`); grade 1–12; optional curriculum `(scope_id, org_id)` → scopes (cleared if the scope is deleted); `archived_at` | ✓ (students: only their classes) |

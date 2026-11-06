@@ -110,7 +110,8 @@ ones it uses (`docker-compose.yml`), so a container that is broken into gives aw
 
 Keep the settings file readable by its owner only: the start script offers `chmod 600` on Linux and
 removes other users' access on Windows. Keep a copy of it, and of the backup passphrase, in a password
-manager. How to change each secret: §4, "Rotating the other secrets".
+manager. How to change each secret: §4, "Rotating the other secrets". To keep the two main secrets out of the
+settings file and out of every container's environment: §3.7.
 
 ### 3.3 Start
 `ops/start.sh --env prod` (Linux) or `ops\start.bat --env prod` (Windows) checks the settings, builds
@@ -252,6 +253,55 @@ PostgreSQL. Each value can be set in the env file (`.env.docker.example` lists t
 - With a managed database the `POSTGRES_*` settings do not apply; size it in the provider's console.
 - Check memory with `docker stats --no-stream`. If a container keeps restarting, look for the kernel's
   out-of-memory message in `docker compose logs <service>` or `dmesg`, and raise its limit.
+
+### 3.7 Secrets in files instead of the settings file (optional)
+The application reads a secret setting from a file when `<NAME>_FILE` names the file instead of `<NAME>` holding
+the value: `SESSION_SECRET`, `DATA_ENCRYPTION_KEY`, `DATA_ENCRYPTION_KEYS_PREVIOUS`, the three database addresses,
+`SMTP_URL`, `SANDBOX_WEBHOOK_SECRET`, the Paymob keys, `AI_API_KEY` and `ALERT_WEBHOOK_URL` (`src/config.ts`,
+`FILE_SETTINGS`). A secret read from a file is not in the container's environment, which `docker inspect` and
+anyone who can read the process's environment can see. Docker and Kubernetes secrets, systemd credentials and
+secret managers' agents all hand secrets over as files. The line ending at the end of the file is ignored, an empty
+file means "not set", and a setting given both ways is refused.
+
+`docker-compose.secrets.yml` does this with Docker secrets on the production stack, for the two secrets every
+installation has:
+
+1. Put each one in its own file, readable by the containers' user (uid 1000) only. For an installation that is
+   already running, write its **current** values, not new ones: a new `DATA_ENCRYPTION_KEY` would make two-step
+   sign-in and webhook secrets unreadable (change it as §4 shows).
+   ```bash
+   install -d -m 700 secrets
+   printf '%s\n' 'the current SESSION_SECRET' > secrets/session_secret      # new installation: openssl rand -base64 48
+   printf '%s\n' 'the current DATA_ENCRYPTION_KEY' > secrets/data_encryption_key   # new installation: openssl rand -base64 32
+   sudo chown 1000:1000 secrets/* && sudo chmod 400 secrets/*
+   ```
+   Clear the shell history afterwards (`history -c`), or write the files with an editor.
+2. In `.env.production`, remove `SESSION_SECRET` and `DATA_ENCRYPTION_KEY` and add:
+   ```
+   SESSION_SECRET_FILE=./secrets/session_secret
+   DATA_ENCRYPTION_KEY_FILE=./secrets/data_encryption_key
+   ```
+3. Start, and run every later Compose command, with the three files:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.secrets.yml \
+     --env-file .env.production up -d --build
+   ```
+
+- The app instances get both files, the worker only the encryption key, `migrate` neither.
+- Compose mounts each file at `/run/secrets/<name>` with the owner and mode it has on the host: outside Swarm it
+  does not change them. A file only root can read stops the app with
+  `SESSION_SECRET_FILE: cannot read /run/secrets/session_secret (EACCES)`.
+- Without the values in the settings file, Compose stops when `docker-compose.secrets.yml` is left out:
+  "set SESSION_SECRET, or SESSION_SECRET_FILE with docker-compose.secrets.yml". If a value is in both places, the app
+  refuses to start: "set SESSION_SECRET or SESSION_SECRET_FILE, not both".
+- To change a secret, write the new value to its file and restart the instances one at a time (§4): a restarted
+  container reads the file again. `DATA_ENCRYPTION_KEYS_PREVIOUS` can stay in the settings file for the time of a
+  rotation.
+- Any other secret goes the same way: a secret in the file, and its `_FILE` for the containers that get it (§3.2).
+- `secrets/` is in `.gitignore` and `.dockerignore`. It is not in the database backups: keep a copy with the
+  settings file, in the password manager.
+- The ops scripts (`ops/start.sh`, `ops\start.bat`) do not use this file: they read the secrets from the settings
+  file. Use it when you run Compose yourself, as above.
 
 ## 4. Upgrades and rollback
 

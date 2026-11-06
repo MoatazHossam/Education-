@@ -80,9 +80,14 @@ keys; the app instances not the schema owner's password; only `postgres` the rol
 only what it uses (`loadConfig(…, 'worker')`, `loadMigrationConfig`); `tests/unit/compose-env.test.ts` fails if a
 secret reaches a container that should not have it.
 
-Secrets come only from the environment (or Docker env files kept out of git — `.gitignore`
-excludes `.env*` except the examples). Nothing secret is committed; demo credentials are generated
-at seed time for development only.
+Secrets come from the environment (or Docker env files kept out of git — `.gitignore`
+excludes `.env*` except the examples), or from files: each secret setting can be given as `<NAME>_FILE`, the path
+of a file that holds it (`FILE_SETTINGS` in `src/config.ts`), as Docker and Kubernetes secrets, systemd
+credentials and secret managers' agents provide them. A secret read from a file is not in the process environment
+(`docker inspect`, `/proc/<pid>/environ`, child processes). `docker-compose.secrets.yml` mounts `SESSION_SECRET` and
+`DATA_ENCRYPTION_KEY` as Docker secrets in the production stack (DEPLOYMENT_GUIDE §3.7); the `secrets/` folder is
+excluded from git and from the image. Configuration errors name the setting and the file, never a value. Nothing
+secret is committed; demo credentials are generated at seed time for development only.
 
 ## 4. Email and token handling
 

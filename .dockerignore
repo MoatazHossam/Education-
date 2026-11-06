@@ -11,3 +11,4 @@ docs
 legacy
 tests
 *.log
+secrets

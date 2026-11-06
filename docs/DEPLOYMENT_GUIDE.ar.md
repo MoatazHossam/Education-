@@ -116,7 +116,7 @@ docker compose --env-file .env.docker up --build
 | `postgres` | كلمات مرور أدوار قاعدة البيانات (هي التي تنشئ الأدوار) |
 | `caddy` و`clamav` | لا شيء |
 
-اجعل ملف الإعدادات مقروءًا لمالكه فقط: يعرض سكربت التشغيل <span dir="ltr">`chmod 600`</span> على لينكس، ويزيل صلاحيات المستخدمين الآخرين على ويندوز. واحتفظ بنسخة منه، ومن عبارة مرور النسخ الاحتياطية، في مدير كلمات مرور. طريقة تغيير كل سر: القسم 4، «تغيير الأسرار الأخرى».
+اجعل ملف الإعدادات مقروءًا لمالكه فقط: يعرض سكربت التشغيل <span dir="ltr">`chmod 600`</span> على لينكس، ويزيل صلاحيات المستخدمين الآخرين على ويندوز. واحتفظ بنسخة منه، ومن عبارة مرور النسخ الاحتياطية، في مدير كلمات مرور. طريقة تغيير كل سر: القسم 4، «تغيير الأسرار الأخرى». ولإبقاء السرّين الرئيسيين خارج ملف الإعدادات وخارج بيئة كل حاوية: القسم 3.7.
 
 ### 3.3 التشغيل
 
@@ -241,6 +241,38 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
 - على خادم 4 جيجابايت أضف أيضًا 2 جيجابايت من ذاكرة التبديل (swap).
 - مع قاعدة بيانات مُدارة لا تنطبق إعدادات <span dir="ltr">`POSTGRES_*`</span>؛ اضبط حجمها من لوحة مزود الخدمة.
 - راقب الذاكرة بالأمر <span dir="ltr">`docker stats --no-stream`</span>. إن ظلت حاوية تُعاد تشغيلها، فابحث عن رسالة نفاد الذاكرة من نظام التشغيل في <span dir="ltr">`docker compose logs <service>`</span> أو <span dir="ltr">`dmesg`</span>، وارفع حدها.
+
+### 3.7 الأسرار في ملفات بدل ملف الإعدادات (اختياري)
+يقرأ التطبيق الإعداد السري من ملف إذا أُعطي <span dir="ltr">`<NAME>_FILE`</span> بمسار الملف بدل أن يحمل <span dir="ltr">`<NAME>`</span> القيمة نفسها. ينطبق هذا على <span dir="ltr">`SESSION_SECRET`</span> و<span dir="ltr">`DATA_ENCRYPTION_KEY`</span> و<span dir="ltr">`DATA_ENCRYPTION_KEYS_PREVIOUS`</span>، وعناوين قاعدة البيانات الثلاثة، و<span dir="ltr">`SMTP_URL`</span> و<span dir="ltr">`SANDBOX_WEBHOOK_SECRET`</span>، ومفاتيح Paymob، و<span dir="ltr">`AI_API_KEY`</span> و<span dir="ltr">`ALERT_WEBHOOK_URL`</span> (<span dir="ltr">`src/config.ts`</span>، القائمة <span dir="ltr">`FILE_SETTINGS`</span>). السر المقروء من ملف لا يظهر في متغيرات بيئة الحاوية، وهي التي يراها <span dir="ltr">`docker inspect`</span> وكل من يستطيع قراءة بيئة العملية. وبهذه الطريقة نفسها، أي في ملفات، تسلّم الأسرارَ أسرارُ Docker وKubernetes، وبيانات اعتماد systemd، ووكلاء مديري الأسرار. يُتجاهل سطر النهاية في آخر الملف، والملف الفارغ يعني «غير محدد»، ويُرفض الإعداد إذا أُعطي بالطريقتين معًا.
+
+ينفّذ الملف <span dir="ltr">`docker-compose.secrets.yml`</span> هذا بأسرار Docker على منظومة الإنتاج، للسرّين الموجودين في كل تثبيت:
+
+1. ضع كل سر في ملف مستقل لا يقرؤه إلا مستخدم الحاويات (uid 1000). في تثبيت يعمل بالفعل، اكتب القيم **الحالية** لا قيمًا جديدة، فمفتاح <span dir="ltr">`DATA_ENCRYPTION_KEY`</span> جديد يجعل أسرار التحقق بخطوتين وأسرار الـ webhooks غير مقروءة (غيّره كما في القسم 4).
+   ```bash
+   install -d -m 700 secrets
+   printf '%s\n' 'the current SESSION_SECRET' > secrets/session_secret      # تثبيت جديد: openssl rand -base64 48
+   printf '%s\n' 'the current DATA_ENCRYPTION_KEY' > secrets/data_encryption_key   # تثبيت جديد: openssl rand -base64 32
+   sudo chown 1000:1000 secrets/* && sudo chmod 400 secrets/*
+   ```
+   امسح سجل الأوامر بعدها (<span dir="ltr">`history -c`</span>)، أو اكتب الملفات بمحرر نصوص.
+2. في <span dir="ltr">`.env.production`</span> احذف <span dir="ltr">`SESSION_SECRET`</span> و<span dir="ltr">`DATA_ENCRYPTION_KEY`</span> وأضف:
+   ```
+   SESSION_SECRET_FILE=./secrets/session_secret
+   DATA_ENCRYPTION_KEY_FILE=./secrets/data_encryption_key
+   ```
+3. شغّل المنظومة بالملفات الثلاثة، واستعملها في كل أمر Compose بعد ذلك:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.secrets.yml \
+     --env-file .env.production up -d --build
+   ```
+
+- تحصل نسختا التطبيق على الملفين، والعامل (worker) على مفتاح التشفير وحده، و<span dir="ltr">`migrate`</span> على لا شيء منهما.
+- يضع Compose كل ملف في <span dir="ltr">`/run/secrets/<name>`</span> بمالكه وصلاحياته كما هي على الخادم، فهو لا يغيّرها خارج Swarm. والملف الذي لا يقرؤه إلا root يوقف التطبيق بالرسالة <span dir="ltr">`SESSION_SECRET_FILE: cannot read /run/secrets/session_secret (EACCES)`</span>.
+- إذا لم تكن القيم في ملف الإعدادات ولم يُستعمل <span dir="ltr">`docker-compose.secrets.yml`</span>، يتوقف Compose برسالة <span dir="ltr">"set SESSION_SECRET, or SESSION_SECRET_FILE with docker-compose.secrets.yml"</span>. وإذا وُجدت القيمة في المكانين، يرفض التطبيق أن يبدأ: <span dir="ltr">"set SESSION_SECRET or SESSION_SECRET_FILE, not both"</span>.
+- لتغيير سر، اكتب القيمة الجديدة في ملفه ثم أعد تشغيل النسختين واحدة بعد الأخرى (القسم 4)، فالحاوية تقرأ الملف من جديد عند إعادة تشغيلها. ويمكن أن يبقى <span dir="ltr">`DATA_ENCRYPTION_KEYS_PREVIOUS`</span> في ملف الإعدادات طوال مدة تغيير المفتاح.
+- أي سر آخر يُضاف بالطريقة نفسها: سرّ في الملف، و<span dir="ltr">`_FILE`</span> الخاص به للحاويات التي تحصل عليه (القسم 3.2).
+- المجلد <span dir="ltr">`secrets/`</span> مذكور في <span dir="ltr">`.gitignore`</span> و<span dir="ltr">`.dockerignore`</span>، ولا تشمله النسخ الاحتياطية لقاعدة البيانات، فاحتفظ بنسخة منه مع ملف الإعدادات في مدير كلمات المرور.
+- سكربتات التشغيل (<span dir="ltr">`ops/start.sh`</span> و<span dir="ltr">`ops\start.bat`</span>) لا تستعمل هذا الملف، فهي تقرأ الأسرار من ملف الإعدادات. استعمله حين تشغّل Compose بنفسك كما سبق.
 
 ## 4. الترقيات والرجوع إلى الإصدار السابق
 

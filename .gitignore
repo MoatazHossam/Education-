@@ -10,3 +10,6 @@ playwright-report*/
 backups/
 *.log
 .DS_Store
+
+# Secret files for docker-compose.secrets.yml
+secrets/

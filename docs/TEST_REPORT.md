@@ -849,6 +849,19 @@ Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob
 | E2E, webhooks journey | The settings page shows Africa/Cairo; Asia/Riyadh and Saudi Arabia are saved and shown after a reload, then set back | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 71 files, 517 tests, of which the reviewed list of cross-school reads failed until the new hours check was recorded in it; after that the unit tests (31 files, 166) pass; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
 
+### Secrets in files (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/unit/config-files.test.ts` (new, 7 tests) | Settings read from `<NAME>_FILE`, line ending ignored (LF and CRLF); used when Compose passes the setting itself as empty; both given is refused and the message does not contain the secret; an unreadable file names the setting, the path and the reason (ENOENT, EISDIR; EACCES checked when not run as root, as in CI); an empty file means not set, and a missing required setting says it can come from a file; the worker and migrations read files too; exactly the 13 secret settings have a file form | Pass |
+| The same file with the line-ending trim removed, then with the "not both" rule removed | 2 and 1 tests fail | The tests catch both |
+| `tests/unit/compose-env.test.ts` (3 new tests) | `docker-compose.secrets.yml` gives the session secret to app and app2 only and the data key to them and the worker, each `_FILE` names a setting the app reads from a file in a container that gets that setting; the base file keeps the required check; `secrets/` is in `.gitignore` and `.dockerignore` | Pass |
+| `docker compose config` (Compose 5.6) with throwaway settings | No secret and no file: stops with "set DATA_ENCRYPTION_KEY, or DATA_ENCRYPTION_KEY_FILE with docker-compose.secrets.yml". Values in the settings file (as before), production and development stacks: valid. The add-on without the `_FILE` paths: stops with "set SESSION_SECRET_FILE to the file that holds the session secret". The add-on with them: valid; app and app2 get both secrets at `/run/secrets/…`, the worker the data key only, migrate neither | As expected |
+| Production stack on Docker 29.9 (image built from this branch), the add-on, throwaway settings and secret files owned by uid 1000, mode 400 | migrate exit 0; app and app2 ready; worker running. In `docker inspect` and in each process's environment (`/proc/1/environ`): `SESSION_SECRET` and `DATA_ENCRYPTION_KEY` empty, the `_FILE` paths set, and neither secret's value anywhere (0 matches in app, app2, worker). The secret file owned by root, mode 600: the app stops with "SESSION_SECRET_FILE: cannot read /run/secrets/session_secret (EACCES)". The value in both places: "set SESSION_SECRET or SESSION_SECRET_FILE, not both". Everything removed afterwards | Pass |
+| Compose file secrets, one container (alpine, uid 1000) | Owner and mode are those of the host file (uid, gid and mode in the secret's definition are ignored outside Swarm). A file replaced while running is seen after `docker compose restart`; written in place, at once | Recorded in DEPLOYMENT_GUIDE §3.7 |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 72 files, 527 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
+| Not run | The ops scripts with the add-on (they do not use it) | — |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

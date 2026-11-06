@@ -25,6 +25,22 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Secrets in files: Docker secrets (roadmap Phase 7) · COMPLETE (2026-11-06)
+- **Any secret setting from a file:** each secret setting can be given as `<NAME>_FILE`, the path of a file that
+  holds it, instead of the value. This covers the session secret, the data keys, the database addresses, SMTP,
+  the Paymob and AI keys and the alert webhook. Docker and Kubernetes secrets, systemd credentials and secret
+  managers' agents hand secrets over this way.
+- **Rules:** the line ending at the end of the file is ignored, and an empty file means "not set". A value given both
+  ways is refused. An unreadable file names the setting, the path and the reason, never the value.
+- **Production add-on:** `docker-compose.secrets.yml` mounts the session secret (app instances) and the data key (app
+  instances and worker) as Docker secrets, so neither is in any container's environment.
+- **Unchanged without it:** with the values in the settings file, nothing changes, and Compose still stops at once
+  when a required secret is missing.
+- **Ops scripts:** they keep reading the secrets from the settings file. Using the add-on from them, with the same
+  behaviour on Windows, is left for later; PowerShell could not be run here.
+- **Owner:** optional. To move the two secrets to files, follow DEPLOYMENT_GUIDE §3.7: copy the current values into
+  the files; do not generate new ones.
+
 ### Each school's own time zone and country (roadmap task 5.1) · COMPLETE (2026-11-06)
 - **Settings:** owners and admins choose the school's **Time zone** (any zone both the browser and the database
   know; Africa/Cairo by default) and **Country** (ISO code; not set by default) on the school's settings page.

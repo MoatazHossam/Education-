@@ -31,6 +31,9 @@ $ProgressPreference = 'SilentlyContinue' # no progress bars for file copies
 
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $Root
+# .NET file calls ([IO.File]::...) resolve relative paths against the process's directory, which
+# Set-Location does not change: a double-clicked ops\*.bat starts in ops\, where .env.docker is not.
+[Environment]::CurrentDirectory = $Root
 $ConfFile = Join-Path $Root '.env.backup'
 # The images these scripts run, read from the files that pin them by digest, where Dependabot keeps
 # them up to date (production finding S-15): the PostgreSQL client is the database's own image, the

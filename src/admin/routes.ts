@@ -33,6 +33,8 @@ const LimitsSchema = z.object({
   max_students: nullableCount,
   max_storage_mb: nullableCount.optional(),
   ai_requests_per_month: nullableCount.optional(),
+  // usage_counters.quantity is a 32-bit integer: a billion tokens a month is far above any school's use.
+  ai_tokens_per_month: nullableCount.refine((n) => n === null || n <= 1_000_000_000, 'At most 1,000,000,000').optional(),
 });
 const FeaturesSchema = z.object({
   export_csv: z.boolean(),

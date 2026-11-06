@@ -106,6 +106,8 @@ const envSchema = (role: ConfigRole) => z
     AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(600_000).default(60_000),
     AI_MAX_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
     AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(64_000).default(16_000),
+    // Requests one member may make per day in one school (production finding A-5); 0: no daily cap.
+    AI_USER_DAILY_LIMIT: z.coerce.number().int().min(0).max(10_000).default(50),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAiProvider } from '../../src/ai/providers/index.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from '../../src/ai/schema.js';
-import { aiWorstCaseMs } from '../../src/ai/service.js';
+import { aiDayKey, aiWorstCaseMs, estimateTokens } from '../../src/ai/service.js';
 import { callDeadlineMs, errorKindForStatus } from '../../src/ai/types.js';
 import { loadConfig } from '../../src/config.js';
 import { TEST_ENV } from '../helpers/env.js';
@@ -103,5 +103,25 @@ describe('AI configuration', () => {
     expect(loadConfig({ ...TEST_ENV, AI_MAX_RETRIES: '0' }).AI_MAX_RETRIES).toBe(0);
     expect(() => loadConfig({ ...TEST_ENV, AI_MAX_RETRIES: '4' })).toThrow(/AI_MAX_RETRIES/);
     expect(() => loadConfig({ ...TEST_ENV, AI_TIMEOUT_MS: '1000' })).toThrow(/AI_TIMEOUT_MS/);
+  });
+});
+
+describe('AI cost controls', () => {
+  it('estimates a request\'s tokens on the high side: half a token per prompt character, plus all the output it may use', () => {
+    expect(estimateTokens(0, 1000)).toBe(1000);
+    expect(estimateTokens(101, 16_000)).toBe(16_051);
+    // An Arabic prompt of 6,000 characters (often around 3,000 tokens) is held at 3,000 plus its output.
+    expect(estimateTokens(6000, 4000)).toBe(7000);
+  });
+
+  it('counts members\' daily requests by UTC day, like the monthly period', () => {
+    expect(aiDayKey(new Date('2026-11-06T23:59:59Z'))).toBe('2026-11-06');
+    expect(aiDayKey(new Date('2026-11-07T00:00:00Z'))).toBe('2026-11-07');
+  });
+
+  it('caps a member at 50 requests a day unless set otherwise; 0 turns the daily cap off', () => {
+    expect(loadConfig(TEST_ENV).AI_USER_DAILY_LIMIT).toBe(50);
+    expect(loadConfig({ ...TEST_ENV, AI_USER_DAILY_LIMIT: '0' }).AI_USER_DAILY_LIMIT).toBe(0);
+    expect(() => loadConfig({ ...TEST_ENV, AI_USER_DAILY_LIMIT: '-1' })).toThrow(/AI_USER_DAILY_LIMIT/);
   });
 });

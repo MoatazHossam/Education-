@@ -297,7 +297,7 @@ who can change the test (the subject's teachers and the school's admins), until 
   ordinary questions (no mark that AI wrote them). The reason is not kept.
 - **Counting and errors:** one request of the school's monthly allowance per suggestion request, given back if the
   provider fails without answering; the page shows how many are left. Errors (`AI_BUSY`, `AI_UNAVAILABLE`,
-  `AI_FAILED`, `AI_REFUSED`, `AI_REPLY_TOO_LONG`, `AI_INVALID_REPLY`, `FEATURE_NOT_IN_PLAN`, `TEST_STARTED`,
+  `AI_DAILY_LIMIT`, `AI_FAILED`, `AI_REFUSED`, `AI_REPLY_TOO_LONG`, `AI_INVALID_REPLY`, `FEATURE_NOT_IN_PLAN`, `TEST_STARTED`,
   `TOO_MANY_QUESTIONS`) are shown in the dialog, in Arabic in the Arabic interface.
 - **Log:** each request is in `ai_requests` and the audit log as `ai.request` with feature `test_questions`, who asked,
   the outcome and tokens, never the text.

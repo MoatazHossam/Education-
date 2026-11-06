@@ -36,6 +36,8 @@ export interface PlanLimits {
   max_storage_mb?: number | null;
   /** Requests to the AI provider per month (docs/AI_LAYER.md). Not set on a plan: 0, AI off. */
   ai_requests_per_month?: number | null;
+  /** Tokens (input and output) per month. Not set or null: no token cap, only the request count. */
+  ai_tokens_per_month?: number | null;
 }
 
 export interface PlanFeatures {
@@ -392,13 +394,23 @@ export interface BillingEventsTable {
   processed_at: NullableTimestamp;
 }
 
-export type UsageMetric = 'exports' | 'api_requests' | 'ai_requests';
+export type UsageMetric = 'exports' | 'api_requests' | 'ai_requests' | 'ai_tokens';
 
 export interface UsageCountersTable {
   org_id: string;
   metric: UsageMetric;
   period: string;
   quantity: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+/** AI requests per member per day in one school (AI_USER_DAILY_LIMIT; migration 0021). */
+export interface AiUserDailyTable {
+  org_id: string;
+  user_id: string;
+  /** UTC day, YYYY-MM-DD. */
+  day: string;
+  requests: Generated<number>;
   updated_at: Generated<Date>;
 }
 
@@ -840,6 +852,7 @@ export interface DB {
   billing_events: BillingEventsTable;
   usage_counters: UsageCountersTable;
   ai_requests: AiRequestsTable;
+  ai_user_daily: AiUserDailyTable;
   billing_notices: BillingNoticesTable;
   audit_logs: AuditLogsTable;
   support_access_grants: SupportAccessGrantsTable;

@@ -91,7 +91,7 @@ gives it a monthly allowance) and the server has an AI provider. One request of 
   dates.
 - **Nothing is saved.** The draft opens in the plan editor with a notice to read and correct every part; it is saved
   as a plan, marked as started from an AI draft, only when the member presses **Save**. Leaving the editor discards it.
-- **Errors** (`AI_BUSY`, `AI_UNAVAILABLE`, `AI_FAILED`, `AI_REFUSED`, `AI_REPLY_TOO_LONG`, `AI_INVALID_REPLY`,
+- **Errors** (`AI_BUSY`, `AI_UNAVAILABLE`, `AI_DAILY_LIMIT`, `AI_FAILED`, `AI_REFUSED`, `AI_REPLY_TOO_LONG`, `AI_INVALID_REPLY`,
   `FEATURE_NOT_IN_PLAN`, `INVALID_SUBJECT`) are shown in the dialog, in Arabic in the Arabic interface.
 
 ## 5. Pages

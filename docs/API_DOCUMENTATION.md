@@ -28,7 +28,7 @@ application/json`); other content types are rejected with `415`.
 | 403 | `FORBIDDEN`, `CSRF_TOKEN_INVALID`, `CSRF_ORIGIN_MISMATCH`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ORG_SUSPENDED`, `MFA_REQUIRED_BY_ORG`, `MFA_ENROLLMENT_REQUIRED`, `SUPPORT_ACCESS_REQUIRED`, `STAFF_ONLY`, `STUDENT_PORTAL_OFF` |
 | 404 | `NOT_FOUND` — also returned for resources of other organizations |
 | 409 | `CONFLICT`, `SCOPE_NAME_TAKEN`, `ALREADY_MEMBER`, `PAYMENT_REQUIRED`, `USE_SCHEDULED_CHANGE`, `ALREADY_ON_PLAN`, `OWNS_ORGANIZATIONS`, `USERNAME_TAKEN` |
-| 429 | `RATE_LIMITED` |
+| 429 | `RATE_LIMITED`, `AI_DAILY_LIMIT` (a member's AI requests for the day, docs/AI_LAYER.md §3) |
 | 500 | `INTERNAL_ERROR` (with `requestId`) |
 
 **Problems in an imported file.** The previews of the roster import and the catalogue sheet import list
@@ -186,8 +186,8 @@ DELETE one; PUT `order`; until a student starts), `tests/:testId/publish` · `un
 `{topic, lessonText?, count?, types, difficulty?, language}`: questions suggested by AI, returned as
 `{suggestions: [{type, prompt, options, points, key, explanation}], dropped, model}` and never saved; the
 subject's teachers and admins until a student starts; uses one of the school's AI requests; 30 an hour;
-ONLINE_TESTS.md §14). `GET tests/:testId` returns `ai: {left}` (null: no monthly cap) to those who can change
-the test when the school has AI requests, else `ai: null`.
+ONLINE_TESTS.md §14). `GET tests/:testId` returns `ai: {left}` (null: no monthly cap; 0 also when the school's token budget is spent) to those who can change
+the test when the school has AI requests, else `ai: null`. Each member may make `AI_USER_DAILY_LIMIT` AI requests a day in a school (`429 AI_DAILY_LIMIT`).
 
 ### Gradebook (`/api/orgs/:orgId/classes/:classId/gradebook`) — any teacher of the class and admins
 `?subject=<English subject name>&format=json|csv`: the class's homework with marks and published tests as
@@ -271,12 +271,12 @@ published versions, content and new materials on drafts only; `409 VERSION_ARCHI
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited),
 `GET /alerts` (`{channels: {emails, emailTransport, webhook}, alerts: [...]}`: firing alerts and those resolved in the last 30 days),
 `POST /alerts/test` (sends a test alert to every configured channel; returns `{result: {email, webhook}}`, each `sent`, `failed` or `off`; 5/h; audited as `admin.alert_test`),
-`GET /ai` (AI assistance, docs/AI_LAYER.md: `{provider: {name, model, customEndpoint} | null, settings: {timeoutMs, maxOutputTokens}, period, schools: [{orgId, name, planName, limit, used, requests, ok, failed, inputTokens, outputTokens}]}`
-for schools with an allowance or with use this month; `limit` null means no cap),
+`GET /ai` (AI assistance, docs/AI_LAYER.md: `{provider: {name, model, customEndpoint} | null, settings: {timeoutMs, maxRetries, worstCaseMs, maxOutputTokens, userDailyLimit}, period, schools: [{orgId, name, planName, limit, used, tokenLimit, tokensUsed, requests, ok, failed, inputTokens, outputTokens}]}`
+for schools with an allowance or with use this month; `limit` null means no cap, `tokenLimit` null no token budget; `tokensUsed` is the month's counted tokens),
 `POST /ai/test` (one small request to the configured provider, outside any school's allowance; returns `{provider, result}` with
 `result.ok`, `finish`, `model`, `ms`, tokens and the reply, or `errorKind`, `status` and the provider's message; `503 AI_NOT_CONFIGURED`
 without a provider; 10/h; audited as `admin.ai_tested`). A school's monthly AI allowance is `ai_requests_per_month` in `limitOverrides`
-of `PATCH /orgs/:orgId/subscription` (0 on every plan; null for no cap); `GET /api/orgs/:orgId` and the billing endpoint report it in
+of `PATCH /orgs/:orgId/subscription` (0 on every plan; null for no cap), and its token budget `ai_tokens_per_month` (null on every plan: none; at most 1,000,000,000); `GET /api/orgs/:orgId` and the billing endpoint report it in
 `limits` and the month's use as `usage.ai_requests`.
 
 ## 3. Public API v1 (for customer integrations)

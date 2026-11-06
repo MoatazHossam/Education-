@@ -182,10 +182,13 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByRole('heading', { name: 'Nile Learning' })).toBeVisible();
   await page.getByLabel('AI requests per month (override)').fill('100');
+  await page.getByLabel('AI tokens per month (override)').fill('200000');
   await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByText('Saved')).toBeVisible();
   await page.goto('/admin');
-  await expect(page.getByRole('region', { name: /^Schools with AI assistance/ }).getByRole('row', { name: /Nile Learning/ })).toContainText('0 / 100');
+  const aiRow = page.getByRole('region', { name: /^Schools with AI assistance/ }).getByRole('row', { name: /Nile Learning/ });
+  await expect(aiRow).toContainText('0 / 100');
+  await expect(aiRow).toContainText('0 of 200,000');
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByText('No active grant. Customer business data is not accessible.')).toBeVisible();
   await page.getByRole('button', { name: 'Suspend organization' }).click();

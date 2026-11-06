@@ -302,9 +302,10 @@ describe('AI layer: platform administration', () => {
     const body = res.json();
     expect(body.provider).toEqual({ name: 'gemini', model: 'gemini-2.5-pro', customEndpoint: true });
     // AI_TIMEOUT_MS 5000 in this harness: 2 × (2 × 5 s + 10 s).
-    expect(body.settings).toEqual({ timeoutMs: 5000, maxRetries: 1, worstCaseMs: 40_000, maxOutputTokens: 16_000 });
+    expect(body.settings).toEqual({ timeoutMs: 5000, maxRetries: 1, worstCaseMs: 40_000, maxOutputTokens: 16_000, userDailyLimit: 50 });
     expect(body.period).toBe(periodKey());
-    expect(body.schools).toEqual([{ orgId: a.orgId, name: 'Alpha School', planName: 'Professional', limit: 50, used: 1, requests: 1, ok: 1, failed: 0, inputTokens: 400, outputTokens: 70 }]);
+    // No token budget (null); the tokens used are counted all the same (400 in, 70 out).
+    expect(body.schools).toEqual([{ orgId: a.orgId, name: 'Alpha School', planName: 'Professional', limit: 50, used: 1, tokenLimit: null, tokensUsed: 470, requests: 1, ok: 1, failed: 0, inputTokens: 400, outputTokens: 70 }]);
   });
 
   it('tests the provider setup outside any allowance, and records the test', async () => {

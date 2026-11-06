@@ -1,6 +1,7 @@
+import { sql } from 'kysely';
 import type { z } from 'zod';
 import { recordAudit, type RequestMeta } from '../audit/audit.js';
-import { consumeUsage, getEntitlements, releaseUsage, usageFor } from '../billing/entitlements.js';
+import { adjustUsage, consumeUsage, getEntitlements, releaseUsage, usageFor } from '../billing/entitlements.js';
 import type { AppConfig } from '../config.js';
 import { withOrgContext, type Executor } from '../db/index.js';
 import type { AiRequestsTable, StaffUser } from '../db/types.js';
@@ -17,7 +18,9 @@ import { AiProviderError, callDeadlineMs, type AiErrorKind, type AiReply } from 
 //    plan until a platform administrator sets one);
 //  - each request takes one unit of the allowance before the provider is called
 //    (concurrent requests cannot overrun it) and gives it back if the provider
-//    failed without answering;
+//    failed without answering; the same for the member's daily requests
+//    (AI_USER_DAILY_LIMIT) and, where the school has a token budget
+//    (ai_tokens_per_month), an estimate of the tokens, settled to what the reply reports;
 //  - each request leaves a row in ai_requests and an audit entry: who, which
 //    feature, provider, model, outcome and tokens; never the text;
 //  - a JSON reply is checked against the feature's schema, and asked for once
@@ -28,6 +31,45 @@ export const MAX_PROMPT_CHARS = 60_000;
 /** Kept in ai_requests for cost reporting, then removed by the worker. */
 export const AI_REQUEST_RETENTION_DAYS = 400;
 const ATTEMPTS_FOR_VALID_JSON = 2;
+
+/**
+ * Tokens one attempt may use, taken from the school's token budget before the call and settled
+ * afterwards. Prompt characters / 2 rounds up: Arabic and other scripts can take a token per two
+ * characters, Latin text fewer. Plus the most output tokens the request allows.
+ */
+export function estimateTokens(promptChars: number, maxOutputTokens: number): number {
+  return Math.ceil(promptChars / 2) + maxOutputTokens;
+}
+
+/** The UTC day a member's daily AI requests are counted in (YYYY-MM-DD), like the monthly periodKey. */
+export function aiDayKey(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/** 429 for a member who used today's AI requests in this school (production finding A-5). */
+export const aiDailyLimit = (limit: number) => new AppError(429, 'AI_DAILY_LIMIT', `You have used today's AI requests (${limit}). Try again tomorrow.`, { limit });
+
+async function takeDailyUnit(trx: Executor, orgId: string, userId: string, day: string, limit: number): Promise<void> {
+  if (limit === 0) return;
+  const res = await sql<{ requests: number }>`
+    INSERT INTO ai_user_daily (org_id, user_id, day, requests) VALUES (${orgId}, ${userId}, ${day}, 1)
+    ON CONFLICT (org_id, user_id, day) DO UPDATE
+      SET requests = ai_user_daily.requests + 1, updated_at = now()
+      WHERE ai_user_daily.requests < ${limit}
+    RETURNING requests`.execute(trx);
+  if (!res.rows[0]) throw aiDailyLimit(limit);
+}
+
+async function releaseDailyUnit(trx: Executor, orgId: string, userId: string, day: string): Promise<void> {
+  await trx
+    .updateTable('ai_user_daily')
+    .set((eb) => ({ requests: eb('requests', '-', 1), updated_at: new Date() }))
+    .where('org_id', '=', orgId)
+    .where('user_id', '=', userId)
+    .where('day', '=', day)
+    .where('requests', '>', 0)
+    .execute();
+}
 
 /**
  * The longest a school member waits for an AI request before an answer or an error (production finding
@@ -79,9 +121,14 @@ export function aiFailure(kind: AiErrorKind): AppError {
  */
 export async function aiAllowance(ctx: AppContext, exec: Executor, orgId: string): Promise<{ left: number | null } | null> {
   if (!ctx.ai) return null;
-  const limit = (await getEntitlements(exec, orgId, ctx.config.GRACE_DAYS)).limits.ai_requests_per_month;
+  const { limits } = await getEntitlements(exec, orgId, ctx.config.GRACE_DAYS);
+  const limit = limits.ai_requests_per_month;
   if (limit === 0 || limit === undefined) return null;
-  return { left: limit === null ? null : Math.max(0, limit - (await usageFor(exec, orgId)).ai_requests) };
+  const usage = await usageFor(exec, orgId);
+  // A spent token budget leaves no request, whatever the request count says.
+  const tokens = limits.ai_tokens_per_month;
+  if (typeof tokens === 'number' && usage.ai_tokens >= tokens) return { left: 0 };
+  return { left: limit === null ? null : Math.max(0, limit - usage.ai_requests) };
 }
 
 export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, task: AiTask<T>): Promise<AiResult<T>> {
@@ -94,20 +141,29 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
 
   const { orgId, user } = caller;
   const period = periodKey();
-  await withOrgContext(ctx.db, { orgId, userId: user.id }, async (trx) => {
-    const ent = await getEntitlements(trx, orgId, ctx.config.GRACE_DAYS);
-    // null: no monthly cap.
-    const limit = ent.limits.ai_requests_per_month;
-    if (limit === 0 || limit === undefined) throw featureUnavailable('AI assistance');
-    await consumeUsage(trx, orgId, 'ai_requests', limit, 'AI requests');
-  });
-
+  const day = aiDayKey();
   const request = {
     system: task.system,
     prompt: task.prompt,
     jsonSchema: task.output ? portableSchema(task.output) : undefined,
     maxOutputTokens: Math.min(task.maxOutputTokens ?? ctx.config.AI_MAX_OUTPUT_TOKENS, ctx.config.AI_MAX_OUTPUT_TOKENS),
   };
+  const estimate = estimateTokens(task.system.length + task.prompt.length, request.maxOutputTokens);
+  // null: no token cap. Tokens are counted either way, so a budget set mid-month starts from the real use.
+  let tokenLimit = null as number | null;
+  // All or nothing: a refused step gives back the units taken before it.
+  await withOrgContext(ctx.db, { orgId, userId: user.id }, async (trx) => {
+    const ent = await getEntitlements(trx, orgId, ctx.config.GRACE_DAYS);
+    // null: no monthly cap.
+    const limit = ent.limits.ai_requests_per_month;
+    if (limit === 0 || limit === undefined) throw featureUnavailable('AI assistance');
+    await consumeUsage(trx, orgId, 'ai_requests', limit, 'AI requests');
+    await takeDailyUnit(trx, orgId, user.id, day, ctx.config.AI_USER_DAILY_LIMIT);
+    tokenLimit = ent.limits.ai_tokens_per_month ?? null;
+    if (tokenLimit !== null) await consumeUsage(trx, orgId, 'ai_tokens', tokenLimit, 'AI tokens', estimate);
+  });
+  // Tokens taken from the budget so far, settled in finish().
+  let reserved = tokenLimit !== null ? estimate : 0;
   const started = Date.now();
   let attempts = 0;
   let inputTokens: number | null = null;
@@ -130,8 +186,16 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
     try {
       await withOrgContext(ctx.db, { orgId, userId: user.id }, async (trx) => {
         const { id } = await trx.insertInto('ai_requests').values(row).returning('id').executeTakeFirstOrThrow();
-        // The provider failed before producing anything: the unit taken for this request is given back.
-        if (outcome.status === 'failed' && attempts === 1) await releaseUsage(trx, orgId, 'ai_requests', period);
+        // The provider failed before producing anything: the units taken for this request are given back.
+        const nothing = outcome.status === 'failed' && attempts === 1;
+        if (nothing) {
+          await releaseUsage(trx, orgId, 'ai_requests', period);
+          if (ctx.config.AI_USER_DAILY_LIMIT > 0) await releaseDailyUnit(trx, orgId, user.id, day);
+        }
+        // The reply's own counts replace the estimate; without counts the estimate stays as spent.
+        const reported = inputTokens !== null || outputTokens !== null;
+        const actual = nothing ? 0 : reported ? (inputTokens ?? 0) + (outputTokens ?? 0) : reserved;
+        await adjustUsage(trx, orgId, 'ai_tokens', period, actual - reserved);
         await recordAudit(
           trx,
           { type: 'user', userId: user.id, email: user.email },
@@ -145,7 +209,20 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
     }
   };
 
+  let last: AiReply | undefined;
   for (;;) {
+    // A second attempt (the first reply had the wrong shape) takes another estimate from the budget.
+    if (attempts > 0 && tokenLimit !== null) {
+      const budget = tokenLimit;
+      try {
+        await withOrgContext(ctx.db, { orgId, userId: user.id }, (trx) => consumeUsage(trx, orgId, 'ai_tokens', budget, 'AI tokens', estimate));
+        reserved += estimate;
+      } catch (err) {
+        if (!(err instanceof AppError) || err.code !== 'PLAN_LIMIT_REACHED') throw err;
+        await finish({ status: 'invalid_output', reply: last });
+        throw new AppError(502, 'AI_INVALID_REPLY', 'The AI reply could not be used. Try again.');
+      }
+    }
     attempts++;
     let reply: AiReply;
     try {
@@ -156,6 +233,7 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
       await finish({ status: 'failed', errorKind: kind });
       throw aiFailure(kind);
     }
+    last = reply;
     inputTokens = add(inputTokens, reply.inputTokens);
     outputTokens = add(outputTokens, reply.outputTokens);
     if (reply.finish === 'refused') {

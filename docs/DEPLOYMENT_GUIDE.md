@@ -86,7 +86,9 @@ Create `.env.production` from `.env.docker.example`:
 - AI assistance (optional, docs/AI_LAYER.md): `AI_PROVIDER` (`gemini`, `anthropic` or `openai`; `none`
   by default), `AI_API_KEY` and `AI_MODEL`. Use a paid API tier whose terms exclude training on your
   requests. Check the key and model with `npm run ai:check` (same variables) before enabling AI for any
-  school; then a platform administrator gives each school its monthly allowance. The app makes outbound
+  school; then a platform administrator gives each school its monthly allowance (and, if wanted, a monthly
+  token budget). Each member may make `AI_USER_DAILY_LIMIT` AI requests a day in a school (50 by default; 0
+  for no daily cap). The app makes outbound
   HTTPS requests to the provider: with an egress firewall, allow its API host (`generativelanguage.googleapis.com`,
   `api.anthropic.com` or `api.openai.com`).
 

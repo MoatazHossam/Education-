@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { effectivePlan } from '../../src/billing/entitlements.js';
+import { PLAN_DEFINITIONS } from '../../src/billing/plans.js';
 import { formatMoney, prorationCents } from '../../src/billing/service.js';
 import type { Subscription } from '../../src/db/types.js';
 import { addDays, addMonths, periodKey } from '../../src/lib/time.js';
@@ -55,5 +56,15 @@ describe('time helpers', () => {
   });
   it('formats EGP amounts', () => {
     expect(formatMoney(99_000, 'EGP')).toMatch(/990/);
+  });
+});
+
+describe('plan allowances (AI-7)', () => {
+  it('every plan carries its AI limits, off until the allowances are decided (D-6)', () => {
+    for (const p of PLAN_DEFINITIONS) {
+      expect(p.limits, p.id).toHaveProperty('ai_requests_per_month', 0);
+      // null: no token cap once a plan or a school's override allows requests.
+      expect(p.limits, p.id).toHaveProperty('ai_tokens_per_month', null);
+    }
   });
 });

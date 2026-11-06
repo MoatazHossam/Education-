@@ -39,6 +39,7 @@ and logs the request. Changing provider is a configuration change; features do n
 | `AI_TIMEOUT_MS` | 60000 | Per attempt, 5000–600000 |
 | `AI_MAX_RETRIES` | 1 | Retries after the first attempt of one provider call, 0–3. The SDKs retry timeouts, connection errors, 408, 429 and 5xx |
 | `AI_MAX_OUTPUT_TOKENS` | 16000 | Most output tokens one request may use (thinking included on models that think) |
+| `AI_USER_DAILY_LIMIT` | 50 | AI requests one member may make per day (UTC) in one school, 0–10000; 0 for no daily cap (§3) |
 
 **How long a teacher can wait** (production finding A-4). Each provider call has a deadline:
 (1 + `AI_MAX_RETRIES`) × `AI_TIMEOUT_MS`, plus 10 s before each retry for the SDK's backoff. The
@@ -70,16 +71,37 @@ account is refused inside `runAiTask` whatever the route, so a mistake in a futu
 **Which schools.** A school needs a monthly allowance, `ai_requests_per_month`. It is 0 on every plan
 until AI is priced, so AI is off for every school until a platform administrator sets an allowance for
 it (Platform admin → the school → "AI requests per month (override)"), as for student accounts. An
-allowance of `null` (through the API) means no monthly cap.
+allowance of `null` (through the API) means no monthly cap. A school can also have a monthly **token
+budget**, `ai_tokens_per_month` (input and output tokens together); it is `null`, no budget, on every plan
+until the allowances per plan are decided (AI_COST_CONTROL_PLAN D-6), and a platform administrator sets
+one per school ("AI tokens per month (override)", at most 1,000,000,000).
+
+**How much one member.** Each member may make `AI_USER_DAILY_LIMIT` requests a day (50 by default) in
+each school, so one account cannot use up the school's allowance. The day is the UTC day, like the
+monthly period. The 51st request that day gets 429 `AI_DAILY_LIMIT` before the provider is called; others
+in the school go on. The counts are kept in `ai_user_daily` (row-level security like every school's data)
+and the worker removes them after a week.
 
 **What is sent.** A feature sends curriculum material and the staff member's own instructions. It never
 sends students' data: names, usernames, answers, marks, homework or files. Each feature's prompt is
 reviewed for this before it is merged. A request is at most 60,000 characters.
 
-**Counting.** Each request takes one unit of the month's allowance before the provider is called (an
-atomic conditional update, so concurrent requests cannot overrun it). If the provider fails without
-answering, the unit is given back. A refusal, a reply cut at the token limit, or an unusable reply keeps
-the unit: tokens were spent.
+**Counting.** Each request takes, in one transaction before the provider is called, one unit of the
+month's allowance, one unit of the member's day and, when the school has a token budget, an estimate of
+the tokens it may use. Each is an atomic conditional update, so concurrent requests cannot overrun any of
+them, and a refused step gives back the units taken before it. The estimate is the prompt's characters / 2
+(Arabic text can take a token per two characters, Latin text fewer) plus the output tokens the request
+allows; a second attempt (after a reply of the wrong shape, "Checking the reply" below) takes another estimate, and stops with
+`AI_INVALID_REPLY` when the budget has none left. When the request ends, the estimate is settled to the
+tokens the reply reports; a reply without counts keeps the estimate as spent. Tokens are counted in
+`usage_counters` (`ai_tokens`) whether or not the school has a budget, so a budget set mid-month starts
+from the real use. If the provider fails without answering, the request unit, the day's unit and the
+estimate are all given back. A refusal, a reply cut at the token limit, or an unusable reply keeps them:
+tokens were spent.
+
+Reservations never take the budget past its limit. Settling can, by what replies used beyond their
+estimates; the estimate already counts the full output allowance, so only a prompt that tokenizes to more
+than one token per two characters goes over.
 
 **Checking the reply.** A feature that wants structured data gives a zod schema. The provider is asked
 for JSON matching it (each provider's own structured-output mode), and the reply is checked against the
@@ -94,7 +116,8 @@ and range limits are dropped from what is sent and still checked here. Every fie
 | --- | --- | --- | --- |
 | Reply accepted | 200 | `ok` | used |
 | No allowance / AI off on the server | 402 `FEATURE_NOT_IN_PLAN` / 503 `AI_NOT_CONFIGURED` | — | — |
-| Allowance used up | 402 `PLAN_LIMIT_REACHED` | — | — |
+| Allowance or token budget used up | 402 `PLAN_LIMIT_REACHED` | — | — |
+| The member's requests for today used up | 429 `AI_DAILY_LIMIT` | — | — |
 | Provider declined (safety rules) | 422 `AI_REFUSED` | `refused` | used |
 | Reply cut at the token limit | 502 `AI_REPLY_TOO_LONG` | `too_long` | used |
 | Reply unusable twice | 502 `AI_INVALID_REPLY` | `invalid_output` | used |
@@ -121,12 +144,15 @@ row-level security like every school's data, and the worker removes rows after 4
 ## 5. Platform administration
 
 - **Platform overview → AI assistance:** provider and model; the schools with an allowance or use this
-  month, with requests used against the allowance, failed requests and tokens; **Test the connection**
-  (one small request outside any allowance, recorded as `admin.ai_tested`).
-- **A school's page:** "AI requests per month (override)". Empty returns to the plan's value (0).
+  month, with requests used against the allowance, failed requests, tokens, and tokens counted against
+  the budget when the school has one; **Test the connection** (one small request outside any allowance,
+  recorded as `admin.ai_tested`).
+- **A school's page:** "AI requests per month (override)" and "AI tokens per month (override)". Empty
+  returns to the plan's value (0 requests; no token budget).
 - **The school's billing page** shows "AI requests this month" once it has an allowance.
 - API: `GET /api/admin/ai`, `POST /api/admin/ai/test` (API_DOCUMENTATION.md), and `ai_requests_per_month`
-  in `limitOverrides` of `PATCH /api/admin/orgs/:orgId/subscription`.
+  and `ai_tokens_per_month` in `limitOverrides` of `PATCH /api/admin/orgs/:orgId/subscription` (or in a
+  plan's `limits`, `PATCH /api/admin/plans/:planId`).
 
 ## 6. Writing a feature on it
 
@@ -164,7 +190,8 @@ language rule, the lesson text limit) is in `src/ai/teaching.ts`.
 
 ## 7. Tests
 
-- `tests/unit/ai-layer.test.ts` (8): portable schemas, JSON reply checks, error kinds, configuration, the longest wait.
+- `tests/unit/ai-layer.test.ts` (11): portable schemas, JSON reply checks, error kinds, configuration, the
+  longest wait, the token estimate, the day key and the daily cap setting.
 - `tests/integration/ai-providers-contract.test.ts` (30): each adapter against a local simulator of its
   provider's documented API (`tests/helpers/ai-simulator.ts`): request fields and key header, reply
   parsing, refusals, truncation, error mapping, retries, timeouts, the call deadline, Anthropic's fallback opt-in.
@@ -172,6 +199,12 @@ language rule, the lesson text limit) is in `src/ai/teaching.ts`.
   override, the log and audit without text, a second attempt on a bad reply, refusals, units given back
   on failure, the monthly limit under 8 concurrent requests, unlimited allowances, row-level security,
   retention, the admin endpoints.
+- `tests/integration/ai-limits.test.ts` (10): the 51st request of a member's day refused before the
+  provider while others go on; the day's unit given back on failure; the daily cap under concurrent
+  requests; the week's cleanup; tokens counted without a budget; a budget under 8 concurrent requests
+  with slow replies (3 fit, no more); a spent budget refused before the provider; a second attempt's
+  estimate; the admin override (and its bounds) and the AI card; plan limits for AI.
+- `tests/unit/billing-logic.test.ts`: every plan carries both AI limits, and an override replaces them.
 - E2E (platform admin journey): the AI card, the connection test, the override, and the school's meter.
   The E2E server's provider is the simulator, run as its own process; it answers each feature's requests
   (`tests/e2e/ai-simulator-server.ts`).

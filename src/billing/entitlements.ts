@@ -123,8 +123,8 @@ export async function assertScopeEditable(exec: Executor, orgId: string, scopeId
 }
 
 /**
- * Atomically increments a monthly usage counter if it is below the limit.
- * The conditional upsert makes concurrent requests unable to exceed the limit.
+ * Atomically adds `amount` (1 by default) to a monthly usage counter if the result stays within the
+ * limit. The conditional upsert makes concurrent requests unable to exceed the limit.
  */
 export async function consumeUsage(
   exec: Executor,
@@ -132,19 +132,35 @@ export async function consumeUsage(
   metric: UsageMetric,
   limit: number | null,
   label: string,
+  amount = 1,
 ): Promise<number> {
   if (limit === 0) throw limitReached(`Your plan does not include ${label}`, { limit: metric, max: 0 });
+  if (!Number.isInteger(amount) || amount < 1) throw new Error(`Invalid usage amount: ${amount}`);
   const period = periodKey();
   const res = await sql<{ quantity: number }>`
     INSERT INTO usage_counters (org_id, metric, period, quantity)
-    VALUES (${orgId}, ${metric}, ${period}, 1)
+    SELECT ${orgId}, ${metric}, ${period}, ${amount}::int
+    WHERE ${limit === null ? sql`true` : sql`${amount}::int <= ${limit}`}
     ON CONFLICT (org_id, metric, period) DO UPDATE
-      SET quantity = usage_counters.quantity + 1, updated_at = now()
-      WHERE ${limit === null ? sql`true` : sql`usage_counters.quantity < ${limit}`}
+      SET quantity = usage_counters.quantity + ${amount}::int, updated_at = now()
+      WHERE ${limit === null ? sql`true` : sql`usage_counters.quantity + ${amount}::int <= ${limit}`}
     RETURNING quantity`.execute(exec);
   const row = res.rows[0];
   if (!row) throw limitReached(`Monthly ${label} limit reached (${limit})`, { limit: metric, max: limit, period });
   return row.quantity;
+}
+
+/**
+ * Corrects a counter by `delta` (positive or negative) in a given period, never below 0: a token
+ * estimate taken before an AI call, settled to what the reply reports.
+ */
+export async function adjustUsage(exec: Executor, orgId: string, metric: UsageMetric, period: string, delta: number): Promise<void> {
+  if (!Number.isInteger(delta) || delta === 0) return;
+  await sql`
+    INSERT INTO usage_counters (org_id, metric, period, quantity)
+    VALUES (${orgId}, ${metric}, ${period}, ${Math.max(0, delta)}::int)
+    ON CONFLICT (org_id, metric, period) DO UPDATE
+      SET quantity = greatest(0, usage_counters.quantity + ${delta}::int), updated_at = now()`.execute(exec);
 }
 
 /**
@@ -164,7 +180,7 @@ export async function releaseUsage(exec: Executor, orgId: string, metric: UsageM
 
 export async function usageFor(exec: Executor, orgId: string): Promise<Record<UsageMetric, number>> {
   const rows = await exec.selectFrom('usage_counters').select(['metric', 'quantity']).where('org_id', '=', orgId).where('period', '=', periodKey()).execute();
-  const out = { exports: 0, api_requests: 0, ai_requests: 0 };
+  const out = { exports: 0, api_requests: 0, ai_requests: 0, ai_tokens: 0 };
   for (const r of rows) out[r.metric] = r.quantity;
   return out;
 }

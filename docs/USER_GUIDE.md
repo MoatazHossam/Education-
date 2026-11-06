@@ -106,6 +106,10 @@ Sign in with your email and password at `/login`.
   organization requires it for owners and admins, the next page asks for the
   6-digit code from your authenticator app. If you lost your phone, use one
   of your recovery codes instead.
+- **Passkey.** If you added a passkey (section 15), choose **Use a passkey**
+  under the form instead of typing your email and password, and confirm with
+  your fingerprint, face or the PIN of your phone or computer. No code is asked:
+  a passkey already counts as two-step verification.
 
   ![Two-factor verification: enter the 6-digit code](user-guide/images/two-factor-sign-in.png)
 
@@ -880,6 +884,13 @@ Click your name in the top bar.
 
   ![Setting up two-factor authentication: the steps, QR code and key](user-guide/images/account-two-factor.png)
 
+- **Passkeys**: sign in with your fingerprint, face or device PIN instead of
+  your password. Give the passkey a name (for example "Work laptop"), enter your
+  password and choose **Add a passkey**; your browser or phone asks you to
+  confirm. You get an email each time one is added. The list shows when each
+  was added and last used; **Rename** and **Remove** each. Removing it here
+  stops it signing in; delete it on the device too. Up to 10. Student
+  accounts do not have passkeys.
 - **Active sessions**: where you are signed in, with **Sign out** for each
   and **Sign out all other sessions**.
 - **Organizations**: yours, with your role, and **Create organization**.

@@ -68,13 +68,19 @@ counted across all app instances; the global limit is counted per app instance.
 | POST | `/login` | `{email, password}` → `{mfaRequired, user}` + cookie (staff accounts) |
 | POST | `/student-login` | `{school, username, password}` → `{mfaRequired:false, user}` + cookie (student accounts; `school` is the organization slug). 403 `STUDENT_PORTAL_OFF` when the school has no student accounts on its plan |
 | POST | `/mfa/verify` | `{code}` or `{recoveryCode}` (pending-MFA session) |
+| POST | `/passkeys/login/options` | → `{options}` for `navigator.credentials.get()` (no account named: the device offers its passkeys for this site; user verification required). 30 per 15 min per client |
+| POST | `/passkeys/login` | `{response}` (the browser's answer as JSON, binary fields base64url) → `{user}` + cookie; the session is two-step verified. 401 `PASSKEY_UNKNOWN` (not registered), 401 `PASSKEY_INVALID` (wrong site or origin, used or expired challenge, person not verified, bad signature, counter went back), 403 `ACCOUNT_SUSPENDED` / `EMAIL_NOT_VERIFIED` / `STAFF_ONLY`. 10 per 15 min per client |
 | POST | `/logout` · `/logout-others` | — |
 | GET | `/me` | user (with `kind`: `staff` or `student`), organizations + roles, `csrfToken`, unread notifications; `{mfaPending:true}` during MFA. For a student: `organizations: []` and `student {username, grade, school {id, name, code, locale}}` |
 | POST | `/password/forgot` · `/password/reset` · `/password/change` | `{email}` · `{token,password}` · `{currentPassword,newPassword}` |
 | PATCH | `/profile` | `{name?, locale?, catalogEmails?: boolean, assignmentEmails?: boolean, assignmentEmailFrequency?: 'instant' \| 'daily', dueReminderEmails?: boolean}` (catalogue update emails; emails when books are assigned to you, right away or in one summary each morning; reminder emails for your books due soon or overdue; in-app notifications are always created). Turning assignment emails off or back to `instant` drops the books waiting for the next summary |
 | GET / DELETE | `/sessions` · `/sessions/:id` | list / revoke own sessions |
 | POST | `/mfa/setup` · `/mfa/enable` · `/mfa/disable` · `/mfa/recovery-codes` | setup returns `{secret, otpauthUrl, qrSvg}`; enable `{code}` → `{recoveryCodes}` |
-| GET | `/account/export` | personal data as JSON |
+| GET | `/passkeys` | own passkeys `{id, name, backedUp, createdAt, lastUsedAt}` (staff accounts) |
+| POST | `/passkeys/register/options` | `{password}` → `{options}` for `navigator.credentials.create()`; 400 `INVALID_PASSWORD`, 409 `PASSKEY_LIMIT` (10) |
+| POST | `/passkeys/register` | `{name (1–60), response}` → `{passkey}`; emails the account and audits `auth.passkey_added`; 400 `PASSKEY_INVALID`, 409 `PASSKEY_EXISTS` |
+| PATCH / DELETE | `/passkeys/:id` | `{name}` / — → `{passkeys}`; another account's passkey is 404 |
+| GET | `/account/export` | personal data as JSON (passkeys by name and dates, never key material) |
 | DELETE | `/account` | `{password}`; 409 `OWNS_ORGANIZATIONS` if the user owns orgs |
 
 ### Invitations (token holder)

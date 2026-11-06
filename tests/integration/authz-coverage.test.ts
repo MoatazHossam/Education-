@@ -23,6 +23,9 @@ const PUBLIC_OR_SELF: string[] = [
   'POST /api/auth/mfa/disable', 'POST /api/auth/mfa/recovery-codes', 'GET /api/invitations/:token', 'POST /api/invitations/accept',
   'GET /api/notifications', 'POST /api/notifications/read', 'GET /api/assignments', 'POST /api/orgs', 'GET /api/catalog/versions', 'GET /api/catalog/versions/:id',
   'GET /api/billing/plans', 'POST /api/billing/webhooks/:provider', 'GET /api/billing/sandbox/checkout', 'POST /api/billing/sandbox/complete',
+  // Passkeys: signing in is public (passkeys.test.ts); the rest is the signed-in staff account's own passkeys.
+  'POST /api/auth/passkeys/login/options', 'POST /api/auth/passkeys/login', 'GET /api/auth/passkeys', 'POST /api/auth/passkeys/register/options',
+  'POST /api/auth/passkeys/register', 'PATCH /api/auth/passkeys/:id', 'DELETE /api/auth/passkeys/:id',
   ...STUDENT_ROUTES,
 ];
 

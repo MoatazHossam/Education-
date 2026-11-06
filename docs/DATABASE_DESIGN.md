@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`, `0023_billing_reviews`, `0024_org_time_zone`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`, `0022_ai_costs`, `0023_billing_reviews`, `0024_org_time_zone`, `0025_passkeys`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -105,6 +105,8 @@ erDiagram
 | `rate_limits` | Counters for route-specific rate limits, shared by app instances | PK `key` = HMAC of route and client key (no IPs or emails); UNLOGGED (counters restart after a crash) | — (no tenant data) |
 | `login_failures` | Failed sign-ins per account and client (`src/auth/login-protection.ts`, migration `0020`) | PK `(user_id, client)`; client `device:<SHA-256 of the device token>`, `address:<HMAC of the address>` or `account` (all clients the account does not know); `failures`, `window_started_at`, `locked_until`; updated in one statement per failure; cascade with the user | — (no tenant data) |
 | `login_devices` | Browsers an account has fully signed in from (they keep their own lockout count) | PK `(user_id, device_hash)`, hash = SHA-256 of the random token in the browser's device cookie; `last_signed_in_at`; cascade with the user | — (no tenant data) |
+| `passkeys` | Staff passkeys (WebAuthn, `src/auth/passkeys.ts`, migration `0025`) | `credential_id` (base64url, unique), `public_key` (COSE), `counter` (signature counter), `transports`, `device_type`, `backed_up`, `name`, `created_at`, `last_used_at`; cascade with the user | — (no tenant data) |
+| `webauthn_challenges` | The challenge of each passkey registration or sign-in, used once | `purpose` `register` (with the account) or `login`; `challenge` unique; `expires_at` five minutes on; deleted when used | — (no tenant data) |
 
 Verification columns on `catalog_subjects` and `catalog_materials`: `verification_status`
 (`unverified` / `verified` / `needs_review`), `verification_source`, `verification_url` (http/https),
@@ -198,6 +200,7 @@ are never created when `NODE_ENV=production`.
 | Rate-limit counters | until their window ends (≤ 1 h) | worker hourly |
 | Failed sign-in counts (`login_failures`) | a day after their window started, once no lock is running | worker hourly |
 | Browsers an account signed in from (`login_devices`) | a year after their last sign-in (the cookie's lifetime) | worker hourly |
+| Passkey challenges (`webauthn_challenges`) | when used, or once expired (five minutes) | worker hourly |
 | Resolved operational alerts | 90 d after resolution | worker |
 | Due-date reminder records | 60 d after the due date | worker hourly |
 | Assignments waiting for a daily summary | until the next morning's summary; 30 d at most | worker |

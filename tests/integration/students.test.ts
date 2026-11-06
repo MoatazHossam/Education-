@@ -236,7 +236,7 @@ describe('a student account reaches only the student portal', () => {
     'GET /healthz', 'GET /readyz', 'POST /api/auth/register', 'POST /api/auth/verify-email', 'POST /api/auth/resend-verification', 'POST /api/auth/login',
     'POST /api/auth/password/forgot', 'POST /api/auth/password/reset', 'GET /api/invitations/:token', 'GET /api/billing/plans',
     'POST /api/billing/webhooks/:provider', 'GET /api/billing/sandbox/checkout', 'POST /api/billing/sandbox/complete',
-    'POST /api/auth/logout', 'GET /api/auth/me', ...STUDENT_ROUTES,
+    'POST /api/auth/logout', 'GET /api/auth/me', 'POST /api/auth/passkeys/login/options', 'POST /api/auth/passkeys/login', ...STUDENT_ROUTES,
   ];
 
   it('every other route refuses a signed-in student, including their own school\'s staff routes', async () => {

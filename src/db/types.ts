@@ -545,6 +545,30 @@ export interface LoginDevicesTable {
   last_signed_in_at: Generated<Date>;
 }
 
+export interface PasskeysTable {
+  id: Generated<string>;
+  user_id: string;
+  /** The browser's credential id, base64url. */
+  credential_id: string;
+  /** The COSE public key from registration. */
+  public_key: Buffer;
+  counter: Generated<string>;
+  transports: Generated<string[]>;
+  device_type: 'singleDevice' | 'multiDevice';
+  backed_up: Generated<boolean>;
+  name: string;
+  created_at: Generated<Date>;
+  last_used_at: Date | null;
+}
+
+export interface WebauthnChallengesTable {
+  id: Generated<string>;
+  purpose: 'register' | 'login';
+  user_id: string | null;
+  challenge: string;
+  expires_at: Date;
+}
+
 export interface RateLimitsTable {
   key: string;
   count: number;
@@ -898,6 +922,8 @@ export interface DB {
   rate_limits: RateLimitsTable;
   login_failures: LoginFailuresTable;
   login_devices: LoginDevicesTable;
+  passkeys: PasskeysTable;
+  webauthn_challenges: WebauthnChallengesTable;
   ops_alerts: OpsAlertsTable;
 }
 

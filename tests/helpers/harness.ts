@@ -45,7 +45,7 @@ export async function resetData(ownerDb: Database): Promise<void> {
   const { sql } = await import('kysely');
   // TRUNCATE ... CASCADE would also empty catalog_versions (it references users),
   // so tenant data is removed through the foreign keys' ON DELETE actions instead.
-  await sql`TRUNCATE email_outbox, billing_events, worker_heartbeats, audit_logs, rate_limits, ops_alerts RESTART IDENTITY`.execute(ownerDb);
+  await sql`TRUNCATE email_outbox, billing_events, worker_heartbeats, audit_logs, rate_limits, ops_alerts, webauthn_challenges RESTART IDENTITY`.execute(ownerDb);
   await sql`DELETE FROM organizations`.execute(ownerDb);
   await sql`DELETE FROM users`.execute(ownerDb);
   // Platform-wide AI prices (no organization to cascade from).

@@ -1,9 +1,64 @@
 import { del, get, patch, post } from '../api.js';
 import { confirmDialog, dialog, errorMessage, fmtDate, form, h, promptDialog, tableCard, toast } from '../dom.js';
 import { setLocale, t } from '../i18n.js';
+import { createPasskey, passkeyErrorKey, passkeysSupported } from '../passkeys.js';
 import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
 import { pageHead } from './shell.js';
+
+/** A browser refusal (cancelled, timed out, already on this device) in the reader's language; other errors as they are. */
+function passkeyError(err) {
+  const key = passkeyErrorKey(err);
+  return key ? new Error(t(key)) : err;
+}
+
+/** Passkeys: sign in with the device's fingerprint, face or PIN instead of the password (src/auth/passkeys.ts). */
+async function passkeysCard(ctx) {
+  const { passkeys } = await get('/api/auth/passkeys');
+  const list = passkeys.length
+    ? h('table', { class: 'data' },
+      h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, t('passkeys.name')), h('th', { scope: 'col' }, t('passkeys.created')), h('th', { scope: 'col' }, t('passkeys.lastUsed')), h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, t('common.actions'))))),
+      h('tbody', {}, passkeys.map((p) => h('tr', {},
+        h('td', {}, p.name, p.backedUp ? h('span', { class: 'pill', title: t('passkeys.syncedHint') }, t('passkeys.synced')) : null),
+        h('td', {}, fmtDate(p.createdAt)),
+        h('td', {}, p.lastUsedAt ? fmtDate(p.lastUsedAt, true) : t('passkeys.never')),
+        h('td', { class: 'actions' },
+          h('button', {
+            type: 'button', class: 'btn small ghost', 'aria-label': t('passkeys.renameLabel', { name: p.name }), onclick: async () => {
+              const name = await promptDialog(t('passkeys.rename'), t('passkeys.name'), { confirmLabel: t('common.save'), hint: t('passkeys.nameHint') });
+              if (!name) return;
+              try { await patch(`/api/auth/passkeys/${p.id}`, { name }); ctx.render(); } catch (e) { toast(errorMessage(e), 'error'); }
+            },
+          }, t('passkeys.rename')),
+          h('button', {
+            type: 'button', class: 'btn small danger ghost', 'aria-label': t('passkeys.removeLabel', { name: p.name }), onclick: async () => {
+              if (!(await confirmDialog(t('passkeys.removeTitle'), t('passkeys.removeText', { name: p.name }), { confirmLabel: t('passkeys.remove'), danger: true }))) return;
+              await del(`/api/auth/passkeys/${p.id}`);
+              toast(t('passkeys.removed'));
+              ctx.render();
+            },
+          }, t('passkeys.remove')))))))
+    : h('p', { class: 'muted' }, t('passkeys.none'));
+  const add = passkeysSupported()
+    ? form({
+      fields: [
+        { name: 'name', label: t('passkeys.name'), required: true, maxlength: 60, value: t('passkeys.defaultName'), hint: t('passkeys.nameHint') },
+        { name: 'password', label: t('auth.password'), type: 'password', required: true, autocomplete: 'current-password', hint: t('passkeys.passwordHint') },
+      ],
+      submitLabel: t('passkeys.add'),
+      onSubmit: async (v) => {
+        const { options } = await post('/api/auth/passkeys/register/options', { password: v.password });
+        let response;
+        try { response = await createPasskey(options); } catch (e) { throw passkeyError(e); }
+        await post('/api/auth/passkeys/register', { name: v.name, response });
+        toast(t('passkeys.added'));
+        ctx.render();
+      },
+    }).el
+    : h('p', { class: 'muted' }, t('passkeys.unsupported'));
+  return h('div', { class: 'card', id: 'passkeys' }, h('h2', {}, t('passkeys.title')), h('p', {}, t('passkeys.text')),
+    h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': t('passkeys.title') }, list), h('h3', {}, t('passkeys.add')), add);
+}
 
 function recoveryCodesDialog(codes) {
   return dialog({
@@ -135,6 +190,7 @@ export async function accountView(ctx) {
       h('div', { class: 'card' }, h('h2', {}, t('account.profile')), profile.el),
       h('div', { class: 'card' }, h('h2', {}, t('account.password')), pw.el)),
     h('div', { class: 'card', id: 'security' }, h('h2', {}, t('account.security')), mfaBox),
+    await passkeysCard(ctx),
     sessionsCard,
     orgCard,
     privacyCard);

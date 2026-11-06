@@ -80,7 +80,7 @@ async function staffByEmail(exec: Executor, email: string): Promise<StaffUser | 
   return user ? asStaff(user) : undefined;
 }
 
-async function startSession(ctx: AppContext, req: FastifyRequest, reply: FastifyReply, user: User, opts: { mfaPending: boolean; mfaVerified: boolean }) {
+export async function startSession(ctx: AppContext, req: FastifyRequest, reply: FastifyReply, user: User, opts: { mfaPending: boolean; mfaVerified: boolean }) {
   const meta = requestMeta(req);
   const { token, session } = await createSession(ctx.db, user, {
     state: opts.mfaPending ? 'mfa_pending' : 'active',
@@ -511,6 +511,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       trx.selectFrom('memberships as m').innerJoin('organizations as o', 'o.id', 'm.org_id').select(['o.id', 'o.name', 'm.role', 'm.created_at']).where('m.user_id', '=', user.id).execute(),
     );
     const sessions = await db.selectFrom('sessions').select(['ip', 'user_agent', 'created_at', 'last_seen_at']).where('user_id', '=', user.id).execute();
+    const passkeys = await db.selectFrom('passkeys').select(['name', 'backed_up', 'created_at', 'last_used_at']).where('user_id', '=', user.id).orderBy('created_at').execute();
     const notifications = await withUserContext(db, user.id, (trx) =>
       trx.selectFrom('notifications').select(['kind', 'title', 'body', 'created_at', 'read_at']).where('user_id', '=', user.id).execute(),
     );
@@ -524,6 +525,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       profile: { ...publicUser(user), lastLoginAt: user.last_login_at, passwordChangedAt: user.password_changed_at },
       memberships: memberships.map((m) => ({ organizationId: m.id, organization: m.name, role: m.role, since: m.created_at })),
       sessions,
+      passkeys,
       notifications,
       activity: audit,
     };

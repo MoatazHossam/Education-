@@ -27,6 +27,10 @@ const TEMPLATES: Record<string, Record<Locale, Template>> = {
     en: (p) => ({ subject: 'Your password was changed', text: `Hello ${p.name},\n\nThe password for your account was just changed and other sessions were signed out. If this was not you, reset your password immediately: ${p.resetLink}${SIGN_EN}` }),
     ar: (p) => ({ subject: 'تم تغيير كلمة المرور', text: `مرحبًا ${p.name}،\n\nتم تغيير كلمة مرور حسابك وتسجيل الخروج من الجلسات الأخرى. إذا لم تكن أنت فأعد تعيينها فورًا: ${p.resetLink}${SIGN_AR}` }),
   },
+  passkey_added: {
+    en: (p) => ({ subject: 'A passkey was added to your account', text: `Hello ${p.name},\n\nA passkey named "${p.passkeyName}" was just added to your account. It signs in without your password. If this was not you, remove it on your account page and change your password: ${p.accountLink}${SIGN_EN}` }),
+    ar: (p) => ({ subject: 'أُضيف مفتاح مرور إلى حسابك', text: `مرحبًا ${p.name}،\n\nأُضيف الآن مفتاح مرور باسم «${p.passkeyName}» إلى حسابك، ويمكن تسجيل الدخول به دون كلمة المرور. إذا لم تكن أنت فاحذفه من صفحة حسابك وغيّر كلمة المرور: ${p.accountLink}${SIGN_AR}` }),
+  },
   invitation: {
     en: (p) => ({ subject: `You are invited to ${p.orgName}`, text: `${p.inviterName} invited you to join ${p.orgName} as ${p.role}.\n\nAccept the invitation:\n${p.link}\n\nThe invitation expires in 7 days.${SIGN_EN}` }),
     ar: (p) => ({ subject: `دعوة للانضمام إلى ${p.orgName}`, text: `دعاك ${p.inviterName} للانضمام إلى ${p.orgName} بدور ${ROLE_AR[p.role!] ?? p.role}.\n\nلقبول الدعوة:\n${p.link}\n\nتنتهي صلاحية الدعوة خلال 7 أيام.${SIGN_AR}` }),

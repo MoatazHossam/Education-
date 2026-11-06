@@ -1,6 +1,7 @@
 import { get, post, setCsrf } from '../api.js';
 import { errorMessage, form, h, link } from '../dom.js';
 import { locale, setLocale, t } from '../i18n.js';
+import { getPasskey, passkeyErrorKey, passkeysSupported } from '../passkeys.js';
 import { navigate } from '../router.js';
 import { loadSession, session } from '../state.js';
 
@@ -54,7 +55,27 @@ export function loginView(ctx) {
       await afterLogin(ctx, next);
     },
   });
+  // A passkey signs in without the email or the password (src/auth/passkeys.ts).
+  const passkeyErr = h('div', { class: 'alert error', role: 'alert' });
+  const passkeyBtn = passkeysSupported() ? h('button', {
+    type: 'button', class: 'btn ghost', onclick: async () => {
+      passkeyErr.textContent = '';
+      passkeyBtn.disabled = true;
+      try {
+        const { options } = await post('/api/auth/passkeys/login/options');
+        let response;
+        try { response = await getPasskey(options); } catch (e) { const key = passkeyErrorKey(e); throw key ? new Error(t(key)) : e; }
+        await post('/api/auth/passkeys/login', { response });
+        await afterLogin(ctx, next);
+      } catch (e) {
+        passkeyErr.textContent = errorMessage(e);
+      } finally {
+        passkeyBtn.disabled = false;
+      }
+    },
+  }, t('auth.passkey')) : null;
   return page(ctx, t('auth.signInTitle'), t('auth.signInSub'), notVerified, f.el,
+    passkeyBtn ? h('div', { class: 'stack auth-passkey' }, h('p', { class: 'auth-or' }, t('auth.or')), passkeyErr, passkeyBtn) : null,
     h('div', { class: 'auth-foot' }, link('/forgot-password', t('auth.forgot')), link('/register', t('auth.noAccount')), link('/pricing', t('pricing.title'))),
     h('p', { class: 'auth-foot' }, link('/student-login', t('student.signInLink'))));
 }

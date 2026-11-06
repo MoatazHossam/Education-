@@ -84,6 +84,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       .executeTakeFirst();
     // A browser not used to sign in for a year is forgotten, as its cookie has expired.
     const loginDevices = await trx.deleteFrom('login_devices').where('last_signed_in_at', '<=', new Date(now.getTime() - DEVICE_TTL_MS)).executeTakeFirst();
+    // Passkey challenges are answered within five minutes or never (auth/passkeys.ts).
+    const passkeyChallenges = await trx.deleteFrom('webauthn_challenges').where('expires_at', '<=', sql<Date>`now()`).executeTakeFirst();
     return {
       sessions: Number(sessions.numDeletedRows),
       tokens: Number(tokens.numDeletedRows),
@@ -100,6 +102,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       aiUserDaily: Number(aiUserDaily.numDeletedRows),
       loginFailures: Number(loginFailures.numDeletedRows),
       loginDevices: Number(loginDevices.numDeletedRows),
+      passkeyChallenges: Number(passkeyChallenges.numDeletedRows),
     };
   });
 }

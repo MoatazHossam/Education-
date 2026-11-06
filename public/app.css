@@ -107,6 +107,9 @@ form.stack label,.field{display:grid;gap:4px;font-size:13.5px;font-weight:500}
 .auth-card h1{font-family:var(--f-display);font-size:24px;margin:0 0 4px}
 .auth-card .sub{color:var(--muted);margin:0 0 18px}
 .auth-foot{margin-top:16px;font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between}
+.auth-passkey{margin-top:14px}
+.auth-or{margin:0;text-align:center;color:var(--muted);font-size:13.5px}
+.auth-passkey .btn{width:100%}
 .auth-lang{position:fixed;top:12px;inset-inline-end:12px}
 
 table.data{width:100%;border-collapse:collapse;font-size:13.5px}

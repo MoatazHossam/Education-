@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**63 files, 467 tests, 467 passed, 0 failed** (2026-11-06, with the image and action pins, task 1.9). Integration tests ran against a real
+**63 files, 468 tests, 468 passed, 0 failed** (2026-11-06, with the image and action pins, task 1.9). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -32,7 +32,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded), and production refusing `WEBHOOK_ALLOW_INSECURE_TARGETS` |
 | unit/i18n | 2 | Pass |
 | unit/passwords | 21 | Pass — new passwords (task 1.8): the pinned NCSC list cut to 10–128 characters (9,113 entries); refused when in it in any case, a common or this service's word (Arabic too, vowel marks ignored) with only digits and symbols added, or one character repeated; too short and too long first; six good passwords accepted; the problem passed on as a field `code`; English and Arabic texts for every code |
-| unit/image-pins | 10 | Pass — dependency hygiene (task 1.9): every `Dockerfile` stage and every compose image but the locally built `midad:` one pinned as `name:tag@sha256:<64 hex>`; the image's Node.js major is CI's; the ops scripts name no image (comments aside) and read rclone from `ops/images.Dockerfile`, PostgreSQL from `docker-compose.yml` and Caddy from `docker-compose.prod.yml`: the bash lookup run with bash (and an unknown name refused), the PowerShell pattern applied to the same files; Dependabot covers npm, both Dockerfile directories, the compose files and the actions, without Node.js or PostgreSQL majors; every CI action pinned by a 40-hex SHA with its release in a comment. Breaking a compose pin, the ops script's lookup or an action pin fails 4 of the tests |
+| unit/image-pins | 11 | Pass — dependency hygiene (task 1.9): every `Dockerfile` stage and every compose image but the locally built `midad:` one pinned as `name:tag@sha256:<64 hex>`; the image's Node.js major is CI's; the ops scripts name no image (comments aside) and read rclone from `ops/images.Dockerfile`, PostgreSQL from `docker-compose.yml` and Caddy from `docker-compose.prod.yml`: the bash lookup run with bash (and an unknown name refused), the PowerShell pattern applied to the same files; Dependabot covers npm, both Dockerfile directories, the compose files and the actions, every entry against `main`, without Node.js, `@types/node` or PostgreSQL majors; every CI action pinned by a 40-hex SHA with its release in a comment. Breaking a compose pin, the ops script's lookup or an action pin fails 4 of the tests |
 | unit/backup-crypt | 3 | Pass — backup archive encryption (`src/lib/backup-crypt.ts`): round trip for sizes from 0 to 1.1 MB whatever the chunk boundaries; a wrong passphrase, one changed byte, a cut file, another format, a header with no data and a passphrase under 12 characters all refused; a fresh salt and IV each time |
 | unit/countdown | 4 | Pass — the time left announced in a timed test (`public/js/countdown.js`): 5 and 1 minutes once each as they are crossed; nothing for a mark already behind when the test opens; again after more time; only the nearer mark when a tick jumps past both |
 | unit/email-templates | 2 | Pass — the Arabic invitation names the role as the Arabic interface does; the Arabic assignment email says "a book" for one and "books" for more |
@@ -756,9 +756,21 @@ Production finding S-15. On Docker 29.9 in this container:
 | The ops scripts' images, resolved by `ops/midad.sh`'s lookup and run | `rclone version` v1.71.2 and `rclone obscure`; `pg_dump` 16.15; busybox `tar` 1.37.0 in the Caddy image; `ops/midad.sh --help` starts from the repository and from another directory |
 | `.github/dependabot.yml` against the public Dependabot schema (SchemaStore `dependabot-2.0.json`, with Ajv) | Valid |
 | Action SHAs (`git ls-remote` on each action's repository) | `actions/checkout` v4.4.0 `11d5960a…`, `actions/setup-node` v4.4.0 `49933ea5…`, `actions/upload-artifact` v4.6.2 `ea165f8d…` |
+| Dependabot on GitHub, after the push | GitHub's check of `.github/dependabot.yml` passed; 10 update jobs succeeded and opened 12 pull requests (#47 to #58) within three minutes: one group of 10 npm minor and patch updates, npm majors one by one, Mailpit 1.33, rclone 1.75 in `/ops`, and the actions' v7 releases. None in this first run for the Node.js, PostgreSQL, ClamAV or Caddy pins. They targeted the repository's default branch (`claude/friendly-rubin-hmemjl`), so every entry now sets `target-branch: main` |
 
-Not run: Dependabot itself (it runs on GitHub once the file is on `main`); `ops/midad.ps1`'s lookup with PowerShell
-(the unit test applies its pattern to the same files instead).
+Not run: `ops/midad.ps1`'s lookup with PowerShell (the unit test applies its pattern to the same files instead).
+
+### Dependabot's first updates (2026-11-06)
+
+Dependabot's weekly npm group (10 minor and patch updates) and the three actions' v7 releases, in one pull request.
+
+| Check | Result |
+| --- | --- |
+| The npm group as Dependabot proposed it | Typecheck failed: Kysely 0.29 (a 0.x "minor") moved `Migrator`, `Migration` and `MigrationProvider` to `kysely/migration`. Fixed in `src/db/migrator.ts`; Kysely now gets its own pull requests (`exclude-patterns` in `.github/dependabot.yml`) |
+| With the fix, on the new versions | `npm run lint`, `npm run typecheck`, `npm run build` pass; `npm test` 63 files, 468 tests pass (migrations run on the new Kysely in every integration file); `npm audit --omit=dev --audit-level=high` passes (3 moderate, as before) |
+| Actions v7 (`checkout` 7.0.1, `setup-node` 7.1.0, `upload-artifact` 7.0.2) | Dependabot's pins compared with each action's release tag (`git ls-remote`): same commits. Release notes read: nothing this workflow uses changed (fork checkouts under `pull_request_target`, `NODE_AUTH_TOKEN`, an optional unzipped upload); they run on Node.js 24, which ends the runner's "Node.js 20 is deprecated" warning. Each one's own pull request passed all five CI jobs before they were combined |
+| End-to-end, first CI run | Chromium's accessibility test failed: `@axe-core/playwright` 4.14 brings axe-core 4.14, whose rule `label-content-name-mismatch` (WCAG 2.5.3, label in name) found 7 controls whose name did not contain their visible text: the picker's grade buttons ("P1 G1" named "Grade 1"), the homework button showing "Mark" named "Open the work of …", "Save mark" named "Save the mark for question 2", "Send test", "Send again", "Submit now" on the live monitor, and the catalogue editor's "verify" links. Each name now holds its visible text (EN and AR); the tests and SCREEN_READER_REVIEW.md use the new names |
+| End-to-end, here | Playwright 1.64.1's browsers cannot be downloaded in this container, so the same tests ran with the new axe on Playwright 1.56.1 (whose browsers are here): journeys and accessibility, 30 passed. With only the grade buttons put back, the accessibility test fails with the same 7 picker findings as CI |
 
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
@@ -907,5 +919,5 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - The rollback drill (`scripts/rollback-drill.sh`) on a staging host (launch checklist E-2); it ran on Docker in this container only.
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).
-- Dependabot's runs and pull requests (they start on GitHub once `.github/dependabot.yml` is on `main`), and `ops/midad.ps1`'s image lookup with PowerShell (task 1.9; covered by the unit test's copy of its pattern).
+- `ops/midad.ps1`'s image lookup with PowerShell (task 1.9; covered by the unit test's copy of its pattern), and Dependabot security updates (they need switching on in the repository's settings).
 - The Windows operations scripts on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler), backup copies to a real cloud bucket (Amazon S3, Backblaze B2, Cloudflare R2), and the `start` script's image rebuild (builds here need the proxy settings).

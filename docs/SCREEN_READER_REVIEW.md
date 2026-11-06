@@ -113,7 +113,7 @@ screen reader shows how they actually sound.
 | G9 | Dialogs | On opening, the dialog's title is announced and focus is inside it; the reading cursor cannot leave it; Escape closes it; focus returns to the control that opened it. |
 | G10 | Forms | Each field is announced with its label, type, required state and hint (F5). After a failed submission the error is announced, and for field errors each field reads its own error (F5). Checkboxes announce their state. |
 | G11 | Tables | Moving across cells announces the column header. A table that scrolls sideways is in a region named after its content, reachable with Tab. |
-| G12 | Toggle buttons | Picker filters (track, grade, kind) and book buttons announce "pressed" or "not pressed", and the change when activated. Grade buttons are named "Grade 1" … "Grade 12". |
+| G12 | Toggle buttons | Picker filters (track, grade, kind) and book buttons announce "pressed" or "not pressed", and the change when activated. Grade buttons are named after what they show, then the grade: "P1 G1, Grade 1" … "Sec3 G12, Grade 12" (WCAG 2.5.3, label in name). |
 | G13 | Symbols | Symbols shown on screen (✓, ✎, !, the bell) are not read as symbols; their meaning is read as words instead ("Verified", "Under review", "has a note", "assigned to …", "due soon"). |
 | G14 | Language switch | The switch button is read in the language it switches to ("العربية" in an Arabic voice, "English" in an English one). After switching, the page is in the other language and direction, and focus is on the page heading. |
 | G15 | Dates and numbers | Dates are read sensibly in both languages (the Arabic interface uses Arabic-Indic digits and month names). |
@@ -180,9 +180,9 @@ Do each task with the screen reader alone, without looking at the screen.
     dialog and can be read and copied), and **webhooks**:
     - add an endpoint (URL with its hint, description, event checkboxes);
     - the signing secret dialog (secret readable in one piece);
-    - "Send a test to …": the result is announced;
+    - "Send test to …": the result is announced;
     - "Deliveries to …": the table (time, event, result, attempts), "Payload"
-      opens and closes, "Send again …" is named after the event and time, and
+      opens and closes, "Send again: …" is named after the event and time, and
       "Download history (CSV)" downloads;
     - edit, "New secret" (confirmation), delete (confirmation).
 17. **Audit log**: the filters and the table.
@@ -220,7 +220,7 @@ the teacher of a subject; owners and admins see every class.
     focus lands after the upload. The homework's roster: each student's status
     ("Handed in", "Late", "Missing", "Returned") is read as words, and the column of
     buttons as "Details and actions".
-24. **Marking homework**: "Open the work of …" opens the dialog "Work of …": the
+24. **Marking homework**: "Mark the work of …" (or "Open the work of …" once returned) opens the dialog "Work of …": the
     handed-in time, the answer, the files (a photo's name, size and link), "Mark
     (out of 10)", "Comments for the student", "Save without returning" and "Return
     to student"; "Returned to …" is announced, and the roster then reads the mark.
@@ -237,15 +237,15 @@ the teacher of a subject; owners and admins see every class.
       29:53 left", Noticed, Best mark, Attempts, Details and actions); read it while
       it refreshes and note whether the reading position is kept;
     - the start code: note whether its letters are spelled out;
-    - "Extra time for …" (dialog), "Submit the work of … now" (confirmation),
-      "Allow … to continue on another device", "Allow another attempt for …" and
+    - "Extra time for …" (dialog), "Submit now: the work of …" (confirmation),
+      "Allow this device for …, to continue on another device", "Allow another attempt for …" and
       "Activity of …" (dialog listing what was noticed); their confirmations;
     - "Close the test now" and its confirmation.
 27. **Results and marking a test**: the Results table; "Attempt 1 of …"; on the
     attempt, each question's type, its mark or "To mark", the question, "Answer:",
     the correct answer or marking guide. The fields are named after their question
     ("Question 2: Mark (out of 1)", "Question 1: Comments for the student", F14);
-    "Save the mark for question 2" announces "Saved. Total: 2 / 2". With results
+    "Save mark for question 2" announces "Saved. Total: 2 / 2". With results
     released by hand, **Release results** and its confirmation.
 28. **Gradebook**: "Gradebook" on the class page; "Subject" (the page reloads for
     another subject: with the list closed, move through it with the arrow keys and

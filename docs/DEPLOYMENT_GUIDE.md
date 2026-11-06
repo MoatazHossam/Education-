@@ -308,12 +308,15 @@ images from these files. The CI's actions are pinned by commit SHA.
 Updates come as pull requests from Dependabot (`.github/dependabot.yml`), every Monday: npm packages (minor
 and patch updates together in one pull request, each major version in its own), new digests or tags for
 every image, and new releases of the actions. npm packages and actions are proposed a week after they are
-published, so a broken or compromised release is usually withdrawn first. New major versions of Node.js and
-PostgreSQL are not proposed: they are planned upgrades (below). Each pull request runs the full CI.
+published, so a broken or compromised release is usually withdrawn first. New major versions of Node.js (and
+of its types, `@types/node`) and PostgreSQL are not proposed: they are planned upgrades (below). The pull
+requests target `main`, and each one runs the full CI.
 
 Once, on GitHub (repository owner): Settings > Code security, turn on **Dependabot alerts** and
 **Dependabot security updates**. Security updates then come as soon as an advisory is published, without
-waiting for Monday. Insights > Dependency graph > Dependabot shows each run, and any error in the file.
+waiting for Monday. They go to the repository's default branch (Settings > General > Default branch), which
+`target-branch` does not change, so make that `main`. Dependabot also reads `.github/dependabot.yml` from the
+default branch. Insights > Dependency graph > Dependabot shows each run, and any error in the file.
 
 The routine:
 

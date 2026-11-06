@@ -100,7 +100,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(page.locator('#webhooks table')).toContainText('http://127.0.0.1:9/hook');
   await audit(page, 'settings (webhook endpoint)');
   // Nothing listens on port 9, so the test fails and the deliveries dialog has a row, its history note and the download.
-  await page.getByRole('button', { name: 'Send a test to http://127.0.0.1:9/hook' }).click();
+  await page.getByRole('button', { name: 'Send test to http://127.0.0.1:9/hook' }).click();
   await expect(page.locator('#toasts').getByText(/^Test failed/)).toBeVisible();
   await page.getByRole('button', { name: 'Deliveries to http://127.0.0.1:9/hook' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Download history (CSV)' })).toBeVisible();
@@ -288,7 +288,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(page.getByText('1 of 1 handed in · 0 returned')).toBeVisible();
   await audit(page, 'homework (work handed in)');
   const homeworkPath = new URL(page.url()).pathname;
-  await page.getByRole('button', { name: 'Open the work of Ally Student' }).click();
+  await page.getByRole('button', { name: 'Mark the work of Ally Student' }).click();
   await audit(page, 'mark work dialog');
   await page.getByRole('dialog').getByLabel('Mark (out of 10)').fill('8');
   await page.getByRole('dialog').getByLabel('Comments for the student').fill('Neat work.');
@@ -483,7 +483,7 @@ test('every screen passes an automated WCAG 2.2 AA check (English and Arabic, li
   await expect(page.getByRole('textbox', { name: 'Question 1: Comments for the student' })).toBeVisible();
   await listen(page);
   await page.getByRole('spinbutton', { name: 'Question 2: Mark (out of 1)' }).fill('1');
-  await page.getByRole('button', { name: 'Save the mark for question 2' }).click();
+  await page.getByRole('button', { name: 'Save mark for question 2' }).click();
   await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
   // Saving a mark is said politely, with the new total.
   expect((await heard(page)).some((p) => /^polite: Saved\. Total: \d+ \/ 2$/.test(p))).toBe(true);

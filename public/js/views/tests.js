@@ -602,7 +602,7 @@ export async function resultsView(ctx) {
     h('td', {}, r.best ? (r.best.needsMarking ? h('span', { class: 'pill warn' }, t('tests.toMark')) : t('hw.markOf', { points: fmtNum(r.best.score), max: fmtNum(r.best.maxPoints) })) : none()),
     h('td', {}, r.attempts.length
       ? h('ul', { class: 'plain' }, r.attempts.map((a) => h('li', {},
-        link(`/org/${orgId}/tests/${testId}/attempts/${a.id}`, t('tests.attemptN', { n: fmtNum(a.number) }), { 'aria-label': t('tests.attemptOf', { n: a.number, name: r.name }) }), ' · ',
+        link(`/org/${orgId}/tests/${testId}/attempts/${a.id}`, t('tests.attemptN', { n: fmtNum(a.number) }), { 'aria-label': t('tests.attemptOf', { n: fmtNum(a.number), name: r.name }) }), ' · ',
         a.status === 'in_progress' ? t('tests.working') : a.needsMarking ? h('span', { class: 'pill warn' }, t('tests.toMark')) : t('hw.markOf', { points: fmtNum(a.score), max: fmtNum(a.maxPoints) }))))
       : h('span', { class: 'muted' }, t('tests.notStarted')))));
   return h('div', {},

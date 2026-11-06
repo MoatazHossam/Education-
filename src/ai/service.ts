@@ -8,6 +8,7 @@ import type { AiRequestsTable, StaffUser } from '../db/types.js';
 import type { AppContext } from '../http/context.js';
 import { AppError, badRequest, featureUnavailable, forbidden } from '../lib/errors.js';
 import { periodKey } from '../lib/time.js';
+import { checkPlatformBudget, costExpression } from './costs.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from './schema.js';
 import { AiProviderError, callDeadlineMs, type AiErrorKind, type AiReply } from './types.js';
 
@@ -149,6 +150,8 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
     maxOutputTokens: Math.min(task.maxOutputTokens ?? ctx.config.AI_MAX_OUTPUT_TOKENS, ctx.config.AI_MAX_OUTPUT_TOKENS),
   };
   const estimate = estimateTokens(task.system.length + task.prompt.length, request.maxOutputTokens);
+  // The platform's monthly spending cap, across all schools: checked before any allowance is taken.
+  await checkPlatformBudget(ctx.db, ctx.config, ai.name, ai.model);
   // null: no token cap. Tokens are counted either way, so a budget set mid-month starts from the real use.
   let tokenLimit = null as number | null;
   // All or nothing: a refused step gives back the units taken before it.
@@ -183,18 +186,26 @@ export async function runAiTask<T = string>(ctx: AppContext, caller: AiCaller, t
       output_tokens: outputTokens,
       duration_ms: Date.now() - started,
     };
+    // The provider failed before producing anything: nothing was spent.
+    const nothing = outcome.status === 'failed' && attempts === 1;
+    // The reply's own counts replace the estimate; without counts the estimate stays as spent.
+    const reported = inputTokens !== null || outputTokens !== null;
+    const spentIn = nothing ? 0 : reported ? (inputTokens ?? 0) : (estimate - request.maxOutputTokens) * attempts;
+    const spentOut = nothing ? 0 : reported ? (outputTokens ?? 0) : request.maxOutputTokens * attempts;
     try {
       await withOrgContext(ctx.db, { orgId, userId: user.id }, async (trx) => {
-        const { id } = await trx.insertInto('ai_requests').values(row).returning('id').executeTakeFirstOrThrow();
-        // The provider failed before producing anything: the units taken for this request are given back.
-        const nothing = outcome.status === 'failed' && attempts === 1;
+        const { id } = await trx
+          .insertInto('ai_requests')
+          .values({ ...row, cost_usd_micros: costExpression(ai.name, row.model, ai.model, spentIn, spentOut) })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        // The units taken for a request that spent nothing are given back.
         if (nothing) {
           await releaseUsage(trx, orgId, 'ai_requests', period);
           if (ctx.config.AI_USER_DAILY_LIMIT > 0) await releaseDailyUnit(trx, orgId, user.id, day);
         }
-        // The reply's own counts replace the estimate; without counts the estimate stays as spent.
-        const reported = inputTokens !== null || outputTokens !== null;
-        const actual = nothing ? 0 : reported ? (inputTokens ?? 0) + (outputTokens ?? 0) : reserved;
+        // Settles the estimates taken; without a budget nothing was taken and the tokens are added.
+        const actual = spentIn + spentOut;
         await adjustUsage(trx, orgId, 'ai_tokens', period, actual - reserved);
         await recordAudit(
           trx,

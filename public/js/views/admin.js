@@ -1,4 +1,4 @@
-import { del, get, patch, post } from '../api.js';
+import { del, get, patch, post, put } from '../api.js';
 import { confirmDialog, dialog, errorMessage, fmtDate, fmtMoney, fmtNum, form, h, link, problemText, promptDialog, tableCard, th, toast } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
@@ -13,7 +13,7 @@ const safe = async (fn, ok) => { try { await fn(); if (ok) toast(ok); return tru
 const openGrades = new Map();
 let verifFilter = 'all';
 
-export async function overviewView() {
+export async function overviewView(ctx) {
   const [o, health, alerts, ai] = await Promise.all([get('/api/admin/overview'), get('/api/admin/health'), get('/api/admin/alerts'), get('/api/admin/ai')]);
   const worker = health.workers.find((w) => w.name === 'worker');
   return h('div', {},
@@ -38,11 +38,72 @@ export async function overviewView() {
           h('li', {}, `${t('admin.billingProvider')}: ${health.billingProvider}`),
           h('li', {}, `Node ${health.process.node} · RSS ${health.process.rssMb} MB · up ${Math.round(health.process.uptimeSeconds / 60)} min`)))),
     alertsCard(alerts),
-    aiCard(ai));
+    aiCard(ai, () => ctx.render()));
 }
 
-/** AI assistance (docs/AI_LAYER.md): the provider, the schools with an allowance and their use this month, a connection test. */
-function aiCard({ provider, period, schools }) {
+const fmtUsd = (n) => new Intl.NumberFormat(locale() === 'ar' ? 'ar-EG' : 'en-GB', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(n);
+const fmtPct = (n) => new Intl.NumberFormat(locale() === 'ar' ? 'ar-EG' : 'en-GB', { style: 'percent', maximumFractionDigits: 0 }).format(n);
+// A blank or unreadable field goes to the server as null, which refuses it next to the field.
+const priceValue = (v) => (v.trim() === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+/** The month's AI spending against the platform's budget (AI_MONTHLY_BUDGET_USD), and requests that had no price. */
+function aiSpending(budget) {
+  const state = {
+    high: h('span', { class: 'pill warn' }, t('admin.aiBudgetHigh')),
+    reached: h('span', { class: 'pill bad' }, t('admin.aiBudgetReached')),
+    unpriced: h('span', { class: 'pill bad' }, t('admin.aiBudgetUnpriced')),
+  }[budget.state];
+  return [
+    h('p', {},
+      budget.monthlyUsd === null
+        ? t('admin.aiSpendNoBudget', { spent: fmtUsd(budget.spentUsd) })
+        : t('admin.aiSpend', { spent: fmtUsd(budget.spentUsd), budget: fmtUsd(budget.monthlyUsd), share: fmtPct(budget.spentUsd / budget.monthlyUsd) }),
+      state ? [' ', state] : null),
+    budget.unpricedRequests ? h('p', { class: 'muted' }, t('admin.aiUnpriced', { n: fmtNum(budget.unpricedRequests) })) : null,
+  ];
+}
+
+/** What the provider charges for the configured model, and the other models with a price. */
+function aiPrices(provider, currentPrice, prices, reload) {
+  const priceForm = form({
+    fields: [
+      { name: 'inputUsdPerMtok', label: t('admin.aiPriceInput'), inputmode: 'decimal', value: currentPrice?.inputUsdPerMtok ?? '' },
+      { name: 'outputUsdPerMtok', label: t('admin.aiPriceOutput'), inputmode: 'decimal', value: currentPrice?.outputUsdPerMtok ?? '' },
+    ],
+    submitLabel: t('admin.aiPriceSave'),
+    onSubmit: async (v) => {
+      await put('/api/admin/ai/prices', { provider: provider.name, model: provider.model, inputUsdPerMtok: priceValue(v.inputUsdPerMtok), outputUsdPerMtok: priceValue(v.outputUsdPerMtok) });
+      toast(t('common.saved'));
+      reload();
+    },
+  });
+  const remove = (p) => h('button', {
+    type: 'button', class: 'btn small ghost', 'aria-label': t('admin.aiPriceRemoveFor', { model: p.model }), onclick: async () => {
+      if (!(await confirmDialog(t('admin.aiPriceRemove'), t('admin.aiPriceRemoveConfirm', { model: p.model }), { danger: true }))) return;
+      const q = new URLSearchParams({ provider: p.provider, model: p.model });
+      if (await safe(() => del(`/api/admin/ai/prices?${q}`))) reload();
+    },
+  }, t('admin.aiPriceRemove'));
+  return [
+    h('h3', {}, t('admin.aiPriceTitle', { model: provider.model })),
+    h('p', { class: 'muted' }, currentPrice ? t('admin.aiPriceHint') : t('admin.aiPriceMissing')),
+    priceForm.el,
+    prices.length
+      ? tableCard(t('admin.aiPrices'),
+        h('table', {},
+          h('thead', {}, h('tr', {}, th(t('admin.aiCol.provider')), th(t('admin.aiCol.model')), th(t('admin.aiCol.priceIn')), th(t('admin.aiCol.priceOut')), th(t('admin.aiCol.updated')), th(t('common.actions')))),
+          h('tbody', {}, prices.map((p) => h('tr', {},
+            h('td', {}, t(`admin.aiProviderName.${p.provider}`)), h('td', {}, p.model), h('td', {}, fmtUsd(p.inputUsdPerMtok)), h('td', {}, fmtUsd(p.outputUsdPerMtok)),
+            h('td', {}, fmtDate(p.updatedAt)), h('td', {}, remove(p)))))))
+      : null,
+  ];
+}
+
+/**
+ * AI assistance (docs/AI_LAYER.md): the provider, the month's spending against the platform's budget,
+ * the model's prices, the schools with an allowance and their use and cost, the use per feature, a connection test.
+ */
+function aiCard({ provider, period, schools, budget, currentPrice, prices, features }, reload) {
   const title = h('h2', {}, t('admin.ai'));
   if (!provider) return h('div', { class: 'card' }, title, h('p', { class: 'notice' }, t('admin.aiOff')));
   const test = h('button', {
@@ -57,18 +118,32 @@ function aiCard({ provider, period, schools }) {
     },
   }, t('admin.aiTest'));
   const limit = (s) => (s.limit === null ? t('admin.aiUnlimited', { n: fmtNum(s.used) }) : `${fmtNum(s.used)} / ${fmtNum(s.limit)}`);
+  const cost = (usd, unpriced) => [fmtUsd(usd ?? 0), unpriced ? [h('br'), h('span', { class: 'muted' }, t('admin.aiUnpricedShort', { n: fmtNum(unpriced) }))] : null];
+  const featureName = (f) => { const k = `admin.aiFeature.${f}`; const s = t(k); return s === k ? f : s; };
   return h('div', { class: 'card' },
     title,
     h('p', {}, t('admin.aiProvider', { name: t(`admin.aiProviderName.${provider.name}`), model: provider.model })),
+    aiSpending(budget),
     schools.length
       ? tableCard(t('admin.aiSchools', { period }),
         h('table', {},
-          h('thead', {}, h('tr', {}, th(t('admin.col.org')), th(t('admin.col.plan')), th(t('admin.aiCol.used')), th(t('admin.aiCol.failed')), th(t('admin.aiCol.tokens')))),
+          h('thead', {}, h('tr', {}, th(t('admin.col.org')), th(t('admin.col.plan')), th(t('admin.aiCol.used')), th(t('admin.aiCol.failed')), th(t('admin.aiCol.tokens')), th(t('admin.aiCol.cost')))),
           h('tbody', {}, schools.map((s) => h('tr', {},
             h('td', {}, link(`/admin/orgs/${s.orgId}`, s.name)), h('td', {}, s.planName), h('td', {}, limit(s)), h('td', {}, fmtNum(s.failed)),
             h('td', {}, t('admin.aiTokens', { input: fmtNum(s.inputTokens), output: fmtNum(s.outputTokens) }),
-              s.tokenLimit === null ? null : [h('br'), t('admin.aiTokenBudget', { used: fmtNum(s.tokensUsed), limit: fmtNum(s.tokenLimit) })]))))))
+              s.tokenLimit === null ? null : [h('br'), t('admin.aiTokenBudget', { used: fmtNum(s.tokensUsed), limit: fmtNum(s.tokenLimit) })]),
+            h('td', {}, cost(s.costUsd, s.unpricedRequests)))))))
       : h('p', { class: 'muted' }, t('admin.aiNoSchools')),
+    features.length
+      ? tableCard(t('admin.aiFeatures', { period }),
+        h('table', {},
+          h('thead', {}, h('tr', {}, th(t('admin.aiCol.feature')), th(t('admin.aiCol.requests')), th(t('admin.aiCol.tokens')), th(t('admin.aiCol.cost')))),
+          h('tbody', {}, features.map((f) => h('tr', {},
+            h('td', {}, featureName(f.feature)), h('td', {}, fmtNum(f.requests)),
+            h('td', {}, t('admin.aiTokens', { input: fmtNum(f.inputTokens), output: fmtNum(f.outputTokens) })),
+            h('td', {}, f.costUsd === null ? t('admin.aiNoPrice') : fmtUsd(f.costUsd)))))))
+      : null,
+    aiPrices(provider, currentPrice, prices, reload),
     h('p', {}, test));
 }
 

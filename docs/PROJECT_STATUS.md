@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### What AI costs, a monthly spending cap for the platform, and a cost report (AI cost control AI-3, AI-6) · COMPLETE in code (2026-11-06; against the provider simulator; the budget and the model's prices are for the owner to enter)
+- **Prices:** a platform administrator enters what the provider charges for a model (US dollars per million input and
+  output tokens, from the provider's price page) in Platform admin → AI assistance. Nothing assumes a price, and none
+  was invented: a model without one has none. Changes are audited with the previous prices.
+- **Cost of each request:** priced when it is logged, by the model that answered, else the configured one. A reply
+  without token counts is priced at its estimate, and a call that failed without answering costs nothing.
+- **Platform budget (AI-3):** `AI_MONTHLY_BUDGET_USD`, 0 (none) by default. Once the month's cost reaches it, every
+  school's new AI requests get 503 `AI_PAUSED` before the provider is called and before any allowance is taken. With a
+  budget set and no price for the model, requests are refused too, since the spending cannot be measured.
+  Operational alerts: spending at 80 % of the budget, the budget reached, and a model without a price.
+- **Cost report (AI-6):** the AI card shows the month's spending against the budget, the cost per school and per
+  feature, and how many requests had no price.
+- Still for the owner: the budget and allowances (D-6), the model's prices, and the provider console's own limit (AI-1).
+
 ### AI limits per member and per school, and AI on every plan (AI cost control AI-4, AI-5, AI-7) · COMPLETE (2026-11-06; against the provider simulator)
 - **Daily cap per member (AI-5):** each member may make `AI_USER_DAILY_LIMIT` AI requests a day in a school (50 by
   default; 0 for none). The next one gets 429 `AI_DAILY_LIMIT`, shown in Arabic in the Arabic interface, before the

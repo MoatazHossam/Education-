@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAiProvider } from '../../src/ai/providers/index.js';
+import { microsToUsd, monthStart, usdToMicros } from '../../src/ai/costs.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from '../../src/ai/schema.js';
 import { aiDayKey, aiWorstCaseMs, estimateTokens } from '../../src/ai/service.js';
 import { callDeadlineMs, errorKindForStatus } from '../../src/ai/types.js';
@@ -123,5 +124,19 @@ describe('AI cost controls', () => {
     expect(loadConfig(TEST_ENV).AI_USER_DAILY_LIMIT).toBe(50);
     expect(loadConfig({ ...TEST_ENV, AI_USER_DAILY_LIMIT: '0' }).AI_USER_DAILY_LIMIT).toBe(0);
     expect(() => loadConfig({ ...TEST_ENV, AI_USER_DAILY_LIMIT: '-1' })).toThrow(/AI_USER_DAILY_LIMIT/);
+  });
+
+  it('has no platform budget unless one is set, in US dollars', () => {
+    expect(loadConfig(TEST_ENV).AI_MONTHLY_BUDGET_USD).toBe(0);
+    expect(loadConfig({ ...TEST_ENV, AI_MONTHLY_BUDGET_USD: '250.50' }).AI_MONTHLY_BUDGET_USD).toBe(250.5);
+    expect(() => loadConfig({ ...TEST_ENV, AI_MONTHLY_BUDGET_USD: '-1' })).toThrow(/AI_MONTHLY_BUDGET_USD/);
+  });
+
+  it('converts dollars and millionths of a dollar exactly at the sizes used', () => {
+    expect(usdToMicros(4)).toBe(4_000_000);
+    expect(usdToMicros(0.1 + 0.2)).toBe(300_000);
+    expect(microsToUsd('1200')).toBe(0.0012);
+    expect(microsToUsd(null)).toBeNull();
+    expect(monthStart('2026-02').toISOString()).toBe('2026-02-01T00:00:00.000Z');
   });
 });

@@ -72,7 +72,9 @@ Tasks AI-1 to AI-7 in [AI_COST_CONTROL_PLAN.md §6](AI_COST_CONTROL_PLAN.md). Mi
 allowance: AI-1 (provider console cap), AI-2 (done in 1.6), AI-3 (platform cap). Size ≈ 5 days.
 
 Done without outside input: AI-2 (task 1.6), AI-4 (token budget per school), AI-5 (daily cap per member,
-`AI_USER_DAILY_LIMIT`) and AI-7 in code (AI limits on every plan; the values wait for D-6).
+`AI_USER_DAILY_LIMIT`), AI-6 (cost report) and, in code, AI-3 (prices and the platform budget,
+`AI_MONTHLY_BUDGET_USD`) and AI-7 (AI limits on every plan). Still needed: AI-1 (the provider console), the
+budget and allowances (D-6), and the model's prices from the provider's price page.
 
 ## Phase 5 — Multi-country readiness (needs decisions D-1 to D-4)
 

@@ -30,6 +30,7 @@ application/json`); other content types are rejected with `415`.
 | 409 | `CONFLICT`, `SCOPE_NAME_TAKEN`, `ALREADY_MEMBER`, `PAYMENT_REQUIRED`, `USE_SCHEDULED_CHANGE`, `ALREADY_ON_PLAN`, `OWNS_ORGANIZATIONS`, `USERNAME_TAKEN` |
 | 429 | `RATE_LIMITED`, `AI_DAILY_LIMIT` (a member's AI requests for the day, docs/AI_LAYER.md §3) |
 | 500 | `INTERNAL_ERROR` (with `requestId`) |
+| 503 | `AI_NOT_CONFIGURED`, `AI_BUSY`, `AI_UNAVAILABLE`, `AI_PAUSED` (the platform's monthly AI budget, docs/AI_LAYER.md §3) |
 
 **Problems in an imported file.** The previews of the roster import and the catalogue sheet import list
 each problem as `{line | row, code, params, message}`. `message` is English; `code` is stable and
@@ -271,8 +272,9 @@ published versions, content and new materials on drafts only; `409 VERSION_ARCHI
 `GET /support/orgs/:orgId/scopes[/:scopeId]` (requires an active customer grant; audited),
 `GET /alerts` (`{channels: {emails, emailTransport, webhook}, alerts: [...]}`: firing alerts and those resolved in the last 30 days),
 `POST /alerts/test` (sends a test alert to every configured channel; returns `{result: {email, webhook}}`, each `sent`, `failed` or `off`; 5/h; audited as `admin.alert_test`),
-`GET /ai` (AI assistance, docs/AI_LAYER.md: `{provider: {name, model, customEndpoint} | null, settings: {timeoutMs, maxRetries, worstCaseMs, maxOutputTokens, userDailyLimit}, period, schools: [{orgId, name, planName, limit, used, tokenLimit, tokensUsed, requests, ok, failed, inputTokens, outputTokens}]}`
-for schools with an allowance or with use this month; `limit` null means no cap, `tokenLimit` null no token budget; `tokensUsed` is the month's counted tokens),
+`GET /ai` (AI assistance, docs/AI_LAYER.md: `{provider: {name, model, customEndpoint} | null, settings: {timeoutMs, maxRetries, worstCaseMs, maxOutputTokens, userDailyLimit}, period, budget: {monthlyUsd, spentUsd, unpricedRequests, state}, currentPrice, prices: [{provider, model, inputUsdPerMtok, outputUsdPerMtok, updatedAt}], features: [{feature, requests, inputTokens, outputTokens, costUsd}], schools: [{orgId, name, planName, limit, used, tokenLimit, tokensUsed, requests, ok, failed, inputTokens, outputTokens, costUsd, unpricedRequests}]}`
+for schools with an allowance or with use this month; `limit` null means no cap, `tokenLimit` null no token budget; `tokensUsed` is the month's counted tokens; `budget.monthlyUsd` null means no platform budget, and `state` is `off`, `ok`, `high` (80 % or more), `reached` or `unpriced`; `currentPrice` is the configured model's, or null),
+`PUT /ai/prices` (`{provider, model, inputUsdPerMtok, outputUsdPerMtok}`: what the provider charges per million tokens in US dollars, 0–100000 with at most 6 decimals; prices requests from then on; audited as `admin.ai_price_set` with the previous prices), `DELETE /ai/prices?provider=&model=` (`404` without a price; audited as `admin.ai_price_removed`),
 `POST /ai/test` (one small request to the configured provider, outside any school's allowance; returns `{provider, result}` with
 `result.ok`, `finish`, `model`, `ms`, tokens and the reply, or `errorKind`, `status` and the provider's message; `503 AI_NOT_CONFIGURED`
 without a provider; 10/h; audited as `admin.ai_tested`). A school's monthly AI allowance is `ai_requests_per_month` in `limitOverrides`

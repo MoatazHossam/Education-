@@ -57,7 +57,7 @@ repository.
 | E-8 | External uptime check, host metrics, log shipping, backup alerts | 2.4 | ☐ |
 | E-9 | Daily encrypted off-site backup; restore drill on a fresh VM within RTO; RPO agreed | 2.5 | ☐ |
 | E-10 | Paymob test-mode run recorded; reconciliation job live; refund/void path | P-1, P-3, P-4 | ☐ |
-| E-11 | AI: provider console cap, platform cap in app, timeouts reduced (only if AI is enabled for any school) | AI-1–AI-3 | ☐ |
+| E-11 | AI: provider console cap, platform cap in app (`AI_MONTHLY_BUDGET_USD` and the model's prices entered), timeouts reduced (only if AI is enabled for any school) | AI-1–AI-3 | ☐ |
 | E-12 | External penetration test; no open High findings | 6.2 | ☐ |
 | E-13 | Arabic copy reviewed by a native editor; screen-reader review (`docs/SCREEN_READER_REVIEW.md`) | 5.4 | ☐ |
 

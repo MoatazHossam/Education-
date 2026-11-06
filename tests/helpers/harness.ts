@@ -48,6 +48,8 @@ export async function resetData(ownerDb: Database): Promise<void> {
   await sql`TRUNCATE email_outbox, billing_events, worker_heartbeats, audit_logs, rate_limits, ops_alerts RESTART IDENTITY`.execute(ownerDb);
   await sql`DELETE FROM organizations`.execute(ownerDb);
   await sql`DELETE FROM users`.execute(ownerDb);
+  // Platform-wide AI prices (no organization to cascade from).
+  await sql`DELETE FROM ai_model_prices`.execute(ownerDb);
   // Keep only the seeded catalogue version (tests may create and publish others).
   await sql`DELETE FROM catalog_versions WHERE id <> (SELECT id FROM catalog_versions ORDER BY created_at LIMIT 1)`.execute(ownerDb);
   for (const table of ['catalog_subjects', 'catalog_materials']) {
@@ -100,6 +102,9 @@ export class Client {
   }
   patch(url: string, body: unknown = {}, headers?: Record<string, string>) {
     return this.request('PATCH', url, body, headers);
+  }
+  put(url: string, body: unknown = {}, headers?: Record<string, string>) {
+    return this.request('PUT', url, body, headers);
   }
   delete(url: string, headers?: Record<string, string>) {
     return this.request('DELETE', url, undefined, headers);

@@ -88,7 +88,9 @@ Create `.env.production` from `.env.docker.example`:
   requests. Check the key and model with `npm run ai:check` (same variables) before enabling AI for any
   school; then a platform administrator gives each school its monthly allowance (and, if wanted, a monthly
   token budget). Each member may make `AI_USER_DAILY_LIMIT` AI requests a day in a school (50 by default; 0
-  for no daily cap). The app makes outbound
+  for no daily cap). Before giving any school an allowance, set `AI_MONTHLY_BUDGET_USD` (what all schools'
+  requests may cost in a month, in US dollars) and enter the model's prices from the provider's price page in
+  Platform admin → AI assistance: with a budget and no price, AI requests are refused. The app makes outbound
   HTTPS requests to the provider: with an egress firewall, allow its API host (`generativelanguage.googleapis.com`,
   `api.anthropic.com` or `api.openai.com`).
 
@@ -423,6 +425,8 @@ are also written to the logs (`"msg":"operational alert"`), and contain counts o
 | Migrations pending | the schema is behind the code | `docker compose … run --rm migrate` |
 | Homework files waiting | a homework file has waited more than 10 minutes for its check (virus scan, photo resizing); nobody can open it meanwhile | `docker compose … ps clamav worker`, `logs clamav worker` (the worker logs the scanner's error) |
 | Database unreachable | two checks in a row cannot reach PostgreSQL (one message per instance) | `ps postgres` / the managed database status |
+| AI spending high / AI budget reached | with `AI_MONTHLY_BUDGET_USD` set: the month's AI spending has reached 80 % of it / all of it (new AI requests are refused until the month ends) | Platform admin → AI assistance (spending per school and per feature); raise the budget and restart the app to allow more |
+| AI model without a price | with `AI_MONTHLY_BUDGET_USD` set, the configured model has no price, so AI requests are refused | enter the model's prices in Platform admin → AI assistance |
 
 **Outside the host (needed as well).** Nothing on the host can report that the host itself, Caddy or both app
 instances are down. Add an external uptime check of `https://<domain>/readyz` every minute, alerting after two

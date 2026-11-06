@@ -305,7 +305,12 @@ describe('AI layer: platform administration', () => {
     expect(body.settings).toEqual({ timeoutMs: 5000, maxRetries: 1, worstCaseMs: 40_000, maxOutputTokens: 16_000, userDailyLimit: 50 });
     expect(body.period).toBe(periodKey());
     // No token budget (null); the tokens used are counted all the same (400 in, 70 out).
-    expect(body.schools).toEqual([{ orgId: a.orgId, name: 'Alpha School', planName: 'Professional', limit: 50, used: 1, tokenLimit: null, tokensUsed: 470, requests: 1, ok: 1, failed: 0, inputTokens: 400, outputTokens: 70 }]);
+    expect(body.schools).toEqual([{ orgId: a.orgId, name: 'Alpha School', planName: 'Professional', limit: 50, used: 1, tokenLimit: null, tokensUsed: 470, requests: 1, ok: 1, failed: 0, inputTokens: 400, outputTokens: 70, costUsd: 0, unpricedRequests: 1 }]);
+    // No model has a price yet and no platform budget is set (tests/integration/ai-costs.test.ts prices them).
+    expect(body.budget).toEqual({ monthlyUsd: null, spentUsd: 0, unpricedRequests: 1, state: 'off' });
+    expect(body.currentPrice).toBeNull();
+    expect(body.prices).toEqual([]);
+    expect(body.features).toEqual([{ feature: TASK.feature, requests: 1, inputTokens: 400, outputTokens: 70, costUsd: null }]);
   });
 
   it('tests the provider setup outside any allowance, and records the test', async () => {

@@ -179,6 +179,17 @@ test('platform admin signs in with two-factor authentication, sends a test alert
   await expect(page.getByText(/No school has an AI allowance yet/)).toBeVisible();
   await page.getByRole('button', { name: 'Test the connection' }).click();
   await expect(page.getByText(/^The AI provider answered: gemini-2\.5-pro, \d+ ms$/)).toBeVisible();
+  // The model's prices (test values), entered from the provider's price page; no platform budget in the E2E server.
+  await expect(page.getByText('Spending this month: US$0.00. No platform budget is set (AI_MONTHLY_BUDGET_USD).')).toBeVisible();
+  await expect(page.getByText(/This model has no price yet/)).toBeVisible();
+  await page.getByLabel('Input tokens, US$ per million').fill('1.25');
+  await page.getByLabel('Output tokens, US$ per million').fill('-1');
+  await page.getByRole('button', { name: 'Save prices' }).click();
+  await expect(page.getByLabel('Output tokens, US$ per million')).toHaveAttribute('aria-invalid', 'true');
+  await page.getByLabel('Output tokens, US$ per million').fill('10');
+  await page.getByRole('button', { name: 'Save prices' }).click();
+  await expect(page.getByRole('region', { name: 'Model prices' }).getByRole('row', { name: /gemini-2\.5-pro/ })).toContainText('US$1.25');
+  await expect(page.getByText(/From the provider’s price page/)).toBeVisible();
   await page.goto(`/admin/orgs/${orgAId}`);
   await expect(page.getByRole('heading', { name: 'Nile Learning' })).toBeVisible();
   await page.getByLabel('AI requests per month (override)').fill('100');

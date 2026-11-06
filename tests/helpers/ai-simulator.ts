@@ -22,7 +22,7 @@ export interface RecordedAiRequest {
 
 /** What the next request to a provider gets. Unscripted requests get an `ok` reply with `defaultText`. */
 export type SimReply =
-  | { kind: 'ok'; text: string; inputTokens?: number; outputTokens?: number; model?: string; delayMs?: number }
+  | { kind: 'ok'; text: string; inputTokens?: number; outputTokens?: number; model?: string; delayMs?: number; noUsage?: boolean }
   | { kind: 'length'; text: string }
   | { kind: 'refusal' }
   | { kind: 'error'; status: number; retryAfterMs?: number }
@@ -132,7 +132,8 @@ function geminiReply(r: Exclude<SimReply, { kind: 'error' | 'hang' }>, model: st
   const finishReason = r.kind === 'length' ? 'MAX_TOKENS' : 'STOP';
   return {
     candidates: [{ content: { role: 'model', parts: [{ text: r.text }] }, finishReason, index: 0 }],
-    usageMetadata: { ...usage, totalTokenCount: usage.promptTokenCount + usage.candidatesTokenCount + usage.thoughtsTokenCount },
+    // noUsage: a reply without token counts (the API documents usageMetadata as optional).
+    usageMetadata: r.kind === 'ok' && r.noUsage ? undefined : { ...usage, totalTokenCount: usage.promptTokenCount + usage.candidatesTokenCount + usage.thoughtsTokenCount },
     modelVersion: r.kind === 'ok' && r.model ? r.model : model,
   };
 }

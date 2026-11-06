@@ -21,6 +21,9 @@ provider's price page on the day of launch.
 | Token budget per school (AI-4) | `ai_tokens_per_month`: an estimate reserved before each call (and each second attempt), settled to the reply's counts; tokens counted for every school | `src/ai/service.ts` (`estimateTokens`, `runAiTask`), `src/billing/entitlements.ts` (`consumeUsage` amount, `adjustUsage`), migration 0021 |
 | Daily cap per member (AI-5) | `AI_USER_DAILY_LIMIT` (50) requests a day per member per school; 429 `AI_DAILY_LIMIT`; unit given back on failure | `src/ai/service.ts` (`takeDailyUnit`), `ai_user_daily` (migration 0021), cleanup in `src/jobs/tasks.ts` |
 | AI limits on plans (AI-7) | Every plan carries `ai_requests_per_month` (0) and `ai_tokens_per_month` (null) until D-6; overrides per school still replace them | `src/billing/plans.ts` |
+| Prices and cost per request (AI-3) | `ai_model_prices` entered by platform admins from the provider's price page (none assumed); each request priced when logged (`ai_requests.cost_usd_micros`) | `src/ai/costs.ts`, `src/ai/routes.ts`, migration 0022 |
+| Platform budget (AI-3) | `AI_MONTHLY_BUDGET_USD`: new requests get 503 `AI_PAUSED` once the month's cost reaches it, or with no price for the model; alerts at 80 % and 100 % and for a missing price | `src/ai/costs.ts` (`checkPlatformBudget`), `src/ops/alerts.ts` |
+| Cost report (AI-6) | Admin AI card: spending against the budget, cost per school and per feature, unpriced requests | `src/ai/routes.ts`, `public/js/views/admin.js` |
 
 The foundation (atomic quota, logging without content, staff-only) is good. What is missing is money.
 
@@ -29,8 +32,8 @@ The foundation (atomic quota, logging without content, staff-only) is good. What
 | ID | Gap | Severity | Evidence |
 | --- | --- | --- | --- |
 | A-1 | Quotas count **requests**, not tokens or money. One request can use up to 60,000 prompt characters and 16,000 output tokens, and a JSON retry costs a second full call without a second unit. **Tokens fixed by AI-4**: a school can have a token budget, and a JSON retry takes a second estimate from it; money is AI-3 | High · **tokens fixed** | `service.ts:26, 29, 88, 154` [V-code] |
-| A-2 | **No platform-wide spend cap** or circuit breaker: if many schools get allowances, nothing stops the monthly bill except per-school counts | High | No such check in `src/ai/` [V-code] |
-| A-3 | No cost model: tokens are stored but never priced; no per-plan or per-school margin view | Medium | `src/ai/routes.ts:42-50` sums tokens only [V-code] |
+| A-2 | **No platform-wide spend cap** or circuit breaker: if many schools get allowances, nothing stops the monthly bill except per-school counts. **Fixed by AI-3**: `AI_MONTHLY_BUDGET_USD` with alerts (docs/AI_LAYER.md §3); it needs the model's prices entered | High · **fixed** | `src/ai/costs.ts` [V-code] |
+| A-3 | No cost model: tokens are stored but never priced; no per-plan or per-school margin view. **Fixed by AI-3 and AI-6** for cost per request, school and feature; a margin against what each school pays waits for prices per plan (D-6) | Medium · **cost fixed** | `src/ai/routes.ts` [V-code] |
 | A-4 | Worst-case latency is very long: `AI_TIMEOUT_MS` 120 s per attempt, SDK retries 2 (3 attempts), and 2 attempts for valid JSON — up to about 12 minutes holding one HTTP request. **Fixed by task 1.6**: 60 s, 1 retry (`AI_MAX_RETRIES`), and a deadline on each provider call; at most 4 min 20 s, a provider that never answers gives 503 after about 2 min (docs/AI_LAYER.md §2) | Medium · **fixed** | `src/config.ts:87`, `src/ai/providers/gemini.ts:28`, `anthropic.ts:32`, `openai.ts:23`, `service.ts:29` [V-code] |
 | A-5 | Allowances are per school only; no per-user daily cap beyond the 30/hour route limit. **Fixed by AI-5**: `AI_USER_DAILY_LIMIT` (docs/AI_LAYER.md §3) | Low · **fixed** | [V-code] |
 | A-6 | Monthly period is UTC (`periodKey`), while schools work in local time | Low | `src/lib/time.ts:22-25` [V-code] |
@@ -48,10 +51,12 @@ Layered, cheapest first:
    *estimate* before the call (prompt characters / 2, since Arabic text can take a token per two characters, + requested
    max output), then settle to actual tokens from the reply inside the same `finish` transaction. JSON retries take
    another estimate.
-3. **Platform spend cap**: a `ai_platform_budget` setting (money per month) and a price table
-   `ai_model_prices(provider, model, input_per_mtok, output_per_mtok, currency, valid_from)`; before each call,
-   refuse new requests with `AI_BUSY` when month-to-date estimated spend ≥ cap; operational alert at 80 % and
-   100 %.
+3. **Platform spend cap** (**done, AI-3**): `AI_MONTHLY_BUDGET_USD` (US dollars a month) and a price table
+   `ai_model_prices(provider, model, input_usd_per_mtok, output_usd_per_mtok)`, entered by platform admins; each
+   request is priced when logged; before each call, new requests are refused with `AI_PAUSED` (not `AI_BUSY`, whose
+   message says to try again in a minute) when the month's cost ≥ cap, or with no price for the model; operational
+   alerts at 80 % and 100 % and for a missing price. A changed price applies to requests from then on (the audit
+   keeps the previous one), instead of a `valid_from` history.
 4. **Per-user daily cap** (**done, AI-5**: `AI_USER_DAILY_LIMIT`, 50 requests/day) to stop one account draining a school's allowance.
 5. **Shorter worst case** (**done, task 1.6**): `AI_TIMEOUT_MS` 60 s, provider retries 1 (`AI_MAX_RETRIES`), keep 2
    JSON attempts, and a deadline on each provider call ((1 + retries) × timeout + 10 s per retry), because the
@@ -60,7 +65,8 @@ Layered, cheapest first:
 6. **Model routing**: a small/fast model for structured suggestions; a larger one only for features that need it.
    Configuration becomes `AI_MODEL_DEFAULT` + per-feature override, still one provider.
 7. **Prompt caching** where the provider supports it for repeated system prompts **[ASSUMPTION]**.
-8. **Reporting**: cost per school, per feature, per plan this month; margin against what the school pays.
+8. **Reporting** (**done for cost, AI-6**): cost per school and per feature this month on the admin AI card; per
+   plan and the margin against what the school pays wait for the plan prices (D-6).
 
 ## 4. Budget worksheet (fill before launch)
 
@@ -72,7 +78,7 @@ Layered, cheapest first:
 | Requests per teacher per month | Assumption until pilot | Pilot |
 | Teachers per school | Assumption until pilot | Pilot |
 | Allowance per plan | Decision D-6 | Owner |
-| Platform monthly cap | Decision D-6 | Owner |
+| Platform monthly cap | Decision D-6, then `AI_MONTHLY_BUDGET_USD` | Owner |
 
 `cost per school ≈ requests × (avg_in × price_in + avg_out × price_out) × (1 + retry_rate)`
 
@@ -87,10 +93,10 @@ privacy notice and DPA; keep students out (already enforced). See SECURITY_GAP_A
 | --- | --- | --- | --- |
 | AI-1 Provider console budget + key on staging | Key (C-5) | `npm run ai:check` passes; console alert configured | `npm run ai:check` |
 | AI-2 **Done (task 1.6).** Timeouts and retries reduced (config + adapter default) | — | Worst case ≤ 4 min in a simulator test with a hanging provider (measured with the defaults: 503 `AI_UNAVAILABLE` after 120–122 s on all three adapters, TEST_REPORT §4) | `npm run test:integration -- ai ai-providers-contract` |
-| AI-3 Price table + month-to-date spend + platform cap | D-6 | With cap reached, new calls get 503 `AI_BUSY` and an alert fires; existing tests pass | New integration test using `tests/helpers/ai-simulator.ts` |
+| AI-3 **Done in code; the budget and prices wait for D-6 and the provider's price page.** Price table + month-to-date spend + platform cap | D-6 | With cap reached, new calls get 503 (`AI_PAUSED`) and an alert fires; existing tests pass | `npm run test:integration -- ai-costs` |
 | AI-4 **Done.** Token budget per school (estimate then settle) | — (built without prices: it counts tokens, not money) | Concurrent requests cannot exceed the token budget by more than one request's estimate (measured: 8 concurrent requests on a budget of 3 estimates, 3 reach the provider) | `npm run test:integration -- ai-limits` |
 | AI-5 **Done.** Per-user daily cap | — | 51st request in a day by one user gets 429 | `npm run test:integration -- ai-limits` |
-| AI-6 Cost report in platform admin | AI-3 | Admin AI card shows spend per school and per feature | E2E admin journey |
+| AI-6 **Done.** Cost report in platform admin | AI-3 | Admin AI card shows spend per school and per feature | `npm run test:integration -- ai-costs`; E2E admin journey (prices) |
 | AI-7 **Done in code; values wait for D-6.** Plan allowances | D-6 | Plans carry AI limits; overrides still work | `npm run test:unit -- billing-logic`, `npm run test:integration -- ai-limits` |
 
 ## 7. Verification commands

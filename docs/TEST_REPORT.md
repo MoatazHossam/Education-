@@ -815,6 +815,16 @@ test checks they are there; the owner ran the Windows repair commands in the gui
 | `tests/integration/ai.test.ts` | The admin endpoint's new fields (`userDailyLimit`, `tokenLimit`, `tokensUsed`) | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 67 files, 498 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests, the platform admin journey now setting a token budget and seeing "0 of 200,000" on the AI card | Pass |
 
+### What AI costs and the platform budget (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/ai-costs.test.ts` (new, 6 tests) against the provider simulator, with test prices (not any provider's) | Prices set by a platform administrator and audited with the previous ones; each request priced when logged (400 in × 1.25 + 70 out × 10 = 1,200 millionths of a dollar); a new price applies from then on; the answering model's price, else the configured model's, else no cost (counted as unpriced); a reply without counts priced at its estimate; a failed call at 0; price validation (negative, 7 decimals, over 100,000, missing, unknown provider, bad model id refused; 99,999.123456 and 0.075 accepted) and access (404 for non-admins); the cost report per school and per feature; with a budget of US$4 and US$1.60 a request: no price refused before the provider with the `ai_price_missing` alert, `ai_budget_high` at US$3.20, a request still allowed under the budget, `ai_budget_reached` at US$4.80, then both schools refused (the provider not called), last month's spending not counted | Pass |
+| The same file with the budget check removed, then with request pricing removed | 2 and 4 tests fail | The tests catch both |
+| `tests/unit/ai-layer.test.ts` | The budget setting (0 by default, decimals, negative refused); dollars and millionths converted exactly | Pass |
+| `tests/unit/system-context-allowlist.test.ts` | The new cross-school reads recorded with their reasons (the platform's spending, sums only; the admin cost report and prices) | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 68 files, 506 tests; E2E in Chromium (Playwright 1.56.1) journeys and accessibility, 31 tests, the platform admin journey now entering the model's prices (a negative one refused next to the field). The first two runs found two faults in the new card, both fixed: the price form was not shown (the form helper's element was not used), and the remove button's spoken name did not contain its visible text (axe `label-content-name-mismatch`) | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

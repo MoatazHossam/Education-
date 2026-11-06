@@ -148,16 +148,51 @@ security): use the provider's backups and point-in-time recovery instead. The ap
 needs one `BYPASSRLS` role, the system role: check that the provider allows it before choosing one.
 
 **Installations made before migration 0019 (the system role).** The roles script runs only when the
-database volume is first created, so an existing database lacks the system role. Before upgrading, as a
-superuser (bundled: `docker compose … exec postgres psql -U postgres`), with your own password, then add
-`DB_SYSTEM_PASSWORD` (bundled) or `SYSTEM_DATABASE_URL` (managed) to the settings file:
+database volume is first created, so an existing database lacks the system role. Such a database is
+refused before anything in it changes: `migrate` stops with "The database has no role "midad_system"
+(the system role, SYSTEM_DB_ROLE)…", the app does not start, and the ops scripts' **status** shows that
+message (§8.2). Before upgrading, run as a superuser (bundled: `docker compose … exec postgres psql -U
+postgres -d <DB_NAME>`), with your own password and your `DB_NAME`, then add `DB_SYSTEM_PASSWORD`
+(bundled) or `SYSTEM_DATABASE_URL` (managed) to the settings file:
 
 ```sql
 CREATE ROLE midad_system LOGIN PASSWORD '…' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB;
-GRANT CONNECT ON DATABASE midad TO midad_system;
+GRANT CONNECT ON DATABASE midad TO midad_system;  -- your DB_NAME in place of midad
 ```
 
-The `migrate` service then grants it its privileges. Going back to a release before 0019 needs
+The `migrate` service then grants it its privileges. Start refuses a bundled installation whose settings
+file has no `DB_SYSTEM_PASSWORD` and names this section.
+
+With the bundled database and the ops scripts (§8), the same in a few commands, run in the installation
+folder. They make a random password, create the role with it, add it to the settings file (the last
+`DB_SYSTEM_PASSWORD=` line counts, so an empty or `change-me` one above it does no harm) and start again;
+the password is not shown. `midad-postgres-1` is the database container of the default project
+(`docker ps` lists it); for production use `.env.production` and `--env prod`.
+
+Linux:
+
+```bash
+c=midad-postgres-1
+p=$(openssl rand -hex 24)
+db=$(docker exec "$c" printenv DB_NAME)
+su=$(docker exec "$c" printenv POSTGRES_USER)
+echo "CREATE ROLE midad_system LOGIN PASSWORD '$p' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB; GRANT CONNECT ON DATABASE $db TO midad_system;" | docker exec -i "$c" psql -v ON_ERROR_STOP=1 -U "$su" -d "$db"
+printf '\nDB_SYSTEM_PASSWORD=%s\n' "$p" >> .env.docker
+ops/start.sh --env dev
+```
+
+Windows (PowerShell):
+
+```powershell
+$c = 'midad-postgres-1'
+$b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+$p = -join ($b | ForEach-Object { $_.ToString('x2') })
+$db = docker exec $c printenv DB_NAME
+$su = docker exec $c printenv POSTGRES_USER
+"CREATE ROLE midad_system LOGIN PASSWORD '$p' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB; GRANT CONNECT ON DATABASE $db TO midad_system;" | docker exec -i $c psql -v ON_ERROR_STOP=1 -U $su -d $db
+Add-Content -Path .env.docker -Value "`nDB_SYSTEM_PASSWORD=$p"
+.\ops\start.bat --env dev
+``` Going back to a release before 0019 needs
 `npm run db:migrate:down` once (it reverts 0019) before the older image starts: older releases rely on the
 setting that 0019 switched off.
 
@@ -472,7 +507,18 @@ unless they were stopped with the stop script, which keeps them stopped.
 - **Stop** asks: stop (containers kept, start again with start) or stop and remove the containers. Neither
   deletes data: the database, certificates and virus signatures stay in Docker volumes.
 - **Status** lists the services with their state and health, whether each app instance is ready, and
-  the address.
+  the address. When something keeps the installation from running, it says what: a required setting
+  that is empty in the settings file, or a database update (the `migrate` service) that failed, with
+  the update's own message and the command for its full log. Example, a database set up before the
+  system role (below, §3.3):
+
+  ```
+    app: not ready
+  Warning: the database update (the migrate service) failed, so the app does not start:
+    The database has no role "midad_system" (the system role, SYSTEM_DB_ROLE). A database set up before migration 0019 lacks it: …
+    Nothing was changed in the database.
+    Full log: docker logs midad-migrate-1
+  ```
 
 ### 8.3 Backups
 

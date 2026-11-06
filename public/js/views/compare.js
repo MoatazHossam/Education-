@@ -1,6 +1,6 @@
 // Two scopes side by side: which books each includes, grade by grade. Across
 // catalogue years the server matches books by subject and title.
-import { ApiError, get } from '../api.js';
+import { ApiError, get, request } from '../api.js';
 import { dialog, downloadText, errorMessage, h, link, tableCard } from '../dom.js';
 import { locale, t } from '../i18n.js';
 import { navigate } from '../router.js';
@@ -39,7 +39,7 @@ export async function compareView(ctx) {
 
   async function download() {
     try {
-      const res = await fetch(`/api/orgs/${orgId}/scopes/compare?a=${a}&b=${b}&format=csv`, { credentials: 'same-origin' });
+      const res = await request(`/api/orgs/${orgId}/scopes/compare?a=${a}&b=${b}&format=csv`, { credentials: 'same-origin' });
       if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'compare.csv';
       downloadText(name, await res.text(), 'text/csv');

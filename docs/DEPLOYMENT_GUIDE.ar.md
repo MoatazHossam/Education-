@@ -151,14 +151,49 @@ curl -fsS https://<domain>/readyz
 
 عند ضبط `DATABASE_URL` تشغّل السكربتات كل الخدمات ما عدا خدمة `postgres` المضمّنة. إن كان المزود لا يسمح بـ `BYPASSRLS`، فلن تستطيع السكربتات أخذ نسخة احتياطية (جداول المؤسسات تفرض أمان مستوى الصف حتى على مالكها): استخدم حينها النسخ الاحتياطية للمزود والاستعادة إلى نقطة زمنية. ويحتاج التطبيق نفسه أيضًا إلى دور واحد بصلاحية `BYPASSRLS` هو دور النظام: تأكّد أن المزوّد يسمح بذلك قبل اختياره.
 
-**التثبيتات السابقة للترحيل 0019 (دور النظام).** لا يعمل سكربت الأدوار إلا عند إنشاء وحدة تخزين قاعدة البيانات أول مرة، فقاعدة البيانات الموجودة تنقصها دور النظام. قبل الترقية، نفّذ بصلاحية المستخدم الأعلى (المضمّنة: <span dir="ltr">`docker compose … exec postgres psql -U postgres`</span>) وبكلمة مرور من اختيارك، ثم أضف `DB_SYSTEM_PASSWORD` (المضمّنة) أو `SYSTEM_DATABASE_URL` (المُدارة) إلى ملف الإعدادات:
+**التثبيتات السابقة للترحيل 0019 (دور النظام).** لا يعمل سكربت الأدوار إلا عند إنشاء وحدة تخزين قاعدة البيانات أول مرة، فقاعدة البيانات الموجودة تنقصها دور النظام. وقاعدة بيانات كهذه تُرفض قبل أن يتغير فيها أي شيء: تتوقف خدمة `migrate` برسالة «<span dir="ltr">The database has no role "midad_system" (the system role, SYSTEM_DB_ROLE)…</span>» أي أن قاعدة البيانات ليس فيها دور النظام، فلا يبدأ التطبيق، ويعرض أمر **الحالة** (status) في سكربتات التشغيل هذه الرسالة ([القسم 8.2](#82-التشغيل-والإيقاف-والحالة)). قبل الترقية، نفّذ بصلاحية المستخدم الأعلى (المضمّنة: <span dir="ltr">`docker compose … exec postgres psql -U postgres -d <DB_NAME>`</span>) وبكلمة مرور من اختيارك وباسم قاعدة بياناتك `DB_NAME`، ثم أضف `DB_SYSTEM_PASSWORD` (المضمّنة) أو `SYSTEM_DATABASE_URL` (المُدارة) إلى ملف الإعدادات:
 
 ```sql
 CREATE ROLE midad_system LOGIN PASSWORD '…' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB;
-GRANT CONNECT ON DATABASE midad TO midad_system;
+GRANT CONNECT ON DATABASE midad TO midad_system;  -- your DB_NAME in place of midad
 ```
 
-تمنحه خدمة `migrate` بعد ذلك صلاحياته. والرجوع إلى إصدار أقدم من 0019 يحتاج إلى تشغيل <span dir="ltr">`npm run db:migrate:down`</span> مرة واحدة (يتراجع عن 0019) قبل تشغيل الصورة الأقدم، لأن الإصدارات الأقدم تعتمد على الإعداد الذي أوقفه 0019.
+تمنحه خدمة `migrate` بعد ذلك صلاحياته. ويرفض التشغيل (start) تثبيتًا بقاعدة البيانات المضمّنة ليس في ملف إعداداته `DB_SYSTEM_PASSWORD`، ويذكر هذا القسم.
+
+ومع قاعدة البيانات المضمّنة وسكربتات التشغيل ([القسم 8](#8-سكربتات-التشغيل-لينكس-وويندوز)) يتم ذلك بأوامر قليلة تُنفَّذ في مجلد التثبيت: تُنشئ كلمة مرور عشوائية، وتُنشئ الدور بها، وتضيفها إلى ملف الإعدادات (المعتبَر هو آخر سطر `DB_SYSTEM_PASSWORD=`، فلا يضر سطر فارغ أو `change-me` قبله)، ثم تشغّل من جديد، ولا تُعرض كلمة المرور. و`midad-postgres-1` هو حاوية قاعدة البيانات في المشروع الافتراضي (يعرضها الأمر `docker ps`)؛ وفي الإنتاج استخدم `.env.production` و<span dir="ltr">`--env prod`</span>.
+
+لينكس:
+
+<div dir="ltr">
+
+```bash
+c=midad-postgres-1
+p=$(openssl rand -hex 24)
+db=$(docker exec "$c" printenv DB_NAME)
+su=$(docker exec "$c" printenv POSTGRES_USER)
+echo "CREATE ROLE midad_system LOGIN PASSWORD '$p' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB; GRANT CONNECT ON DATABASE $db TO midad_system;" | docker exec -i "$c" psql -v ON_ERROR_STOP=1 -U "$su" -d "$db"
+printf '\nDB_SYSTEM_PASSWORD=%s\n' "$p" >> .env.docker
+ops/start.sh --env dev
+```
+
+</div>
+
+ويندوز (PowerShell):
+
+<div dir="ltr">
+
+```powershell
+$c = 'midad-postgres-1'
+$b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+$p = -join ($b | ForEach-Object { $_.ToString('x2') })
+$db = docker exec $c printenv DB_NAME
+$su = docker exec $c printenv POSTGRES_USER
+"CREATE ROLE midad_system LOGIN PASSWORD '$p' NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB; GRANT CONNECT ON DATABASE $db TO midad_system;" | docker exec -i $c psql -v ON_ERROR_STOP=1 -U $su -d $db
+Add-Content -Path .env.docker -Value "`nDB_SYSTEM_PASSWORD=$p"
+.\ops\start.bat --env dev
+```
+
+</div> والرجوع إلى إصدار أقدم من 0019 يحتاج إلى تشغيل <span dir="ltr">`npm run db:migrate:down`</span> مرة واحدة (يتراجع عن 0019) قبل تشغيل الصورة الأقدم، لأن الإصدارات الأقدم تعتمد على الإعداد الذي أوقفه 0019.
 
 ### 3.4 أول مدير للمنصة
 
@@ -377,7 +412,19 @@ docker compose ... exec app node dist/cli/create-platform-admin.js --email ops@<
   - يسأل «<span dir="ltr">Rebuild the app image first (after updating the code)?</span>» أي: هل يعيد بناء الصورة أولًا (بعد تحديث الكود)؟ وتُحفظ الصورة المستبدلة باسم `midad:previous` ([القسم 4](#4-الترقيات-والرجوع-إلى-الإصدار-السابق)).
   - مع قاعدة بيانات مُدارة (`DATABASE_URL` مضبوط) لا تُشغَّل خدمة `postgres` المضمّنة.
 - **الإيقاف** (stop) يسأل «<span dir="ltr">Stop how?</span>» (كيف يوقف): الخيار 1 إيقاف مع بقاء الحاويات (ثم التشغيل من جديد بسكربت التشغيل)، أو الخيار 2 إيقاف مع حذف الحاويات. لا يحذف أي منهما بيانات: قاعدة البيانات والشهادات وبصمات الفيروسات تبقى في مجلدات Docker الدائمة.
-- **الحالة** (status) تسرد الخدمات مع حالتها وصحتها، وهل كل مثيل للتطبيق جاهز، والعنوان.
+- **الحالة** (status) تسرد الخدمات مع حالتها وصحتها، وهل كل مثيل للتطبيق جاهز، والعنوان. وإن منع شيءٌ التثبيتَ من العمل ذكرته: إعداد مطلوب فارغ في ملف الإعدادات، أو تحديث لقاعدة البيانات (خدمة `migrate`) فشل، مع رسالة التحديث نفسها والأمر الذي يعرض سجله كاملًا. مثال ذلك قاعدة بيانات أُنشئت قبل دور النظام ([القسم 3.3](#33-التشغيل)):
+
+  <div dir="ltr">
+
+  ```
+    app: not ready
+  Warning: the database update (the migrate service) failed, so the app does not start:
+    The database has no role "midad_system" (the system role, SYSTEM_DB_ROLE). A database set up before migration 0019 lacks it: …
+    Nothing was changed in the database.
+    Full log: docker logs midad-migrate-1
+  ```
+
+  </div>
 
 ### 8.3 النسخ الاحتياطية
 

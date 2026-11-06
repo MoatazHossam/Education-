@@ -44,10 +44,10 @@ afterAll(async () => {
 });
 
 /** The `migrate` service's command (src/db/migrate-cli.ts) as its own process, against the scratch database. */
-function migrateCli(cmd: 'up' | 'down'): Promise<{ code: number | null; out: string }> {
+function migrateCli(cmd: 'up' | 'down', env: Record<string, string> = {}): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['--import', 'tsx', 'src/db/migrate-cli.ts', cmd], {
-      env: { ...process.env, ...TEST_ENV, MIGRATION_DATABASE_URL: ownerUrl, APP_DB_ROLE: '', SYSTEM_DB_ROLE: '' },
+      env: { ...process.env, ...TEST_ENV, MIGRATION_DATABASE_URL: ownerUrl, APP_DB_ROLE: '', SYSTEM_DB_ROLE: '', ...env },
     });
     let out = '';
     child.stdout.on('data', (d) => (out += d));
@@ -109,5 +109,54 @@ describe('migrations and rollbacks', () => {
     await expect(migrateToLatest(db)).rejects.toThrow(`but lacks this release's ${LATEST_MIGRATION}`);
     await markApplied(LATEST_MIGRATION);
     expect(await migrateToLatest(db)).toEqual([]);
+  });
+});
+
+describe('a database without a runtime role (one set up before migration 0019 has no system role)', () => {
+  const OLD_DB = `${TEST_DB}_migrator_roles`;
+  const oldUrl = (() => {
+    const u = new URL(OWNER_URL);
+    u.pathname = `/${OLD_DB}`;
+    return u.toString();
+  })();
+  let old: Database;
+
+  beforeAll(async () => {
+    await admin(async (c) => {
+      await c.query(`DROP DATABASE IF EXISTS ${OLD_DB} WITH (FORCE)`);
+      await c.query(`CREATE DATABASE ${OLD_DB} OWNER midad_test_owner`);
+    });
+    old = createDatabase(oldUrl, { poolMax: 1 });
+  });
+  afterAll(async () => {
+    await old.destroy();
+    await admin((c) => c.query(`DROP DATABASE IF EXISTS ${OLD_DB} WITH (FORCE)`));
+  });
+
+  it('migrate stops before changing anything and says which role is missing and where the fix is', async () => {
+    const roles = { MIGRATION_DATABASE_URL: oldUrl, APP_DB_ROLE: 'midad_test_app', SYSTEM_DB_ROLE: 'midad_nosuch_system' };
+    const run = await migrateCli('up', roles);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('The database has no role "midad_nosuch_system" (the system role, SYSTEM_DB_ROLE)');
+    expect(run.out).toContain('docs/DEPLOYMENT_GUIDE.md section 3.3 "Installations made before migration 0019"');
+    // Plain ASCII: Windows PowerShell shows other characters from Docker's output garbled.
+    expect([...run.out].filter((c) => c.charCodeAt(0) > 127)).toEqual([]);
+    expect(run.out).toContain('migrate: Nothing was changed in the database.');
+    // Said plainly: no stack trace, no driver error object.
+    expect(run.out).not.toMatch(/\n\s+at |code: '42704'/);
+    const tables = () => sql<{ n: number }>`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = 'public'`.execute(old).then((r) => r.rows[0]!.n);
+    expect(await tables()).toBe(0);
+
+    // A wrong app role is named too.
+    const app = await migrateCli('up', { ...roles, APP_DB_ROLE: 'midad_nosuch_app', SYSTEM_DB_ROLE: 'midad_test_system' });
+    expect(app.code).toBe(1);
+    expect(app.out).toContain('The database has no role "midad_nosuch_app" (the app role, APP_DB_ROLE, from DB_APP_USER)');
+    expect(app.out).not.toContain('midad_test_system');
+
+    // Once the role exists, the same command migrates and grants.
+    const ok = await migrateCli('up', { ...roles, SYSTEM_DB_ROLE: 'midad_test_system' });
+    expect(ok.out).toContain('Granted runtime privileges to the system role midad_test_system');
+    expect(ok.code).toBe(0);
+    expect(await pendingMigrations(old)).toEqual([]);
   });
 });

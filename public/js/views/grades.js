@@ -1,6 +1,6 @@
 // The gradebook for teachers and "My grades" for students (docs/CLASSROOM.md §10).
 // Read only: marks are given on the homework and test pages.
-import { ApiError, get } from '../api.js';
+import { ApiError, get, request } from '../api.js';
 import { downloadText, errorMessage, fmtDate, fmtNum, h, link, none, tableCard, th, toast } from '../dom.js';
 import { t } from '../i18n.js';
 import { navigate } from '../router.js';
@@ -37,7 +37,7 @@ export async function gradebookView(ctx) {
 
   async function download() {
     try {
-      const res = await fetch(`/api/orgs/${orgId}/classes/${classId}/gradebook?subject=${encodeURIComponent(subject.subjectEn)}&format=csv`, { credentials: 'same-origin' });
+      const res = await request(`/api/orgs/${orgId}/classes/${classId}/gradebook?subject=${encodeURIComponent(subject.subjectEn)}&format=csv`, { credentials: 'same-origin' });
       if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'gradebook.csv';
       downloadText(name, await res.text(), 'text/csv');

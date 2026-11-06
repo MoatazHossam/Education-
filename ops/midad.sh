@@ -175,12 +175,23 @@ db_name() { # DB_NAME, or the database named in DATABASE_URL (managed database)
   printf '%s' "$n"
 }
 
-check_env() {
-  local k missing=() keys=(SESSION_SECRET DATA_ENCRYPTION_KEY)
+missing_settings() { # the settings the installation cannot run without that are empty, one per line
+  local k keys=(SESSION_SECRET DATA_ENCRYPTION_KEY)
   if ((MANAGED)); then keys+=(MIGRATION_DATABASE_URL SYSTEM_DATABASE_URL); else keys+=(POSTGRES_SUPERUSER_PASSWORD DB_NAME DB_OWNER_USER DB_OWNER_PASSWORD DB_APP_USER DB_APP_PASSWORD DB_SYSTEM_PASSWORD DB_BACKUP_PASSWORD); fi
   [[ $ENV_NAME == prod ]] && keys+=(APP_URL DOMAIN ACME_EMAIL)
-  for k in "${keys[@]}"; do [[ -n $(envget "$k") ]] || missing+=("$k"); done
-  ((${#missing[@]} == 0)) || die "set these in $ENV_FILE first: ${missing[*]}"
+  for k in "${keys[@]}"; do [[ -n $(envget "$k") ]] || printf '%s\n' "$k"; done
+  return 0
+}
+system_role_note() { # system_role_note SETTING...: the step a database older than the system role needs too
+  [[ " $* " == *' DB_SYSTEM_PASSWORD '* || " $* " == *' SYSTEM_DATABASE_URL '* ]] || return 0
+  printf '\n  %s' 'The system role came with migration 0019: a database set up before it also needs the role created,' \
+    'as docs/DEPLOYMENT_GUIDE.md §3.3 "Installations made before migration 0019" shows.'
+}
+
+check_env() {
+  local missing=()
+  mapfile -t missing < <(missing_settings)
+  ((${#missing[@]} == 0)) || die "set these in $ENV_FILE first: ${missing[*]}$(system_role_note "${missing[@]}")"
   if [[ $ENV_NAME == prod ]]; then
     grep -qE '=change-me' "$ENV_FILE" && die "$ENV_FILE still has change-me values: replace every password (docs/DEPLOYMENT_GUIDE.md §3.2)"
     [[ $(envget APP_URL) == https://* ]] || die "APP_URL must start with https:// in production"
@@ -239,7 +250,11 @@ cmd_start() {
     docker image inspect "$IMAGE" >/dev/null 2>&1 && docker tag "$IMAGE" midad:previous
   fi
   step "Starting the $ENV_NAME installation ($PROJECT)"
-  dc "${args[@]}"
+  # Compose stops at a failed database update with only "service "migrate" didn't complete successfully".
+  if ! dc "${args[@]}"; then
+    explain_problems
+    die "the $ENV_NAME installation did not start: see above"
+  fi
   step "Waiting for the app"
   local s
   for s in $(apps); do wait_ready "$s" || true; done
@@ -262,7 +277,26 @@ show_status() {
   for s in $(apps); do
     if ready "$s"; then say "  $s: ready"; else say "  $s: not ready"; fi
   done
+  explain_problems
   say "Address: $(envget APP_URL)"
+}
+started_at() { docker inspect -f '{{.State.StartedAt}}' "$1" 2>/dev/null || true; }
+explain_problems() { # what keeps an installation from running, as far as this script can tell
+  local missing=() state name started since=() lines
+  mapfile -t missing < <(missing_settings)
+  ((${#missing[@]} == 0)) || warn "empty in $ENV_FILE: ${missing[*]} (the app cannot run without them)$(system_role_note "${missing[@]}")"
+  state=$(dc ps -a --format '{{.State}} {{.ExitCode}}' migrate 2>/dev/null | head -n 1 || true)
+  [[ $state == exited\ * && $state != 'exited 0' ]] || return 0
+  name=$(dc ps -a --format '{{.Name}}' migrate 2>/dev/null | head -n 1 || true)
+  # Its last run only: a container's log keeps every earlier run (each start runs migrate again).
+  [[ -z $name ]] || started=$(started_at "$name")
+  [[ -z ${started-} ]] || since=(--since "$started")
+  # The migrate command says a step for the operator on lines of its own; any other failure by its first error line.
+  lines=$(dc logs "${since[@]}" --no-log-prefix --no-color migrate 2>/dev/null | grep '^migrate: ' | sed 's/^migrate: //' || true)
+  [[ -n $lines ]] || lines=$(dc logs "${since[@]}" --no-log-prefix --no-color migrate 2>/dev/null | grep -m 1 -iE '^[a-z]*error\b' || true)
+  warn "the database update (the migrate service) failed, so the app does not start:"
+  [[ -z $lines ]] || printf '  %s\n' "${lines//$'\n'/$'\n'  }" >&2
+  say "  Full log: docker logs ${name:-migrate}"
 }
 cmd_status() { pick_env; show_status; }
 

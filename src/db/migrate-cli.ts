@@ -1,10 +1,11 @@
 import { loadMigrationConfig } from '../config.js';
 import { createDatabase } from './index.js';
-import { createMigrator, grantAppRole, migrateToLatest, migrationStatus } from './migrator.js';
+import { checkRuntimeRoles, createMigrator, grantAppRole, migrateToLatest, migrationStatus, SetupError } from './migrator.js';
 
 // Usage: migrate-cli up|down
 // Connects with MIGRATION_DATABASE_URL (schema owner). When APP_DB_ROLE and
-// SYSTEM_DB_ROLE are set, grants those runtime roles their permissions afterwards.
+// SYSTEM_DB_ROLE are set, checks first that those runtime roles exist (a database set up
+// before migration 0019 has no system role) and grants them their permissions afterwards.
 // Reads no other setting: the migrate container gets none of the application's secrets.
 // `up` on a database a later release migrated (a rollback) succeeds with nothing to apply.
 async function main() {
@@ -13,18 +14,19 @@ async function main() {
   const cmd = process.argv[2] ?? 'up';
   try {
     if (cmd === 'up') {
+      const role = process.env.APP_DB_ROLE;
+      const systemRole = process.env.SYSTEM_DB_ROLE;
+      await checkRuntimeRoles(db, { app: role, system: systemRole });
       const applied = await migrateToLatest(db);
       const { newer } = await migrationStatus(db);
       if (applied.length) console.log(`Applied: ${applied.join(', ')}`);
       // A rollback: an older release started on a database a later release migrated. Nothing to apply.
       else if (newer.length) console.log(`Database is ahead of this release (rollback): ${newer.join(', ')} stay applied; this release's migrations are all applied`);
       else console.log('Database already up to date');
-      const role = process.env.APP_DB_ROLE;
       if (role) {
         await grantAppRole(db, role, 'app');
         console.log(`Granted runtime privileges to role ${role}`);
       }
-      const systemRole = process.env.SYSTEM_DB_ROLE;
       if (systemRole) {
         await grantAppRole(db, systemRole, 'system');
         console.log(`Granted runtime privileges to the system role ${systemRole}`);
@@ -44,6 +46,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  // A step for the operator is said plainly, each line marked for ops/midad.sh status to show; anything
+  // else keeps its stack for whoever looks into it.
+  console.error(err instanceof SetupError ? err.message.replace(/^/gm, 'migrate: ') : err);
   process.exit(1);
 });

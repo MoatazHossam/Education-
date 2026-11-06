@@ -29,6 +29,10 @@ updates:
       # The types follow the Node.js the image runs (22), not the newest release.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # TypeScript 7 type-checks this code, but typescript-eslint 8.72 refuses to run with it (peer
+      # typescript <6.1; typescript-eslint/typescript-eslint#10940). Remove when it supports TypeScript 7.
+      - dependency-name: "typescript"
+        update-types: [version-update:semver-major]
     groups:
       # Minor and patch updates in one pull request a week; each major version in its own.
       npm-minor-and-patch:

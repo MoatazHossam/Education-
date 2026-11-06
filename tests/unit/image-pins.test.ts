@@ -121,11 +121,12 @@ describe('dependency updates', () => {
     for (const u of updates) expect(u['target-branch'], `${u['package-ecosystem']} ${u.directory}`).toBe('main');
   });
 
-  it('Dependabot proposes no new major version of Node.js (nor its types) or PostgreSQL', () => {
+  it('Dependabot proposes no new major version of Node.js (nor its types), TypeScript or PostgreSQL', () => {
     const ignored = (eco: string, dir: string) =>
       updates.find((u) => u['package-ecosystem'] === eco && u.directory === dir)?.ignore?.map((i) => `${i['dependency-name']} ${i['update-types']?.join()}`);
     expect(ignored('docker', '/')).toEqual(['node version-update:semver-major']);
-    expect(ignored('npm', '/')).toEqual(['@types/node version-update:semver-major']);
+    // TypeScript's next major waits for typescript-eslint (the comment in .github/dependabot.yml).
+    expect(ignored('npm', '/')).toEqual(['@types/node version-update:semver-major', 'typescript version-update:semver-major']);
     // Kysely (0.x, where a minor version may break) is kept out of the weekly group.
     expect(updates.find((u) => u['package-ecosystem'] === 'npm')?.groups?.['npm-minor-and-patch']?.['exclude-patterns']).toEqual(['kysely']);
     expect(ignored('docker-compose', '/')).toEqual(['postgres version-update:semver-major']);

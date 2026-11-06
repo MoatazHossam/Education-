@@ -25,6 +25,18 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Dependabot's major versions · COMPLETE except TypeScript 7 (held) (2026-11-06)
+- **`@types/nodemailer` (#65):** removed instead of moved to 8. nodemailer 10 ships its own types, which TypeScript
+  already used; the DefinitelyTyped package (written for nodemailer 7) was never read.
+- **ESLint 10 and `@eslint/js` 10 (#54, #55):** the config is unchanged; the new recommended rule
+  `no-useless-assignment` found five initial values that every path overwrites, now removed.
+- **otplib 13 (#56):** two-step sign-in codes moved to its functions. A new test checks codes against RFC 6238's own
+  values and an independent HMAC; it passes unchanged on otplib 12 and 13, so the same codes are accepted.
+- **Anthropic SDK 1.x (#57):** prepared (API version 2026-10-21, key sent as `Authorization: Bearer`); merged
+  after the owner confirms no gateway in front of Anthropic reads `X-Api-Key`.
+- **TypeScript 7 (#58): held.** It type-checks this code, but typescript-eslint 8.72 refuses to run with it.
+  Dependabot no longer proposes TypeScript majors; the entry in `.github/dependabot.yml` says when to remove it.
+
 ### Clear messages when the server or the database update fails · COMPLETE (2026-11-06)
 - **Reported:** the owner's local installation, set up before migration 0019, did not start. `migrate` stopped with
   a raw `role "midad_system" does not exist`, the start script showed only compose's "service "migrate" didn't

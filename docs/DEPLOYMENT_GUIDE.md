@@ -344,7 +344,9 @@ Updates come as pull requests from Dependabot (`.github/dependabot.yml`), every 
 and patch updates together in one pull request, each major version in its own), new digests or tags for
 every image, and new releases of the actions. npm packages and actions are proposed a week after they are
 published, so a broken or compromised release is usually withdrawn first. New major versions of Node.js (and
-of its types, `@types/node`) and PostgreSQL are not proposed: they are planned upgrades (below). The pull
+of its types, `@types/node`) and PostgreSQL are not proposed: they are planned upgrades (below). Nor is
+TypeScript 7 for now: it checks this code, but the linter's TypeScript support (typescript-eslint) does not run
+with it yet; remove that entry from `.github/dependabot.yml` once it does. The pull
 requests target `main`, and each one runs the full CI.
 
 Once, on GitHub (repository owner): Settings > Code security, turn on **Dependabot alerts** and

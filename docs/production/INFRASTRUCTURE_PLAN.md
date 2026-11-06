@@ -8,13 +8,17 @@ No Kubernetes and no service split is proposed: the measured load (below) does n
 
 | Service | Image | Role | Health | Source |
 | --- | --- | --- | --- | --- |
-| `postgres` | `postgres:16-alpine` | Database (bundled; optional when managed) | `pg_isready` | `docker-compose.yml:67-91` |
+| `postgres` | `postgres:16-alpine@sha256:…` | Database (bundled; optional when managed) | `pg_isready` | `docker-compose.yml:67-91` |
 | `migrate` | `midad:${APP_IMAGE_TAG}` | One-shot: migrations, then catalogue seed | exit code | `docker-compose.yml:95-105` |
 | `app`, `app2` | same | Web/API, stateless | `/healthz` (Dockerfile), `/readyz` (Caddy) | `docker-compose.yml:107-116`, `docker-compose.prod.yml:24-37`, `Dockerfile:36-37` |
 | `worker` | same | Jobs loop, file checks | DB heartbeat (`dist/cli/worker-health.js`) | `docker-compose.yml:118-133` |
-| `clamav` | `clamav/clamav:1.5` | Virus scan (clamd) | `clamdcheck.sh`, 180 s start | `docker-compose.prod.yml:54-65` |
-| `caddy` | `caddy:2.10-alpine` | TLS, compression, load balancing | — | `docker-compose.prod.yml:78-94`, `deploy/Caddyfile` |
+| `clamav` | `clamav/clamav:1.5@sha256:…` | Virus scan (clamd) | `clamdcheck.sh`, 180 s start | `docker-compose.prod.yml:54-65` |
+| `caddy` | `caddy:2.10-alpine@sha256:…` | TLS, compression, load balancing | — | `docker-compose.prod.yml:78-94`, `deploy/Caddyfile` |
 | `mailpit` | dev only | — | — | `docker-compose.prod.yml:75-76` |
+
+Every third-party image, and the app image's Node.js base (`node:22-bookworm-slim@sha256:…`), is pinned by digest
+since task 1.9 (security finding S-15); Dependabot proposes new digests and tags weekly (`.github/dependabot.yml`,
+`DEPLOYMENT_GUIDE.md` §4).
 
 Good practice already present: non-root image; log rotation on every container (`docker-compose.yml:8-12`);
 database not published to the host (`docker-compose.yml:90-91`); app ports removed in production
@@ -29,7 +33,7 @@ database not published to the host (`docker-compose.yml:90-91`); app ports remov
 | I-1 | ~~No memory or CPU limits on any container; one runaway (ClamAV reload, image decode) can push PostgreSQL into the OOM killer~~ **Fixed 2026-11-05 (task 1.4):** a memory limit per container (§3) | — | `docker-compose.prod.yml` [V-run, §3] |
 | I-2 | ~~PostgreSQL runs with stock settings (`shared_buffers` 128 MB etc.)~~ **Fixed 2026-11-05 (task 1.4):** tuned for its memory limit (§5) | — | `docker-compose.prod.yml` [V-run, §5] |
 | I-3 | ~~Rollback through `ops/start.sh` fails after a release that added a migration~~ **Fixed 2026-11-05 (task 1.2)** | — | See §6 [V-run] |
-| I-4 | Images are built on the production host; only one `previous` tag is kept; no registry, no digests | Medium | `ops/midad.sh:206-231`, `scripts/rolling-restart.sh:26-35` [V-code] |
+| I-4 | Images are built on the production host; only one `previous` tag is kept; no registry, no digests for the app image (base and third-party images are pinned by digest since task 1.9) | Medium | `ops/midad.sh:206-231`, `scripts/rolling-restart.sh:26-35` [V-code] |
 | I-5 | Bundled database has daily logical backups only: RPO 24 h, no point-in-time recovery | Medium | `docs/DEPLOYMENT_GUIDE.md §5` [DOC] |
 | I-6 | Homework files live in PostgreSQL (`bytea`), default quota 1 GB per school | Medium | `0013_classroom.ts:127`, `src/billing/entitlements.ts:9` [V-code] |
 | I-7 | ~~ClamAV needs ~1.5 GB and may briefly need about twice that while reloading signatures~~ **Fixed 2026-11-05 (task 1.4):** measured 0.94 GB steady and 1.89 GB during a reload; with `ConcurrentDatabaseReload no` the reload stays at 0.96 GB | — | [V-run, §3] |

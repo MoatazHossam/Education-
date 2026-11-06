@@ -43,7 +43,7 @@ scripts/ci-local.sh                                   # full CI locally (GitHub 
 | 1.6 | **Done (2026-11-05).** **AI worst-case latency**: timeout 60 s, provider retries 1, configurable | A-4 | 0.5 d | Simulator with a hanging provider returns 503 within ~4 min | `npm run test:integration -- ai ai-providers-contract` |
 | 1.7 | **Done (2026-11-06).** **Webhook endpoint limit** and request size cap | B-G7 | 0.5 d | 429 above the limit; Paymob contract tests pass | `npm run test:integration -- billing paymob-contract` |
 | 1.8 | **Done (2026-11-06).** **Common-password check** for staff and student passwords (local list) | S-6 | 0.5 d | "password123" refused with a clear EN/AR message | `npm run test:integration -- auth students` |
-| 1.9 | **Dependency hygiene**: Renovate/Dependabot config, base images pinned by digest | S-15 | 0.5 d | Bot opens PRs; images resolve by digest | Repo settings; `docker compose config` |
+| 1.9 | **Done (2026-11-06).** **Dependency hygiene**: Renovate/Dependabot config, base images pinned by digest | S-15 | 0.5 d | Bot opens PRs; images resolve by digest | Repo settings; `docker compose config` |
 
 Phase 1 total ≈ 10 days. Exit: all tasks merged, full suite and E2E green, `scripts/ci-local.sh` green.
 

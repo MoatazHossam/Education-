@@ -1,0 +1,64 @@
+# Dependency updates (production finding S-15). Dependabot opens a pull request for each update below;
+# each one runs the full CI (lint, typecheck, unit and integration tests, the browser journeys and the
+# image build) and is merged like any other change. Security updates, which come as soon as an advisory
+# is published, are switched on in the repository's settings: Settings > Code security > Dependabot
+# alerts and Dependabot security updates (docs/DEPLOYMENT_GUIDE.md, "Keeping dependencies up to date").
+#
+# Images are pinned by digest (Dockerfile, docker-compose*.yml, ops/images.Dockerfile): an update is a
+# new digest, or a newer tag of the same series, never a silent change on rebuild. Major versions of
+# Node.js and PostgreSQL are left out on purpose: a new Node.js major is upgraded with the CI's
+# node-version and package.json's engines, and a new PostgreSQL major needs its data upgraded
+# (pg_upgrade or a dump and restore), which Dependabot cannot do.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # A release is proposed a week after it is published, so a compromised or broken one is usually
+    # withdrawn first. Security updates are not delayed.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      # Minor and patch updates in one pull request a week; each major version in its own.
+      npm-minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # The application's base image (Dockerfile).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+
+  # The images the operations scripts run (ops/images.Dockerfile).
+  - package-ecosystem: docker
+    directory: /ops
+    schedule:
+      interval: weekly
+      day: monday
+
+  # The images of the stack (docker-compose.yml, docker-compose.prod.yml).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+
+  # The CI's actions, pinned by commit SHA (.github/workflows).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7

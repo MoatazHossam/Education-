@@ -25,6 +25,31 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Images pinned by digest, and dependency updates by Dependabot (roadmap task 1.9) · COMPLETE (2026-11-06; Dependabot starts once merged)
+- **Asked:** task 1.9 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding S-15: images were tags (a rebuild or
+  restart could pick up different software), the CI's actions were floating tags, and nothing proposed updates.
+- **Implemented:**
+  - Every image the product runs is pinned by digest: the `Dockerfile`'s three stages (Node.js 22), PostgreSQL and
+    Mailpit (`docker-compose.yml`), ClamAV and Caddy (`docker-compose.prod.yml`), and rclone in a new
+    `ops/images.Dockerfile`. `ops/midad.sh` and `ops/midad.ps1` read their PostgreSQL, Caddy and rclone images from
+    those files instead of naming tags, so the backup tools always match the database the stack runs.
+  - The CI's actions pinned by commit SHA, with the release in a comment.
+  - `.github/dependabot.yml`: every Monday, npm (minor and patch in one pull request, majors one by one, a week's
+    cooldown), the base image, the compose images, the ops image and the actions (a week's cooldown). No Node.js
+    or PostgreSQL major versions: those need a planned upgrade.
+  - The update routine in the deployment guide (EN/AR §4): weekly merges, a monthly patch window, high and critical
+    security updates within a week, and how to do a Node.js or PostgreSQL major upgrade.
+- **Verified:** all six pinned digests pulled by digest; the image built from the pinned base and passes CI's smoke
+  test; `docker compose config` shows every third-party image with its digest; the ops scripts' lookups run the
+  pinned rclone, PostgreSQL client and tool images; the Dependabot file is valid against the public schema; 10 new
+  unit tests (`tests/unit/image-pins.test.ts`), 4 of which fail when a pin is removed; `npm test` (63 files, 467
+  tests), lint and typecheck pass.
+- **Owner, on GitHub:** Settings > Code security, turn on **Dependabot alerts** and **Dependabot security updates**
+  (security updates come as soon as an advisory is published). Dependabot's first pull requests come after the
+  merge; the roadmap's "Bot opens PRs" is checked then.
+- **Not done:** the CI's test database (`services.postgres`) keeps the `16-alpine` tag on purpose (it is only the
+  test database); `ops/midad.ps1`'s lookup was not run with PowerShell here (the unit test applies its pattern).
+
 ### Common passwords refused, with the reason in English or Arabic (roadmap task 1.8) · COMPLETE (2026-11-06)
 - **Asked:** task 1.8 of `docs/production/IMPLEMENTATION_ROADMAP.md`, finding S-6: only 14 common passwords were
   refused, and the message ("This password is too common") was shown in English in the Arabic interface too.

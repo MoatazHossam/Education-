@@ -32,9 +32,21 @@ $ProgressPreference = 'SilentlyContinue' # no progress bars for file copies
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $Root
 $ConfFile = Join-Path $Root '.env.backup'
-$RcloneImage = 'rclone/rclone:1.71'
-$PgImage = 'postgres:16-alpine'
-$ToolImage = 'caddy:2.10-alpine'
+# The images these scripts run, read from the files that pin them by digest, where Dependabot keeps
+# them up to date (production finding S-15): the PostgreSQL client is the database's own image, the
+# small tool image is the proxy's, and rclone is pinned in ops\images.Dockerfile.
+function Get-PinnedImage([string]$File, [string]$Name) {
+  $pattern = '^\s*(image:|FROM)\s+(' + [regex]::Escape($Name) + ':\S+)'
+  foreach ($l in (Get-Content -LiteralPath (Join-Path $Root $File))) {
+    $m = [regex]::Match($l, $pattern)
+    if ($m.Success) { return $m.Groups[2].Value }
+  }
+  Write-Host "Error: no $Name image in $File" -ForegroundColor Red
+  exit 1
+}
+$RcloneImage = Get-PinnedImage 'ops/images.Dockerfile' 'rclone/rclone'
+$PgImage = Get-PinnedImage 'docker-compose.yml' 'postgres'
+$ToolImage = Get-PinnedImage 'docker-compose.prod.yml' 'caddy'
 $OnWindows = (-not (Test-Path variable:IsWindows)) -or $IsWindows
 
 $script:Cmd = ''; $script:EnvName = ''; $script:EnvFile = ''; $script:Yes = $false; $script:To = ''; $script:From = ''

@@ -25,7 +25,7 @@ student data · **Low** = hardening.
 | S-12 | Worker has unrestricted egress (customer webhooks, AI, Paymob from the same network) | Medium | Network |
 | S-13 | Flood guard is per process; no edge/CDN limit; client IP trust depends on Caddy defaults | Medium | Availability |
 | S-14 | Platform admins see member names/emails of every school | Low | Privacy |
-| S-15 | Dependency and image update process not defined | Medium | Supply chain |
+| S-15 | Dependency and image update process not defined | Medium | Supply chain · **fixed by task 1.9** |
 | S-16 | No external penetration test | High | Assurance |
 
 ## 1. Tenant data isolation
@@ -239,6 +239,17 @@ enforced) and keep the number of platform admins minimal.
 `npm audit --omit=dev --audit-level=high` (`.github/workflows/ci.yml:40-41`) and CI runs on GitHub again since 2026-11-01 (B-7 cleared).
 Base images are tags, not digests (`Dockerfile:3`, `docker-compose*.yml`). *Fix:* Dependabot or Renovate for npm,
 Docker and Actions; pin images by digest in production; monthly patch window; rebuild for base-image CVEs.
+**Fixed 2026-11-06 (task 1.9):** every image the product runs is pinned by digest: the base image of every
+`Dockerfile` stage, PostgreSQL and Mailpit (`docker-compose.yml`), ClamAV and Caddy (`docker-compose.prod.yml`),
+and rclone for the backup scripts (`ops/images.Dockerfile`); the operations scripts read their images from those
+files instead of naming tags. The CI's actions are pinned by commit SHA. `.github/dependabot.yml` has Dependabot
+propose updates every Monday for npm, both Dockerfiles, the compose files and the actions: npm minor and patch
+updates grouped in one pull request, new npm and action releases a week after publication (cooldown), and no
+Node.js or PostgreSQL major version (those are planned upgrades). Every proposal runs the full CI.
+`tests/unit/image-pins.test.ts` fails if an unpinned image or action comes back. The CI's own test database
+(`services.postgres`) follows the `16-alpine` tag on purpose. Still to do on GitHub, by the repository owner:
+turn on Dependabot alerts and security updates (Settings > Code security). The update routine (weekly merges,
+monthly patch window, security updates within a week) is in `DEPLOYMENT_GUIDE.md` §4.
 
 **S-16.** An external penetration test focused on tenant isolation, the student portal, uploads and billing
 webhooks, before the first paying school **[DOC]** `SECURITY_DESIGN.md §6.1`.
@@ -262,6 +273,10 @@ npm run test:unit -- system-context-allowlist   # after task 1.1: the reviewed l
 
 # Security and tenancy tests
 npm run test:integration -- tenancy authz-coverage auth
+
+# Images pinned by digest, actions by SHA, Dependabot coverage (task 1.9)
+npm run test:unit -- image-pins
+docker compose -f docker-compose.yml -f docker-compose.prod.yml config --images   # every line but midad:… has @sha256:
 
 # Headers on production
 curl -sI https://$DOMAIN/ | grep -iE "strict-transport|content-security|x-content-type|referrer"

@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**62 files, 457 tests, 457 passed, 0 failed** (2026-11-06, with the common-password check, task 1.8). Integration tests ran against a real
+**63 files, 467 tests, 467 passed, 0 failed** (2026-11-06, with the image and action pins, task 1.9). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -32,6 +32,7 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | unit/security-primitives | 12 | Pass — includes the CSV `note`, `assignee`, `status` and `due_on` columns (at the end, formula-guarded), and production refusing `WEBHOOK_ALLOW_INSECURE_TARGETS` |
 | unit/i18n | 2 | Pass |
 | unit/passwords | 21 | Pass — new passwords (task 1.8): the pinned NCSC list cut to 10–128 characters (9,113 entries); refused when in it in any case, a common or this service's word (Arabic too, vowel marks ignored) with only digits and symbols added, or one character repeated; too short and too long first; six good passwords accepted; the problem passed on as a field `code`; English and Arabic texts for every code |
+| unit/image-pins | 10 | Pass — dependency hygiene (task 1.9): every `Dockerfile` stage and every compose image but the locally built `midad:` one pinned as `name:tag@sha256:<64 hex>`; the image's Node.js major is CI's; the ops scripts name no image (comments aside) and read rclone from `ops/images.Dockerfile`, PostgreSQL from `docker-compose.yml` and Caddy from `docker-compose.prod.yml`: the bash lookup run with bash (and an unknown name refused), the PowerShell pattern applied to the same files; Dependabot covers npm, both Dockerfile directories, the compose files and the actions, without Node.js or PostgreSQL majors; every CI action pinned by a 40-hex SHA with its release in a comment. Breaking a compose pin, the ops script's lookup or an action pin fails 4 of the tests |
 | unit/backup-crypt | 3 | Pass — backup archive encryption (`src/lib/backup-crypt.ts`): round trip for sizes from 0 to 1.1 MB whatever the chunk boundaries; a wrong passphrase, one changed byte, a cut file, another format, a header with no data and a passphrase under 12 characters all refused; a fresh salt and IV each time |
 | unit/countdown | 4 | Pass — the time left announced in a timed test (`public/js/countdown.js`): 5 and 1 minutes once each as they are crossed; nothing for a mark already behind when the test opens; again after more time; only the nearer mark when a tick jumps past both |
 | unit/email-templates | 2 | Pass — the Arabic invitation names the role as the Arabic interface does; the Arabic assignment email says "a book" for one and "books" for more |
@@ -743,6 +744,22 @@ more (docs/AI_LAYER.md §2). Measured before the change, with the SDKs the app u
 for by the Anthropic and OpenAI SDKs (up to 60 s is honoured) and not by Gemini's, so each provider call now has a
 deadline; the contract tests show a 20 s `retry-after` cut at that deadline on all three.
 
+### Images pinned by digest (2026-11-06) — task 1.9
+
+Production finding S-15. On Docker 29.9 in this container:
+
+| Check | Result |
+| --- | --- |
+| Every pinned reference pulled by its digest (`docker pull name:tag@sha256:…`) | All 6 resolve: Node.js 22 base, PostgreSQL 16, Mailpit, ClamAV, Caddy, rclone. Docker Hub refused three anonymous pulls with 429 (its rate limit), so the daemon used Google's Docker Hub mirror; a digest names the content, so a mirror cannot serve anything else |
+| `docker build` (with this container's proxy settings, §2 of the deployment guide) | Built `FROM docker.io/library/node:22-bookworm-slim@sha256:5ec23b7c…` for all three stages; Node.js v22.23.4 inside; CI's smoke test (the image refuses the sandbox billing provider in production) passes |
+| `docker compose … config --images` | Development: `postgres` and `mailpit` with `@sha256:`, three `midad:local`. Production (both files): `postgres`, `clamav`, `caddy` with `@sha256:`, four `midad:local`; `config -q` valid |
+| The ops scripts' images, resolved by `ops/midad.sh`'s lookup and run | `rclone version` v1.71.2 and `rclone obscure`; `pg_dump` 16.15; busybox `tar` 1.37.0 in the Caddy image; `ops/midad.sh --help` starts from the repository and from another directory |
+| `.github/dependabot.yml` against the public Dependabot schema (SchemaStore `dependabot-2.0.json`, with Ajv) | Valid |
+| Action SHAs (`git ls-remote` on each action's repository) | `actions/checkout` v4.4.0 `11d5960a…`, `actions/setup-node` v4.4.0 `49933ea5…`, `actions/upload-artifact` v4.6.2 `ea165f8d…` |
+
+Not run: Dependabot itself (it runs on GitHub once the file is on `main`); `ops/midad.ps1`'s lookup with PowerShell
+(the unit test applies its pattern to the same files instead).
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,
@@ -890,4 +907,5 @@ search results, the official Python SDK on PyPI and Odoo's open-source module.
 - Two app instances on separate hosts, and loss of the host or the database (both instances ran on one Docker host).
 - The rollback drill (`scripts/rollback-drill.sh`) on a staging host (launch checklist E-2); it ran on Docker in this container only.
 - Production deployment, TLS issuance by Caddy, an external uptime check, and alert delivery through a real email provider or chat webhook (SMTP was tested with Mailpit, the webhook with a local receiver).
+- Dependabot's runs and pull requests (they start on GitHub once `.github/dependabot.yml` is on `main`), and `ops/midad.ps1`'s image lookup with PowerShell (task 1.9; covered by the unit test's copy of its pattern).
 - The Windows operations scripts on Windows (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`, Task Scheduler), backup copies to a real cloud bucket (Amazon S3, Backblaze B2, Cloudflare R2), and the `start` script's image rebuild (builds here need the proxy settings).

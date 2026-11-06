@@ -91,6 +91,7 @@ x-env-web: &env-web
   AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-}
   AI_MAX_RETRIES: ${AI_MAX_RETRIES:-}
   AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-}
+  AI_USER_DAILY_LIMIT: ${AI_USER_DAILY_LIMIT:-}
 
 services:
   postgres:

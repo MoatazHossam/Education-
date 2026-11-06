@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### AI limits per member and per school, and AI on every plan (AI cost control AI-4, AI-5, AI-7) · COMPLETE (2026-11-06; against the provider simulator)
+- **Daily cap per member (AI-5):** each member may make `AI_USER_DAILY_LIMIT` AI requests a day in a school (50 by
+  default; 0 for none). The next one gets 429 `AI_DAILY_LIMIT`, shown in Arabic in the Arabic interface, before the
+  provider is called; others in the school go on. A request the provider failed without answering gives its unit back.
+- **Token budget per school (AI-4):** a platform administrator can give a school a monthly token budget
+  (Platform admin → the school → "AI tokens per month (override)"). Each request reserves an estimate first, under
+  concurrency too, and is settled to the tokens the reply reports; a second attempt reserves another. The AI card
+  shows the tokens counted against the budget. Tokens are counted for every school, so a budget set mid-month
+  starts from the real use.
+- **Plans (AI-7):** every plan carries both AI limits (0 requests, no token budget) until the owner decides the
+  allowances per plan (D-6); per-school overrides still replace them. No prices or allowances were invented.
+- Migration 0021 (`ai_tokens` metric, `ai_user_daily` with row-level security). Still open in this plan: AI-3 (price
+  table and platform spending cap) and AI-6 (cost report), and AI-1 (the provider console, needs the key).
+
 ### Dependabot's major versions · COMPLETE except TypeScript 7 (held) (2026-11-06)
 - **`@types/nodemailer` (#65):** removed instead of moved to 8. nodemailer 10 ships its own types, which TypeScript
   already used; the DefinitelyTyped package (written for nodemailer 7) was never read.

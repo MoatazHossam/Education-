@@ -51,9 +51,10 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
         .where('created_at', '>=', monthStart)
         .groupBy('org_id')
         .execute();
-      const counters = await trx.selectFrom('usage_counters').select(['org_id', 'quantity']).where('metric', '=', 'ai_requests').where('period', '=', period).execute();
+      const counters = await trx.selectFrom('usage_counters').select(['org_id', 'metric', 'quantity']).where('metric', 'in', ['ai_requests', 'ai_tokens']).where('period', '=', period).execute();
       const byOrg = new Map(usage.map((u) => [u.org_id, u]));
-      const used = new Map(counters.map((c) => [c.org_id, c.quantity]));
+      const used = new Map(counters.filter((c) => c.metric === 'ai_requests').map((c) => [c.org_id, c.quantity]));
+      const tokensUsed = new Map(counters.filter((c) => c.metric === 'ai_tokens').map((c) => [c.org_id, c.quantity]));
       const schools = [];
       for (const o of rows) {
         const ent = await getEntitlements(trx, o.id, config.GRACE_DAYS);
@@ -65,6 +66,9 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
           // null: no monthly cap.
           limit: ent.limits.ai_requests_per_month === undefined ? 0 : ent.limits.ai_requests_per_month,
           used: used.get(o.id) ?? 0,
+          // null: no token cap.
+          tokenLimit: ent.limits.ai_tokens_per_month ?? null,
+          tokensUsed: tokensUsed.get(o.id) ?? 0,
           requests: Number(u?.requests ?? 0),
           ok: Number(u?.ok ?? 0),
           failed: Number(u?.failed ?? 0),
@@ -74,7 +78,7 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
       }
       return {
         provider: ctx.ai ? { name: ctx.ai.name, model: ctx.ai.model, customEndpoint: Boolean(config.AI_API_BASE) } : null,
-        settings: { timeoutMs: config.AI_TIMEOUT_MS, maxRetries: config.AI_MAX_RETRIES, worstCaseMs: aiWorstCaseMs(config), maxOutputTokens: config.AI_MAX_OUTPUT_TOKENS },
+        settings: { timeoutMs: config.AI_TIMEOUT_MS, maxRetries: config.AI_MAX_RETRIES, worstCaseMs: aiWorstCaseMs(config), maxOutputTokens: config.AI_MAX_OUTPUT_TOKENS, userDailyLimit: config.AI_USER_DAILY_LIMIT },
         period,
         schools,
       };

@@ -22,7 +22,7 @@ export interface RecordedAiRequest {
 
 /** What the next request to a provider gets. Unscripted requests get an `ok` reply with `defaultText`. */
 export type SimReply =
-  | { kind: 'ok'; text: string; inputTokens?: number; outputTokens?: number; model?: string }
+  | { kind: 'ok'; text: string; inputTokens?: number; outputTokens?: number; model?: string; delayMs?: number }
   | { kind: 'length'; text: string }
   | { kind: 'refusal' }
   | { kind: 'error'; status: number; retryAfterMs?: number }
@@ -89,6 +89,8 @@ export class AiSimulator {
     const reply = this.queue[provider].shift() ?? { kind: 'ok', text: this.respond?.(provider, body) ?? this.defaultText };
     if (reply.kind === 'hang') return; // never answers: the client's timeout must fire
     if (reply.kind === 'error') return this.error(res, provider, reply.status, reply.retryAfterMs);
+    // A slow answer, for requests that must all be in flight at once.
+    if (reply.kind === 'ok' && reply.delayMs) await new Promise((r) => setTimeout(r, reply.delayMs));
     const model = (provider === 'gemini' ? gemini![1] : String(body.model)) ?? 'unknown';
     if (provider === 'gemini') return send(res, 200, geminiReply(reply, model));
     if (provider === 'anthropic') return send(res, 200, anthropicReply(reply, model));

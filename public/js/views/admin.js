@@ -66,7 +66,8 @@ function aiCard({ provider, period, schools }) {
           h('thead', {}, h('tr', {}, th(t('admin.col.org')), th(t('admin.col.plan')), th(t('admin.aiCol.used')), th(t('admin.aiCol.failed')), th(t('admin.aiCol.tokens')))),
           h('tbody', {}, schools.map((s) => h('tr', {},
             h('td', {}, link(`/admin/orgs/${s.orgId}`, s.name)), h('td', {}, s.planName), h('td', {}, limit(s)), h('td', {}, fmtNum(s.failed)),
-            h('td', {}, t('admin.aiTokens', { input: fmtNum(s.inputTokens), output: fmtNum(s.outputTokens) })))))))
+            h('td', {}, t('admin.aiTokens', { input: fmtNum(s.inputTokens), output: fmtNum(s.outputTokens) }),
+              s.tokenLimit === null ? null : [h('br'), t('admin.aiTokenBudget', { used: fmtNum(s.tokensUsed), limit: fmtNum(s.tokenLimit) })]))))))
       : h('p', { class: 'muted' }, t('admin.aiNoSchools')),
     h('p', {}, test));
 }
@@ -141,6 +142,7 @@ export async function orgDetailView(ctx) {
       { name: 'maxStudents', label: t('admin.overrideStudents'), type: 'number', value: s?.limitOverrides?.max_students ?? '', hint: t('admin.overrideStudentsHint') },
       { name: 'maxStorage', label: t('admin.overrideStorage'), type: 'number', value: s?.limitOverrides?.max_storage_mb ?? '', hint: t('admin.overrideStorageHint') },
       { name: 'maxAi', label: t('admin.overrideAi'), type: 'number', value: s?.limitOverrides?.ai_requests_per_month ?? '', hint: t('admin.overrideAiHint') },
+      { name: 'maxAiTokens', label: t('admin.overrideAiTokens'), type: 'number', value: s?.limitOverrides?.ai_tokens_per_month ?? '', hint: t('admin.overrideAiTokensHint') },
     ],
     submitLabel: t('admin.applyPlan'),
     onSubmit: async (v) => {
@@ -148,7 +150,7 @@ export async function orgDetailView(ctx) {
       if (v.status === 'trialing') body.trialEndsAt = new Date(v.periodEnd || Date.now() + 14 * 86_400_000).toISOString();
       // Overrides replace the stored set: keep the ones this form does not show; an empty field removes one.
       const overrides = { ...(s?.limitOverrides ?? {}) };
-      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students'], ['maxStorage', 'max_storage_mb'], ['maxAi', 'ai_requests_per_month']]) {
+      for (const [field, key] of [['maxMembers', 'max_members'], ['maxStudents', 'max_students'], ['maxStorage', 'max_storage_mb'], ['maxAi', 'ai_requests_per_month'], ['maxAiTokens', 'ai_tokens_per_month']]) {
         if (v[field] === '') delete overrides[key];
         else overrides[key] = Number(v[field]);
       }

@@ -405,6 +405,8 @@ const en = {
   'admin.aiError.auth': 'the key was refused', 'admin.aiError.rate_limited': 'the provider’s rate limit', 'admin.aiError.unavailable': 'the provider did not answer', 'admin.aiError.timeout': 'no answer in time',
   'admin.aiError.bad_request': 'the provider rejected the request (check AI_MODEL)', 'admin.aiError.other': 'an unexpected error (see the server log)',
   'admin.overrideAi': 'AI requests per month (override)', 'admin.overrideAiHint': 'Turns AI assistance on for this school, up to this many requests a month. Empty: the plan’s value (no plan includes AI yet).',
+  'admin.overrideAiTokens': 'AI tokens per month (override)', 'admin.overrideAiTokensHint': 'Caps what the school’s AI requests may use in tokens (input and output) a month. Empty: the plan’s value, no cap unless the plan has one.',
+  'admin.aiTokenBudget': '{used} of {limit}',
   'billing.meter.ai': 'AI requests this month',
   // Questions suggested by AI (docs/ONLINE_TESTS.md §14)
   'tests.suggest': 'Suggest questions with AI', 'tests.suggestTitle': 'Suggest questions with AI',
@@ -871,6 +873,8 @@ const ar = {
   'admin.aiError.auth': 'رُفض المفتاح', 'admin.aiError.rate_limited': 'حدّ الطلبات لدى المزوّد', 'admin.aiError.unavailable': 'لم يُجب المزوّد', 'admin.aiError.timeout': 'لم يصل رد في الوقت المحدد',
   'admin.aiError.bad_request': 'رفض المزوّد الطلب (راجع AI_MODEL)', 'admin.aiError.other': 'خطأ غير متوقع (راجع سجل الخادم)',
   'admin.overrideAi': 'طلبات الذكاء الاصطناعي شهريًا (استثناء)', 'admin.overrideAiHint': 'يفعّل المساعدة بالذكاء الاصطناعي لهذه المدرسة حتى هذا العدد من الطلبات شهريًا. فارغ: قيمة الخطة (لا تتضمن أي خطة الذكاء الاصطناعي حتى الآن).',
+  'admin.overrideAiTokens': 'رموز الذكاء الاصطناعي شهريًا (استثناء)', 'admin.overrideAiTokensHint': 'يحدّ ما تستهلكه طلبات المدرسة من رموز (داخلة وخارجة) في الشهر. فارغ: قيمة الخطة، ولا حد ما لم يكن للخطة حد.',
+  'admin.aiTokenBudget': '{used} من {limit}',
   'billing.meter.ai': 'طلبات الذكاء الاصطناعي هذا الشهر',
   // الأسئلة المقترحة بالذكاء الاصطناعي (docs/ONLINE_TESTS.md §14)
   'tests.suggest': 'اقتراح أسئلة بالذكاء الاصطناعي', 'tests.suggestTitle': 'اقتراح أسئلة بالذكاء الاصطناعي',
@@ -888,7 +892,7 @@ const ar = {
   'tests.suggestionsNone': 'لم تصل أسئلة صالحة للاستخدام. حاول مرة أخرى بموضوع أدق، أو الصق نص الدرس.',
   'tests.suggestionAdd': 'إضافة السؤال {n}', 'tests.suggestionWhy': 'السبب', 'tests.addSelected': 'إضافة المحدد',
   'tests.suggestNonePicked': 'اختر سؤالًا واحدًا على الأقل، أو ألغِ.', 'tests.addedN': 'أُضيفت الأسئلة: {n}', 'tests.addedSome': 'أُضيف {added}؛ وتعذّرت إضافة {failed}.',
-  'err.AI_NOT_CONFIGURED': 'المساعدة بالذكاء الاصطناعي غير مُعدّة على هذا الخادم.', 'err.AI_BUSY': 'خدمة الذكاء الاصطناعي مشغولة. حاول بعد دقيقة.',
+  'err.AI_NOT_CONFIGURED': 'المساعدة بالذكاء الاصطناعي غير مُعدّة على هذا الخادم.', 'err.AI_BUSY': 'خدمة الذكاء الاصطناعي مشغولة. حاول بعد دقيقة.', 'err.AI_DAILY_LIMIT': 'استخدمت طلبات الذكاء الاصطناعي المتاحة لك اليوم. حاول غدًا.',
   'err.AI_UNAVAILABLE': 'لم تُجب خدمة الذكاء الاصطناعي. حاول لاحقًا.', 'err.AI_FAILED': 'تعذّر على خدمة الذكاء الاصطناعي تنفيذ الطلب. حاول لاحقًا، وإن تكرر ذلك فتواصل مع الدعم.',
   'err.AI_REFUSED': 'رفضت خدمة الذكاء الاصطناعي هذا الطلب.', 'err.AI_REPLY_TOO_LONG': 'كان رد الذكاء الاصطناعي أطول من المسموح. اطلب أسئلة أقل في كل مرة.',
   'err.AI_INVALID_REPLY': 'تعذّر استخدام رد الذكاء الاصطناعي. حاول مرة أخرى.',

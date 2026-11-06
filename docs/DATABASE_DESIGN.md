@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`)
+PostgreSQL 16. Schema defined in migrations under `src/db/migrations/` (`0001_initial`, `0002_checkout_sessions`, `0003_catalog_verification`, `0004_catalog_notifications`, `0005_rate_limits`, `0006_ops_alerts`, `0007_students`, `0008_item_notes`, `0009_item_tracking`, `0010_due_reminders`, `0011_assignment_digest`, `0012_webhooks`, `0013_classroom`, `0014_online_tests`, `0015_classroom_retention`, `0016_file_checks`, `0017_ai_requests`, `0018_teaching_plans`, `0019_system_role`, `0020_login_protection`, `0021_ai_limits`)
 (Kysely migrator, static registry in `src/db/migrator.ts`). TypeScript row types: `src/db/types.ts`.
 
 ## 1. Entity relationship diagram
@@ -83,6 +83,7 @@ erDiagram
 | `webhook_deliveries` | Outbox of events per endpoint | `event_id` (the same for every endpoint and for redeliveries), `event_type`, `payload json` (kept as sent, since it is signed), `status` pending/delivered/failed, `attempts`, `next_attempt_at` (also the worker's 10-minute lease), `last_status_code`, `last_error`; FK `(endpoint_id, org_id)` → `webhook_endpoints` `ON DELETE CASCADE`; partial unique index on `(endpoint_id, coalesce_key)` while waiting for the first attempt, which merges quick changes to one scope | ✓ |
 | `teaching_plans` | Lesson and pacing plans of a curriculum scope (`docs/TEACHING_PLANS.md`, migration `0018`) | `(scope_id, org_id)` → scopes `ON DELETE CASCADE`; `kind` lesson/pacing; grade 1–12; subject names; title 1–200; `language` ar/en; `content` JSONB object ≤ 200,000 bytes, checked by the application against its kind; `ai_assisted`; `created_by`/`updated_by` set null when the user is deleted. At most 500 per scope (application) | ✓ |
 | `ai_requests` | One row per request to the AI provider (docs/AI_LAYER.md) | `user_id` (set null when the user is deleted), `feature`, `provider` gemini/anthropic/openai, `model` (the one that answered), `status` ok/refused/invalid_output/too_long/failed, `error_kind` (only when failed), `attempts`, `input_tokens`, `output_tokens`, `duration_ms`. Never the text of the request or reply. The month's count is `usage_counters` metric `ai_requests` (migration 0017) | ✓ |
+| `ai_user_daily` | AI requests per member per UTC day in a school, against `AI_USER_DAILY_LIMIT` (docs/AI_LAYER.md §3, migration `0021`) | PK `(org_id, user_id, day)`; `requests` ≥ 0; cascade with the organization and the user; index on `day` for the cleanup | ✓ |
 | `api_keys` | Read API keys | `key_hash` unique; revocable | ✓ |
 | `plans` | Commercial plans | id pattern; prices ≥ 0; `limits`, `features` JSONB (`limits.max_students` is 0 on every plan: student accounts off) | — (global) |
 | `subscriptions` | One row per org | unique `org_id`; status `trialing/active/past_due` with checks (trial → `trial_ends_at`, past_due → `grace_until`) | ✓ |
@@ -90,7 +91,7 @@ erDiagram
 | `payments` | Payment attempts | unique `(provider, provider_txn_id)` — idempotency | ✓ |
 | `checkout_sessions` | Hosted-checkout attempts | unique `(provider, provider_ref)`; a callback's invoice is resolved from the signed provider reference (Paymob order id), not from the echoed merchant reference | ✓ |
 | `billing_events` | Webhook receipts | unique `(provider, event_id)` — idempotency; normalized payload only | — (system only) |
-| `usage_counters` | Monthly metering | PK `(org_id, metric, period)` | ✓ |
+| `usage_counters` | Monthly metering | PK `(org_id, metric, period)`; metric `exports`, `api_requests`, `ai_requests` or `ai_tokens` (input and output tokens, against `ai_tokens_per_month`) | ✓ |
 | `billing_notices` | Sent lifecycle notices (dedupe) | PK `(org_id, kind, ref)` | ✓ |
 | `audit_logs` | Security & change history | bigint identity; indexes by org/time, action, actor; **app role has no UPDATE** | ✓ |
 | `support_access_grants` | Customer-granted support windows | reason length; expiry; revocation | ✓ |
@@ -200,6 +201,7 @@ are never created when `NODE_ENV=production`.
 | Assignments waiting for a daily summary | until the next morning's summary; 30 d at most | worker |
 | Webhook deliveries (delivered or failed) | 30 d | worker hourly |
 | AI usage log (`ai_requests`: who, feature, provider, model, outcome, tokens; never text) | 400 d | worker hourly |
+| Members' daily AI request counts (`ai_user_daily`) | 7 d | worker hourly |
 | Teaching plans | Until their author or an admin deletes them, or the scope is deleted | API (cascade) |
 | Audit logs | `AUDIT_RETENTION_DAYS` (default 730 d); customers see their plan's window | worker |
 | Billing records (invoices, payments, events) | Kept (financial records) — define the legal period with your accountant | none (manual) |

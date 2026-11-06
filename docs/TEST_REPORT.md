@@ -805,6 +805,16 @@ test checks they are there; the owner ran the Windows repair commands in the gui
 | otplib 13 | New `tests/unit/totp.test.ts`: RFC 6238 appendix B values (T = 59 s → 287082; T = 1111111109 → 081804), drift ±1 step accepted and ±2 refused, replays refused, 160-bit base32 secrets, `otpauth://totp/Midad:…` link with `issuer=Midad`. The same test passes unchanged on otplib 12.0.1 and 13.5.0. `npm test` 66 files, 484 tests | Pass |
 | TypeScript 7.0.2 | `tsc --noEmit` on the code: no errors. `eslint`: exits 2, "typescript-eslint does not support TS 7.0" | Held on 5.9.3 |
 
+### AI limits per member and per school (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/ai-limits.test.ts` (new, 10 tests) against the provider simulator | The 51st request of a member's day gets 429 `AI_DAILY_LIMIT` and does not reach the provider; another member goes on; a failed request gives the day's unit back; 8 concurrent requests on a daily cap of 3 let exactly 3 through; the worker removes counts older than a week; tokens are counted without a budget; 8 concurrent slow requests on a budget of 3 estimates let exactly 3 reach the provider; a spent budget refuses before the provider and shows no AI left; a second attempt reserves another estimate and stops when there is none; the admin override (refused below 0 and above 1,000,000,000) and the AI card; AI limits on plans | Pass |
+| The same file with the daily check removed, then with the token reservation removed | 4 tests fail each time | The tests catch both |
+| `tests/unit/ai-layer.test.ts`, `tests/unit/billing-logic.test.ts` (new tests) | The token estimate, the UTC day key, the daily cap setting (default 50, 0 allowed, bounds); every plan carries both AI limits and an override replaces them | Pass |
+| `tests/integration/ai.test.ts` | The admin endpoint's new fields (`userDailyLimit`, `tokenLimit`, `tokensUsed`) | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 67 files, 498 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests, the platform admin journey now setting a token budget and seeing "0 of 200,000" on the AI card | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

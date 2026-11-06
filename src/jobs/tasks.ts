@@ -74,6 +74,8 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
     const webhookDeliveries = await trx.deleteFrom('webhook_deliveries').where('status', '!=', 'pending').where('created_at', '<=', addDays(now, -DELIVERY_RETENTION_DAYS)).executeTakeFirst();
     // The AI usage log is kept for a year of cost reporting (ai/service.ts).
     const aiRequests = await trx.deleteFrom('ai_requests').where('created_at', '<=', addDays(now, -AI_REQUEST_RETENTION_DAYS)).executeTakeFirst();
+    // Members' daily AI request counts matter only on their day (ai/service.ts); a week keeps them for a look back.
+    const aiUserDaily = await trx.deleteFrom('ai_user_daily').where('day', '<', addDays(now, -7).toISOString().slice(0, 10)).executeTakeFirst();
     // Failed sign-in counts end with their window or lock (auth/login-protection.ts); a day is past both.
     const loginFailures = await trx
       .deleteFrom('login_failures')
@@ -95,6 +97,7 @@ export async function runCleanup(db: Database, config: AppConfig, now = new Date
       digestItems: Number(digestItems.numDeletedRows),
       webhookDeliveries: Number(webhookDeliveries.numDeletedRows),
       aiRequests: Number(aiRequests.numDeletedRows),
+      aiUserDaily: Number(aiUserDaily.numDeletedRows),
       loginFailures: Number(loginFailures.numDeletedRows),
       loginDevices: Number(loginDevices.numDeletedRows),
     };

@@ -297,6 +297,51 @@ the worker one after the other with the new settings, without downtime.
 | `ALERT_WEBHOOK_URL` | A new webhook address in the chat tool, into the settings file, `scripts/rolling-restart.sh`; then **Send test alert** (Platform admin) | Nothing |
 | The backup passphrase | Give the new one when the backup script asks for it (§8.3), and in the passphrase file of scheduled backups (§8.5) | Nothing. Keep the old passphrase for as long as you keep backups made with it: restoring one of them needs it. |
 
+### Keeping dependencies and images up to date
+
+Every image is pinned by digest, as `name:tag@sha256:…`: the tag is there for people, the digest decides
+what runs. A rebuild or a restart therefore never picks up different software by itself. The pins are in
+the `Dockerfile` (the Node.js base image), `docker-compose.yml` (PostgreSQL, Mailpit), `docker-compose.prod.yml`
+(ClamAV, Caddy) and `ops/images.Dockerfile` (rclone, for backup copies); the operations scripts read their
+images from these files. The CI's actions are pinned by commit SHA.
+
+Updates come as pull requests from Dependabot (`.github/dependabot.yml`), every Monday: npm packages (minor
+and patch updates together in one pull request, each major version in its own), new digests or tags for
+every image, and new releases of the actions. npm packages and actions are proposed a week after they are
+published, so a broken or compromised release is usually withdrawn first. New major versions of Node.js (and
+of its types, `@types/node`) and PostgreSQL are not proposed: they are planned upgrades (below). The pull
+requests target `main`, and each one runs the full CI.
+
+Once, on GitHub (repository owner): Settings > Code security, turn on **Dependabot alerts** and
+**Dependabot security updates**. Security updates then come as soon as an advisory is published, without
+waiting for Monday. They go to the repository's default branch (Settings > General > Default branch), which
+`target-branch` does not change, so make that `main`. Dependabot also reads `.github/dependabot.yml` from the
+default branch. Insights > Dependency graph > Dependabot shows each run, and any error in the file.
+
+The routine:
+
+1. **Weekly**: merge the Dependabot pull requests whose CI is green. Read the release notes of a major
+   version before merging it.
+2. **Monthly patch window** (a quiet hour, not during exams): back up, then deploy `main`. On Linux
+   `scripts/rolling-restart.sh --build` rebuilds the app image on its new base without downtime;
+   then `ops/start.sh --env prod` pulls the new images of PostgreSQL, ClamAV and Caddy and recreates only
+   the containers whose image changed (a few seconds without service when the database or Caddy restarts).
+   Windows: `ops\start.bat --env prod` and answer yes to rebuilding the image.
+3. **Security updates** for a production dependency or an image, rated high or critical: merge and deploy
+   within a week, without waiting for the window. CI's `npm audit --omit=dev --audit-level=high` fails on such
+   a package even before Dependabot's pull request arrives.
+
+Planned upgrades, not proposed by Dependabot:
+
+- **Node.js major**: change the three `FROM` lines of the `Dockerfile` (with the new image's digest),
+  `node-version` in `.github/workflows/ci.yml`, and the version check in `scripts/ci-local.sh`, in one pull request.
+- **PostgreSQL major**: the data must be converted. Back up (§8.3), start the new version on an empty volume,
+  restore the backup into it (§8.6), check, and rehearse all of it on staging first. If `.env.backup` sets
+  `BACKUP_PG_IMAGE`, change it to the new version too.
+
+A digest by hand (to pin a newer tag yourself): `docker buildx imagetools inspect caddy:2.10-alpine` and copy
+the `Digest:` line, which covers every platform of the image.
+
 ## 5. Backups and recovery
 
 Use the ops scripts (§8): `ops/backup.sh` / `ops\backup.bat` for backups (encrypted, with copies to
@@ -361,6 +406,7 @@ failures (any uptime service, for example UptimeRobot or Better Stack); it also 
 - [ ] Paymob test-mode run recorded (or billing disabled with manual invoicing)
 - [ ] Platform admin created with TOTP; demo data absent
 - [ ] Monitoring and alerts firing to a real channel
+- [ ] Dependabot alerts and security updates turned on; no open high or critical alert for a production dependency (§4)
 - [ ] Before schools use online tests: `scripts/load-exam.mjs` run on staging hardware like production's,
       with the largest grade expected on one school network (TEST_REPORT §5). It creates a class,
       students and a test, so run it as the owner of a test school on staging, never a real school

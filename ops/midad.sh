@@ -25,9 +25,18 @@ umask 077 # every file these scripts write (backups, checksums, settings) is rea
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 CONF="$ROOT/.env.backup"
-RCLONE_IMAGE=rclone/rclone:1.71
-PG_IMAGE=postgres:16-alpine
-TOOL_IMAGE=caddy:2.10-alpine
+# The images these scripts run, read from the files that pin them by digest, where Dependabot keeps
+# them up to date (production finding S-15): the PostgreSQL client is the database's own image, the
+# small tool image is the proxy's, and rclone is pinned in ops/images.Dockerfile.
+pinned() { # FILE NAME: the reference of image NAME in FILE
+  local ref
+  ref=$(sed -nE "s#^[[:space:]]*(image:|FROM)[[:space:]]+($2:[^[:space:]]+).*#\2#p" "$ROOT/$1" | head -n 1)
+  [[ -n $ref ]] || { printf 'Error: no %s image in %s\n' "$2" "$1" >&2; exit 1; }
+  printf '%s' "$ref"
+}
+RCLONE_IMAGE=$(pinned ops/images.Dockerfile rclone/rclone)
+PG_IMAGE=$(pinned docker-compose.yml postgres)
+TOOL_IMAGE=$(pinned docker-compose.prod.yml caddy)
 
 CMD="" ENV_NAME="" ENV_FILE="" YES=0 TO="" FROM="" PICK="" NO_ENCRYPT=0 ONLY_VERIFY=0
 FILES=() PROJECT="" MANAGED=0 NOENV=0 IMAGE="" LOCKDIR="" FAILED=()

@@ -121,13 +121,16 @@ describe.each(['gemini', 'anthropic', 'openai'] as const)('%s adapter', (name) =
   });
 
   it('cancels the call at its deadline, however long the provider asks to wait', async () => {
-    // The Anthropic and OpenAI SDKs would wait the 20 s asked for; Gemini's backs off for about a second.
+    // The Anthropic and OpenAI SDKs would wait the 20 s asked for; Gemini's backs off for 1–2 s.
     sim.script(name, { kind: 'error', status: 429, retryAfterMs: 20_000 });
     const started = Date.now();
-    // Deadline: 2 attempts of 300 ms and 100 ms before the retry.
+    // Deadline: 2 attempts of 300 ms and 100 ms before the retry, 700 ms. Gemini's own wait before
+    // the retry is 1–2 s, so ending within 1 s shows the call stopped at the deadline.
     const err = await failure(provider(name, { timeoutMs: 300, maxRetries: 1, retryWaitMs: 100 }).generate(REQUEST));
     expect(err.kind).toBe('timeout');
-    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(Date.now() - started).toBeLessThan(1_000);
+    // Nothing reaches the provider afterwards, once the SDK's own wait is over.
+    await new Promise((r) => setTimeout(r, 2_100));
     expect(sim.requests).toHaveLength(1);
   });
 });

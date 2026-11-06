@@ -26,19 +26,23 @@ export class GeminiProvider implements AiProvider {
   }
 
   async generate(req: AiRequest): Promise<AiReply> {
+    // The whole call, retries included.
+    const deadline = AbortSignal.timeout(this.deadlineMs);
     let res;
     try {
-      res = await this.client.models.generateContent({
-        model: this.model,
-        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
-        config: {
-          systemInstruction: req.system,
-          maxOutputTokens: req.maxOutputTokens,
-          // The whole call, retries included.
-          abortSignal: AbortSignal.timeout(this.deadlineMs),
-          ...(req.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: req.jsonSchema } : {}),
-        },
-      });
+      res = await settleByDeadline(
+        this.client.models.generateContent({
+          model: this.model,
+          contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+          config: {
+            systemInstruction: req.system,
+            maxOutputTokens: req.maxOutputTokens,
+            abortSignal: deadline,
+            ...(req.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: req.jsonSchema } : {}),
+          },
+        }),
+        deadline,
+      );
     } catch (err) {
       throw toProviderError(err);
     }
@@ -51,6 +55,19 @@ export class GeminiProvider implements AiProvider {
     const finish = reason === FinishReason.STOP ? 'stop' : reason === FinishReason.MAX_TOKENS ? 'length' : reason && REFUSED.has(reason) ? 'refused' : 'other';
     return { ...reply, text: res.text ?? '', finish };
   }
+}
+
+/**
+ * The SDK cancels a request in flight when the signal aborts, but not its wait before a retry (1–2 s
+ * before the first): settle at the deadline anyway. The retry it then starts carries the aborted
+ * signal and sends nothing.
+ */
+function settleByDeadline<T>(call: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    call.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }
 
 function toProviderError(err: unknown): AiProviderError {

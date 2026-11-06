@@ -7,18 +7,29 @@ import { getEntitlements } from '../billing/entitlements.js';
 import { withSystemContext } from '../db/index.js';
 import type { AppContext } from '../http/context.js';
 import { rateLimited } from '../http/rate-limit.js';
+import { notFound } from '../lib/errors.js';
 import { periodKey } from '../lib/time.js';
+import { parse } from '../lib/validation.js';
+import { budgetState, microsToUsd, monthStart, platformSpend } from './costs.js';
 import { InvalidReplyError, parseJsonReply, portableSchema } from './schema.js';
 import { aiNotConfigured, aiWorstCaseMs } from './service.js';
-import { AiProviderError } from './types.js';
+import { AI_PROVIDERS, AiProviderError } from './types.js';
 
 // Platform administration of AI assistance (docs/AI_LAYER.md): the configured
 // provider, which schools have an allowance and what they used this month, and
 // a test request to check the provider setup. Schools get an allowance through
 // the subscription's limit overrides (PATCH /api/admin/orgs/:orgId/subscription,
-// ai_requests_per_month), like student accounts.
+// ai_requests_per_month), like student accounts. Platform administrators also enter what
+// the provider charges per model (from its price page: nothing is assumed), which prices each
+// request and keeps the platform's monthly budget, AI_MONTHLY_BUDGET_USD (docs/AI_LAYER.md §3).
 
 const TestReply = z.object({ arabic: z.string().min(1).max(100) });
+
+// US dollars per million tokens, as numeric(12, 6) stores them. Decimal places are counted on the number's
+// own digits: multiplying by a million rounds wrongly for large prices.
+const UsdPerMtok = z.number().min(0).max(100_000).refine((n) => /^\d+(\.\d{1,6})?$/.test(String(n)), 'At most 6 decimal places');
+const PriceKey = z.object({ provider: z.enum(AI_PROVIDERS), model: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/, 'A model id such as gemini-2.5-pro') });
+const PriceBody = PriceKey.extend({ inputUsdPerMtok: UsdPerMtok, outputUsdPerMtok: UsdPerMtok });
 
 export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): void {
   const { db, config } = ctx;
@@ -26,7 +37,7 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
   app.get('/api/admin/ai', async (req) => {
     requirePlatformAdmin(req);
     const period = periodKey();
-    const monthStart = new Date(`${period}-01T00:00:00Z`);
+    const since = monthStart(period);
     return withSystemContext(db, async (trx) => {
       // Schools with an allowance of their own, on a plan that includes AI, or with use this month.
       const { rows } = await sql<{ id: string; name: string }>`
@@ -36,7 +47,7 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
         WHERE coalesce((s.limit_overrides->>'ai_requests_per_month')::bigint, 0) <> 0
            OR (s.limit_overrides->'ai_requests_per_month') = 'null'::jsonb
            OR coalesce((p.limits->>'ai_requests_per_month')::bigint, 0) <> 0
-           OR EXISTS (SELECT 1 FROM ai_requests r WHERE r.org_id = o.id AND r.created_at >= ${monthStart})
+           OR EXISTS (SELECT 1 FROM ai_requests r WHERE r.org_id = o.id AND r.created_at >= ${since})
         ORDER BY o.name LIMIT 500`.execute(trx);
       const usage = await trx
         .selectFrom('ai_requests')
@@ -47,10 +58,29 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
           sql<string>`count(*) FILTER (WHERE status = 'failed')`.as('failed'),
           sql<string | null>`sum(input_tokens)`.as('input_tokens'),
           sql<string | null>`sum(output_tokens)`.as('output_tokens'),
+          sql<string | null>`sum(cost_usd_micros)`.as('cost'),
+          sql<string>`count(*) FILTER (WHERE cost_usd_micros IS NULL AND status <> 'failed')`.as('unpriced'),
         ])
-        .where('created_at', '>=', monthStart)
+        .where('created_at', '>=', since)
         .groupBy('org_id')
         .execute();
+      // The month's use per feature, across all schools (production finding A-3).
+      const features = await trx
+        .selectFrom('ai_requests')
+        .select((eb) => [
+          'feature',
+          eb.fn.countAll<string>().as('requests'),
+          sql<string | null>`sum(input_tokens)`.as('input_tokens'),
+          sql<string | null>`sum(output_tokens)`.as('output_tokens'),
+          sql<string | null>`sum(cost_usd_micros)`.as('cost'),
+        ])
+        .where('created_at', '>=', since)
+        .groupBy('feature')
+        .orderBy('feature')
+        .execute();
+      const prices = await trx.selectFrom('ai_model_prices').selectAll().orderBy('provider').orderBy('model').execute();
+      const spend = await platformSpend(trx, since);
+      const budget = ctx.ai ? await budgetState(trx, config, ctx.ai.name, ctx.ai.model) : null;
       const counters = await trx.selectFrom('usage_counters').select(['org_id', 'metric', 'quantity']).where('metric', 'in', ['ai_requests', 'ai_tokens']).where('period', '=', period).execute();
       const byOrg = new Map(usage.map((u) => [u.org_id, u]));
       const used = new Map(counters.filter((c) => c.metric === 'ai_requests').map((c) => [c.org_id, c.quantity]));
@@ -74,14 +104,74 @@ export function registerAiAdminRoutes(app: FastifyInstance, ctx: AppContext): vo
           failed: Number(u?.failed ?? 0),
           inputTokens: Number(u?.input_tokens ?? 0),
           outputTokens: Number(u?.output_tokens ?? 0),
+          costUsd: microsToUsd(u?.cost ?? 0),
+          unpricedRequests: Number(u?.unpriced ?? 0),
         });
       }
+      const price = (r: (typeof prices)[number]) => ({ provider: r.provider, model: r.model, inputUsdPerMtok: Number(r.input_usd_per_mtok), outputUsdPerMtok: Number(r.output_usd_per_mtok), updatedAt: r.updated_at });
+      const current = ctx.ai ? prices.find((r) => r.provider === ctx.ai!.name && r.model === ctx.ai!.model) : undefined;
       return {
         provider: ctx.ai ? { name: ctx.ai.name, model: ctx.ai.model, customEndpoint: Boolean(config.AI_API_BASE) } : null,
         settings: { timeoutMs: config.AI_TIMEOUT_MS, maxRetries: config.AI_MAX_RETRIES, worstCaseMs: aiWorstCaseMs(config), maxOutputTokens: config.AI_MAX_OUTPUT_TOKENS, userDailyLimit: config.AI_USER_DAILY_LIMIT },
         period,
+        // monthlyUsd null: no platform cap. state: ok, high (80 % or more), reached, or unpriced (refused: no price for the model).
+        budget: {
+          monthlyUsd: config.AI_MONTHLY_BUDGET_USD || null,
+          spentUsd: microsToUsd(spend.micros),
+          unpricedRequests: spend.unpriced,
+          state: budget?.state ?? 'off',
+        },
+        currentPrice: current ? price(current) : null,
+        prices: prices.map(price),
+        features: features.map((f) => ({ feature: f.feature, requests: Number(f.requests), inputTokens: Number(f.input_tokens ?? 0), outputTokens: Number(f.output_tokens ?? 0), costUsd: f.cost === null ? null : microsToUsd(f.cost) })),
         schools,
       };
+    });
+  });
+
+  // What the provider charges for a model, entered from its price page. Prices requests logged from now on.
+  app.put('/api/admin/ai/prices', async (req) => {
+    const { user } = requirePlatformAdmin(req);
+    const body = parse(PriceBody, req.body);
+    return withSystemContext(db, async (trx) => {
+      const before = await trx.selectFrom('ai_model_prices').selectAll().where('provider', '=', body.provider).where('model', '=', body.model).executeTakeFirst();
+      await trx
+        .insertInto('ai_model_prices')
+        .values({ provider: body.provider, model: body.model, input_usd_per_mtok: body.inputUsdPerMtok, output_usd_per_mtok: body.outputUsdPerMtok, updated_by: user.id })
+        .onConflict((oc) => oc.columns(['provider', 'model']).doUpdateSet({ input_usd_per_mtok: body.inputUsdPerMtok, output_usd_per_mtok: body.outputUsdPerMtok, updated_by: user.id, updated_at: new Date() }))
+        .execute();
+      await recordAudit(
+        trx,
+        { type: 'platform_admin', userId: user.id, email: user.email },
+        {
+          action: 'admin.ai_price_set',
+          metadata: {
+            provider: body.provider,
+            model: body.model,
+            inputUsdPerMtok: body.inputUsdPerMtok,
+            outputUsdPerMtok: body.outputUsdPerMtok,
+            previous: before ? { inputUsdPerMtok: Number(before.input_usd_per_mtok), outputUsdPerMtok: Number(before.output_usd_per_mtok) } : null,
+          },
+        },
+        requestMeta(req),
+      );
+      return { price: { provider: body.provider, model: body.model, inputUsdPerMtok: body.inputUsdPerMtok, outputUsdPerMtok: body.outputUsdPerMtok } };
+    });
+  });
+
+  app.delete('/api/admin/ai/prices', async (req) => {
+    const { user } = requirePlatformAdmin(req);
+    const key = parse(PriceKey, req.query);
+    return withSystemContext(db, async (trx) => {
+      const removed = await trx.deleteFrom('ai_model_prices').where('provider', '=', key.provider).where('model', '=', key.model).returningAll().executeTakeFirst();
+      if (!removed) throw notFound('Price');
+      await recordAudit(
+        trx,
+        { type: 'platform_admin', userId: user.id, email: user.email },
+        { action: 'admin.ai_price_removed', metadata: { provider: key.provider, model: key.model, inputUsdPerMtok: Number(removed.input_usd_per_mtok), outputUsdPerMtok: Number(removed.output_usd_per_mtok) } },
+        requestMeta(req),
+      );
+      return { ok: true };
     });
   });
 

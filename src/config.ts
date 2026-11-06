@@ -108,6 +108,9 @@ const envSchema = (role: ConfigRole) => z
     AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(64_000).default(16_000),
     // Requests one member may make per day in one school (production finding A-5); 0: no daily cap.
     AI_USER_DAILY_LIMIT: z.coerce.number().int().min(0).max(10_000).default(50),
+    // What all schools' AI requests may cost in a month, in US dollars, priced from ai_model_prices
+    // (production finding A-2); 0: no platform cap. Reached, new requests get 503 AI_PAUSED.
+    AI_MONTHLY_BUDGET_USD: z.coerce.number().min(0).max(1_000_000).default(0),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {

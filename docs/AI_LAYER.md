@@ -40,6 +40,7 @@ and logs the request. Changing provider is a configuration change; features do n
 | `AI_MAX_RETRIES` | 1 | Retries after the first attempt of one provider call, 0–3. The SDKs retry timeouts, connection errors, 408, 429 and 5xx |
 | `AI_MAX_OUTPUT_TOKENS` | 16000 | Most output tokens one request may use (thinking included on models that think) |
 | `AI_USER_DAILY_LIMIT` | 50 | AI requests one member may make per day (UTC) in one school, 0–10000; 0 for no daily cap (§3) |
+| `AI_MONTHLY_BUDGET_USD` | 0 | What all schools' AI requests may cost in a month, in US dollars, 0–1000000; 0 for no platform cap (§3) |
 
 **How long a teacher can wait** (production finding A-4). Each provider call has a deadline:
 (1 + `AI_MAX_RETRIES`) × `AI_TIMEOUT_MS`, plus 10 s before each retry for the SDK's backoff. The
@@ -103,6 +104,24 @@ Reservations never take the budget past its limit. Settling can, by what replies
 estimates; the estimate already counts the full output allowance, so only a prompt that tokenizes to more
 than one token per two characters goes over.
 
+**Prices.** A platform administrator enters what the provider charges for a model, per million input and
+output tokens in US dollars, from the provider's price page (Platform admin → AI assistance; table
+`ai_model_prices`). Nothing assumes a price: a model without one has none. Each request is priced when it is
+logged, by the model that answered, else by the configured model, and the cost is kept in
+`ai_requests.cost_usd_micros` (millionths of a dollar; one dollar per million tokens is one millionth of a
+dollar per token, rounded up per request). A reply without token counts is priced at its estimate; a call that
+failed without answering costs nothing; a request with no price for either model has no cost and is counted
+as unpriced.
+
+**Platform budget.** `AI_MONTHLY_BUDGET_USD` caps what all schools' requests may cost in a UTC month. Before any
+allowance is taken, a request is refused with 503 `AI_PAUSED` when the month's cost has reached the budget, or
+when a budget is set and the configured model has no price (the spending could not be measured). Requests
+already running finish, so the month can end above the budget by what they cost. Operational alerts: AI
+spending at 80 % of the budget or more (`ai_budget_high`), the budget reached (`ai_budget_reached`), and a budget
+with no price for the model (`ai_price_missing`) (DEPLOYMENT_GUIDE §6). Set the budget and the model's prices
+before giving any school an allowance; the provider console's own spending limit stays the last line
+(AI_COST_CONTROL_PLAN AI-1).
+
 **Checking the reply.** A feature that wants structured data gives a zod schema. The provider is asked
 for JSON matching it (each provider's own structured-output mode), and the reply is checked against the
 full schema on our side. If it does not match, the provider is asked once more; a second miss is an
@@ -118,6 +137,7 @@ and range limits are dropped from what is sent and still checked here. Every fie
 | No allowance / AI off on the server | 402 `FEATURE_NOT_IN_PLAN` / 503 `AI_NOT_CONFIGURED` | — | — |
 | Allowance or token budget used up | 402 `PLAN_LIMIT_REACHED` | — | — |
 | The member's requests for today used up | 429 `AI_DAILY_LIMIT` | — | — |
+| The platform's monthly budget reached, or no price for the model under a budget | 503 `AI_PAUSED` | — | — |
 | Provider declined (safety rules) | 422 `AI_REFUSED` | `refused` | used |
 | Reply cut at the token limit | 502 `AI_REPLY_TOO_LONG` | `too_long` | used |
 | Reply unusable twice | 502 `AI_INVALID_REPLY` | `invalid_output` | used |
@@ -143,16 +163,19 @@ row-level security like every school's data, and the worker removes rows after 4
 
 ## 5. Platform administration
 
-- **Platform overview → AI assistance:** provider and model; the schools with an allowance or use this
-  month, with requests used against the allowance, failed requests, tokens, and tokens counted against
-  the budget when the school has one; **Test the connection** (one small request outside any allowance,
-  recorded as `admin.ai_tested`).
+- **Platform overview → AI assistance:** provider and model; the month's spending against the platform
+  budget (and how many requests had no price); the schools with an allowance or use this month, with
+  requests used against the allowance, failed requests, tokens, tokens counted against the budget when the
+  school has one, and cost; the use per feature (requests, tokens, cost); the configured model's prices,
+  entered or changed here (`admin.ai_price_set`, with the previous prices), and the other priced models, each
+  with **Remove price** (`admin.ai_price_removed`); **Test the connection** (one small request outside any
+  allowance, recorded as `admin.ai_tested`).
 - **A school's page:** "AI requests per month (override)" and "AI tokens per month (override)". Empty
   returns to the plan's value (0 requests; no token budget).
 - **The school's billing page** shows "AI requests this month" once it has an allowance.
 - API: `GET /api/admin/ai`, `POST /api/admin/ai/test` (API_DOCUMENTATION.md), and `ai_requests_per_month`
   and `ai_tokens_per_month` in `limitOverrides` of `PATCH /api/admin/orgs/:orgId/subscription` (or in a
-  plan's `limits`, `PATCH /api/admin/plans/:planId`).
+  plan's `limits`, `PATCH /api/admin/plans/:planId`); `PUT` and `DELETE /api/admin/ai/prices` for prices.
 
 ## 6. Writing a feature on it
 
@@ -205,6 +228,11 @@ language rule, the lesson text limit) is in `src/ai/teaching.ts`.
   with slow replies (3 fit, no more); a spent budget refused before the provider; a second attempt's
   estimate; the admin override (and its bounds) and the AI card; plan limits for AI.
 - `tests/unit/billing-logic.test.ts`: every plan carries both AI limits, and an override replaces them.
+- `tests/integration/ai-costs.test.ts` (6): prices set by a platform administrator and audited with the previous
+  ones; each request priced when logged (the answering model, else the configured one, else no cost); a reply
+  without counts priced at its estimate; a failed call at nothing; price validation and access; the cost
+  report per school and per feature; the platform budget: no price refused, the 80 % alert, every school
+  refused once it is reached (the provider not called, no allowance taken), last month not counted.
 - E2E (platform admin journey): the AI card, the connection test, the override, and the school's meter.
   The E2E server's provider is the simulator, run as its own process; it answers each feature's requests
   (`tests/e2e/ai-simulator-server.ts`).

@@ -4,6 +4,7 @@ import { hostname } from 'node:os';
 import type { AppConfig } from '../config.js';
 import { checkDatabase, withSystemContext, type Database } from '../db/index.js';
 import { pendingMigrations } from '../db/migrator.js';
+import { budgetState, BUDGET_WARN_PERCENT, microsToUsd } from '../ai/costs.js';
 import { createMailer, type Mailer } from '../notifications/mailer.js';
 
 // Operational alerts. Every app instance evaluates the checks on a timer; the
@@ -20,8 +21,9 @@ export const SERVER_ERROR_THRESHOLD = 10; // 5xx responses in 5 minutes on one i
 
 export type AlertKey =
   | 'worker_stalled' | 'email_failing' | 'email_backlog' | 'server_errors'
-  | 'payment_webhooks_failing' | 'migrations_pending' | 'file_checks_stalled' | 'database_unreachable';
-const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending', 'file_checks_stalled'];
+  | 'payment_webhooks_failing' | 'migrations_pending' | 'file_checks_stalled' | 'database_unreachable'
+  | 'ai_budget_high' | 'ai_budget_reached' | 'ai_price_missing';
+const DB_CHECKS: AlertKey[] = ['worker_stalled', 'email_failing', 'email_backlog', 'server_errors', 'payment_webhooks_failing', 'migrations_pending', 'file_checks_stalled', 'ai_budget_high', 'ai_budget_reached', 'ai_price_missing'];
 /** Homework files waiting longer than this for the worker's check (virus scan, photo resizing). */
 export const FILE_CHECK_STALE_MINUTES = 10;
 
@@ -39,6 +41,9 @@ const HINTS: Record<AlertMessage['key'], string> = {
   migrations_pending: 'Apply the migrations: docker compose run --rm migrate. Instances report not ready until then.',
   file_checks_stalled: 'Check the virus scanner and the worker: docker compose ps clamav worker; docker compose logs clamav worker. Teachers and students cannot open these files until they are checked.',
   database_unreachable: 'Check the database: docker compose ps postgres and its logs, or the managed database status page.',
+  ai_budget_high: 'Platform admin → AI assistance shows the spending per school and per feature. New AI requests are refused once the budget (AI_MONTHLY_BUDGET_USD) is reached.',
+  ai_budget_reached: 'New AI requests are refused until the month ends. To allow more, raise AI_MONTHLY_BUDGET_USD and restart the app; Platform admin → AI assistance shows where the spending went.',
+  ai_price_missing: "Enter the model's prices in Platform admin → AI assistance, from the provider's price page. With a platform budget set, AI requests are refused until the model has a price.",
   test: 'This is a test sent from Platform admin → Overview.',
 };
 
@@ -109,6 +114,19 @@ export async function evaluate(db: Database, config: AppConfig, errors: ServerEr
     const waitingFiles = Number(files.rows[0]!.n);
     if (waitingFiles > 0) {
       found.push({ key: 'file_checks_stalled', summary: `${waitingFiles} homework ${waitingFiles === 1 ? 'file has' : 'files have'} waited more than ${FILE_CHECK_STALE_MINUTES} minutes to be checked`, details: { waitingFiles } });
+    }
+
+    if (config.AI_PROVIDER !== 'none' && config.AI_MODEL && config.AI_MONTHLY_BUDGET_USD > 0) {
+      const b = await budgetState(trx, config, config.AI_PROVIDER, config.AI_MODEL);
+      const usd = (m: number) => microsToUsd(m)!.toFixed(2);
+      const details = { spentUsd: usd(b.spentMicros), budgetUsd: usd(b.budgetMicros) };
+      if (b.state === 'unpriced') {
+        found.push({ key: 'ai_price_missing', summary: `The AI model ${config.AI_MODEL} has no price, so AI requests are refused under the platform budget`, details: { model: config.AI_MODEL } });
+      } else if (b.state === 'reached') {
+        found.push({ key: 'ai_budget_reached', summary: `AI spending this month reached the platform budget (US$${details.spentUsd} of US$${details.budgetUsd}): new AI requests are refused`, details });
+      } else if (b.state === 'high') {
+        found.push({ key: 'ai_budget_high', summary: `AI spending this month reached ${BUDGET_WARN_PERCENT}% of the platform budget (US$${details.spentUsd} of US$${details.budgetUsd})`, details });
+      }
     }
 
     const pending = await pendingMigrations(db);

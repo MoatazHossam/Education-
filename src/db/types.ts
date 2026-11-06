@@ -427,7 +427,19 @@ export interface AiRequestsTable {
   input_tokens: number | null;
   output_tokens: number | null;
   duration_ms: number;
+  /** Millionths of a US dollar (bigint, read as a string); null without a price for the model. */
+  cost_usd_micros: ColumnType<string | null, number | string | null | undefined, number | string | null>;
   created_at: Generated<Date>;
+}
+
+export interface AiModelPricesTable {
+  provider: 'gemini' | 'anthropic' | 'openai';
+  model: string;
+  /** US dollars per million tokens (numeric, read as a string). */
+  input_usd_per_mtok: ColumnType<string, number | string, number | string>;
+  output_usd_per_mtok: ColumnType<string, number | string, number | string>;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
 }
 
 export interface BillingNoticesTable {
@@ -852,6 +864,7 @@ export interface DB {
   billing_events: BillingEventsTable;
   usage_counters: UsageCountersTable;
   ai_requests: AiRequestsTable;
+  ai_model_prices: AiModelPricesTable;
   ai_user_daily: AiUserDailyTable;
   billing_notices: BillingNoticesTable;
   audit_logs: AuditLogsTable;

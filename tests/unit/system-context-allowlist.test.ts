@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 // fails here until it is added with a reason (docs/production/SECURITY_GAP_ANALYSIS.md S-3).
 const ALLOWED: Record<string, { calls: number; why: string }> = {
   'src/admin/routes.ts': { calls: 1, why: 'platform administration across schools (platform admins only, MFA)' },
-  'src/ai/routes.ts': { calls: 2, why: 'platform admin AI overview across schools; audit of the connection test' },
+  'src/ai/costs.ts': { calls: 1, why: 'the platform budget: the month\'s AI spending summed across schools (amounts only), checked before an AI request' },
+  'src/ai/routes.ts': { calls: 4, why: 'platform admin AI overview and cost report across schools; audit of the connection test; model prices (platform-wide, platform admins only)' },
   'src/api-v1/routes.ts': { calls: 2, why: 'API key lookup before the school is known; last-used time' },
   'src/audit/audit.ts': { calls: 1, why: 'platform-level audit entries (no school context)' },
   'src/auth/routes.ts': { calls: 4, why: 'invitation tokens before membership (register, view, accept); a user’s own audit entries in their data export' },

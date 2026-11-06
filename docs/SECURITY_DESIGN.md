@@ -103,7 +103,7 @@ organizations, and name only the recipient's own organization's scopes and selec
 `invitation.created/resent/revoked/accepted`, `scope.created/updated/deleted/items_updated/cleared/exported/duplicated/item_annotated/items_assigned/items_tracked`
 (which fields changed and the assignee, never the note's text),
 `api_key.created/revoked`, `admin.data_key_rotated` (counts and the key id, never key material), `webhook.created/updated/deleted/secret_rotated/tested/redelivered/disabled/deliveries_exported` (URLs, events and row counts, never secrets), `billing.*`, `support_access.granted/revoked/used`, `admin.*`,
-`ai.request` (feature, provider, model that answered, outcome and tokens; never the text) and `admin.ai_tested`,
+`ai.request` (feature, provider, model that answered, outcome and tokens; never the text), `admin.ai_tested`, and `admin.ai_price_set/removed` (the prices, and the previous ones),
 `student.created/imported/updated/password_reset/unlocked/removed/password_changed`, and student sign-ins
 (`auth.student_login`, `auth.student_login_failed`, `auth.student_locked`, `auth.student_login_blocked_locked`), which go to the school's
 own audit log with the username, never a password.

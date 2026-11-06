@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { buildApp } from '../../src/app.js';
 import { SandboxProvider } from '../../src/billing/providers/sandbox.js';
+import { WEBHOOK_BODY_LIMIT, WEBHOOK_MAX_PER_MINUTE } from '../../src/billing/routes.js';
 import { runBillingLifecycle } from '../../src/billing/service.js';
-import { withSystemContext } from '../../src/db/index.js';
+import { createDatabase, withSystemContext } from '../../src/db/index.js';
 import { addDays } from '../../src/lib/time.js';
 import { Client, createHarness, latestEmail, resetData, signUp, type Harness } from '../helpers/harness.js';
 
@@ -136,6 +138,67 @@ describe('webhook security', () => {
     expect((await sub(owner.orgId)).status).toBe('trialing');
     const audit = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('audit_logs').select('action').where('org_id', '=', owner.orgId).where('action', '=', 'billing.amount_mismatch').execute());
     expect(audit).toHaveLength(1);
+  });
+});
+
+describe('webhook limits (production finding B-G7)', () => {
+  const send = (body: string, opts: { ip?: string; signature?: string; app?: typeof h.app } = {}) =>
+    (opts.app ?? h.app).inject({
+      method: 'POST',
+      url: '/api/billing/webhooks/sandbox',
+      remoteAddress: opts.ip ?? '127.0.0.1',
+      headers: { 'content-type': 'application/json', 'x-sandbox-signature': opts.signature ?? sandbox.sign(body) },
+      payload: body,
+    });
+  const events = () => withSystemContext(h.ownerDb, (trx) => trx.selectFrom('billing_events').select('event_id').execute());
+
+  it('refuses a request over 64 KiB before checking its signature; a signed event at the limit is processed', async () => {
+    const owner = await signUp(h);
+    const invoiceId = (await owner.client.post(`/api/orgs/${owner.orgId}/billing/checkout`, { planId: 'starter' })).json().invoiceId;
+    const evt = { id: 'evt_large', type: 'payment.succeeded', data: { invoice_id: invoiceId, txn_id: 'txn_large', amount_cents: 99_000, currency: 'EGP' } };
+    // The same event padded to an exact size, correctly signed.
+    const sized = (bytes: number) => JSON.stringify({ ...evt, padding: 'x'.repeat(bytes - JSON.stringify({ ...evt, padding: '' }).length) });
+    expect(Buffer.byteLength(sized(WEBHOOK_BODY_LIMIT))).toBe(WEBHOOK_BODY_LIMIT);
+
+    const over = await send(sized(WEBHOOK_BODY_LIMIT + 1));
+    expect(over.statusCode).toBe(413);
+    expect(over.json().error.code).toBe('PAYLOAD_TOO_LARGE');
+    expect(await events()).toHaveLength(0);
+    expect((await sub(owner.orgId)).status).toBe('trialing');
+
+    const atLimit = await send(sized(WEBHOOK_BODY_LIMIT));
+    expect(atLimit.json()).toMatchObject({ received: true, status: 'processed' });
+    expect((await sub(owner.orgId)).status).toBe('active');
+  });
+
+  it('allows 600 callbacks a minute per sending address, counted across app instances; other addresses are not affected', async () => {
+    const db = createDatabase(h.config.DATABASE_URL, { poolMax: 5 });
+    const second = await buildApp({ config: h.config, db, logger: false });
+    await second.ready();
+    try {
+      const flood = '203.0.113.50';
+      const forged = (i: number) => send('{}', { ip: flood, signature: 't=1,v1=00', app: i % 2 ? second : h.app });
+      // Half on each instance: with a count per process neither would reach the limit.
+      const codes: number[] = [];
+      for (let i = 0; i < WEBHOOK_MAX_PER_MINUTE; i += 50) {
+        codes.push(...(await Promise.all(Array.from({ length: 50 }, (_, j) => forged(i + j)))).map((r) => r.statusCode));
+      }
+      expect(codes.every((c) => c === 400)).toBe(true);
+      const limited = await forged(0);
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json().error.code).toBe('RATE_LIMITED');
+      expect((await forged(1)).statusCode).toBe(429);
+
+      // The provider, sending from another address, still gets through.
+      const owner = await signUp(h);
+      const invoiceId = (await owner.client.post(`/api/orgs/${owner.orgId}/billing/checkout`, { planId: 'starter' })).json().invoiceId;
+      const evt = JSON.stringify({ id: 'evt_after_flood', type: 'payment.succeeded', data: { invoice_id: invoiceId, txn_id: 'txn_after_flood', amount_cents: 99_000, currency: 'EGP' } });
+      expect((await send(evt, { ip: '198.51.100.7' })).json()).toMatchObject({ received: true, status: 'processed' });
+      expect((await sub(owner.orgId)).status).toBe('active');
+    } finally {
+      await second.close();
+      await db.destroy();
+    }
   });
 });
 

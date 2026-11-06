@@ -46,7 +46,8 @@ a test 60/15 min, saving answers 3,000/h, heartbeats and page events 1,200/h eac
 600/h, handing in and uploading 120/h each, changing their password 10/15 min. Student creation and
 password resets 120/h; roster imports 30/h; register
 10/h/IP; password-reset and resend-verification 5/h per IP+email; MFA verify 10/15 min; invitations
-30/h; checkout 20/h; public API 120/min/IP plus the plan's monthly request quota. Route limits are
+30/h; checkout 20/h; payment provider callbacks 600/min per sending address; public API 120/min/IP plus
+the plan's monthly request quota. Route limits are
 counted across all app instances; the global limit is counted per app instance.
 
 ## 2. Endpoints
@@ -311,6 +312,11 @@ HMAC-SHA256(SANDBOX_WEBHOOK_SECRET, "t.body")>`, 5-minute tolerance.
 Responses: `200 {received:true, status}` processed/ignored; `200 {duplicate:true}` for a repeated
 event id; `400` bad signature; `500` processing error (provider retries; the event is re-processed
 because failed events are retryable).
+
+Limits (production finding B-G7): a request body over 64 KiB is refused with `413 PAYLOAD_TOO_LARGE`
+while it is read, before the signature is checked; more than 600 requests a minute from one address get
+`429 RATE_LIMITED`, counted across app instances, so a flood from elsewhere does not use up the
+provider's allowance.
 
 ## 5. Webhooks to your systems (app → customer)
 

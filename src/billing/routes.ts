@@ -31,6 +31,15 @@ export function publicPlan(p: Plan) {
 
 const ChangeBody = z.object({ planId: z.string().regex(/^[a-z][a-z0-9_]{1,30}$/), interval: z.enum(['month', 'year']).default('month') });
 
+// Payment provider callbacks (production finding B-G7). A limit of their own, per sending
+// address and counted in PostgreSQL, so it holds across app instances and a flood from
+// elsewhere cannot use up the provider's allowance: one payment is one callback, and 600
+// a minute leaves room for a burst of renewals. Larger requests are refused while the body
+// is read, before the signature is checked. The contract simulator's Paymob callback is
+// under 1 kB; a real one carries more fields (not yet measured, no Paymob keys).
+export const WEBHOOK_MAX_PER_MINUTE = 600;
+export const WEBHOOK_BODY_LIMIT = 64 * 1024;
+
 export async function registerBillingRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { db, config } = ctx;
   const grace = config.GRACE_DAYS;
@@ -158,7 +167,7 @@ export async function registerBillingRoutes(app: FastifyInstance, ctx: AppContex
     // Raw body is required to verify the provider signature byte-for-byte.
     scope.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
 
-    scope.post('/api/billing/webhooks/:provider', async (req, reply) => {
+    scope.post('/api/billing/webhooks/:provider', { bodyLimit: WEBHOOK_BODY_LIMIT, ...rateLimited(WEBHOOK_MAX_PER_MINUTE, '1 minute') }, async (req, reply) => {
       const { provider: name } = parse(z.object({ provider: z.string().max(20) }), req.params);
       const provider = ctx.payments;
       if (!provider || provider.name !== name) throw notFound();

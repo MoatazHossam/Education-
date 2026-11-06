@@ -33,7 +33,7 @@ This is a sound base: idempotency, signature verification and amount checks are 
 | B-G4 | One currency per deployment (`BILLING_CURRENCY`); plans seeded in it | High for KSA/UAE | `src/config.ts:39`, `src/db/seed-cli.ts:13` [V-code] |
 | B-G5 | No tax: invoices are net; no VAT number, rate, or tax-compliant invoice layout; no e-invoicing (Egypt ETA, Saudi ZATCA) | High (legal) | `SECURITY_DESIGN.md §7` [DOC] |
 | B-G6 | Customer billing details are minimal: `billing_data` sends `phone_number: 'NA'` and splits the owner's name | Medium | `paymob.ts:150` [V-code]; Paymob may require real phone/address for some methods [ASSUMPTION] |
-| B-G7 | Webhook endpoint relies on the global flood guard only | Low | `src/billing/routes.ts:161` has no route limit; signature check is cheap [V-code] |
+| B-G7 | Webhook endpoint relies on the global flood guard only. **Fixed by task 1.7**: 600/min per sending address counted across instances (429 above), body over 64 KiB refused (413) | Low · **fixed** | Was: `src/billing/routes.ts:161` had no route limit; signature check is cheap [V-code] |
 | B-G8 | Not run against Paymob; the `redirection_url` path is not used to mark payment (correct), but the return page UX for "processing" needs a real test | Blocked | B-2 [DOC] |
 
 ## 3. Target design
@@ -61,7 +61,8 @@ renewals. This moves state to the provider and makes multi-provider harder; not 
 
 Already correct [V-code]: claim-by-insert on `(provider, event_id)`, retry only failed events, unique transaction
 id, amount/currency match, signed checkout binding. Add:
-- A route rate limit (e.g. 600/min) and request-size cap on `/api/billing/webhooks/:provider`.
+- **Done (task 1.7).** A route rate limit (600/min per sending address) and request-size cap (64 KiB) on
+  `/api/billing/webhooks/:provider`.
 - Platform admin view of `billing_events` with status `failed`/`ignored` and a "reprocess" action (exists partly:
   "Platform admin → Webhooks" **[DOC]**).
 

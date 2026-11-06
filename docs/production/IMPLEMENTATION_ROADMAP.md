@@ -41,7 +41,7 @@ scripts/ci-local.sh                                   # full CI locally (GitHub 
 | 1.4 | **Done (2026-11-05).** **Container limits and PostgreSQL tuning** in `docker-compose.prod.yml`; `ConcurrentDatabaseReload no` for ClamAV; Node heap caps | I-1, I-2, I-7 | 1 d | `docker compose config` shows limits; stack healthy; local load test unchanged (no 5xx) | `docker stats`; `scripts/load-exam.mjs` locally |
 | 1.5 | **Done (2026-11-05).** **Secrets split**: per-service env blocks (migrate gets DB only; web gets no backup creds); env file permissions checked by `ops/midad.sh`; rotation runbook | S-9, S-10 | 1 d | Each container's `env` lists only what it needs | `docker compose exec app env \| sort` review |
 | 1.6 | **Done (2026-11-05).** **AI worst-case latency**: timeout 60 s, provider retries 1, configurable | A-4 | 0.5 d | Simulator with a hanging provider returns 503 within ~4 min | `npm run test:integration -- ai ai-providers-contract` |
-| 1.7 | **Webhook endpoint limit** and request size cap | B-G7 | 0.5 d | 429 above the limit; Paymob contract tests pass | `npm run test:integration -- billing paymob-contract` |
+| 1.7 | **Done (2026-11-06).** **Webhook endpoint limit** and request size cap | B-G7 | 0.5 d | 429 above the limit; Paymob contract tests pass | `npm run test:integration -- billing paymob-contract` |
 | 1.8 | **Common-password check** for staff and student passwords (local list) | S-6 | 0.5 d | "password123" refused with a clear EN/AR message | `npm run test:integration -- auth students` |
 | 1.9 | **Dependency hygiene**: Renovate/Dependabot config, base images pinned by digest | S-15 | 0.5 d | Bot opens PRs; images resolve by digest | Repo settings; `docker compose config` |
 

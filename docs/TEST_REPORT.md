@@ -22,7 +22,7 @@ Only results that were actually executed are reported here.
 
 ## 2. Unit and integration tests — `npm test`
 
-**61 files, 432 tests, 432 passed, 0 failed** (2026-11-05, with the shorter AI wait, task 1.6). Integration tests ran against a real
+**61 files, 434 tests, 434 passed, 0 failed** (2026-11-06, with the payment webhook limits, task 1.7). Integration tests ran against a real
 PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS app role.
 
 | File | Tests | Result |
@@ -73,9 +73,9 @@ PostgreSQL database with a non-superuser owner role and a separate non-BYPASSRLS
 | integration/assignment-digest | 9 | Pass — the daily summary: no email per assignment for members who chose it (in-app notice kept); one summary the next morning, then none; at most one a day (assignments after the morning's sending time wait); one email across two organizations grouped by scope and assigner; unassigned/removed books and suspended organizations left out; switching back or off drops the queue, choice validated; unverified addresses; Arabic and long lists; three concurrent passes send one summary; RLS for other organizations and members; cleanup after 30 days |
 | integration/catalog-sheet | 5 | Pass — export, preview writes nothing, apply with notifications and audit, all-or-nothing, drafts, access |
 | integration/catalog-notifications | 4 | Pass — who is notified on publish/archive, language, email opt-out, once per year, flags |
-| integration/billing | 14 | Pass |
+| integration/billing | 16 | Pass — including the payment callback limits (task 1.7): a signed event of exactly 64 KiB is processed and one byte more is refused with 413 before anything is recorded; 600 callbacks a minute from one address, alternating between two app instances, then 429, while a callback from another address is still processed. Both tests fail with the limits removed (200 instead of 413; 400 instead of 429, since the per-process guard saw 300 on each instance) |
 | integration/catalog-verification | 6 | Pass — marks on published versions, validation, archived refusal, copy and reset rules, exports |
-| integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API |
+| integration/paymob-contract | 11 | Pass — the real `PaymobProvider` over HTTP against a simulator of Paymob's documented API; the simulator's callback (686 bytes) is well under the 64 KiB cap |
 | integration/admin-api-ops | 12 | Pass |
 | integration/authz-coverage | 5 | Pass — enumerated all 30+ admin routes and 30+ org routes |
 | integration/students | 29 | Pass — student accounts (`docs/STUDENT_ACCOUNTS.md`): off by default and per-school override; sign-in, equal errors, lockout per address (a classmate on the school network cannot lock the student out of a browser they signed in from; Unlock keeps the password; with a test opening within the hour, 20 failures from four addresses do not lock the student out, while another student without a test is locked out of unknown addresses), staff reset, password change; every application route called with a student session (only the portal answers); database triggers and constraints; roles; another school 404 and RLS; scopes of the same school only; account deletion; platform user list; roster import (preview with one entry per problem and its code, unreadable files refused with `FILE_NOT_UTF8` / `CSV_INVALID`, all or nothing, Excel/Arabic files, limit); the portal's curriculum; suspended school; generated passwords |

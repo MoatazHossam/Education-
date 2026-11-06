@@ -633,7 +633,7 @@ test('showcase recordings', async ({ browser }) => {
 
   await karim.goto(`${classPath}/gradebook`);
   await expect(karim.locator('table.gradebook tbody tr', { hasText: DEMO.omar })).toContainText(L('grades.percent', { n: fmt(90.6) }));
-  r = await shots.start(karim, 'gradebook');
+  await shots.start(karim, 'gradebook');
   await karim.goto(classPath);
   r = await shots.start(karim, 'class-page');
   await r.scroll(9999, 'class');

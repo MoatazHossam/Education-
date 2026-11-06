@@ -911,7 +911,7 @@ export function setLocale(l) {
 
 /** Account preference wins, then the last choice on this device, then the browser language. */
 export function initLocale(accountLocale) {
-  let saved = null;
+  let saved;
   try { saved = localStorage.getItem('midad-locale'); } catch { saved = null; }
   setLocale(accountLocale || saved || (navigator.language?.startsWith('ar') ? 'ar' : 'en'));
 }

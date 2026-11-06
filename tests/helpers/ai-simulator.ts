@@ -74,7 +74,7 @@ export class AiSimulator {
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
     const path = (req.url ?? '').split('?')[0]!;
-    let body: Record<string, unknown> = {};
+    let body: Record<string, unknown>;
     try {
       body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as Record<string, unknown>;
     } catch {

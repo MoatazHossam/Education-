@@ -27,7 +27,7 @@ export function sniffType(buf: Buffer): ClassroomFileType | null {
 
 /** A display name without paths or control characters, ending in the real type's extension. */
 export function cleanFileName(raw: string | undefined, type: ClassroomFileType): string {
-  let name = '';
+  let name: string;
   try {
     name = decodeURIComponent(raw ?? '');
   } catch {

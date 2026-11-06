@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib';
+import { generateSecret } from 'otplib';
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../auth/password.js';
 import type { AppConfig } from '../config.js';
@@ -15,7 +15,7 @@ export async function seedDemoData(db: Database, config: AppConfig, catalogVersi
   if (existing) return { message: 'Demo data already present.' };
   const password = process.env.DEMO_PASSWORD ?? randomBytes(9).toString('base64url');
   const passwordHash = await hashPassword(password);
-  const adminTotp = authenticator.generateSecret(20);
+  const adminTotp = generateSecret();
 
   await db.transaction().execute(async (trx) => {
     const mk = (email: string, name: string, extra: Record<string, unknown> = {}) =>

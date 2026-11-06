@@ -1,5 +1,5 @@
 import type { FastifyInstance, InjectOptions } from 'fastify';
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { buildApp } from '../../src/app.js';
 import { loadConfig, type AppConfig } from '../../src/config.js';
@@ -152,7 +152,7 @@ export async function signUp(h: Harness, opts: { email?: string; org?: string; n
 /** Creates a platform administrator (with TOTP unless `mfa: false`) and returns a signed-in client. */
 export async function createPlatformAdmin(h: Harness, opts: { mfa: boolean } = { mfa: true }) {
   const email = uniqueEmail('admin');
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
   await h.ownerDb
     .insertInto('users')
     .values({
@@ -170,7 +170,7 @@ export async function createPlatformAdmin(h: Harness, opts: { mfa: boolean } = {
   if (login.statusCode !== 200) throw new Error(`admin login failed: ${login.body}`);
   await client.refresh();
   if (opts.mfa) {
-    const verify = await client.post('/api/auth/mfa/verify', { code: authenticator.generate(secret) });
+    const verify = await client.post('/api/auth/mfa/verify', { code: generateSync({ secret }) });
     if (verify.statusCode !== 200) throw new Error(`admin MFA failed: ${verify.body}`);
     await client.refresh();
   }
@@ -212,7 +212,7 @@ export async function distinctTitleMaterialIds(h: Harness, versionId: string, n:
 }
 
 export function totp(secret: string): string {
-  return authenticator.generate(secret);
+  return generateSync({ secret });
 }
 
 /**

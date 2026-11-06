@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib';
+import { generateSync } from 'otplib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Client, createHarness, PASSWORD, resetData, signUp, STUDENT_ROUTES, totp, type Harness } from '../helpers/harness.js';
 
@@ -82,7 +82,7 @@ describe('second-factor brute force', () => {
     const c = new Client(h.app);
     await c.post('/api/auth/login', { email, password: PASSWORD });
     await c.refresh();
-    const wrong = String((Number(authenticator.generate(setup.secret)) + 500_000) % 1_000_000).padStart(6, '0');
+    const wrong = String((Number(generateSync({ secret: setup.secret })) + 500_000) % 1_000_000).padStart(6, '0');
     for (let i = 0; i < 5; i++) expect((await c.post('/api/auth/mfa/verify', { code: wrong })).statusCode).toBe(401);
     // Pending session is gone and the password alone no longer works from this address during the lockout.
     expect((await c.post('/api/auth/mfa/verify', { code: totp(setup.secret) })).statusCode).toBe(401);

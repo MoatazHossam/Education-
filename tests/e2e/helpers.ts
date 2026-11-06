@@ -1,5 +1,5 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { hashPassword } from '../../src/auth/password.js';
 import { encryptSecret } from '../../src/lib/crypto.js';
 import { E2E_ENV, latestEmailText, ownerQuery } from './server.js';
@@ -70,7 +70,7 @@ export async function payInSandbox(page: Page) {
 /** `onCodePage` runs on the two-factor page, before the code is entered. */
 export async function signInAsPlatformAdmin(page: Page, onCodePage?: () => Promise<void>) {
   const email = `admin.${uid()}@e2e.test`;
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
   await ownerQuery(
     `INSERT INTO users (email, name, password_hash, email_verified_at, is_platform_admin, mfa_enabled, mfa_secret_enc) VALUES ($1, 'E2E Admin', $2, now(), true, true, $3)`,
     [email, await hashPassword(PASSWORD), encryptSecret(E2E_ENV.DATA_ENCRYPTION_KEY!, secret)],
@@ -78,7 +78,7 @@ export async function signInAsPlatformAdmin(page: Page, onCodePage?: () => Promi
   await login(page, email);
   await expect(page.getByRole('heading', { name: 'Two-factor verification' })).toBeVisible();
   await onCodePage?.();
-  await page.getByLabel('Authentication code').fill(authenticator.generate(secret));
+  await page.getByLabel('Authentication code').fill(generateSync({ secret }));
   await page.getByRole('button', { name: 'Verify' }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/mfa'));
 }

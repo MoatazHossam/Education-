@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createCipheriv, createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync } from 'otplib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { hashPassword } from '../../src/auth/password.js';
 import { withSystemContext } from '../../src/db/index.js';
@@ -43,7 +43,7 @@ function v1Envelope(keyBase64: string, plaintext: string): string {
 /** A member with two-factor sign-in whose secret is stored with `encrypt`. */
 async function mfaUser(encrypt: (secret: string) => string, pending?: string) {
   const email = uniqueEmail('mfa');
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
   const row = await hOld.ownerDb
     .insertInto('users')
     .values({ email, name: 'Two Factor', password_hash: await hashPassword(PASSWORD), email_verified_at: new Date(), mfa_enabled: true, mfa_secret_enc: encrypt(secret), mfa_pending_secret_enc: pending ?? null })
@@ -57,7 +57,7 @@ async function signInWithCode(h: Harness, u: { email: string; secret: string }) 
   const c = new Client(h.app);
   expect((await c.post('/api/auth/login', { email: u.email, password: PASSWORD })).statusCode).toBe(200);
   await c.refresh();
-  return (await c.post('/api/auth/mfa/verify', { code: authenticator.generate(u.secret) })).statusCode;
+  return (await c.post('/api/auth/mfa/verify', { code: generateSync({ secret: u.secret }) })).statusCode;
 }
 
 async function signInOn(h: Harness, email: string) {
@@ -99,7 +99,7 @@ function runCli(args: string[], env: Record<string, string>): Promise<{ code: nu
 describe('rotating DATA_ENCRYPTION_KEY', () => {
   it('old values keep working during the rotation, are re-encrypted, and then work with the new key alone', async () => {
     const u1 = await mfaUser((s) => encryptSecret(OLD, s));
-    const u2 = await mfaUser((s) => v1Envelope(OLD, s), v1Envelope(OLD, authenticator.generateSecret()));
+    const u2 = await mfaUser((s) => v1Envelope(OLD, s), v1Envelope(OLD, generateSecret()));
     const u3 = await mfaUser((s) => encryptSecret(OLD, s));
     const owner = await signUp(hOld, { org: 'Key School' });
     const r = await receiver();

@@ -11,6 +11,7 @@ import { createAiProvider } from './ai/providers/index.js';
 import { registerAiAdminRoutes } from './ai/routes.js';
 import { registerApiV1Routes, resolveApiKey } from './api-v1/routes.js';
 import { csrfTokenFor, resolveSession, sessionCookieName } from './auth/sessions.js';
+import { registerPasskeyRoutes } from './auth/passkey-routes.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { createPaymentProvider } from './billing/providers/index.js';
 import { registerBillingRoutes } from './billing/routes.js';
@@ -181,6 +182,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
 
   registerHealthRoutes(app, ctx);
   registerAuthRoutes(app, ctx);
+  registerPasskeyRoutes(app, ctx);
   registerNotificationRoutes(app, ctx);
   registerOrgRoutes(app, ctx);
   registerCatalogRoutes(app, ctx);

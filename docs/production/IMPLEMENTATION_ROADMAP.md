@@ -103,7 +103,7 @@ budget and allowances (D-6), and the model's prices from the provider's price pa
 
 ## Phase 7 — After launch
 
-Object storage for homework files (I-6); managed PostgreSQL with PITR; passkeys/WebAuthn and SSO; ~~Docker secrets
+Object storage for homework files (I-6); managed PostgreSQL with PITR; ~~passkeys/WebAuthn~~ (**done, 2026-11-06**: staff passkeys, SECURITY_DESIGN §2) and SSO (needs the owner's choice of identity providers); ~~Docker secrets
 or a secret manager~~ (**done, 2026-11-06**: every secret setting can be read from a file, `<NAME>_FILE`, and
 `docker-compose.secrets.yml` mounts the session secret and the data key as Docker secrets; DEPLOYMENT_GUIDE §3.7);
 per-school AI routing to a regional endpoint; card-on-file for wallets where supported.

@@ -1532,3 +1532,51 @@ test('teaching plans: the teacher drafts a lesson plan with AI, edits and prints
   await expect(page.getByRole('link', { name: 'Term 1' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Letters and sounds (7A)' })).toBeVisible();
 });
+
+test('passkeys: the owner adds one on the account page, signs in with it instead of the password, then removes it', async ({ page, browserName }) => {
+  // Chromium's virtual authenticator (DevTools protocol, WebAuthn domain) stands in for the fingerprint or face
+  // check; Firefox and WebKit have no such tool in Playwright. The server side is covered in every browser's
+  // CI job by tests/integration/passkeys.test.ts.
+  test.skip(browserName !== 'chromium', 'virtual authenticator: Chromium only');
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
+  });
+
+  await login(page, delta.ownerEmail);
+  await page.goto('/account');
+  const card = page.locator('#passkeys');
+  await expect(card.getByRole('heading', { name: 'Passkeys' })).toBeVisible();
+  await expect(card.getByText('No passkeys yet.')).toBeVisible();
+  await card.getByLabel('Name').fill('E2E laptop');
+  await card.getByLabel('Password').fill('wrong-password-123');
+  await card.getByRole('button', { name: 'Add a passkey' }).click();
+  await expect(card.getByRole('alert')).toHaveText('Password is incorrect');
+  await card.getByLabel('Password').fill(PASSWORD);
+  await card.getByRole('button', { name: 'Add a passkey' }).click();
+  await expect(page.getByText('Passkey added')).toBeVisible();
+  await expect(card.getByRole('cell', { name: 'E2E laptop', exact: true })).toBeVisible();
+  await expect(card.getByRole('cell', { name: 'Not used yet' })).toBeVisible();
+  expect((await cdp.send('WebAuthn.getCredentials', { authenticatorId })).credentials).toHaveLength(1);
+
+  // Signed out, the sign-in page offers the passkey: no email, no password.
+  await page.context().clearCookies();
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Use a passkey' }).click();
+  await page.waitForURL(/\/org\//);
+  await page.goto('/account');
+  await expect(card.getByRole('cell', { name: 'Not used yet' })).toHaveCount(0);
+
+  await card.getByRole('button', { name: 'Remove passkey E2E laptop' }).click();
+  await page.getByRole('dialog', { name: 'Remove this passkey?' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByText('Passkey removed')).toBeVisible();
+  await expect(card.getByText('No passkeys yet.')).toBeVisible();
+
+  // The device still has it, but the account no longer accepts it.
+  await page.context().clearCookies();
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Use a passkey' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'not registered' })).toHaveText('This passkey is not registered with Midad. Sign in with your password, then add it again.');
+  await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId });
+});

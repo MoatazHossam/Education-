@@ -35,7 +35,7 @@ Acceptance criteria point at the automated tests that check them where they exis
 | S-02 | Login, logout, sessions | Access | MISSING | IMPLEMENTED | DB sessions, hashed tokens, idle+absolute expiry, rotation | — | P0 | `auth.test.ts` |
 | S-03 | Brute-force protection | Security | MISSING | IMPLEMENTED | Per-account lockout (password and TOTP), per-IP+account rate limits shared by all app instances (PostgreSQL) | Provider/CDN-level limit for volumetric attacks | P0 | `auth.test.ts`, `authz-coverage.test.ts`, `rate-limit-store.test.ts` |
 | S-04 | Password reset/change | Account recovery | MISSING | IMPLEMENTED | Single-use 1 h tokens, revokes sessions | — | P0 | `auth.test.ts` |
-| S-05 | TOTP MFA + recovery codes | Protect privileged users | MISSING | IMPLEMENTED | otplib, AES-GCM secret at rest, replay protection; required for platform admins; optional org policy | WebAuthn/passkeys | P0 | `auth.test.ts`; E2E journey 7 |
+| S-05 | TOTP MFA + recovery codes | Protect privileged users | MISSING | IMPLEMENTED | otplib, AES-GCM secret at rest, replay protection; required for platform admins; optional org policy; staff passkeys (WebAuthn) count as two-step verification | SSO | P0 | `auth.test.ts`; E2E journey 7 |
 | S-06 | Organizations & multi-tenancy | Sell to teams | MISSING | IMPLEMENTED | Shared DB + `org_id` + Row-Level Security | — | P0 | `tenancy.test.ts`, `authz-coverage.test.ts`; E2E journey 3 |
 | S-07 | Roles & permissions | Team control | MISSING | IMPLEMENTED | owner/admin/editor/viewer enforced in `inOrg()` | Custom roles | P0 | `tenancy.test.ts`; E2E journey 2 |
 | S-08 | Invitations | Onboard teams | MISSING | IMPLEMENTED | Hashed single-use tokens, 7-day expiry, seat-checked | — | P0 | `tenancy.test.ts` |

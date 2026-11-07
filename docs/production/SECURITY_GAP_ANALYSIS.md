@@ -140,7 +140,7 @@ the server generates (students', the first platform administrator's) are random 
 RETURNING`. Low. **Fixed 2026-11-05 (task 1.3):** each failure is one `INSERT … ON CONFLICT DO UPDATE` on
 `login_failures`; a test sends 8 wrong passwords at once and finds every checked one counted.
 
-Not present (acceptable for launch, track for enterprise): WebAuthn/passkeys, SSO (SAML/OIDC), session listing
+Not present (acceptable for launch, track for enterprise): ~~WebAuthn/passkeys~~ (staff passkeys since 2026-11-06), SSO (SAML/OIDC), session listing
 for users beyond revocation **[DOC]** `SECURITY_DESIGN.md §6`.
 
 ## 3. Uploaded student files

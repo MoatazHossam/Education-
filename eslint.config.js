@@ -19,7 +19,7 @@ export default tseslint.config(
         fetch: 'readonly', location: 'readonly', history: 'readonly', setTimeout: 'readonly',
         clearTimeout: 'readonly', URL: 'readonly', URLSearchParams: 'readonly', getSelection: 'readonly',
         Blob: 'readonly', confirm: 'readonly', console: 'readonly', HTMLElement: 'readonly', Event: 'readonly',
-        requestAnimationFrame: 'readonly', addEventListener: 'readonly', Node: 'readonly', btoa: 'readonly', queueMicrotask: 'readonly',
+        requestAnimationFrame: 'readonly', addEventListener: 'readonly', Node: 'readonly', btoa: 'readonly', atob: 'readonly', queueMicrotask: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly', CSS: 'readonly',
       },
     },

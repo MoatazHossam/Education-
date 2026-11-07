@@ -862,6 +862,17 @@ Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 72 files, 527 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 31 tests | Pass |
 | Not run | The ops scripts with the add-on (they do not use it) | — |
 
+### Passkeys (2026-11-06)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/passkeys.test.ts` (new, 10 tests), against a software authenticator built from the WebAuthn Level 3 specification (`tests/helpers/soft-authenticator.ts`: P-256 keys, CBOR attestation object with "none", authenticator data with flags and counter, DER signature over authenticator data and the client data hash) | Added with the password (wrong one refused), email and audit; sign-in on another browser with no email or password gives an active, two-step verified session; last use recorded; account export lists it. Refused: the same registration answer twice, another account answering a challenge, the same device twice (excluded), another origin or relying party, no user verification, a made-up challenge; at sign-in a replayed answer, another origin or relying party, no user verification, a bad signature, a counter that went back, a user handle of another account (7 failures audited), then a good sign-in still works; an expired challenge; a registration challenge used to sign in; the worker removes expired challenges. Rename and remove by the owner only (another account gets 404); a removed passkey gives `PASSKEY_UNKNOWN`. At most 10 (`PASSKEY_LIMIT`). A suspended account is refused; a school's two-step rule refuses a password-only session and accepts a passkey one; a platform admin's passkey session opens the admin pages. Signed-out visitors (401) and students (403 `STAFF_ONLY`) cannot add or list them | Pass |
+| The same file with: user verification not required at sign-in; challenges reusable; the user handle not checked; a passkey session not two-step verified | 1, 3, 1 and 3 tests fail | The tests catch all four |
+| E2E, new journey (Chromium virtual authenticator, DevTools WebAuthn domain) | Account page: wrong password refused, passkey added and listed ("Not used yet"), one credential on the authenticator; signed out, "Use a passkey" signs in without email or password; last use shown; removed with confirmation; the device's passkey then gives "This passkey is not registered with Midad…". Skipped in Firefox and WebKit, which have no virtual authenticator in Playwright; the server side runs in every CI job | Pass |
+| Accessibility suite | The account page with the Passkeys section and the sign-in page with the passkey button, English and Arabic, light and dark, desktop and phone | Pass |
+| Route reviews (`authz-coverage.test.ts`, `students.test.ts`) | The seven passkey routes are listed: the two sign-in routes as public, the rest as the account's own; a signed-in student gets 403 `STAFF_ONLY` from each of those | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 73 files, 537 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 32 tests; journeys in Firefox and WebKit, 27 tests each (the passkey journey skipped) | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

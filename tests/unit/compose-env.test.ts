@@ -25,14 +25,15 @@ describe('settings per production container', () => {
   });
 
   it('the worker gets no session secret, payment, AI or alert keys, and not the schema owner', () => {
-    expect(secrets('worker')).toEqual(['DATABASE_URL', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS', 'SMTP_URL', 'SYSTEM_DATABASE_URL']);
+    // The bucket's key: the worker reads homework files to check them, and deletes removed ones.
+    expect(secrets('worker')).toEqual(['DATABASE_URL', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS', 'S3_SECRET_ACCESS_KEY', 'SMTP_URL', 'SYSTEM_DATABASE_URL']);
   });
 
   it('the app instances get what the web app uses, and not the schema owner', () => {
     for (const app of ['app', 'app2']) {
       expect(secrets(app)).toEqual([
         'AI_API_KEY', 'ALERT_WEBHOOK_URL', 'DATABASE_URL', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS', 'PAYMOB_HMAC_SECRET',
-        'PAYMOB_PUBLIC_KEY', 'PAYMOB_SECRET_KEY', 'SANDBOX_WEBHOOK_SECRET', 'SESSION_SECRET', 'SMTP_URL', 'SYSTEM_DATABASE_URL',
+        'PAYMOB_PUBLIC_KEY', 'PAYMOB_SECRET_KEY', 'S3_SECRET_ACCESS_KEY', 'SANDBOX_WEBHOOK_SECRET', 'SESSION_SECRET', 'SMTP_URL', 'SYSTEM_DATABASE_URL',
       ]);
     }
   });

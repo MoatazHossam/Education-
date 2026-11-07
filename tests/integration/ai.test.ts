@@ -25,7 +25,7 @@ let ctx: AppContext;
 beforeAll(async () => {
   await sim.start();
   h = await createHarness({ RATE_LIMIT_ENABLED: 'false', AI_PROVIDER: 'gemini', AI_API_KEY: KEY, AI_MODEL: 'gemini-2.5-pro', AI_API_BASE: sim.base('gemini'), AI_TIMEOUT_MS: '5000' });
-  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config) };
+  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config), files: null };
 });
 afterAll(async () => {
   await h.close();

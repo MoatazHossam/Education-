@@ -24,7 +24,7 @@ let ctx: AppContext;
 beforeAll(async () => {
   await sim.start();
   h = await createHarness({ RATE_LIMIT_ENABLED: 'false', AI_PROVIDER: 'gemini', AI_API_KEY: KEY, AI_MODEL: 'gemini-2.5-pro', AI_API_BASE: sim.base('gemini'), AI_TIMEOUT_MS: '5000' });
-  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config) };
+  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config), files: null };
 });
 afterAll(async () => {
   await h.close();
@@ -114,7 +114,7 @@ describe('AI: requests per member per day (AI-5)', () => {
   it('cannot be overrun by one member\'s concurrent requests', async () => {
     const small = await createHarness({ RATE_LIMIT_ENABLED: 'false', AI_PROVIDER: 'gemini', AI_API_KEY: KEY, AI_MODEL: 'gemini-2.5-pro', AI_API_BASE: sim.base('gemini'), AI_TIMEOUT_MS: '5000', AI_USER_DAILY_LIMIT: '3' });
     try {
-      const smallCtx: AppContext = { config: small.config, db: small.db, log: small.app.log, payments: null, ai: createAiProvider(small.config) };
+      const smallCtx: AppContext = { config: small.config, db: small.db, log: small.app.log, payments: null, ai: createAiProvider(small.config), files: null };
       const s = await school();
       await limits(s.orgId, { ai_requests_per_month: 100 });
       const results = await Promise.allSettled(Array.from({ length: 8 }, () => runAiTask(smallCtx, s.caller, TASK)));

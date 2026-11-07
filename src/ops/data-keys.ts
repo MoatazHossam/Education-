@@ -15,6 +15,8 @@ export const ENCRYPTED_COLUMNS = [
   { table: 'users', column: 'mfa_secret_enc' },
   { table: 'users', column: 'mfa_pending_secret_enc' },
   { table: 'webhook_endpoints', column: 'secret_enc' },
+  // Each homework file object's own key (FILE_STORAGE=s3, src/classroom/file-store.ts); the objects are not rewritten.
+  { table: 'classroom_files', column: 'storage_dek_enc' },
 ] as const;
 
 export interface ColumnReport {

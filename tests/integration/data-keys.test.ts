@@ -122,7 +122,7 @@ describe('rotating DATA_ENCRYPTION_KEY', () => {
       expect(signedWith(hook.secret, r.received[0]!)).toBe(true);
 
       const done = columns(await rotateDataKeys(hBoth.db, BOTH, { write: true }));
-      expect(Object.values(done).map((c) => [c.rewrapped, c.unreadable.length])).toEqual([[3, 0], [1, 0], [1, 0]]);
+      expect(Object.values(done).map((c) => [c.rewrapped, c.unreadable.length])).toEqual([[3, 0], [1, 0], [1, 0], [0, 0]]); // no homework files in the bucket here (file-storage.test.ts)
       for (const u of [u1, u2, u3]) expect((await stored(u.id)).mfa_secret_enc!.startsWith(`v2.${keyId(NEW)}.`)).toBe(true);
       expect((await stored(u2.id)).mfa_pending_secret_enc!.startsWith(`v2.${keyId(NEW)}.`)).toBe(true);
       const webhookSecret = await withSystemContext(hOld.ownerDb, (trx) => trx.selectFrom('webhook_endpoints').select('secret_enc').executeTakeFirstOrThrow());

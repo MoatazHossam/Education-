@@ -93,6 +93,22 @@ const envSchema = (role: ConfigRole) => z
     CLAMAV_HOST: z.string().min(1).optional(),
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
 
+    // Where new homework files are kept (docs/CLASSROOM.md §5): in the database, or in an S3-compatible bucket
+    // (Amazon S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, Wasabi, MinIO, ...). Each object is encrypted
+    // with its own key before it leaves the application; that key is kept in the database, encrypted with
+    // DATA_ENCRYPTION_KEY. Files already kept elsewhere stay readable while the bucket settings are given;
+    // npm run files:move moves them (docs/DEPLOYMENT_GUIDE.md, "Homework files in object storage").
+    FILE_STORAGE: z.enum(['database', 's3']).default('database'),
+    // The provider's endpoint; leave it out for Amazon S3 in S3_REGION.
+    S3_ENDPOINT: z.url().regex(/^https?:\/\//, 'S3_ENDPOINT must be an http(s) URL').optional(),
+    // "auto" for Cloudflare R2.
+    S3_REGION: z.string().regex(/^[a-z0-9-]{2,40}$/, 'S3_REGION must be a region name such as eu-central-1 or auto').default('us-east-1'),
+    S3_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, 'S3_BUCKET must be a bucket name (3-63 lowercase letters, digits, dots and hyphens)').optional(),
+    S3_ACCESS_KEY_ID: z.string().min(1).max(256).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).max(256).optional(),
+    // Bucket in the path (https://host/bucket/key) instead of the host name; MinIO and some others need it.
+    S3_FORCE_PATH_STYLE: bool.default(false),
+
     // AI assistance (docs/AI_LAYER.md): one provider for the whole server, used
     // only by schools a platform administrator has enabled. "none" turns it off.
     // AI_API_BASE replaces the provider's endpoint (a regional endpoint, a
@@ -136,12 +152,23 @@ const envSchema = (role: ConfigRole) => z
       if (!env.FILE_SCAN) {
         ctx.addIssue({ code: 'custom', path: ['FILE_SCAN'], message: 'FILE_SCAN must be set in production: clamav (scan homework files for viruses) or off' });
       }
+      if (env.S3_ENDPOINT && !env.S3_ENDPOINT.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['S3_ENDPOINT'], message: 'S3_ENDPOINT must use https in production' });
+      }
     }
     if (env.SYSTEM_DATABASE_URL === env.DATABASE_URL) {
       ctx.addIssue({ code: 'custom', path: ['SYSTEM_DATABASE_URL'], message: 'SYSTEM_DATABASE_URL must use the system role, not the application role of DATABASE_URL' });
     }
     if (env.FILE_SCAN === 'clamav' && !env.CLAMAV_HOST) {
       ctx.addIssue({ code: 'custom', path: ['CLAMAV_HOST'], message: 'CLAMAV_HOST is required when FILE_SCAN=clamav' });
+    }
+    if (env.FILE_STORAGE === 's3' && !env.S3_BUCKET) {
+      ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 'S3_BUCKET is required when FILE_STORAGE=s3' });
+    }
+    if (env.S3_BUCKET) {
+      for (const key of ['S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+        if (!env[key]) ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when S3_BUCKET is set` });
+      }
     }
     if (env.DATA_ENCRYPTION_KEYS_PREVIOUS.includes(env.DATA_ENCRYPTION_KEY)) {
       ctx.addIssue({ code: 'custom', path: ['DATA_ENCRYPTION_KEYS_PREVIOUS'], message: 'DATA_ENCRYPTION_KEYS_PREVIOUS must not contain the current DATA_ENCRYPTION_KEY' });
@@ -189,6 +216,7 @@ export const FILE_SETTINGS = [
   'SESSION_SECRET', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS',
   'DATABASE_URL', 'SYSTEM_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'SMTP_URL',
   'SANDBOX_WEBHOOK_SECRET', 'PAYMOB_SECRET_KEY', 'PAYMOB_PUBLIC_KEY', 'PAYMOB_HMAC_SECRET', 'AI_API_KEY', 'ALERT_WEBHOOK_URL',
+  'S3_SECRET_ACCESS_KEY',
 ] as const;
 
 /**

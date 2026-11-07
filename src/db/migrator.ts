@@ -27,6 +27,7 @@ import * as m0022 from './migrations/0022_ai_costs.js';
 import * as m0023 from './migrations/0023_billing_reviews.js';
 import * as m0024 from './migrations/0024_org_time_zone.js';
 import * as m0025 from './migrations/0025_passkeys.js';
+import * as m0026 from './migrations/0026_file_objects.js';
 
 // Static registry: works identically under tsx and the compiled dist build.
 const MIGRATIONS: Record<string, Migration> = {
@@ -55,6 +56,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0023_billing_reviews': m0023,
   '0024_org_time_zone': m0024,
   '0025_passkeys': m0025,
+  '0026_file_objects': m0026,
 };
 
 class StaticProvider implements MigrationProvider {

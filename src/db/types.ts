@@ -682,8 +682,12 @@ export interface ClassroomFilesTable {
   content_type: ClassroomFileType;
   size_bytes: number;
   sha256: string;
-  /** Null once the file is blocked (infected or unreadable). */
+  /** The bytes, when they are kept in the database; null once the file is blocked (infected or unreadable). */
   data: Buffer | null;
+  /** When the bytes are in the bucket instead (FILE_STORAGE=s3, src/classroom/file-store.ts): the object's name. */
+  storage_key: string | null;
+  /** The object's own encryption key, encrypted with DATA_ENCRYPTION_KEY. */
+  storage_dek_enc: string | null;
   uploaded_by: string | null;
   created_at: Generated<Date>;
   status: Generated<ClassroomFileStatus>;
@@ -694,6 +698,15 @@ export interface ClassroomFilesTable {
   check_attempts: Generated<number>;
   check_error: string | null;
   checked_at: Date | null;
+}
+
+/** Objects to delete from the bucket (migration 0026); the worker deletes those that are due. */
+export interface ObjectDeletionsTable {
+  key: string;
+  due_at: Date;
+  attempts: Generated<number>;
+  last_error: string | null;
+  created_at: Generated<Date>;
 }
 
 // ---------------------------------------------------------------- online tests and exams (docs/ONLINE_TESTS.md)
@@ -878,6 +891,7 @@ export interface DB {
   homework: HomeworkTable;
   homework_submissions: HomeworkSubmissionsTable;
   classroom_files: ClassroomFilesTable;
+  object_deletions: ObjectDeletionsTable;
   tests: TestsTable;
   test_questions: TestQuestionsTable;
   test_question_keys: TestQuestionKeysTable;

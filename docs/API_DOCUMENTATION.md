@@ -156,7 +156,7 @@ Tree shape:
 | GET | `/homework?show=todo\|done\|all` · `/homework/:homeworkId` | Homework of the student's classes, with their own work; a mark only once returned |
 | PUT · POST · POST | `/homework/:id/submission` · `/homework/:id/hand-in` · `/homework/:id/take-back` | `{body}` draft · hand in (`late` if after the due time) · back to a draft until returned |
 | POST · DELETE | `/homework/:id/files` · `/homework/:id/files/:fileId` | Raw photo or PDF body, name in `X-File-Name`; type checked from the bytes; 5 MB, 5 files. Answers `{file: {id, name, contentType, size, status: "pending"}}` |
-| GET | `/files/:fileId` | A file the student may see (sandboxed; PDFs download), once the worker has checked it; otherwise 409 `FILE_CHECKING`, `FILE_INFECTED` or `FILE_UNREADABLE` |
+| GET | `/files/:fileId` | A file the student may see (sandboxed; PDFs download), once the worker has checked it; otherwise 409 `FILE_CHECKING`, `FILE_INFECTED` or `FILE_UNREADABLE`. With files in a bucket (`FILE_STORAGE=s3`), 503 `FILE_STORAGE_UNAVAILABLE` while the bucket cannot be reached (also for uploads) |
 | GET · POST | `/notifications` · `/notifications/read` | The portal's notifications (new and returned homework, new tests, released results) |
 | GET | `/tests` · `/tests/:testId` | Published tests of the student's classes with attempts used and allowed; a score only when the results setting allows (docs/ONLINE_TESTS.md) |
 | POST | `/tests/:testId/start` | `{code?}`: starts an attempt or resumes the open one; `WRONG_START_CODE`, `NO_ATTEMPTS_LEFT`, `TEST_NOT_OPEN`, `OTHER_DEVICE` |
@@ -171,7 +171,7 @@ create, edit, archive, delete: admin), `classes/:classId/students` (PUT the list
 `classes/:classId/teachers` (admin), `classes/:classId/homework` (POST: the subject's teacher or an admin),
 `homework/:homeworkId` (GET with the roster; PATCH, DELETE), `homework/:homeworkId/files`,
 `homework/:homeworkId/submissions/:studentId` (GET the work; PATCH `{points?, feedback?, return?}`),
-`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId`, and `classes/:classId/suggest-homework` (POST
+`homework/:homeworkId/return` (`{studentIds}`), `files/:fileId` (and its uploads: 503 `FILE_STORAGE_UNAVAILABLE` while a bucket in use cannot be reached), and `classes/:classId/suggest-homework` (POST
 `{subjectEn, topic, lessonText?, kind?: "practice"|"reading"|"writing"|"research"|"review", minutes?: 10–120,
 language}`: a homework suggestion by AI, returned as `{suggestion: {title, instructions, estimatedMinutes,
 teacherNotes}, model}` and never saved; the subject's teachers and admins in an open class; uses one of the

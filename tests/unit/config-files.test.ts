@@ -80,7 +80,8 @@ describe('secret settings read from files', () => {
   it('covers exactly the secret settings; other settings have no file form', () => {
     expect([...FILE_SETTINGS].sort()).toEqual([
       'AI_API_KEY', 'ALERT_WEBHOOK_URL', 'DATABASE_URL', 'DATA_ENCRYPTION_KEY', 'DATA_ENCRYPTION_KEYS_PREVIOUS', 'MIGRATION_DATABASE_URL',
-      'PAYMOB_HMAC_SECRET', 'PAYMOB_PUBLIC_KEY', 'PAYMOB_SECRET_KEY', 'SANDBOX_WEBHOOK_SECRET', 'SESSION_SECRET', 'SMTP_URL', 'SYSTEM_DATABASE_URL',
+      'PAYMOB_HMAC_SECRET', 'PAYMOB_PUBLIC_KEY', 'PAYMOB_SECRET_KEY', 'S3_SECRET_ACCESS_KEY', 'SANDBOX_WEBHOOK_SECRET', 'SESSION_SECRET', 'SMTP_URL',
+      'SYSTEM_DATABASE_URL',
     ]);
     const config = loadConfig({ ...base, SESSION_SECRET: SECRET, DATA_ENCRYPTION_KEY: KEY, APP_URL_FILE: file('url', 'https://other.example') });
     expect(config.APP_URL).toBe('https://midad.example');

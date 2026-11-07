@@ -303,6 +303,80 @@ installation has:
 - The ops scripts (`ops/start.sh`, `ops\start.bat`) do not use this file: they read the secrets from the settings
   file. Use it when you run Compose yourself, as above.
 
+### 3.8 Homework files in object storage (optional)
+By default homework files (photos and PDFs, at most 5 MB each) are kept in the database. With
+`FILE_STORAGE=s3` new files go to a bucket of any service with the S3 API instead, so the database and its backups
+stay small. You choose the provider when you deploy; nothing in Midad depends on one. It has been tested against
+MinIO and against a stand-in bucket in the test suite (TEST_REPORT §4), not yet against a hosted provider.
+
+- **Encrypted before it leaves the server.** Each file is encrypted (AES-256-GCM) with a key made for it alone, and
+  that key is kept in the database, encrypted with `DATA_ENCRYPTION_KEY`. Someone who gets the bucket, or a copy
+  of it, sees only ciphertext. The bucket and the database are both needed to read a file; keep them in different
+  hands where you can (another account, other people with access).
+- **Files still pass through the application.** Students and teachers open files from Midad as before, with the
+  same access checks and the same sandboxed responses; the bucket needs no public access and no signed links.
+- **The worker deletes.** A file that is removed (by its uploader, with its homework, class or school, by the
+  school's retention periods, or because it held a virus) is queued in the database in the same transaction, and
+  the worker deletes its object within seconds. It never deletes an object a file still names.
+
+**Set up**
+
+1. At the provider, create a **private** bucket (no public access) for this installation only, and an access key
+   that can only read, write and delete objects in it and see the bucket: on Amazon S3 the actions
+   `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on `arn:aws:s3:::<bucket>/*` and `s3:ListBucket` on
+   `arn:aws:s3:::<bucket>`. Other providers call this a key scoped to one bucket, with read and write.
+2. In `.env.production`:
+   ```
+   FILE_STORAGE=s3
+   S3_BUCKET=midad-files
+   S3_ACCESS_KEY_ID=…
+   S3_SECRET_ACCESS_KEY=…
+   S3_ENDPOINT=https://…          # leave out for Amazon S3
+   S3_REGION=eu-central-1         # the bucket's region; "auto" for Cloudflare R2
+   S3_FORCE_PATH_STYLE=           # true for MinIO and services that need https://host/bucket/…
+   ```
+   The endpoint and region come from the provider's documentation. Usual forms (check them there):
+   Cloudflare R2 `https://<account id>.r2.cloudflarestorage.com` with `S3_REGION=auto`; Backblaze B2
+   `https://s3.<region>.backblazeb2.com`; DigitalOcean Spaces `https://<region>.digitaloceanspaces.com`; Wasabi
+   `https://s3.<region>.wasabisys.com`; MinIO the address of your server, with `S3_FORCE_PATH_STYLE=true`.
+   Production refuses an endpoint that is not https. `S3_SECRET_ACCESS_KEY` can be read from a file instead
+   (`S3_SECRET_ACCESS_KEY_FILE`, §3.7).
+3. Restart the app instances and the worker (`scripts/rolling-restart.sh`, or `ops/start.sh`). The worker's log
+   says `file storage bucket reachable`, or warns when it cannot reach the bucket.
+4. **Move the files already stored** (safe while schools use Midad; nothing is deleted from the database until
+   the copy in the bucket has been read back and matched):
+   ```bash
+   docker compose … exec app node dist/cli/move-files.js --to s3 --check   # where the files are; is the bucket reachable
+   docker compose … exec app node dist/cli/move-files.js --to s3
+   ```
+   It prints how many files moved. Files still being checked by the worker, or changed while it ran, are skipped:
+   run it again. It records `admin.files_moved` in the platform audit log (counts only). Locally:
+   `npm run files:move -- --to s3`.
+
+**Backups.** The ops scripts' backups (§5, §8) hold the database, which includes each file's encrypted key but not
+the objects. Back up the bucket as well:
+
+- turn on the bucket's **versioning** and keep old versions at least as long as database backups (30 days by
+  default), so that restoring an older database finds the objects it names; and/or
+- copy the bucket to another place on a schedule, for example with rclone (`rclone sync`), keeping the copy as
+  private as the bucket. The copies are encrypted; without `DATA_ENCRYPTION_KEY` and the database they are useless,
+  so keep those as §5 says.
+
+After restoring a database, files whose objects are gone answer "cannot be opened"; nothing else breaks.
+
+**When the bucket cannot be reached,** uploads and opening files in the bucket answer 503
+`FILE_STORAGE_UNAVAILABLE` ("Files cannot be opened or saved right now"), files still in the database work, the
+worker's checks wait (the alert `file_checks_stalled` fires after 10 minutes, §6), and deletions are retried with
+growing waits (up to six hours).
+
+**Rotating `DATA_ENCRYPTION_KEY`** (§4) re-encrypts the files' keys with the other secrets; the objects are not
+rewritten.
+
+**Going back to the database:** set `FILE_STORAGE=database`, restart, then run
+`node dist/cli/move-files.js --to database` while the `S3_*` settings are still there: it moves the files back and
+deletes their objects. Remove the `S3_*` settings afterwards. Do the same before rolling back to a release older
+than this one, which cannot open files in a bucket.
+
 ## 4. Upgrades and rollback
 
 1. Take a backup (`ops/backup.sh --env prod`, Windows `ops\backup.bat --env prod`), `git pull` (or
@@ -340,7 +414,8 @@ installation has:
 
 ### Rotating `DATA_ENCRYPTION_KEY`
 
-The key encrypts two-factor secrets and customer webhook signing secrets. Rotate it about once a
+The key encrypts two-factor secrets, customer webhook signing secrets and, with `FILE_STORAGE=s3`, each homework
+file's own key (§3.8). Rotate it about once a
 year, when someone who had access to it leaves, or if it may have leaked. There is no downtime.
 
 1. **Back up first:** run `ops/backup.sh --env prod` (§8). Then check the current state:
@@ -443,7 +518,9 @@ one, `ops/restore.sh` to restore, and §8.8 to rebuild a lost server. The minimu
 - a **weekly test** of the newest off-site copy (§8.5), and a full restore drill before launch and
   after major changes;
 - the backup passphrase and `.env.production` (above all `DATA_ENCRYPTION_KEY`) kept in a password
-  manager, apart from the backups.
+  manager, apart from the backups;
+- with homework files in a bucket (`FILE_STORAGE=s3`), the bucket backed up too (versioning, or a copy elsewhere):
+  the database backups do not hold the files then (§3.8).
 
 Keep at least 30 daily copies (the default retention) and 12 monthly ones **(assumption)**: for the
 monthly ones, keep one backup a month in a place retention does not touch (a second folder or a

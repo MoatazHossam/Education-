@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-11-06. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-11-07. Branch: `claude/friendly-rubin-hmemjl`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -24,6 +24,30 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Homework files in object storage (roadmap Phase 7, I-6) · COMPLETE (2026-11-07)
+- **What it is:** with `FILE_STORAGE=s3` and the `S3_*` settings, new homework files (photos and PDFs) are kept in a
+  private bucket of any service with the S3 API instead of the database. The provider is chosen at deployment;
+  the database stays the default. DEPLOYMENT_GUIDE §3.8 (English and Arabic).
+- **Encryption:** each file is encrypted by the application before it is sent (AES-256-GCM, a key of its own, bound
+  to the object's name); that key is kept in the database, encrypted with `DATA_ENCRYPTION_KEY`, and the key
+  rotation tool re-encrypts it. The bucket alone reveals nothing.
+- **Same behaviour for schools:** files still pass through the application with the same access checks and sandbox
+  headers; the worker still scans and prepares each file before anyone opens it; storage limits count files in the
+  bucket.
+- **Deleting:** removing a file (or its homework, class or school, retention deletions, a virus) queues its object
+  in the same transaction (migration 0026, `object_deletions` with a trigger), and the worker deletes it afterwards,
+  never while a file still names it. An object of an upload that failed is deleted after 30 minutes.
+- **Moving stored files:** `npm run files:move -- --to s3|database` (`node dist/cli/move-files.js` in the image),
+  with `--check`; each file is read back and matched before the database copy goes; audited as
+  `admin.files_moved`.
+- **When the bucket is down:** 503 `FILE_STORAGE_UNAVAILABLE` (Arabic message added) for files in the bucket; files
+  in the database keep working; the worker waits and retries.
+- **Built with:** `@aws-sdk/client-s3` 3.1155.0 (pinned).
+- **Tested:** against a stand-in bucket in the test suite and against a real MinIO server built from its source;
+  not yet against a hosted provider (needs the owner's account and keys).
+- **Not done:** the ops scripts' backups still cover the database only; the bucket is backed up with the
+  provider's versioning or a copy (DEPLOYMENT_GUIDE §3.8).
 
 ### Passkeys for staff accounts (roadmap Phase 7) · COMPLETE (2026-11-06)
 - **What it is:** owners, admins, editors and viewers can add passkeys on their account page and then sign in

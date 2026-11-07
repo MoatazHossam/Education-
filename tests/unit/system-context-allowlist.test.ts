@@ -16,6 +16,8 @@ const ALLOWED: Record<string, { calls: number; why: string }> = {
   'src/billing/routes.ts': { calls: 3, why: 'payment provider webhooks and sandbox checkout (signed)' },
   'src/billing/service.ts': { calls: 2, why: 'worker: subscription lifecycle for every school' },
   'src/classroom/file-checks.ts': { calls: 2, why: 'worker: virus scan queue across schools' },
+  'src/classroom/file-move.ts': { calls: 5, why: 'command-line: moving stored homework files between the database and the bucket, across schools' },
+  'src/classroom/file-store.ts': { calls: 2, why: 'worker: deleting queued bucket objects, checking that no school\'s file still names them' },
   'src/classroom/retention.ts': { calls: 1, why: 'worker: list schools with retention periods (deletion runs per school)' },
   'src/classroom/service.ts': { calls: 1, why: 'worker: homework announcements due' },
   'src/classroom/tests-service.ts': { calls: 1, why: 'worker: test deadlines' },

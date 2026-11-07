@@ -7,6 +7,7 @@ import type { AppConfig } from '../config.js';
 import { withSystemContext, type Database, type Executor } from '../db/index.js';
 import type { ClassroomFileType } from '../db/types.js';
 import { notify } from '../notifications/email.js';
+import { fileBytes, keepObject, type FileObjects } from './file-store.js';
 import { MAX_FILE_BYTES } from './files.js';
 
 // The worker checks every homework file before anyone can open it (docs/CLASSROOM.md §5):
@@ -14,9 +15,10 @@ import { MAX_FILE_BYTES } from './files.js';
 //  2. photos are turned upright, made at most PHOTO_MAX_SIDE pixels on their longer side and
 //     encoded again, which also drops their metadata (a phone photo's EXIF can hold where it
 //     was taken). PDFs are kept as they are.
-// A file with a virus, or a photo that cannot be read, loses its bytes; the row stays so the
-// pages can say what happened. The uploader is told, and for a virus the school's owners and
-// admins too, and the audit log records it. Nobody opens a file until it is ready.
+// A file with a virus, or a photo that cannot be read, loses its bytes (in the database, or its
+// object in the bucket, deleted by runObjectDeletions); the row stays so the pages can say what
+// happened. The uploader is told, and for a virus the school's owners and admins too, and the
+// audit log records it. Nobody opens a file until it is ready.
 
 export const PHOTO_MAX_SIDE = 2000;
 /** Larger images (in pixels) are refused before they are decoded. */
@@ -153,10 +155,12 @@ type PendingFile = {
   size_bytes: number;
   sha256: string;
   data: Buffer | null;
+  storage_key: string | null;
+  storage_dek_enc: string | null;
   uploaded_by: string | null;
 };
 
-const FILE_COLUMNS = ['id', 'org_id', 'homework_id', 'submission_id', 'name', 'content_type', 'size_bytes', 'sha256', 'data', 'uploaded_by'] as const;
+const FILE_COLUMNS = ['id', 'org_id', 'homework_id', 'submission_id', 'name', 'content_type', 'size_bytes', 'sha256', 'data', 'storage_key', 'storage_dek_enc', 'uploaded_by'] as const;
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err)).slice(0, 500);
 
@@ -169,6 +173,16 @@ async function scanFailed(exec: Executor, id: string, err: unknown): Promise<str
     .where('id', '=', id)
     .execute();
   return error;
+}
+
+/** The file's bytes; throws (an error for scanFailed) when the bucket cannot be read. */
+async function bytesOf(files: FileObjects | null, f: PendingFile): Promise<Buffer> {
+  try {
+    return await fileBytes(files, f);
+  } catch (err) {
+    const cause = (err as { cause?: unknown }).cause;
+    throw new Error(`file storage: ${errorText(cause ?? err)}`, { cause: err });
+  }
 }
 
 /** Where a file belongs: its homework, class and the student or teacher who uploaded it. */
@@ -202,7 +216,7 @@ async function block(exec: Executor, f: PendingFile, status: 'infected' | 'unrea
   const now = new Date();
   await exec
     .updateTable('classroom_files')
-    .set({ status, data: null, virus_name: detail.virus ?? null, check_error: detail.error ?? null, scanned_at: scanned ? now : null, checked_at: now })
+    .set({ status, data: null, storage_key: null, storage_dek_enc: null, virus_name: detail.virus ?? null, check_error: detail.error ?? null, scanned_at: scanned ? now : null, checked_at: now })
     .where('id', '=', f.id)
     .execute();
   const { hw, uploader } = await fileContext(exec, f);
@@ -255,13 +269,27 @@ async function block(exec: Executor, f: PendingFile, status: 'infected' | 'unrea
   });
 }
 
-/** Checks one pending file (row locked by the caller). */
-async function checkPending(exec: Executor, f: PendingFile, scanner: VirusScanner | null): Promise<'ready' | 'infected' | 'unreadable' | { failed: string }> {
-  const data = f.data!;
+/** Checks one pending file (row locked by the caller). A photo kept in the bucket is replaced by a new object. */
+async function checkPending(
+  db: Database,
+  exec: Executor,
+  f: PendingFile,
+  scanner: VirusScanner | null,
+  files: FileObjects | null,
+): Promise<'ready' | 'infected' | 'unreadable' | { failed: string }> {
+  // A PDF without scanning needs no bytes.
+  let data: Buffer | null = null;
+  if (scanner || f.content_type !== 'application/pdf') {
+    try {
+      data = await bytesOf(files, f);
+    } catch (err) {
+      return { failed: await scanFailed(exec, f.id, err) };
+    }
+  }
   if (scanner) {
     let result: ScanResult;
     try {
-      result = await scanner.scan(data);
+      result = await scanner.scan(data!);
     } catch (err) {
       return { failed: await scanFailed(exec, f.id, err) };
     }
@@ -278,16 +306,26 @@ async function checkPending(exec: Executor, f: PendingFile, scanner: VirusScanne
   }
   let photo: Buffer;
   try {
-    photo = await preparePhoto(data, f.content_type);
+    photo = await preparePhoto(data!, f.content_type);
   } catch (err) {
     await block(exec, f, 'unreadable', { error: errorText(err) }, Boolean(scanner));
     return 'unreadable';
+  }
+  // The prepared photo is kept where the upload was. The old object is queued for deletion by the update.
+  let place: { data: Buffer } | { storage_key: string; storage_dek_enc: string } = { data: photo };
+  if (f.storage_key) {
+    try {
+      place = await files!.write(db, f.org_id, photo);
+      await keepObject(exec, place.storage_key);
+    } catch (err) {
+      return { failed: await scanFailed(exec, f.id, new Error(`file storage: ${errorText(err)}`)) };
+    }
   }
   await exec
     .updateTable('classroom_files')
     .set({
       status: 'ready',
-      data: photo,
+      ...place,
       size_bytes: photo.length,
       sha256: createHash('sha256').update(photo).digest('hex'),
       original_size_bytes: f.size_bytes,
@@ -306,13 +344,13 @@ async function checkPending(exec: Executor, f: PendingFile, scanner: VirusScanne
  * are open but were never scanned (uploaded before scanning was on); they stay open meanwhile.
  * Stops at the first scanner error, so a stopped scanner is not called for every file.
  */
-export async function runClassroomFileChecks(db: Database, scanner: VirusScanner | null, batch = FILE_CHECK_BATCH): Promise<FileCheckResult> {
+export async function runClassroomFileChecks(db: Database, scanner: VirusScanner | null, files: FileObjects | null = null, batch = FILE_CHECK_BATCH): Promise<FileCheckResult> {
   const result: FileCheckResult = { ready: 0, infected: 0, unreadable: 0, rescanned: 0, failed: 0 };
   for (let i = 0; i < batch; i++) {
     const outcome = await withSystemContext(db, async (trx) => {
       // Fewest failed scans first: a file the scanner keeps failing on does not hold up the others.
       const f = await trx.selectFrom('classroom_files').select(FILE_COLUMNS).where('status', '=', 'pending').orderBy('check_attempts').orderBy('created_at').limit(1).forUpdate().skipLocked().executeTakeFirst();
-      return f ? checkPending(trx, f, scanner) : null;
+      return f ? checkPending(db, trx, f, scanner, files) : null;
     });
     if (!outcome) break;
     if (typeof outcome === 'object') {
@@ -339,7 +377,7 @@ export async function runClassroomFileChecks(db: Database, scanner: VirusScanner
       if (!f) return null;
       let scan: ScanResult;
       try {
-        scan = await scanner.scan(f.data!);
+        scan = await scanner.scan(await bytesOf(files, f));
       } catch (err) {
         return { failed: await scanFailed(trx, f.id, err) };
       }

@@ -76,6 +76,9 @@ journeys open goes through `navigable()` in `tests/e2e/helpers.ts`, which works 
 Playwright 1.56's Firefox and WebKit builds (TEST_REPORT §3, cross-browser runs); Chromium is left as it is.
 CI runs the same commands (`.github/workflows/ci.yml`, one end-to-end job per browser) plus `npm audit --omit=dev` and a Docker
 build with a production-guard smoke test.
+Every CI job has a time limit (30 minutes, end-to-end jobs 45), and installing a browser has 10 minutes: it usually
+takes under 2, but the WebKit install hung twice for over 20 minutes before any test ran. A job stopped there, before any
+test, is re-run once; a second failure is treated as real (`tests/unit/ci-workflow.test.ts` keeps the limits).
 
 ## 6. Gaps
 

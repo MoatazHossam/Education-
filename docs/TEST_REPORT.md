@@ -873,6 +873,13 @@ Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob
 | Route reviews (`authz-coverage.test.ts`, `students.test.ts`) | The seven passkey routes are listed: the two sign-in routes as public, the rest as the account's own; a signed-in student gets 403 `STAFF_ONLY` from each of those | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 73 files, 537 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 32 tests; journeys in Firefox and WebKit, 27 tests each (the passkey journey skipped) | Pass |
 
+### CI time limits (2026-11-07)
+
+| Check | Result |
+| --- | --- |
+| `.github/workflows/ci.yml` | Every job has a limit (checks and image 30 minutes, end-to-end 45); installing the browser has 10. Before, a job had GitHub's default of six hours: the WebKit install hung twice (PRs #72 and #74) for over 20 minutes before any test ran, and was cancelled and re-run by hand | Changed |
+| `tests/unit/ci-workflow.test.ts` (new, 2 tests) | Every job has a limit of at most an hour; the browser install step has one of at most 10 minutes. Removing the install step's limit, then the first job's, fails 1 test each time | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

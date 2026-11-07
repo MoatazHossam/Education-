@@ -7,6 +7,9 @@ was run locally (development stack, Docker image, compose stack, backup and rest
 in TEST_REPORT.md. Day-to-day operation (start, stop, backups, restores) uses the scripts in `ops/`,
 for Linux and Windows (§8).
 
+To hand a package to someone who installs it on one Ubuntu server for a free pilot with schools, there is a shorter
+guide in Word, in Arabic and in English, with the steps run end to end on a package: [deployment/](deployment/README.md).
+
 ## 1. Local development (no Docker)
 
 Requirements: Node.js 22, PostgreSQL 16.

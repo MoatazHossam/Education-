@@ -24,6 +24,8 @@ jobs:
   checks:
     name: Lint, typecheck, unit and integration tests
     runs-on: ubuntu-24.04
+    # Usually 3–5 minutes; a stuck job stops here instead of after GitHub's 6 hours.
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -50,6 +52,8 @@ jobs:
     name: End-to-end (Playwright, ${{ matrix.browser }})
     runs-on: ubuntu-24.04
     needs: checks
+    # Usually 4–8 minutes per browser.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -75,7 +79,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Install the browser and its system packages
+        # Usually under 2 minutes. Twice (November 2026) the WebKit job hung here for over 20 minutes before any
+        # test ran; it now fails after 10, and the job is re-run once (docs/TEST_STRATEGY.md, CI).
+        timeout-minutes: 10
+        run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run ${{ matrix.script }}
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -89,6 +97,7 @@ jobs:
   docker:
     name: Container image
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     needs: checks
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

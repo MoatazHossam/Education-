@@ -891,6 +891,8 @@ Click your name in the top bar.
   was added and last used; **Rename** and **Remove** each. Removing it here
   stops it signing in; delete it on the device too. Up to 10. Student
   accounts do not have passkeys.
+
+  ![Passkeys on the account page: the list with Rename and Remove, and Add a passkey with its name and your password](user-guide/images/account-passkeys.png)
 - **Active sessions**: where you are signed in, with **Sign out** for each
   and **Sign out all other sessions**.
 - **Organizations**: yours, with your role, and **Create organization**.

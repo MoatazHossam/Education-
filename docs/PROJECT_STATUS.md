@@ -25,6 +25,20 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Handover package with deployment guides in Word, Arabic and English · COMPLETE (2026-11-07)
+- **What it is:** `docs/deployment/Midad-Deployment-Guide-AR.docx` and `Midad-Deployment-Guide-EN.docx`, for
+  whoever installs a package on one Ubuntu server and opens it to schools for a free pilot: the server, Docker,
+  the settings file, the first start, the platform admin, a plan with no end date and student accounts for each
+  school, backups, daily operation, upgrades, troubleshooting and a checklist. Making the package and rebuilding the
+  guides: `docs/deployment/README.md` (`scripts/deployment-guide/`).
+- **Tested:** every step from the settings file to a student's sign-in and a tested backup, on package 4d92a28
+  unpacked in an empty folder and run as the production stack on Docker (local domain and mailbox), in the Arabic
+  interface and again in the English one (TEST_REPORT.md).
+- **Not tested:** a real server on the internet (Docker install, firewall, DNS, Let's Encrypt), a real email
+  provider, the upgrade steps and the scheduled backups.
+- **Conditions the guides set:** no real students' data before a legal review and each school's consent; payment
+  off; the catalogue not yet reviewed; AI off.
+
 ### Homework files in object storage (roadmap Phase 7, I-6) · COMPLETE (2026-11-07)
 - **What it is:** with `FILE_STORAGE=s3` and the `S3_*` settings, new homework files (photos and PDFs) are kept in a
   private bucket of any service with the S3 API instead of the database. The provider is chosen at deployment;

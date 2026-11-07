@@ -5,3 +5,6 @@
 
 # Windows batch files need CRLF line endings.
 *.bat text eol=crlf
+
+# Word files are binary: never convert their line endings.
+*.docx binary

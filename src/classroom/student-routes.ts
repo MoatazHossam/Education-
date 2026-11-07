@@ -10,6 +10,7 @@ import { conflict, notFound } from '../lib/errors.js';
 import { parse, zUuid } from '../lib/validation.js';
 import { asStudent } from '../students/context.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, openable, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
+import { fileBytes, storeUpload } from './file-store.js';
 import { homeworkJson, num, studentHomework } from './service.js';
 import { myTests } from './tests-student-routes.js';
 
@@ -145,11 +146,12 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
         const hw = await visibleHomework(trx, homeworkId);
         const draft = await editableDraft(trx, hw, user.id);
         const upload = readUpload(req);
+        const stored = await storeUpload(ctx, org.id, upload.data);
         await lockOrg(trx, org.id);
         const count = await trx.selectFrom('classroom_files').select((eb) => eb.fn.countAll<string>().as('n')).where('submission_id', '=', draft.id).executeTakeFirstOrThrow();
         if (Number(count.n) >= MAX_FILES_PER_ITEM) throw conflict(`At most ${MAX_FILES_PER_ITEM} files per homework`, 'TOO_MANY_FILES');
         await assertStorageAvailable(trx, org.id, await getEntitlements(trx, org.id, ctx.config.GRACE_DAYS), upload.data.length);
-        return saveFile(trx, { orgId: org.id, submissionId: draft.id, upload, uploadedBy: user.id });
+        return saveFile(trx, { orgId: org.id, submissionId: draft.id, upload, stored, uploadedBy: user.id });
       });
       return reply.status(201).send({ file });
     });
@@ -170,11 +172,11 @@ export async function registerStudentClassroomRoutes(app: FastifyInstance, ctx: 
   app.get('/api/student/files/:fileId', async (req, reply) => {
     const { fileId } = parse(z.object({ fileId: zUuid }), req.params);
     const file = await asStudent(ctx, req, async (trx) => {
-      const f = await trx.selectFrom('classroom_files').select(['name', 'content_type', 'data', 'status']).where('id', '=', fileId).executeTakeFirst();
+      const f = await trx.selectFrom('classroom_files').select(['name', 'content_type', 'data', 'storage_key', 'storage_dek_enc', 'status']).where('id', '=', fileId).executeTakeFirst();
       if (!f) throw notFound('File');
       return openable(f);
     });
-    return sendFile(reply, file);
+    return sendFile(reply, file, await fileBytes(ctx.files, file));
   });
 
   // ------------------------------------------------------------ notifications (in the portal; students have no email)

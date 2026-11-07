@@ -16,6 +16,7 @@ import { HomeworkSuggestBody, homeworkPrompt, SuggestedHomework, toHomeworkSugge
 import { itemRetention } from './retention.js';
 import { classTests } from './tests-service.js';
 import { assertStorageAvailable, filesOf, MAX_FILE_BYTES, MAX_FILES_PER_ITEM, openable, readUpload, saveFile, sendFile, UPLOAD_CONTENT_TYPES } from './files.js';
+import { fileBytes, storeUpload } from './file-store.js';
 import {
   assertClassroomEnabled,
   assertTeachesSubject,
@@ -452,7 +453,7 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
       });
       return openable(f);
     });
-    return sendFile(reply, file);
+    return sendFile(reply, file, await fileBytes(ctx.files, file));
   });
 
   // Raw uploads (photos and PDFs) are parsed only on this route.
@@ -465,11 +466,12 @@ export async function registerClassroomRoutes(app: FastifyInstance, ctx: AppCont
         const { hw, acc } = await homeworkAccess(trx, access, homeworkId);
         assertTeachesSubject(acc, hw.subject_en);
         const upload = readUpload(req);
+        const stored = await storeUpload(ctx, orgId, upload.data);
         await lockOrg(trx, orgId);
         const count = await trx.selectFrom('classroom_files').select((eb) => eb.fn.countAll<string>().as('n')).where('homework_id', '=', homeworkId).executeTakeFirstOrThrow();
         if (Number(count.n) >= MAX_FILES_PER_ITEM) throw conflict(`At most ${MAX_FILES_PER_ITEM} files per homework`, 'TOO_MANY_FILES');
         await assertStorageAvailable(trx, orgId, await getEntitlements(trx, orgId, grace), upload.data.length);
-        return saveFile(trx, { orgId, homeworkId, upload, uploadedBy: access.user.id });
+        return saveFile(trx, { orgId, homeworkId, upload, stored, uploadedBy: access.user.id });
       });
       return reply.status(201).send({ file });
     });

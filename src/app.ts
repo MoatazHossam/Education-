@@ -30,6 +30,7 @@ import { registerOrgRoutes } from './orgs/routes.js';
 import { registerPlanRoutes } from './scopes/plan-routes.js';
 import { registerScopeRoutes } from './scopes/routes.js';
 import { registerStudentRoutes } from './students/routes.js';
+import { createFileObjects } from './classroom/file-store.js';
 import { registerGradebookRoutes } from './classroom/gradebook-routes.js';
 import { registerClassroomRoutes } from './classroom/routes.js';
 import { registerRetentionRoutes } from './classroom/retention-routes.js';
@@ -59,7 +60,7 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
     genReqId: () => crypto.randomUUID(),
   });
 
-  const ctx: AppContext = { config, db, log: app.log, payments: createPaymentProvider(config), ai: createAiProvider(config) };
+  const ctx: AppContext = { config, db, log: app.log, payments: createPaymentProvider(config), ai: createAiProvider(config), files: createFileObjects(config) };
 
   // Only JSON bodies are accepted (webhooks register their own raw parser).
   // Cross-site HTML forms cannot send application/json, which blocks login CSRF.
@@ -166,6 +167,8 @@ export async function buildApp({ config, db, logger }: BuildAppOptions): Promise
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
+      // A service the app depends on failed (the file storage bucket): the log says why, the response does not.
+      if (err.statusCode >= 500 && err.cause) req.log.warn({ err: err.cause, code: err.code }, 'a service the app depends on failed');
       return reply.status(err.statusCode).send({ error: { code: err.code, message: err.message, details: err.details } });
     }
     const e = err as { statusCode?: number; code?: string; message: string; validation?: unknown };

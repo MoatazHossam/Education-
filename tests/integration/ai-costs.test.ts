@@ -32,9 +32,9 @@ let bctx: AppContext;
 beforeAll(async () => {
   await sim.start();
   h = await createHarness(env());
-  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config) };
+  ctx = { config: h.config, db: h.db, log: h.app.log, payments: null, ai: createAiProvider(h.config), files: null };
   b = await createHarness({ ...env(), AI_MONTHLY_BUDGET_USD: '4' });
-  bctx = { config: b.config, db: b.db, log: b.app.log, payments: null, ai: createAiProvider(b.config) };
+  bctx = { config: b.config, db: b.db, log: b.app.log, payments: null, ai: createAiProvider(b.config), files: null };
 });
 afterAll(async () => {
   await h.close();

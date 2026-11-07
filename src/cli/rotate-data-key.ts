@@ -6,7 +6,7 @@ import { rotateDataKeys } from '../ops/data-keys.js';
 
 // Usage: rotate-data-key [--check]
 // Re-encrypts the secrets kept encrypted at rest (two-factor secrets, webhook
-// signing secrets) with DATA_ENCRYPTION_KEY, reading values written with any key
+// signing secrets, the keys of homework files in a bucket) with DATA_ENCRYPTION_KEY, reading values written with any key
 // in DATA_ENCRYPTION_KEYS_PREVIOUS. --check only reports. Exits with 1 when a
 // value cannot be read with the configured keys.
 // Runbook: docs/DEPLOYMENT_GUIDE.md, "Rotating DATA_ENCRYPTION_KEY".

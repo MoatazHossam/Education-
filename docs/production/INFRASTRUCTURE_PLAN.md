@@ -35,7 +35,7 @@ database not published to the host (`docker-compose.yml:90-91`); app ports remov
 | I-3 | ~~Rollback through `ops/start.sh` fails after a release that added a migration~~ **Fixed 2026-11-05 (task 1.2)** | — | See §6 [V-run] |
 | I-4 | Images are built on the production host; only one `previous` tag is kept; no registry, no digests for the app image (base and third-party images are pinned by digest since task 1.9) | Medium | `ops/midad.sh:206-231`, `scripts/rolling-restart.sh:26-35` [V-code] |
 | I-5 | Bundled database has daily logical backups only: RPO 24 h, no point-in-time recovery | Medium | `docs/DEPLOYMENT_GUIDE.md §5` [DOC] |
-| I-6 | Homework files live in PostgreSQL (`bytea`), default quota 1 GB per school | Medium | `0013_classroom.ts:127`, `src/billing/entitlements.ts:9` [V-code] |
+| I-6 | ~~Homework files live in PostgreSQL (`bytea`), default quota 1 GB per school~~ **Fixed 2026-11-07:** `FILE_STORAGE=s3` keeps them in any S3-compatible bucket, encrypted per file; `files:move` moves stored ones (§4). The database remains the default | — | `src/classroom/file-store.ts`, DEPLOYMENT_GUIDE §3.8 [V-run against MinIO, TEST_REPORT §4] |
 | I-7 | ~~ClamAV needs ~1.5 GB and may briefly need about twice that while reloading signatures~~ **Fixed 2026-11-05 (task 1.4):** measured 0.94 GB steady and 1.89 GB during a reload; with `ConcurrentDatabaseReload no` the reload stays at 0.96 GB | — | [V-run, §3] |
 | I-8 | Logs stay on the host (json-file, 50 MB per container); no central search or retention | Low | `docker-compose.yml:8-12` [V-code] |
 | I-9 | No host metrics (disk, memory, load) or external uptime check yet | Medium | `docs/DEPLOYMENT_GUIDE.md §6` [DOC] |
@@ -80,10 +80,15 @@ small second VM. Kubernetes is not warranted at this scale.
   `bytea` plus TOAST overhead. Backups (`pg_dump --compress=6`) gain little on JPEG/PDF data.
 - **Launch:** 160 GB+ NVMe volume, encrypted (provider option or LUKS); set per-plan `max_storage_mb` deliberately
   (a platform admin can, `src/admin/routes.ts:33`); alert at 70 % disk.
-- **Later (when DB > ~50 GB or restore time > RTO):** move `classroom_files.data` to S3-compatible storage
-  (bucket per environment, server-side encryption, private, signed URLs of minutes, the worker still scans before
-  release). This is a contained change: `saveFile`, `openable`/`sendFile` in `src/classroom/files.ts` and the
-  file-check worker.
+- **When the database grows (> ~50 GB, or restore time > RTO): object storage, built 2026-11-07.**
+  `FILE_STORAGE=s3` with the `S3_*` settings puts new homework files in a private bucket of any S3-compatible
+  provider (one bucket per environment), and `npm run files:move -- --to s3` moves the stored ones
+  (DEPLOYMENT_GUIDE §3.8). Each file is encrypted by the application before it is sent (its own AES-256-GCM key,
+  kept encrypted with `DATA_ENCRYPTION_KEY`), so the provider's own encryption is a second layer, not the only one.
+  Files are served through the application rather than by signed links: it decrypts them, and the access checks,
+  the sandbox headers and the worker's check before release stay as they are; at 5 MB per file this costs little.
+  The bucket needs its own backup (versioning, or a copy elsewhere): the ops scripts' backups hold the database
+  only.
 
 ## 5. PostgreSQL
 

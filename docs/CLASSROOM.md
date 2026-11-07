@@ -88,6 +88,16 @@ A student's work goes through these states:
   checked under the school's row lock, so two uploads cannot pass the limit together.
 - Stored in PostgreSQL (`classroom_files.data`), so backups, school deletion and account deletion cover
   them. A SHA-256 of each file is kept.
+- **Or in a bucket** (`FILE_STORAGE=s3`, since 2026-11-07, migration 0026, `src/classroom/file-store.ts`;
+  DEPLOYMENT_GUIDE §3.8): any service with the S3 API. Each file is encrypted before it is sent (AES-256-GCM, a
+  key of its own, bound to the object's name); that key is kept in the row (`storage_dek_enc`), encrypted with
+  `DATA_ENCRYPTION_KEY`, and the object's name in `storage_key`. A file is in one place only. Files still pass
+  through the application, with the checks and headers below; the bucket is private. Removing a file, its homework,
+  class or school (and the retention deletions) queues its object in `object_deletions` in the same transaction, and
+  the worker deletes it afterwards, never while a row still names it; a removal that rolls back keeps its object.
+  An object written for an upload that then fails (too many files, storage full, a crash) is deleted after 30
+  minutes. When the bucket cannot be reached, opening or uploading such a file answers 503
+  `FILE_STORAGE_UNAVAILABLE`. `npm run files:move -- --to s3|database` moves stored files between the two.
 - Served only after the same access checks as the homework: staff who may open the class, or the
   student it belongs to (a draft's files only to its student). Responses carry
   `Content-Security-Policy: default-src 'none'; … sandbox`, `X-Content-Type-Options: nosniff` and
@@ -107,7 +117,7 @@ A student's work goes through these states:
   page says "Being checked…" and updates the list by itself, without reloading (what a student is typing
   stays).
 - **Blocked files.** A file with a virus (`infected`) or a photo that cannot be read (`unreadable`) loses
-  its bytes; its row stays, so pages say what happened ("Virus found: deleted"), and opening it answers
+  its bytes (in a bucket, its object is deleted); its row stays, so pages say what happened ("Virus found: deleted"), and opening it answers
   409 `FILE_INFECTED` or `FILE_UNREADABLE`. The uploader is told in the app, in their language; for a
   virus the school's owners and admins are told too ("the device it came from may be infected"), and
   the audit log records `classroom.file_infected` (name, size, SHA-256, homework, uploader, the virus's

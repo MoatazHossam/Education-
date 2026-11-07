@@ -4,6 +4,7 @@ import type { Entitlements } from '../billing/entitlements.js';
 import type { Executor } from '../db/index.js';
 import type { ClassroomFileStatus, ClassroomFileType } from '../db/types.js';
 import { AppError, badRequest } from '../lib/errors.js';
+import { keepObject, type StoredObject } from './file-store.js';
 
 // Files on homework and submissions (docs/CLASSROOM.md §5): photos of written
 // work and PDFs. The browser sends the raw bytes; the type is decided from the
@@ -54,13 +55,13 @@ export function readUpload(req: FastifyRequest): { data: Buffer; type: Classroom
   return { data, type, name: cleanFileName(typeof header === 'string' ? header : undefined, type) };
 }
 
-/** Bytes the school stores; a blocked file (its bytes deleted) takes none. */
+/** Bytes the school stores, in the database or the bucket; a blocked file (its bytes deleted) takes none. */
 export async function storageUsedBytes(exec: Executor, orgId: string): Promise<number> {
   const r = await exec
     .selectFrom('classroom_files')
     .select((eb) => eb.fn.coalesce(eb.fn.sum<string>('size_bytes'), eb.val('0')).as('n'))
     .where('org_id', '=', orgId)
-    .where('data', 'is not', null)
+    .where((eb) => eb.or([eb('data', 'is not', null), eb('storage_key', 'is not', null)]))
     .executeTakeFirstOrThrow();
   return Number(r.n);
 }
@@ -75,10 +76,19 @@ export async function assertStorageAvailable(exec: Executor, orgId: string, ent:
   }
 }
 
+/** Saves an upload's row; its bytes go in the row, or are already in the bucket (`stored`, from storeUpload). */
 export async function saveFile(
   exec: Executor,
-  f: { orgId: string; homeworkId?: string; submissionId?: string; upload: { data: Buffer; type: ClassroomFileType; name: string }; uploadedBy: string },
+  f: {
+    orgId: string;
+    homeworkId?: string;
+    submissionId?: string;
+    upload: { data: Buffer; type: ClassroomFileType; name: string };
+    stored: StoredObject | null;
+    uploadedBy: string;
+  },
 ): Promise<{ id: string; name: string; contentType: ClassroomFileType; size: number; status: ClassroomFileStatus }> {
+  if (f.stored) await keepObject(exec, f.stored.storage_key);
   const row = await exec
     .insertInto('classroom_files')
     .values({
@@ -89,7 +99,9 @@ export async function saveFile(
       content_type: f.upload.type,
       size_bytes: f.upload.data.length,
       sha256: createHash('sha256').update(f.upload.data).digest('hex'),
-      data: f.upload.data,
+      data: f.stored ? null : f.upload.data,
+      storage_key: f.stored?.storage_key ?? null,
+      storage_dek_enc: f.stored?.storage_dek_enc ?? null,
       uploaded_by: f.uploadedBy,
     })
     .returning(['id', 'name', 'content_type', 'size_bytes', 'status'])
@@ -123,20 +135,20 @@ const NOT_OPENABLE: Record<Exclude<ClassroomFileStatus, 'ready'>, [string, strin
   unreadable: ['FILE_UNREADABLE', 'This photo could not be read, so it was deleted.'],
 };
 
-/** A file opens only once the worker has checked it. */
-export function openable<T extends { status: ClassroomFileStatus; data: Buffer | null }>(f: T): T & { data: Buffer } {
-  if (f.status !== 'ready' || !f.data) {
+/** A file opens only once the worker has checked it. Its bytes are then read with fileBytes (file-store.ts). */
+export function openable<T extends { status: ClassroomFileStatus; data: Buffer | null; storage_key: string | null }>(f: T): T {
+  if (f.status !== 'ready' || (!f.data && !f.storage_key)) {
     const [code, message] = NOT_OPENABLE[f.status === 'ready' ? 'unreadable' : f.status];
     throw new AppError(409, code, message);
   }
-  return f as T & { data: Buffer };
+  return f;
 }
 
 /**
  * Sends a stored file. Images open in the browser; PDFs download. The sandbox
  * policy keeps any script inside a file from running with the app's origin.
  */
-export function sendFile(reply: FastifyReply, file: { name: string; content_type: ClassroomFileType; data: Buffer }) {
+export function sendFile(reply: FastifyReply, file: { name: string; content_type: ClassroomFileType }, data: Buffer) {
   const inline = file.content_type !== 'application/pdf';
   const ascii = file.name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
   return reply
@@ -145,5 +157,5 @@ export function sendFile(reply: FastifyReply, file: { name: string; content_type
     .header('content-security-policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox")
     .header('cache-control', 'private, no-store')
     .header('x-content-type-options', 'nosniff')
-    .send(file.data);
+    .send(data);
 }

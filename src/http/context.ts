@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { AiProvider } from '../ai/types.js';
 import type { PaymentProvider } from '../billing/providers/types.js';
 import type { AppConfig } from '../config.js';
+import type { FileObjects } from '../classroom/file-store.js';
 import type { Database } from '../db/index.js';
 import type { Session, User } from '../db/types.js';
 import type { ServerErrorCounter } from '../ops/alerts.js';
@@ -13,6 +14,8 @@ export interface AppContext {
   payments: PaymentProvider | null;
   /** The AI provider (docs/AI_LAYER.md), or null when AI_PROVIDER=none. */
   ai: AiProvider | null;
+  /** The bucket for homework files (S3_* settings), or null when none is set (src/classroom/file-store.ts). */
+  files: FileObjects | null;
 }
 
 export type AuthState =

@@ -1,6 +1,7 @@
 import pino from 'pino';
 import { runBillingLifecycle } from './billing/service.js';
 import { fileScanner, limitImageWork, runClassroomFileChecks, FILE_CHECK_BATCH, type FileCheckResult } from './classroom/file-checks.js';
+import { createFileObjects, runObjectDeletions } from './classroom/file-store.js';
 import { runClassroomRetention } from './classroom/retention.js';
 import { runHomeworkAnnouncements } from './classroom/service.js';
 import { runTestDeadlines } from './classroom/tests-service.js';
@@ -37,22 +38,29 @@ async function main() {
   process.on('SIGINT', stop);
 
   const scanner = fileScanner(config);
+  const files = createFileObjects(config);
   limitImageWork();
-  log.info({ intervalMs: config.WORKER_INTERVAL_MS, email: config.EMAIL_TRANSPORT, fileScan: config.FILE_SCAN ?? 'off' }, 'worker started');
+  log.info({ intervalMs: config.WORKER_INTERVAL_MS, email: config.EMAIL_TRANSPORT, fileScan: config.FILE_SCAN ?? 'off', fileStorage: config.FILE_STORAGE }, 'worker started');
   if (scanner && !(await scanner.ping())) log.warn({ host: config.CLAMAV_HOST, port: config.CLAMAV_PORT }, 'the virus scanner (clamd) does not answer yet; homework files wait until it does');
+  if (files) {
+    await files.bucket.check().then(
+      () => log.info({ bucket: files.bucket.description }, 'file storage bucket reachable'),
+      (err: unknown) => log.warn({ bucket: files.bucket.description, err }, 'the file storage bucket cannot be reached yet; homework files in it wait until it can'),
+    );
+  }
 
   // Virus scan and photo resizing of homework files (docs/CLASSROOM.md §5).
-  let files: FileCheckResult | null = null;
+  let checked: FileCheckResult | null = null;
   let lastFileError: string | undefined;
   const fileLoop = (async () => {
     while (!stopping) {
       let full = false;
       try {
-        files = await runClassroomFileChecks(db, scanner);
-        full = files.ready + files.infected + files.unreadable + files.rescanned >= FILE_CHECK_BATCH;
-        if (files.error && files.error !== lastFileError) log.warn({ files }, 'homework files could not be scanned; they are tried again');
-        if (files.infected || files.unreadable) log.info({ files }, 'homework files blocked');
-        lastFileError = files.error;
+        checked = await runClassroomFileChecks(db, scanner, files);
+        full = checked.ready + checked.infected + checked.unreadable + checked.rescanned >= FILE_CHECK_BATCH;
+        if (checked.error && checked.error !== lastFileError) log.warn({ files: checked }, 'homework files could not be scanned; they are tried again');
+        if (checked.infected || checked.unreadable) log.info({ files: checked }, 'homework files blocked');
+        lastFileError = checked.error;
       } catch (err) {
         log.error({ err }, 'homework file checks failed');
       }
@@ -68,6 +76,11 @@ async function main() {
       tick.billing = await runBillingLifecycle(db, config);
       tick.homework = await runHomeworkAnnouncements(db);
       tick.tests = await runTestDeadlines(db);
+      // Objects of removed homework files, deleted from the bucket (src/classroom/file-store.ts).
+      const objects = await runObjectDeletions(db, files?.bucket ?? null);
+      if (objects.failed) log.warn({ objects }, 'some file objects could not be deleted from the bucket; they are retried later');
+      if (objects.waiting) log.warn({ objects }, 'file objects are waiting to be deleted, but no bucket is configured (S3_BUCKET)');
+      tick.objects = objects;
       if (Date.now() - lastReminders > REMINDERS_EVERY_MS) {
         const reminders = await runDueReminders(db, config);
         if (reminders.failed) log.warn({ reminders }, 'some due-date reminders failed; they are retried on the next pass');
@@ -85,7 +98,7 @@ async function main() {
         tick.retention = retention;
         lastCleanup = Date.now();
       }
-      tick.files = files;
+      tick.files = checked;
       await heartbeat(db, 'worker', { ...tick, pid: process.pid });
       log.debug(tick, 'worker tick');
     } catch (err) {

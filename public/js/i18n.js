@@ -784,7 +784,7 @@ const ar = {
   'err.INVALID_HOMEWORK_BOOKS': 'اختر كتبًا من منهج هذا الفصل لهذه المادة.', 'err.HOMEWORK_RETURNED': 'أعاد معلمك هذا الواجب بالفعل.', 'err.HOMEWORK_HANDED_IN': 'ألغِ التسليم أولًا لتعديل عملك.',
   'err.HOMEWORK_CLOSED': 'مرّ موعد التسليم ولا يقبل هذا الواجب أعمالًا متأخرة.', 'err.NOT_HANDED_IN': 'لا يوجد عمل مسلَّم لإلغاء تسليمه.', 'err.FILE_TOO_LARGE': 'الحد الأقصى لحجم الملف 5 ميجابايت.',
   'err.FILE_TYPE_NOT_ALLOWED': 'ارفع صورة (JPEG أو PNG أو WebP) أو ملف PDF.', 'err.STORAGE_LIMIT_REACHED': 'امتلأت مساحة ملفات مدرستك. احذف ملفات قديمة أو اطلب منا مساحة أكبر.', 'err.TOO_MANY_FILES': 'خمسة ملفات على الأكثر لكل واجب.',
-  'err.FILE_CHECKING': 'ما زال هذا الملف قيد الفحص. حاول مرة أخرى بعد لحظات.', 'err.FILE_INFECTED': 'وُجد فيروس في هذا الملف فحُذف.', 'err.FILE_UNREADABLE': 'تعذّرت قراءة هذه الصورة فحُذفت.',
+  'err.FILE_CHECKING': 'ما زال هذا الملف قيد الفحص. حاول مرة أخرى بعد لحظات.', 'err.FILE_INFECTED': 'وُجد فيروس في هذا الملف فحُذف.', 'err.FILE_UNREADABLE': 'تعذّرت قراءة هذه الصورة فحُذفت.', 'err.FILE_STORAGE_UNAVAILABLE': 'تعذّر فتح الملفات أو حفظها الآن. حاول مرة أخرى بعد بضع دقائق.',
   // دفتر الدرجات ودرجاتي (docs/CLASSROOM.md §10)
   'grades.title': 'دفتر الدرجات', 'grades.sub': 'درجات كل طالب في {name}، مادةً مادة.', 'grades.subject': 'المادة', 'grades.download': 'تنزيل CSV',
   'grades.average': 'المتوسط', 'grades.missingCol': 'فات موعده', 'grades.percent': '{n}٪', 'grades.outOf': 'من {max}',

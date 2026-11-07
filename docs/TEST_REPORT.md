@@ -873,6 +873,13 @@ Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob
 | Route reviews (`authz-coverage.test.ts`, `students.test.ts`) | The seven passkey routes are listed: the two sign-in routes as public, the rest as the account's own; a signed-in student gets 403 `STAFF_ONLY` from each of those | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 73 files, 537 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 32 tests; journeys in Firefox and WebKit, 27 tests each (the passkey journey skipped) | Pass |
 
+### User guide screenshots: passkeys (2026-11-07)
+
+| Check | Result |
+| --- | --- |
+| `npm run docs:screenshots` and `docs:screenshots:ar` (Chromium's virtual authenticator adds Mona's passkey) | New `account-passkeys.png` in both languages; `sign-in.png` and `account-two-factor.png` retaken (passkey button; Passkeys section below the two-step setup). The other screenshots were not replaced | Pass |
+| The Arabic run, before the fix | Failed at the online test results: since the attempt links' names were made to hold their visible text (Arabic-Indic digits, «المحاولة ١ للطالب …»), the script still looked for "المحاولة 1". It now formats the number as the page does | Fixed |
+
 ### CI time limits (2026-11-07)
 
 | Check | Result |

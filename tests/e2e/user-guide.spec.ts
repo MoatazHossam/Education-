@@ -67,7 +67,7 @@ const DEMO = {
     campusB: 'Primary 1–3 core books — Campus B', summerOrg: 'Nile Valley Summer Programme', summerScope: 'Summer reading 2027',
     note1: 'Order 120 copies before September; check the new cover.', note2: 'Waiting for the 2027 edition from the publisher.',
     decree: 'Ministerial Decree 123/2026', publisherSource: 'Publisher catalogue 2027', nextLabel: 'Egypt K-12 curriculum — academic year 2027/2028',
-    keyName: 'Content pipeline', hookDescription: 'Lesson platform: sync selected books', supportReason: 'Ticket 2041: the Grade 2 export looks wrong',
+    passkey: 'Mona’s laptop', keyName: 'Content pipeline', hookDescription: 'Lesson platform: sync selected books', supportReason: 'Ticket 2041: the Grade 2 export looks wrong',
     omar: 'Omar Khaled', laila: 'Laila Mostafa', youssef: 'Youssef Ali', nour: 'Nour Ahmed', hana: 'Hana Samir', adam: 'Adam Tarek',
     className: '1A', hwTitle: 'Read the story “The Little Seed”', hwInstructions: 'Read pages 12 to 15 and answer the three questions at the end.',
     omarAnswer: '1) A seed. 2) Water and sun. 3) It grew into a tree.', hwFeedback: 'Very good. Write full sentences next time.',
@@ -80,7 +80,7 @@ const DEMO = {
     campusB: 'الكتب الأساسية للصفوف 1–3 — الفرع ب', summerOrg: 'برنامج وادي النيل الصيفي', summerScope: 'قراءات صيف 2027',
     note1: 'اطلب 120 نسخة قبل سبتمبر، وراجع الغلاف الجديد.', note2: 'في انتظار طبعة 2027 من الناشر.',
     decree: 'القرار الوزاري 123/2026', publisherSource: 'كتالوج الناشر 2027', nextLabel: 'مناهج مصر من الروضة حتى الثانوي — العام الدراسي 2027/2028',
-    keyName: 'خط إنتاج المحتوى', hookDescription: 'منصة الدروس: مزامنة الكتب المختارة', supportReason: 'تذكرة 2041: تصدير الصف الثاني يبدو خاطئًا',
+    passkey: 'حاسوب منى', keyName: 'خط إنتاج المحتوى', hookDescription: 'منصة الدروس: مزامنة الكتب المختارة', supportReason: 'تذكرة 2041: تصدير الصف الثاني يبدو خاطئًا',
     omar: 'عمر خالد', laila: 'ليلى مصطفى', youssef: 'يوسف علي', nour: 'نور أحمد', hana: 'هنا سمير', adam: 'آدم طارق',
     className: 'الأول أ', hwTitle: 'اقرأ قصة «البذرة الصغيرة»', hwInstructions: 'اقرأ الصفحات من 12 إلى 15 وأجب عن الأسئلة الثلاثة في آخرها.',
     omarAnswer: '1) بذرة. 2) الماء والشمس. 3) صارت شجرة.', hwFeedback: 'أحسنت. اكتب جملًا كاملة في المرة القادمة.',
@@ -683,7 +683,7 @@ test('user guide screenshots', async ({ browser }) => {
   await shot(karim, 'test-results');
   for (const [name, points, feedback] of [[DEMO.hana, '2', ''], [DEMO.omar, '2.5', DEMO.testFeedback]] as const) {
     await karim.goto(`${testPath}/results`);
-    await karim.getByRole('link', { name: L('tests.attemptOf', { n: 1, name }) }).click();
+    await karim.getByRole('link', { name: L('tests.attemptOf', { n: fmt(1), name }) }).click();
     await karim.getByLabel(L('tests.markOutOf', { max: fmt(3) })).fill(points);
     if (feedback) await karim.getByLabel(L('hw.feedback')).nth(2).fill(feedback);
     if (name === DEMO.omar) await shot(karim, 'test-attempt', undefined, { fullPage: true });
@@ -765,6 +765,20 @@ test('user guide screenshots', async ({ browser }) => {
   await mona.goto('/account');
   await expect(mona.getByRole('heading', { name: L('account.title'), level: 1 })).toBeVisible();
   await shot(mona, 'account');
+  // A passkey, with Chromium's virtual authenticator standing in for the fingerprint or face check.
+  const cdp = await mona.context().newCDPSession(mona);
+  await cdp.send('WebAuthn.enable');
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
+  });
+  const passkeys = mona.locator('#passkeys');
+  await passkeys.getByLabel(field('passkeys.name')).fill(DEMO.passkey);
+  await passkeys.getByLabel(field('auth.password')).fill(PASSWORD);
+  await passkeys.getByRole('button', { name: L('passkeys.add') }).click();
+  await expect(passkeys.getByRole('cell', { name: DEMO.passkey, exact: true })).toBeVisible();
+  await passkeys.scrollIntoViewIfNeeded();
+  await shot(mona, 'account-passkeys', passkeys, { pad: 16 });
+  await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId });
   await mona.getByRole('button', { name: L('mfa.setup') }).click();
   await expect(mona.getByRole('img', { name: L('mfa.qrAlt') })).toBeVisible();
   await scrollTo(mona, mona.getByRole('img', { name: L('mfa.qrAlt') }), 160);

@@ -39,8 +39,9 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   on the device, the signature, the account the device names, and the signature counter.
 - **Built with:** `@simplewebauthn/server` 14.0.3 (pinned); migration 0025 (`passkeys`, `webauthn_challenges`).
   The account export lists passkeys by name.
-- **Not done:** SSO (needs the owner's choice of identity providers). The user guides' text describes passkeys; their
-  screenshots of the account and sign-in pages predate the new section and button.
+- **Not done:** SSO (needs the owner's choice of identity providers).
+- **User guides (2026-11-07):** new screenshot of the Passkeys section, and the sign-in and two-step screenshots
+  retaken with the passkey button and section, in English and Arabic (`npm run docs:screenshots`, `:ar`).
 
 ### Secrets in files: Docker secrets (roadmap Phase 7) · COMPLETE (2026-11-06)
 - **Any secret setting from a file:** each secret setting can be given as `<NAME>_FILE`, the path of a file that

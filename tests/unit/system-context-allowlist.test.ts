@@ -22,6 +22,7 @@ const ALLOWED: Record<string, { calls: number; why: string }> = {
   'src/classroom/service.ts': { calls: 1, why: 'worker: homework announcements due' },
   'src/classroom/tests-service.ts': { calls: 1, why: 'worker: test deadlines' },
   'src/cli/create-platform-admin.ts': { calls: 2, why: 'command-line: platform admin creation audit' },
+  'src/cli/demo-school.ts': { calls: 2, why: 'command-line: the demo school\'s invitation links read from the outbox, and its plan set as a platform admin would (its own new school only)' },
   'src/jobs/tasks.ts': { calls: 2, why: 'worker: email outbox and retention cleanup' },
   'src/ops/alerts.ts': { calls: 1, why: 'operational alert checks (counts only)' },
   'src/ops/data-keys.ts': { calls: 2, why: 'command-line: re-encrypting secrets with a new key' },

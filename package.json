@@ -24,6 +24,7 @@
     "keys:check": "tsx src/cli/rotate-data-key.ts --check",
     "keys:rotate": "tsx src/cli/rotate-data-key.ts",
     "files:move": "tsx src/cli/move-files.ts",
+    "demo:school": "tsx src/cli/demo-school.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/e2e/tsconfig.json && tsc -p marketing/product-showcase/video-project/capture/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",

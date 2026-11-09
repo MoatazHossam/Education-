@@ -915,6 +915,14 @@ Not done: P-3 (reconciliation). Paymob's documentation hosts (`developers.paymob
 | Whole suite (no application code changed) | `npm run lint`, `npm run typecheck`; `npm test` 76 files, 561 tests; E2E in Chromium (Playwright 1.56.1), journeys and accessibility, 32 tests | Pass |
 | Not run | A real server on the internet: installing Docker on Ubuntu, ufw, DNS and a Let's Encrypt certificate; a real SMTP provider; the upgrade steps (§12); the scheduled backups (§10.3); the backup script's questions answered by hand | — |
 
+### Demo school command (2026-11-09)
+
+| Check | Result |
+| --- | --- |
+| `tests/integration/demo-school.test.ts` (new, 3 tests; rate limits on, as in production) | Address tagging. One run builds the whole school through the API: Arabic school with Cairo time zone and country EG; Professional, active, no end date, 40 students; owner, editor and viewer; one scope with every Primary 4 ministry book (44), 4 notes, 4 assigned; classes «الرابع أ» and «الرابع ب»; homework 1 returned to five with marks 5, 7, 8, 9, 10 and one handed in unmarked, homework 2 handed in by three, homework 3 untouched; the quiz with six submitted, scored attempts and released results; the exam opening later; a lesson and a pacing plan; the maths gradebook with the homework and the quiz, six quiz marks; a student signs in and sees grades and curriculum. Only two emails queued, both invitations to the tagged addresses. A second run is refused; `--remove` deletes the school and every account (no organization or user left); a second removal finds nothing. The English version builds too | Pass |
+| The compiled command copied into the running app container of the production stack built from package 4d92a28 (`docker compose cp` then `exec app node dist/cli/demo-school.js`), local domain | Created in 4.7 s; prints the school code, the three staff addresses and passwords, and the twelve students with their classes and passwords. In the Arabic interface (Playwright): the owner sees the scope (44 books, 4 notes, 2 plans), both classes and the class page with homework counts and work to mark; a student signs in with the school code and sees Today (one open homework, one returned 9/10, the upcoming exam) and My grades (Arabic 90 %, maths quiz 10/10, homework 2 waiting for a mark). `--remove` left 0 organizations, users, homework, tests and students; run again it reports nothing to remove; the English version then builds. Only invitation emails were queued | Pass |
+| Not run | On the live server: waits for the owner to run it there |  — |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

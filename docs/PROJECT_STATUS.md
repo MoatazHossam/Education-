@@ -25,6 +25,14 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Demo script in Word, Arabic · COMPLETE (2026-11-09)
+- **What it is:** `docs/demo/Midad-Demo-Scenario-AR.docx`, a step-by-step script for whoever presents the demo
+  school: the owner, a teacher, a student taking a quiz while the teacher watches, marking, grades and the exam's
+  start code; what to say and what not to claim, the buttons not to press, troubleshooting, and resetting the demo
+  school. `scripts/demo-scenario/build.mjs` builds a copy with an installation's address (docs/demo/README.md).
+- **Tested:** every step rehearsed in the Arabic interface on the production stack of package 4d92a28
+  (TEST_REPORT.md, "Demo script").
+
 ### A demo school in one command · COMPLETE (2026-11-09)
 - **What it is:** `node dist/cli/demo-school.js --email <address> [--lang ar|en]` (in the app container) builds a
   complete demo school for showing Midad on a real installation: owner and two teachers, a Primary 4 scope with
@@ -33,7 +41,7 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 - **How:** everything except the three staff accounts and the plan goes through the application's own API, run in the
   command's process; staff passwords and students' passwords are random and printed once.
 - **Tested:** integration test, and the compiled command inside the production stack of package 4d92a28 with a browser
-  check of the owner's and a student's screens (TEST_REPORT.md). Not yet run on the live server.
+  check of the owner's and a student's screens (TEST_REPORT.md). Run on the live server by the owner on 2026-11-09.
 
 ### Handover package with deployment guides in Word, Arabic and English · COMPLETE (2026-11-07)
 - **What it is:** `docs/deployment/Midad-Deployment-Guide-AR.docx` and `Midad-Deployment-Guide-EN.docx`, for

@@ -380,6 +380,37 @@ rewritten.
 deletes their objects. Remove the `S3_*` settings afterwards. Do the same before rolling back to a release older
 than this one, which cannot open files in a bucket.
 
+### 3.9 A demo school (optional)
+
+To show Midad to schools on a real installation, one command builds a complete demo school: an owner and two
+teachers, a Primary 4 content scope (every ministry book, four with notes, assignees and due dates), twelve invented
+students in two classes, homework at every stage (marked and returned, handed in and waiting for a mark, still
+open), a maths quiz six students took (essays marked, results released), an Arabic exam two days ahead with a start
+code, and a lesson plan and a pacing plan. The school is on Professional with no end date and room for 40 students.
+
+```bash
+cd /opt/midad
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production \
+  exec app node dist/cli/demo-school.js --email you@example.com          # --lang en for English; Arabic by default
+```
+
+- **Everything goes through the application's own API** (run inside the command), with the same checks as the web
+  interface. Only the three staff accounts are written straight to the database (verified, like
+  `create-platform-admin.js`), and the plan is set as a platform administrator would. The teachers join through a
+  real invitation; the two invitation emails are the only emails sent.
+- **The staff accounts use your address with a tag** (`you+midad-demo-owner@…`, `…teacher1`, `…teacher2`), so their
+  emails reach you; most providers, Gmail and Outlook among them, deliver such addresses to you.
+- **Passwords** (staff and students) are random and printed once, in the terminal only. The school code for the
+  student sign-in page is printed with them.
+- **Once per address:** a second run refuses while the demo exists. **To delete it all** (the school, its students and
+  files, and the three staff accounts) through the application's own deletion:
+  `… exec app node dist/cli/demo-school.js --email you@example.com --remove`.
+- Every person in it is invented. Do not add real students to the demo school.
+
+The command is in releases after `4d92a28`. On an installation of `4d92a28`, copy the compiled file into the running
+app container first (it lasts until the container is next recreated):
+`docker compose … cp demo-school.js app:/app/dist/cli/demo-school.js`.
+
 ## 4. Upgrades and rollback
 
 1. Take a backup (`ops/backup.sh --env prod`, Windows `ops\backup.bat --env prod`), `git pull` (or

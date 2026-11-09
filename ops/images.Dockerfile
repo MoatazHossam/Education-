@@ -2,4 +2,4 @@
 # by digest so Dependabot (.github/dependabot.yml, directory /ops) proposes their updates (production
 # finding S-15). Nothing builds this file: the scripts read the reference from the FROM line.
 # (The scripts' PostgreSQL client and tool images come from docker-compose.yml and docker-compose.prod.yml.)
-FROM rclone/rclone:1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+FROM rclone/rclone:1.76@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466

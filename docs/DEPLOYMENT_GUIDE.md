@@ -411,6 +411,9 @@ The command is in releases after `4d92a28`. On an installation of `4d92a28`, cop
 app container first (it lasts until the container is next recreated):
 `docker compose … cp demo-school.js app:/app/dist/cli/demo-school.js`.
 
+**Presenting it:** [docs/demo/](demo/README.md) has a step-by-step demo script in Arabic (Word) for whoever gives the
+demo: what to open and press in each account, what to say, what not to press, and how to reset the demo school.
+
 ## 4. Upgrades and rollback
 
 1. Take a backup (`ops/backup.sh --env prod`, Windows `ops\backup.bat --env prod`), `git pull` (or

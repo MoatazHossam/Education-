@@ -26,6 +26,7 @@ const ALLOWED: Record<string, { calls: number; why: string }> = {
   'src/jobs/tasks.ts': { calls: 2, why: 'worker: email outbox and retention cleanup' },
   'src/ops/alerts.ts': { calls: 1, why: 'operational alert checks (counts only)' },
   'src/ops/data-keys.ts': { calls: 2, why: 'command-line: re-encrypting secrets with a new key' },
+  'src/ops/report.ts': { calls: 1, why: 'command-line: the daily operations report, counts across schools and the new schools\' names (platform operator only)' },
   'src/orgs/routes.ts': { calls: 1, why: 'organization deletion after the owner check (inOrg)' },
   'src/scopes/digest.ts': { calls: 2, why: 'worker: daily assignment summaries across schools' },
   'src/scopes/reminders.ts': { calls: 3, why: 'worker: due-date reminders across schools; whether any school is in its sending hours (time zones only)' },

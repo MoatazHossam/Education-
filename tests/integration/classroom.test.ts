@@ -288,23 +288,24 @@ describe('homework', () => {
     expect((await laylaClient.get('/api/student/home')).json()).toMatchObject({ classes: [], todo: [] });
 
     // Directly in the database, with the student context the routes use and no filter at all.
-    const seen = await withStudentContext(h.db, { orgId: s.owner.orgId, studentId: s.amira.userId }, async (trx) => ({
+    const amiraContext = { orgId: s.owner.orgId, studentId: s.amira.userId };
+    const seen = await withStudentContext(h.db, amiraContext, async (trx) => ({
       submissions: await trx.selectFrom('homework_submissions').select('student_id').execute(),
       files: await trx.selectFrom('classroom_files').select(['id', 'homework_id']).execute(),
       students: await trx.selectFrom('students').select('user_id').execute(),
       classes: await trx.selectFrom('classes').select('id').execute(),
-      insert: await trx
-        .insertInto('classes')
-        .values({ org_id: s.owner.orgId, name: 'Fake', grade: 4 })
-        .execute()
-        .then(() => 'inserted')
-        .catch((e: Error) => e.message),
     }));
     expect(seen.submissions).toEqual([]);
     expect(seen.files.every((f) => f.homework_id === hw.id)).toBe(true);
     expect(seen.students).toEqual([{ user_id: s.amira.userId }]);
     expect(seen.classes).toEqual([{ id: s.classId }]);
-    expect(seen.insert).toMatch(/row-level security/);
+    // A refused write aborts its transaction, so it gets one of its own: the policy's error comes back and nothing is kept.
+    const insert = await withStudentContext(h.db, amiraContext, (trx) =>
+      trx.insertInto('classes').values({ org_id: s.owner.orgId, name: 'Fake', grade: 4 }).execute(),
+    ).then(() => 'inserted', (e: Error) => e.message);
+    expect(insert).toMatch(/row-level security/);
+    const kept = await withSystemContext(h.ownerDb, (trx) => trx.selectFrom('classes').select('id').where('org_id', '=', s.owner.orgId).execute());
+    expect(kept).toEqual([{ id: s.classId }]);
   });
 
   it('school storage limit, file count and deleting a class', async () => {

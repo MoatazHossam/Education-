@@ -938,6 +938,15 @@ The Arabic demo script (`docs/demo/`, built with `scripts/demo-scenario/build.mj
 | Whole suite (no application code changed) | `npm run lint`, `npm run typecheck`; `npm test` 77 files, 564 tests | Pass |
 | Not run | The script on the live site by its presenter; E2E locally (left to CI, as no screen or label changed) | — |
 
+### Dependabot's updates of 2026-11-09 (2026-11-10)
+
+| Change | Check | Result |
+| --- | --- | --- |
+| rclone 1.76 (`ops/images.Dockerfile`, #82), Caddy 2.11 (`docker-compose.prod.yml`, #83), the npm group (#84: the S3 client 3.1161, Fastify 5.12.8, the OpenAI SDK 7.47, Vitest 5.1) | Each pinned by digest as before; CI on each pull request: lint, typecheck, unit and integration tests, container image, E2E in Chromium, Firefox and WebKit | Pass, merged |
+| Kysely 0.29.8 (#85) | CI failed one test: «row-level security keeps each student to their own classes and work». Reproduced here. Kysely 0.29.8 now raises `AbortedTransactionError` when a `COMMIT` comes back as `ROLLBACK`, which PostgreSQL does after any statement in the transaction failed; 0.29.7 reported it as a success. The test tried a write the student's policy refuses inside the transaction it then read from, caught the error and let the transaction commit | Test fixed |
+| The fix | The refused write now runs in a transaction of its own: the policy's error comes back (`new row violates row-level security policy for table "classes"`) and the school still has only its one class (read in the system context). Application code: every place that catches a database error inside a transaction (`23505` and `23514` turned into a 409, the file access check) throws again, so the transaction is rolled back, never committed after a failure | Pass |
+| Whole suite on Kysely 0.29.8 | `npm run lint`, `npm run typecheck`; `npm test` 77 files, 564 tests | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

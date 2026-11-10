@@ -410,7 +410,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 - **إصدار رئيسي من Node.js**: غيّر أسطر `FROM` الثلاثة في `Dockerfile` (ببصمة الصورة الجديدة)، و`node-version` في <span dir="ltr">`.github/workflows/ci.yml`</span>، وفحص الإصدار في <span dir="ltr">`scripts/ci-local.sh`</span>، في طلب دمج واحد.
 - **إصدار رئيسي من PostgreSQL**: البيانات تحتاج إلى تحويل. خذ نسخة احتياطية (القسم 8.3)، وشغّل الإصدار الجديد على مجلد بيانات فارغ، واستعد النسخة فيه (القسم 8.6)، وتحقّق، وجرّب ذلك كله على بيئة الاختبار أولًا. وإن كان <span dir="ltr">`.env.backup`</span> يضبط `BACKUP_PG_IMAGE` فغيّره إلى الإصدار الجديد أيضًا.
 
-لمعرفة بصمة صورة يدويًا (لتثبيت وسم أحدث بنفسك): <span dir="ltr">`docker buildx imagetools inspect caddy:2.10-alpine`</span> وانسخ سطر `Digest:`، وهو يشمل كل منصات الصورة.
+لمعرفة بصمة صورة يدويًا (لتثبيت وسم أحدث بنفسك): <span dir="ltr">`docker buildx imagetools inspect caddy:2.11-alpine`</span> وانسخ سطر `Digest:`، وهو يشمل كل منصات الصورة.
 
 ## 5. النسخ الاحتياطي والاستعادة
 

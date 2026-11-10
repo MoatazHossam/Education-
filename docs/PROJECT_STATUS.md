@@ -25,6 +25,13 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Dependency updates of 2026-11-09 · COMPLETE (2026-11-10)
+- **Merged:** Dependabot's rclone 1.76, Caddy 2.11 and npm group (#82 to #84), all green in CI.
+- **Kysely 0.29.8 (#85):** the new version reports a transaction that PostgreSQL rolled back because one of its
+  statements failed, where 0.29.7 reported it as committed. One test relied on that (a refused write caught inside a
+  transaction that then committed); it now gives the write a transaction of its own. No application code commits
+  after a failed statement. TEST_REPORT.md, "Dependabot's updates of 2026-11-09".
+
 ### Demo script in Word, Arabic · COMPLETE (2026-11-09)
 - **What it is:** `docs/demo/Midad-Demo-Scenario-AR.docx`, a step-by-step script for whoever presents the demo
   school: the owner, a teacher, a student taking a quiz while the teacher watches, marking, grades and the exam's

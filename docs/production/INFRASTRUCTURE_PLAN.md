@@ -13,7 +13,7 @@ No Kubernetes and no service split is proposed: the measured load (below) does n
 | `app`, `app2` | same | Web/API, stateless | `/healthz` (Dockerfile), `/readyz` (Caddy) | `docker-compose.yml:107-116`, `docker-compose.prod.yml:24-37`, `Dockerfile:36-37` |
 | `worker` | same | Jobs loop, file checks | DB heartbeat (`dist/cli/worker-health.js`) | `docker-compose.yml:118-133` |
 | `clamav` | `clamav/clamav:1.5@sha256:…` | Virus scan (clamd) | `clamdcheck.sh`, 180 s start | `docker-compose.prod.yml:54-65` |
-| `caddy` | `caddy:2.10-alpine@sha256:…` | TLS, compression, load balancing | — | `docker-compose.prod.yml:78-94`, `deploy/Caddyfile` |
+| `caddy` | `caddy:2.11-alpine@sha256:…` | TLS, compression, load balancing | — | `docker-compose.prod.yml:78-94`, `deploy/Caddyfile` |
 | `mailpit` | dev only | — | — | `docker-compose.prod.yml:75-76` |
 
 Every third-party image, and the app image's Node.js base (`node:22-bookworm-slim@sha256:…`), is pinned by digest

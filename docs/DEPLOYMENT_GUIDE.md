@@ -542,7 +542,7 @@ Planned upgrades, not proposed by Dependabot:
   restore the backup into it (§8.6), check, and rehearse all of it on staging first. If `.env.backup` sets
   `BACKUP_PG_IMAGE`, change it to the new version too.
 
-A digest by hand (to pin a newer tag yourself): `docker buildx imagetools inspect caddy:2.10-alpine` and copy
+A digest by hand (to pin a newer tag yourself): `docker buildx imagetools inspect caddy:2.11-alpine` and copy
 the `Digest:` line, which covers every platform of the image.
 
 ## 5. Backups and recovery

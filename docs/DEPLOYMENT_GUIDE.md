@@ -836,3 +836,44 @@ with a password) and an S3-compatible server, plus a folder. The managed-databas
 separate PostgreSQL with an admin that is not a superuser. The Windows script ran under PowerShell 7.4
 on Linux; it has **not yet run on Windows** (Docker Desktop, Windows PowerShell 5.1, `cmd.exe`). Before
 relying on it, do one backup, test and restore on the Windows computer.
+
+### 8.11 The daily report (Linux)
+
+`ops/report.sh` checks the server and the backups, removes what Docker no longer uses, and emails a report:
+
+- **Services:** each container running and healthy, automatic restarts, both app instances ready, the
+  background worker's last heartbeat, open alerts, errors in the app logs.
+- **Backups:** the newest backup of this installation, its age (more than 26 hours is a failure) and its
+  checksum (read again each time), how many are kept, the last successful restore test in the backup log
+  (more than 8 days is a warning), errors in that log, and whether copies go off the server.
+- **Server:** disk use (80 % warns, 90 % fails), memory, load, system updates and a needed restart, and the
+  days left on the HTTPS certificate (under 21 warns, under 7 fails).
+- **What is new** in the last 24 hours (`--hours N`): new schools by name, staff and student accounts,
+  sign-ins (successful, failed, locks), homework and tests, emails sent or failing, the platform
+  administrators' actions. Counts only: no student's data is in the report.
+- **Version:** the commit the installation runs (`VERSION`, stamped by `git archive`) and how many changes
+  newer the repository's `main` is on GitHub (`REPORT_REPO` in `.env.backup`, `MoatazHossam/Education-` by
+  default).
+- **Maintenance:** images no tag points to and build cache older than a week are removed (`--no-cleanup`
+  skips it); the space freed is in the report.
+
+The subject says "All good" or how many items need attention. The report is in Arabic (`--lang en` for
+English), with times in `Africa/Cairo` (`--time-zone`). It goes to `--email`, or `REPORT_EMAIL` in
+`.env.backup`, or `ALERT_EMAILS`, through the app's own mail settings (`SMTP_URL`). Run it any time:
+
+```bash
+cd /opt/midad
+ops/report.sh --env prod --email you@example.com
+```
+
+Every day at 04:00 Cairo time: an hourly cron line with `--at-hour 4`, so the hour follows Cairo's clock
+whatever the server's time zone, summer time included (the run exits at once in the other hours):
+
+```bash
+# /etc/cron.d/midad
+0 * * * * root cd /opt/midad && ops/report.sh --env prod --yes --email you@example.com --at-hour 4 >>/var/log/midad-report.log 2>&1
+```
+
+It reads the backup log at `/var/log/midad-backup.log` (§8.5; `--log` for another). The report needs the
+app image of this release or later (`dist/cli/ops-report.js`); when the app is stopped, it runs in a one-off
+container. On Windows there is no report command.

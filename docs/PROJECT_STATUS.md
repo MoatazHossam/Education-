@@ -25,6 +25,15 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Daily operations report by email · COMPLETE (2026-11-10)
+- **What it is:** `ops/report.sh --env prod --email <address>` checks the services, the backups (the newest one's
+  age and checksum, the last restore test), the disk, memory, updates and HTTPS certificate, lists what is new in
+  the last 24 hours (schools, accounts, sign-ins, homework, tests, emails), says whether a newer version is on
+  GitHub, removes what Docker no longer uses, and emails the report in Arabic or English. Any time by hand, and
+  daily at 04:00 Cairo time with an hourly cron line and `--at-hour 4` (DEPLOYMENT_GUIDE §8.11).
+- **Tested:** unit, script and integration tests, and a run on the production stack built from a package, with
+  the email received by a local mailbox (TEST_REPORT.md, "Daily operations report"). Not yet on the live server.
+
 ### Dependency updates of 2026-11-09 · COMPLETE (2026-11-10)
 - **Merged:** Dependabot's rclone 1.76, Caddy 2.11 and npm group (#82 to #84), all green in CI.
 - **Kysely 0.29.8 (#85):** the new version reports a transaction that PostgreSQL rolled back because one of its

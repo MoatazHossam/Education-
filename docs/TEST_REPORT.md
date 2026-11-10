@@ -947,6 +947,21 @@ The Arabic demo script (`docs/demo/`, built with `scripts/demo-scenario/build.mj
 | The fix | The refused write now runs in a transaction of its own: the policy's error comes back (`new row violates row-level security policy for table "classes"`) and the school still has only its one class (read in the system context). Application code: every place that catches a database error inside a transaction (`23505` and `23514` turned into a 409, the file access check) throws again, so the transaction is rolled back, never committed after a failure | Pass |
 | Whole suite on Kysely 0.29.8 | `npm run lint`, `npm run typecheck`; `npm test` 77 files, 564 tests | Pass |
 
+### Daily operations report (2026-11-10)
+
+`ops/report.sh` and `dist/cli/ops-report.js` (DEPLOYMENT_GUIDE §8.11).
+
+| Check | Result |
+| --- | --- |
+| `tests/unit/ops-report.test.ts` (new, 7 tests) | Every host fact line read, junk ignored; a healthy server is "كل شيء سليم" in the subject, the new school by name, times in Cairo (08:30 UTC shows 10:30); the English report; failures for a missing, 30-hour-old or damaged backup, a stopped or unhealthy service, an app instance not ready, a worker silent for 30 minutes, a 93 % disk, a certificate 5 days from its end and the database unreadable; warnings for an 8-day-old restore test, restarts, open alerts, 82 % disk, low memory, a needed restart, failed or waiting emails and many failed sign-ins; a newer version on GitHub, and the latest one when the running one cannot be compared | Pass |
+| `tests/unit/ops-report-script.test.ts` (new, 4 tests) | The ops script's own functions on files laid out as a server's: the newest production backup (a development one beside it not counted), its checksum ok, then mismatched, then missing; the last successful restore test and the log's errors from a backup log; no backup, no log; the version stamped in `VERSION` and an unstamped file; `--at-hour` silent in another hour and running in the chosen one, with the saved address, the language and the zone passed to the app | Pass |
+| `tests/integration/ops-report.test.ts` (new, 3 tests) | The counts across schools after a school signs up, adds a student and fails a sign-in (new school by name, 1 staff, 1 student, 1 failed sign-in; nothing before the window); the command as a process prints the report, emails it to two addresses through a stand-in SMTP server (the decoded body has the backup line and the missing restore test) and records `ops.report_sent`; a bad address or language refused; `EMAIL_TRANSPORT=none` prints the report and exits 1 | Pass |
+| A package from `git archive` | `VERSION` stamped with the commit and its date; `ops/report.sh` keeps its execute bit | Pass |
+| On the production stack built from that package, with the demo school, a nightly-style backup and restore test logged to a file, and a local Mailpit as the SMTP server | `ops/report.sh --env prod --email … --log …` in 11 s: services, readiness, worker, no alerts, 0 app errors; the backup (checksum matched) and the test from the log; disk, memory, load, 34 system updates (28 security); the demo school, 3 staff, 12 students, 9 sign-ins, homework and tests; the running version; 3.5 MB of unused images removed. The email arrived in Mailpit, in Arabic. `--at-hour` for another hour: no output, exit 0; for the current Cairo hour with `--lang en`: the English report | Pass |
+| Found while rehearsing | The system disk was listed twice when Docker's data folder is on the same disk (fixed: compared by device). The version could not be compared because the rehearsal's commit is not on GitHub (the report now names the latest version there). Caddy's local certificate lasts 12 hours, so the local run shows 0 days; a public certificate shows its weeks | Fixed or expected |
+| Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 80 files, 578 tests | Pass |
+| Not run | On the live server (after the next update); Windows (no report command there) | — |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

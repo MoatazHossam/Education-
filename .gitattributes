@@ -8,3 +8,4 @@
 
 # Word files are binary: never convert their line endings.
 *.docx binary
+VERSION export-subst

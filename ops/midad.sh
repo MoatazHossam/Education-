@@ -5,8 +5,8 @@
 # Windows: the same commands as ops\*.bat (ops\midad.ps1). Guide: docs/DEPLOYMENT_GUIDE.md §8.
 #
 #   ops/midad.sh                    a menu
-#   ops/midad.sh start | stop | status | backup | restore | verify | destinations   [options]
-#   (ops/start.sh, ops/stop.sh, ops/status.sh, ops/backup.sh and ops/restore.sh run the same)
+#   ops/midad.sh start | stop | status | backup | restore | verify | destinations | report   [options]
+#   (ops/start.sh, ops/stop.sh, ops/status.sh, ops/backup.sh, ops/restore.sh and ops/report.sh run the same)
 #
 # Options
 #   --env dev|prod      which installation (asked when missing)
@@ -15,6 +15,9 @@
 #   backup:  --to folder,server,bucket|none   copies besides the backup folder (default: saved choice)
 #            --no-encrypt                     leave the archive unencrypted (not with the settings file)
 #   restore: --from local|folder|server|bucket   --file NAME   --only-verify (= verify)
+#   report:  --email A,B   --hours N (24)   --lang ar|en   --time-zone ZONE (Africa/Cairo)
+#            --at-hour H (run only when it is H o'clock there: for an hourly cron line)
+#            --log FILE (the backup log, /var/log/midad-backup.log)   --no-cleanup
 #
 # Backup copy settings (folder, server, bucket, encryption, retention) are kept in .env.backup,
 # readable only by you. The passphrase is never saved there: it is asked, or read from
@@ -39,6 +42,7 @@ PG_IMAGE=$(pinned docker-compose.yml postgres)
 TOOL_IMAGE=$(pinned docker-compose.prod.yml caddy)
 
 CMD="" ENV_NAME="" ENV_FILE="" YES=0 TO="" FROM="" PICK="" NO_ENCRYPT=0 ONLY_VERIFY=0
+R_EMAIL="" R_HOURS=24 R_LANG="" R_TZ="" R_AT="" R_LOG=/var/log/midad-backup.log R_CLEANUP=1
 FILES=() PROJECT="" MANAGED=0 NOENV=0 IMAGE="" LOCKDIR="" FAILED=()
 CLEANUP=()
 
@@ -54,11 +58,11 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM HUP # Ctrl+C or a closed terminal still removes the lock and unfinished files
 
-usage() { sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 while (($#)); do
   case $1 in
-    start | stop | status | backup | restore | verify | destinations | menu) CMD=$1 ;;
+    start | stop | status | backup | restore | verify | destinations | report | menu) CMD=$1 ;;
     --env) ENV_NAME=${2:?--env needs dev or prod}; shift ;;
     --env-file) ENV_FILE=${2:?--env-file needs a file}; shift ;;
     --yes | -y) YES=1 ;;
@@ -67,6 +71,13 @@ while (($#)); do
     --file) PICK=${2:?--file needs a name}; shift ;;
     --no-encrypt) NO_ENCRYPT=1 ;;
     --only-verify) ONLY_VERIFY=1 ;;
+    --email) R_EMAIL=${2:?--email needs one or more addresses}; shift ;;
+    --hours) R_HOURS=${2:?--hours needs a number}; shift ;;
+    --lang) R_LANG=${2:?--lang needs ar or en}; shift ;;
+    --time-zone) R_TZ=${2:?--time-zone needs a zone like Africa/Cairo}; shift ;;
+    --at-hour) R_AT=${2:?--at-hour needs an hour from 0 to 23}; shift ;;
+    --log) R_LOG=${2:?--log needs a file}; shift ;;
+    --no-cleanup) R_CLEANUP=0 ;;
     -h | --help) usage; exit 0 ;;
     *) die "unknown option $1 (ops/midad.sh --help)" ;;
   esac
@@ -604,7 +615,7 @@ cmd_backup() {
     echo "project=$PROJECT"
     echo "database=$([[ $MANAGED == 1 ]] && echo managed || echo bundled)"
     echo "db_name=$db"
-    echo "app_commit=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    echo "app_commit=$(app_version | cut -c1-7)"
     echo "app_image=$(docker image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null | cut -c8-19 || echo unknown)"
     echo "includes=database$([[ $settings == yes ]] && echo ,settings)$([[ $certs == yes ]] && echo ,certificates)"
     (cd "$work" && for d in *; do [[ $d == manifest.txt ]] || echo "sha256.$d=$(sha256sum "$d" | cut -d' ' -f1)"; done)
@@ -872,12 +883,135 @@ cmd_restore() {
 }
 
 # ------------------------------------------------------------------ menu
+# ------------------------------------------------------------------ the daily report (docs/DEPLOYMENT_GUIDE.md §8.11)
+app_version() { # the commit this installation runs and its date: a git checkout's, or VERSION as a package stamped it
+  local v
+  if v=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null) && [[ -n $v ]]; then
+    printf '%s %s' "$v" "$(git -C "$ROOT" show -s --format=%cs HEAD 2>/dev/null)"
+    return
+  fi
+  v=$(head -n 1 "$ROOT/VERSION" 2>/dev/null || true)
+  if [[ $v =~ ^[0-9a-f]{40}( [0-9-]+)?$ ]]; then printf '%s' "$v"; else printf 'unknown'; fi
+}
+disk_fact() { # disk_fact PATH: mount|use%|available bytes
+  df -P -B1 "$1" 2>/dev/null | awk 'NR == 2 { print $6 "|" $5 "|" $4 }'
+}
+tls_days() { # days left on the certificate the site serves, or unavailable
+  local host end
+  host=$(envget APP_URL | sed -nE 's#^https://([^/:]+).*#\1#p')
+  [[ -n $host ]] && command -v openssl >/dev/null || { echo unavailable; return 0; }
+  end=$(echo | timeout 15 openssl s_client -servername "$host" -connect "$host:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | sed 's/^notAfter=//' || true)
+  [[ -n $end ]] && end=$(date -d "$end" +%s 2>/dev/null || true)
+  [[ -n $end ]] || { echo unavailable; return 0; }
+  echo $(((end - $(date +%s)) / 86400))
+}
+update_facts() { # update_latest and update_behind, from the public repository on GitHub
+  local repo commit latest body
+  repo=$(conf REPORT_REPO)
+  repo=${repo:-MoatazHossam/Education-}
+  command -v curl >/dev/null || { echo "update_latest=unavailable"; return 0; }
+  body=$(curl -fsS --max-time 15 -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$repo/commits/main" 2>/dev/null || true)
+  latest=$(printf '%s' "$body" | sed -nE 's/^  "sha": "([0-9a-f]{40})".*/\1/p' | head -n 1)
+  [[ -n $latest ]] || { echo "update_latest=unavailable"; return 0; }
+  echo "update_latest=$latest $(printf '%s' "$body" | sed -nE 's/.*"date": "([0-9-]{10})T.*/\1/p' | head -n 1)"
+  commit=$(app_version | cut -d' ' -f1)
+  [[ $commit =~ ^[0-9a-f]{40}$ && $commit != "$latest" ]] || { echo "update_behind=0"; return 0; }
+  body=$(curl -fsS --max-time 15 -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$repo/compare/$commit...main" 2>/dev/null || true)
+  echo "update_behind=$(printf '%s' "$body" | sed -nE 's/^  "ahead_by": ([0-9]+).*/\1/p' | head -n 1)"
+}
+backup_facts() { # the newest backup of this installation, whether it matches its checksum, and the backup log
+  local dir latest n=0 total=0 f size ok last
+  dir=$(backup_dir)
+  for f in "$dir"/midad-backup-"$ENV_NAME"-*.tar*; do
+    [[ -f $f && $f != *.sha256 ]] || continue
+    size=$(stat -c %s "$f")
+    n=$((n + 1)) total=$((total + size))
+    [[ -z ${latest-} || $f > $latest ]] && latest=$f
+  done
+  echo "backup_count=$n"
+  echo "backup_total_bytes=$total"
+  if [[ -n ${latest-} ]]; then
+    ok=missing
+    if [[ -f $latest.sha256 ]]; then
+      if (cd "$dir" && sha256sum --quiet -c "$(basename "$latest").sha256" >/dev/null 2>&1); then ok=ok; else ok=mismatch; fi
+    fi
+    echo "backup_latest=$(basename "$latest")|$(stat -c %Y "$latest")|$(stat -c %s "$latest")|$ok"
+  fi
+  echo "backup_copies=$(conf BACKUP_COPY_TO)"
+  echo "backup_keep_days=$(conf BACKUP_KEEP_DAYS)"
+  [[ -f $R_LOG ]] || return 0
+  # The weekly test ends with this line; its scratch database is named after the test's time (UTC).
+  last=$(grep -oE 'can be restored\. \(The scratch database [^ ]*_check_[0-9]{14}' "$R_LOG" | tail -n 1 | grep -oE '[0-9]{14}$' || true)
+  echo "verify_last_ok=${last:-none}"
+  n=$(tail -n 400 "$R_LOG" | grep -c '^Error:' || true)
+  last=$(tail -n 400 "$R_LOG" | grep '^Error:' | tail -n 1 | sed 's/^Error: //' | tr -d '|' || true)
+  echo "backup_log_errors=$n${last:+|$last}"
+}
+report_facts() { # what the report needs from this server, as key=value lines (src/ops/report.ts reads them)
+  local svc state health name restarts root s
+  echo "collected_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "host=$(hostname)"
+  echo "site=$(envget APP_URL)"
+  echo "app_version=$(app_version)"
+  while IFS='|' read -r svc state health name; do
+    [[ -n $svc && $svc != migrate ]] || continue
+    restarts=$(docker inspect -f '{{.RestartCount}}' "$name" 2>/dev/null || echo 0)
+    echo "service=$svc|$state|$health|$restarts"
+  done < <(dc ps -a --format '{{.Service}}|{{.State}}|{{.Health}}|{{.Name}}' 2>/dev/null)
+  for s in $(apps); do if ready "$s"; then echo "ready=$s|yes"; else echo "ready=$s|no"; fi; done
+  echo "disk=$(disk_fact /)"
+  # Docker's data folder, when it is on another disk than the system (a separate volume for the data, say).
+  root=$(docker info -f '{{.DockerRootDir}}' 2>/dev/null || true)
+  [[ -z $root || $(df -P "$root" 2>/dev/null | awk 'NR == 2 { print $1 }') == $(df -P / | awk 'NR == 2 { print $1 }') ]] || echo "disk=$(disk_fact "$root")"
+  echo "memory=$(awk '/^MemTotal:/ { t = $2 } /^MemAvailable:/ { a = $2 } END { printf "%d|%d", t / 1024, a / 1024 }' /proc/meminfo 2>/dev/null)"
+  echo "load=$(cut -d' ' -f1 /proc/loadavg 2>/dev/null)|$(nproc 2>/dev/null || echo 1)"
+  echo "uptime_seconds=$(cut -d. -f1 /proc/uptime 2>/dev/null)"
+  if [[ -f /var/run/reboot-required ]]; then echo "reboot_required=yes"; else echo "reboot_required=no"; fi
+  if command -v apt-get >/dev/null; then
+    s=$(apt-get -s -o Debug::NoLocking=1 upgrade 2>/dev/null | grep '^Inst ' || true)
+    echo "os_updates=$(printf '%s' "$s" | grep -c . || true)|$(printf '%s' "$s" | grep -ci security || true)"
+  fi
+  echo "tls_days=$(tls_days)"
+  backup_facts
+  echo "app_errors=$(dc logs --since "${R_HOURS}h" --no-log-prefix --no-color $(apps) worker 2>/dev/null | grep -cE '"level":(50|60)' || true)"
+  update_facts
+}
+cleanup_facts() { # removes what Docker no longer uses (images no tag points to, build cache older than a week)
+  local freed
+  freed=$(docker image prune -f 2>/dev/null | sed -nE 's/^Total reclaimed space: (.*)$/\1/p')
+  echo "cleanup=images|${freed:-0B}"
+  freed=$(docker builder prune -f --filter until=168h 2>/dev/null | sed -nE 's/^Total:[[:space:]]*(.*)$/\1/p')
+  echo "cleanup=cache|${freed:-0B}"
+}
+cmd_report() {
+  pick_env
+  local tz lang emails facts args=()
+  tz=${R_TZ:-$(conf REPORT_TIME_ZONE)}
+  tz=${tz:-Africa/Cairo}
+  if [[ -n $R_AT ]]; then
+    [[ $R_AT =~ ^[0-9]{1,2}$ ]] && ((10#$R_AT < 24)) || die "--at-hour needs an hour from 0 to 23"
+    [[ $((10#$(TZ=$tz date +%H))) == $((10#$R_AT)) ]] || return 0
+  fi
+  [[ $R_HOURS =~ ^[0-9]+$ ]] && ((R_HOURS >= 1)) || die "--hours needs a whole number of hours"
+  lang=${R_LANG:-$(conf REPORT_LANG)}
+  lang=${lang:-ar}
+  emails=${R_EMAIL:-$(conf REPORT_EMAIL)}
+  emails=${emails:-$(envget ALERT_EMAILS)}
+  facts=$(mktemp)
+  CLEANUP+=("$facts")
+  { report_facts; ((R_CLEANUP)) && cleanup_facts; } >"$facts" 2>/dev/null || true
+  args=(node dist/cli/ops-report.js --hours "$R_HOURS" --lang "$lang" --time-zone "$tz")
+  [[ -n $emails ]] && args+=(--to "$emails")
+  # The app container sends the email with the app's own mail settings; a stopped app gets a one-off container.
+  if running app; then dc exec -T app "${args[@]}" <"$facts"; else dc run --rm --no-deps -T app "${args[@]}" <"$facts"; fi
+}
+
 cmd_menu() {
   local c
-  choose c "Midad: what do you want to do?" 3 "Start" "Stop" "Status" "Back up" "Restore" "Test a backup (changes nothing)" "Set up backup copies (folder or USB drive, server, bucket)" "Quit"
+  choose c "Midad: what do you want to do?" 3 "Start" "Stop" "Status" "Back up" "Restore" "Test a backup (changes nothing)" "Set up backup copies (folder or USB drive, server, bucket)" "Check the server and email the report" "Quit"
   case $c in
     1) CMD=start; cmd_start ;; 2) CMD=stop; cmd_stop ;; 3) CMD=status; cmd_status ;; 4) CMD=backup; cmd_backup ;;
-    5) CMD=restore; cmd_restore ;; 6) CMD=verify; cmd_restore ;; 7) CMD=destinations; cmd_destinations ;; *) ;;
+    5) CMD=restore; cmd_restore ;; 6) CMD=verify; cmd_restore ;; 7) CMD=destinations; cmd_destinations ;; 8) CMD=report; cmd_report ;; *) ;;
   esac
 }
 
@@ -887,5 +1021,5 @@ docker info >/dev/null 2>&1 || die "cannot reach Docker: is it running, and are 
 
 case ${CMD:-menu} in
   start) cmd_start ;; stop) cmd_stop ;; status) cmd_status ;; backup) cmd_backup ;;
-  restore | verify) cmd_restore ;; destinations) cmd_destinations ;; menu) cmd_menu ;;
+  restore | verify) cmd_restore ;; destinations) cmd_destinations ;; report) cmd_report ;; menu) cmd_menu ;;
 esac

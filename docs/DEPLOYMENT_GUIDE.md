@@ -638,6 +638,8 @@ the database tools, encryption and file transfers run in containers.
 | Test a backup (changes nothing) | `ops/restore.sh --only-verify` | `ops\restore.bat --only-verify` |
 | Set up backup copies | `ops/midad.sh destinations` | `ops\midad.bat destinations` |
 
+To run them on a Linux server from a Windows PC, over SSH, with a double-click: §8.12.
+
 Without options the scripts ask what they need: which installation, which choices, which backup.
 Options for the same answers, the same on both systems:
 
@@ -877,3 +879,56 @@ whatever the server's time zone, summer time included (the run exits at once in 
 It reads the backup log at `/var/log/midad-backup.log` (§8.5; `--log` for another). The report needs the
 app image of this release or later (`dist/cli/ops-report.js`); when the app is stopped, it runs in a one-off
 container. On Windows there is no report command.
+
+### 8.12 Remote control from Windows
+
+The files in `ops/windows-remote` run a Linux server's operations from a Windows PC over SSH, with the OpenSSH
+client built into Windows 10 and 11. Double-click a file, type the server password when sudo asks, and read
+the result. Nothing is installed on the PC.
+
+**Once:**
+
+1. Copy the `ops/windows-remote` folder to the PC, e.g. as `Documents\Midad Remote`. If it came in a downloaded
+   zip, right-click the zip, *Properties*, *Unblock* before extracting it, or Windows asks before every file.
+2. Copy `midad-settings.example.bat` to `midad-settings.bat` and set `MIDAD_HOST` (the server's address) and
+   `MIDAD_USER` (the SSH user, one that can use sudo). The other settings rarely change: the port, the Midad
+   folder (`/opt/midad`), the installation (`prod`), the key file, the `ssh midad` name and the folder for
+   downloaded backups. `midad-settings.bat` stays on the PC: it is in `.gitignore`.
+3. Run `Midad - Setup first time.bat`. It makes a key for this PC (`%USERPROFILE%\.ssh\midad_ed25519`: press
+   Enter twice for no passphrase, or type one if other people use the PC), puts it in the SSH user's
+   `~/.ssh/authorized_keys` (the server password, once), checks that the key works, installs the helper
+   `ops/windows-remote/server/midad-remote.sh` as `/usr/local/sbin/midad-remote` (owned by root; the server
+   password for sudo), and adds `Host midad` to `%USERPROFILE%\.ssh\config`, so that PowerShell connects with
+   `ssh midad`. It can run again: steps already done are kept. Run it again after an update that changes the
+   helper.
+
+From then on, connecting needs no password; what needs root asks the server password for sudo, once per
+window. The key signs in as the SSH user, never as root.
+
+| File | What it does on the server |
+| --- | --- |
+| `Midad - Control panel` | A menu of every action below, plus *Reboot the server*, one after another with one sudo password |
+| `Midad - Status` | The services and whether `app` and `app2` answer (`ops/midad.sh status`) |
+| `Midad - Live monitor` | Status, CPU and memory per container, disk, memory, load, whether a restart is needed and the newest backup, every 10 s; Ctrl+C stops |
+| `Midad - Back up now` | `ops/midad.sh backup --yes`: the saved choices, as the nightly backup. The output also goes to `/var/log/midad-backup.log` |
+| `Midad - Test the newest backup` | `ops/midad.sh restore --yes --from local --only-verify`, in a scratch database; logged the same way, so the daily report counts it (§8.7) |
+| `Midad - Backups list` | The backups kept, newest first, with size and checksum; the last three restore tests and errors in the log; the schedule in `/etc/cron.d/midad` |
+| `Midad - Download backups to this PC` | Copies the installation's backups with their checksums to `Documents\Midad backups`, checks each file against its checksum and opens the folder. The archives are encrypted: they open only with the backup passphrase |
+| `Midad - Daily report` | `ops/midad.sh report`, emailed to the saved address (§8.11) |
+| `Midad - Logs` | Follows the logs of `app`, `app2` and `worker`; Ctrl+C stops |
+| `Midad - Restart the app` | `scripts/rolling-restart.sh`: `app`, then `app2`, then the worker; the website stays up |
+| `Midad - Start` / `Midad - Stop` | `ops/midad.sh start --yes` (no rebuild); Stop asks first, then `stop --yes` (the containers are kept) |
+| `Midad - Server updates` | `apt-get update`, the list of updates, a warning when Docker is among them (the website stops for about a minute while it restarts), then on *y* `apt-get upgrade` (existing configuration files kept, services restarted without questions) and whether a server restart is needed |
+| `Midad - Server shell` | A root shell in the Midad folder, for commands you were given |
+
+*Reboot the server* exists only in the control panel and needs the word `reboot` typed. The containers start
+again by themselves (`restart: unless-stopped`) when Docker starts at boot; the helper checks that it does and
+otherwise says to run Start afterwards.
+
+On the server the helper can also be used directly: `sudo midad-remote` (the menu), `sudo midad-remote status`,
+`sudo midad-remote --help`; `--dir` and `--env` choose another installation. It only runs the installation's own
+scripts (`ops/midad.sh`, `scripts/rolling-restart.sh`), Docker and apt.
+
+Tested on Linux: the helper's actions on the production stack and the batch files' server-side commands over a
+real SSH connection (TEST_REPORT.md, "Remote control from Windows"). The batch files themselves have not run on
+Windows here: they were checked as text.

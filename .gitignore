@@ -13,3 +13,6 @@ backups/
 
 # Secret files for docker-compose.secrets.yml
 secrets/
+
+# Windows remote control: this PC's server settings (ops/windows-remote/midad-settings.example.bat)
+ops/windows-remote/midad-settings.bat

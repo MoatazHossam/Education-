@@ -977,6 +977,21 @@ The Arabic demo script (`docs/demo/`, built with `scripts/demo-scenario/build.mj
 | Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 81 files, 593 tests | Pass |
 | Not run | The batch files on Windows (no Windows here: checked as text); the PowerShell checksum check in `Download backups` (the same comparison was run with `sha256sum`); the live server | — |
 
+### Lint tooling advisory: minimatch (2026-11-11)
+
+GitHub's Dependabot alert (moderate): minimatch before 11.0.1 can be slowed down by a crafted pattern
+(GHSA-g3hv-75wg-m249). `npm ls minimatch`: the app's own file serving already used 11.0.5; eslint 10.14,
+`@eslint/config-array` and `@typescript-eslint/typescript-estree` used 10.2.6, and their latest releases still ask
+for `^10.2`. `overrides` in `package.json` gives those two minimatch 11.0.8.
+
+| Check | Finding | Result |
+| --- | --- | --- |
+| What eslint and typescript-eslint use from minimatch (`new Minimatch(pattern, options)`, `.match(path, partial)`, `.pattern`, `minimatch(path, pattern, options)` with `dot` and `flipNegate`) | All present in 11, which drops only `makeRe` and the regular-expression internals, unused by both | Pass |
+| `npm audit` / `npm audit --omit=dev --audit-level=high` | 10 moderate before (all the same advisory, through the linter), 0 after / 0 before and after | Pass |
+| The lockfile | Only the `minimatch` entry changes (11.0.8 and its two dependencies, both already in the tree) | Pass |
+| `eslint .` before and after, as JSON | The same 333 files, 0 problems both times; a file with errors in `src/` still reports them, and a file in `dist/` is still ignored | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 81 files, 593 tests | Pass |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

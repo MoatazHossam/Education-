@@ -962,6 +962,21 @@ The Arabic demo script (`docs/demo/`, built with `scripts/demo-scenario/build.mj
 | Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 80 files, 578 tests | Pass |
 | Not run | On the live server (after the next update); Windows (no report command there) | — |
 
+### Remote control from Windows (2026-11-11)
+
+`ops/windows-remote`: the batch files and the server helper `server/midad-remote.sh` (DEPLOYMENT_GUIDE §8.12).
+
+| Check | Result |
+| --- | --- |
+| `tests/unit/windows-remote.test.ts` (new, 15 tests) | The helper on a folder laid out as an installation, with a stand-in for `ops/midad.sh`: each action runs the installation's own command with the right options (`--yes` where the nightly jobs use it; a rolling restart in production, stop then start in development); a backup and a restore test go to the backup log and keep their exit code; Stop only on *y*, Reboot only on the typed word; updates install only on *y*, with a warning when Docker is among them; the backups list newest first with ok, missing and damaged checksums, the last restore tests in Cairo time, the log's errors and the schedule; only this installation's backups, with checksums, copied into the SSH user's home; the monitor's sections; the setup check; the menu runs actions until Leave and carries on after one fails; unknown actions, a missing installation and running without sudo refused. The batch files: ASCII with CRLF, each `Midad - …` file runs an action the engine or the helper has, every `goto` and `call` has its label, no parenthesized blocks, the settings placeholders refused, `midad-settings.bat` ignored by git | Pass |
+| `shellcheck` on the helper | No findings at any level | Pass |
+| The helper on the production stack (from the package installed on the live server), as root | Start; Status; a backup (`--yes`, passphrase file) and its restore test, both in the log; the backups list; the monitor (6 containers with CPU and memory, disk, memory, newest backup with its checksum); a rolling restart (app, then app2, then the worker, each waited for until ready); logs; Stop declined, then accepted; Start; Check; system updates listed (the sandbox's include Docker: the warning shows) and declined; Reboot cancelled | Pass |
+| Ctrl+C | Sent to the whole process group, as a terminal does: the monitor and the logs stop and the control panel comes back; on its own, each ends with exit 0 | Pass |
+| Found while rehearsing | The helper's list of backups returned a failure when the last file it looked at was a checksum, which stopped the listing under `set -e` (fixed, covered by a test). The restore tests showed UTC beside backups in Cairo time (now both in the report's zone) | Fixed |
+| The batch files' server-side commands over SSH, sent from Linux to a local OpenSSH server with a sudo user (sudo without a password for the rehearsal; the server's real sudo asks it) | The key put on the server with the user's password, twice: one line in `authorized_keys`, modes 700 and 600; then a sign-in with the key alone; the helper copied with Windows line endings, cleaned and installed as `/usr/local/sbin/midad-remote` (root, 755, identical to the repository's file), and its check; an action through `ssh -t`; the backups prepared, fetched with one `scp` of a wildcard, the folder removed from the server, each file matching its checksum; a root shell through `sudo -s` | Pass |
+| Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 81 files, 593 tests | Pass |
+| Not run | The batch files on Windows (no Windows here: checked as text); the PowerShell checksum check in `Download backups` (the same comparison was run with `sha256sum`); the live server | — |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

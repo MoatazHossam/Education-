@@ -25,6 +25,17 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Remote control from Windows · COMPLETE (2026-11-11)
+- **What it is:** `ops/windows-remote`: double-click files on a Windows PC that run the server's operations over
+  SSH (status, live monitor, back up now, test the newest backup, backups list, download the backups to the PC
+  with a checksum check, daily report, logs, restart without downtime, start, stop, system updates, a root
+  shell) and a control panel that runs them one after another with one sudo password. A one-time setup makes
+  an SSH key for the PC, installs the helper `/usr/local/sbin/midad-remote` and adds `ssh midad` for
+  PowerShell (DEPLOYMENT_GUIDE §8.12).
+- **Tested:** the helper's actions with stand-ins and on the production stack, and the batch files' server-side
+  commands over a real SSH connection (TEST_REPORT.md, "Remote control from Windows"). Not yet run on Windows:
+  the batch files were checked as text.
+
 ### Daily operations report by email · COMPLETE (2026-11-10)
 - **What it is:** `ops/report.sh --env prod --email <address>` checks the services, the backups (the newest one's
   age and checksum, the last restore test), the disk, memory, updates and HTTPS certificate, lists what is new in
@@ -32,7 +43,8 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
   GitHub, removes what Docker no longer uses, and emails the report in Arabic or English. Any time by hand, and
   daily at 04:00 Cairo time with an hourly cron line and `--at-hour 4` (DEPLOYMENT_GUIDE §8.11).
 - **Tested:** unit, script and integration tests, and a run on the production stack built from a package, with
-  the email received by a local mailbox (TEST_REPORT.md, "Daily operations report"). Not yet on the live server.
+  the email received by a local mailbox (TEST_REPORT.md, "Daily operations report"). On the live server since
+  2026-11-11: the first report reached the owner's mailbox.
 
 ### Dependency updates of 2026-11-09 · COMPLETE (2026-11-10)
 - **Merged:** Dependabot's rclone 1.76, Caddy 2.11 and npm group (#82 to #84), all green in CI.

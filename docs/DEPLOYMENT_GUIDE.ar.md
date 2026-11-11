@@ -485,6 +485,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 | اختبار نسخة احتياطية (لا يغيّر شيئًا) | `ops/restore.sh --only-verify` | `ops\restore.bat --only-verify` |
 | إعداد أماكن النسخ الإضافية | `ops/midad.sh destinations` | `ops\midad.bat destinations` |
 
+ولتشغيلها على خادم لينكس من جهاز ويندوز، عبر SSH وبنقرة مزدوجة: القسم 8.12.
+
 بدون خيارات تسأل السكربتات عما تحتاجه: أي تثبيت، وأي اختيارات، وأي نسخة احتياطية. وهذه خيارات تعطي الإجابات نفسها مسبقًا، وهي واحدة في النظامين:
 
 | الخيار | المعنى |
@@ -698,6 +700,40 @@ ops/report.sh --env prod --email you@example.com
 </div>
 
 يقرأ سجل النسخ في <span dir="ltr">`/var/log/midad-backup.log`</span> (القسم 8.5؛ و<span dir="ltr">`--log`</span> لسجل آخر). ويحتاج التقرير صورة التطبيق من هذا الإصدار أو أحدث (<span dir="ltr">`dist/cli/ops-report.js`</span>)؛ وإن كان التطبيق متوقفًا يعمل في حاوية مؤقتة. لا يوجد أمر التقرير في ويندوز.
+
+### 8.12 التحكم عن بُعد من ويندوز
+
+الملفات في <span dir="ltr">`ops/windows-remote`</span> تشغّل عمليات خادم لينكس من جهاز ويندوز عبر SSH، بعميل OpenSSH المدمج في ويندوز 10 و11. انقر الملف نقرًا مزدوجًا، واكتب كلمة سر الخادم حين يطلبها sudo، واقرأ النتيجة. لا يُثبَّت شيء على الجهاز.
+
+**مرة واحدة:**
+
+1. انسخ المجلد <span dir="ltr">`ops/windows-remote`</span> إلى الجهاز، مثلًا باسم <span dir="ltr">`Documents\Midad Remote`</span>. وإن وصل في ملف zip منزَّل، فانقر عليه بالزر الأيمن، ثم «خصائص»، ثم «إلغاء الحظر» قبل فكه، وإلا سأل ويندوز قبل كل ملف.
+2. انسخ <span dir="ltr">`midad-settings.example.bat`</span> باسم <span dir="ltr">`midad-settings.bat`</span>، واكتب فيه `MIDAD_HOST` (عنوان الخادم) و`MIDAD_USER` (مستخدم SSH الذي يستطيع استعمال sudo). باقي الإعدادات قلّما تتغير: المنفذ، ومجلد مِداد (<span dir="ltr">`/opt/midad`</span>)، والتثبيت (`prod`)، وملف المفتاح، والاسم <span dir="ltr">`ssh midad`</span>، ومجلد النسخ المنزَّلة. يبقى <span dir="ltr">`midad-settings.bat`</span> على الجهاز: فهو في <span dir="ltr">`.gitignore`</span>.
+3. شغّل <span dir="ltr">`Midad - Setup first time.bat`</span>. يصنع مفتاحًا لهذا الجهاز (<span dir="ltr">`%USERPROFILE%\.ssh\midad_ed25519`</span>: اضغط Enter مرتين بلا عبارة مرور، أو اكتب واحدة إن كان غيرك يستعمل الجهاز)، ويضعه في <span dir="ltr">`~/.ssh/authorized_keys`</span> لمستخدم SSH (كلمة سر الخادم مرة واحدة)، ويتأكد أن المفتاح يعمل، ويثبّت المساعد <span dir="ltr">`ops/windows-remote/server/midad-remote.sh`</span> باسم <span dir="ltr">`/usr/local/sbin/midad-remote`</span> (ملك root؛ كلمة سر الخادم لـ sudo)، ويضيف <span dir="ltr">`Host midad`</span> إلى <span dir="ltr">`%USERPROFILE%\.ssh\config`</span>، فيتصل PowerShell بالأمر <span dir="ltr">`ssh midad`</span>. يمكن تشغيله مرة أخرى: الخطوات التي تمت تبقى. شغّله ثانيةً بعد أي تحديث يغيّر المساعد.
+
+بعدها لا يحتاج الاتصال كلمة سر؛ وما يحتاج صلاحية root يطلب كلمة سر الخادم لـ sudo مرة واحدة في كل نافذة. المفتاح يدخل باسم مستخدم SSH، لا باسم root أبدًا.
+
+| الملف | ما يفعله على الخادم |
+| --- | --- |
+| <span dir="ltr">`Midad - Control panel`</span> | قائمة بكل الإجراءات التالية، ومعها «إعادة تشغيل الخادم»، واحدًا بعد الآخر بكلمة سر sudo واحدة |
+| <span dir="ltr">`Midad - Status`</span> | الخدمات، وهل يجيب `app` و`app2` (<span dir="ltr">`ops/midad.sh status`</span>) |
+| <span dir="ltr">`Midad - Live monitor`</span> | الحالة، والمعالج والذاكرة لكل حاوية، والقرص، والذاكرة، والحمل، وهل يلزم إعادة تشغيل، وأحدث نسخة، كل 10 ثوانٍ؛ Ctrl+C يوقفه |
+| <span dir="ltr">`Midad - Back up now`</span> | <span dir="ltr">`ops/midad.sh backup --yes`</span>: الاختيارات المحفوظة، كالنسخة الليلية. ويُكتب الناتج أيضًا في <span dir="ltr">`/var/log/midad-backup.log`</span> |
+| <span dir="ltr">`Midad - Test the newest backup`</span> | <span dir="ltr">`ops/midad.sh restore --yes --from local --only-verify`</span> في قاعدة بيانات مؤقتة؛ ويُسجَّل بالطريقة نفسها، فيحسبه التقرير اليومي (القسم 8.7) |
+| <span dir="ltr">`Midad - Backups list`</span> | النسخ المحفوظة، الأحدث أولًا، بحجمها وبصمتها؛ وآخر ثلاثة اختبارات استعادة والأخطاء في السجل؛ والجدول في <span dir="ltr">`/etc/cron.d/midad`</span> |
+| <span dir="ltr">`Midad - Download backups to this PC`</span> | ينسخ نسخ التثبيت ببصماتها إلى <span dir="ltr">`Documents\Midad backups`</span>، ويطابق كل ملف ببصمته، ويفتح المجلد. النسخ مشفّرة: لا تُفتح إلا بعبارة مرور النسخ |
+| <span dir="ltr">`Midad - Daily report`</span> | <span dir="ltr">`ops/midad.sh report`</span>، ويُرسل إلى العنوان المحفوظ (القسم 8.11) |
+| <span dir="ltr">`Midad - Logs`</span> | يتابع سجلات `app` و`app2` و`worker`؛ Ctrl+C يوقفه |
+| <span dir="ltr">`Midad - Restart the app`</span> | <span dir="ltr">`scripts/rolling-restart.sh`</span>: `app` ثم `app2` ثم العامل الخلفي؛ ويبقى الموقع يعمل |
+| <span dir="ltr">`Midad - Start`</span> و<span dir="ltr">`Midad - Stop`</span> | <span dir="ltr">`ops/midad.sh start --yes`</span> (بلا إعادة بناء)؛ والإيقاف يسأل أولًا ثم <span dir="ltr">`stop --yes`</span> (تبقى الحاويات) |
+| <span dir="ltr">`Midad - Server updates`</span> | <span dir="ltr">`apt-get update`</span>، وقائمة التحديثات، وتنبيه إن كان Docker بينها (يتوقف الموقع نحو دقيقة وهو يعيد التشغيل)، ثم عند <span dir="ltr">*y*</span> يثبّت <span dir="ltr">`apt-get upgrade`</span> (تبقى ملفات الإعداد الحالية، وتُعاد الخدمات بلا أسئلة)، ويقول هل يلزم إعادة تشغيل الخادم |
+| <span dir="ltr">`Midad - Server shell`</span> | واجهة أوامر root في مجلد مِداد، للأوامر التي تُعطى لك |
+
+«إعادة تشغيل الخادم» موجودة في لوحة التحكم فقط، وتحتاج كتابة الكلمة `reboot`. تعود الحاويات للعمل وحدها (<span dir="ltr">`restart: unless-stopped`</span>) حين يبدأ Docker مع تشغيل الخادم؛ ويتحقق المساعد من ذلك، وإلا قال لك أن تشغّل Start بعدها.
+
+ويمكن استعمال المساعد على الخادم مباشرة: <span dir="ltr">`sudo midad-remote`</span> (القائمة)، و<span dir="ltr">`sudo midad-remote status`</span>، و<span dir="ltr">`sudo midad-remote --help`</span>؛ ويختار <span dir="ltr">`--dir`</span> و<span dir="ltr">`--env`</span> تثبيتًا آخر. ولا يشغّل إلا سكربتات التثبيت نفسه (<span dir="ltr">`ops/midad.sh`</span> و<span dir="ltr">`scripts/rolling-restart.sh`</span>) وDocker وapt.
+
+جُرِّب على لينكس: إجراءات المساعد على بيئة الإنتاج، وأوامر ملفات الدُفعات التي تُرسل إلى الخادم عبر اتصال SSH حقيقي (TEST_REPORT.md، «Remote control from Windows»). أما ملفات الدُفعات نفسها فلم تعمل على ويندوز هنا: فُحصت كنص.
 
 
 </div>

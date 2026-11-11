@@ -515,6 +515,11 @@ TypeScript 7 for now: it checks this code, but the linter's TypeScript support (
 with it yet; remove that entry from `.github/dependabot.yml` once it does. The pull
 requests target `main`, and each one runs the full CI.
 
+One override is in `package.json`: the linter (eslint and typescript-eslint) still asks for minimatch 10, which
+has a denial-of-service advisory (GHSA-g3hv-75wg-m249) fixed only in 11, so `overrides` gives both minimatch 11.
+It concerns the development tools only (`npm audit --omit=dev` was already clean), and the linter checks the same
+files with the same results on it. Remove the entry once both ask for minimatch 11 or later.
+
 Once, on GitHub (repository owner): Settings > Code security, turn on **Dependabot alerts** and
 **Dependabot security updates**. Security updates then come as soon as an advisory is published, without
 waiting for Monday. They go to the repository's default branch (Settings > General > Default branch), which
@@ -875,6 +880,10 @@ whatever the server's time zone, summer time included (the run exits at once in 
 # /etc/cron.d/midad
 0 * * * * root cd /opt/midad && ops/report.sh --env prod --yes --email you@example.com --at-hour 4 >>/var/log/midad-report.log 2>&1
 ```
+
+Schedule the nightly backup and the weekly restore test (§8.5) to finish before the report, so that it checks
+that night's backup rather than the one before: on a server on UTC, `15 0 * * *` for the backup and `45 0 * * 0`
+for the test (02:15 and 02:45 in Cairo in winter, 03:15 and 03:45 in summer, both before 04:00).
 
 It reads the backup log at `/var/log/midad-backup.log` (§8.5; `--log` for another). The report needs the
 app image of this release or later (`dist/cli/ops-report.js`); when the app is stopped, it runs in a one-off

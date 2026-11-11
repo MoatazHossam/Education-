@@ -397,6 +397,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 
 تأتي التحديثات طلبات دمج (pull requests) من Dependabot (<span dir="ltr">`.github/dependabot.yml`</span>) كل يوم اثنين: حزم npm (التحديثات الصغرى والتصحيحية معًا في طلب واحد، وكل إصدار رئيسي في طلب خاص)، وبصمات أو وسوم جديدة لكل صورة، وإصدارات جديدة من الإجراءات. تُقترح حزم npm والإجراءات بعد أسبوع من نشرها، فالإصدار المعيب أو المخترَق يُسحب عادة قبل ذلك. ولا تُقترح الإصدارات الرئيسية الجديدة من Node.js (ولا من أنواعه `@types/node`) وPostgreSQL: فهذه ترقيات مخطط لها (أدناه). ولا يُقترح TypeScript 7 حاليًا: فهو يفحص هذا الكود، لكن دعم TypeScript في أداة الفحص (typescript-eslint) لا يعمل معه بعد؛ احذف هذا البند من <span dir="ltr">`.github/dependabot.yml`</span> حين يدعمه. وطلبات الدمج موجّهة إلى `main`، وكل طلب منها يمر بفحوص CI كاملة.
 
+وفي <span dir="ltr">`package.json`</span> تجاوز واحد (`overrides`): أداة الفحص (eslint وtypescript-eslint) ما زالت تطلب minimatch 10، وفيه ثغرة حجب خدمة (<span dir="ltr">GHSA-g3hv-75wg-m249</span>) لم تُصلَح إلا في 11، فيعطيهما التجاوز minimatch 11. وهذا يخص أدوات التطوير فقط (<span dir="ltr">`npm audit --omit=dev`</span> كان نظيفًا من قبل)، وأداة الفحص تفحص الملفات نفسها بالنتائج نفسها عليه. احذف التجاوز حين تطلب الأداتان minimatch 11 أو أحدث.
+
 مرة واحدة على GitHub (مالك المستودع): من Settings > Code security فعّل **Dependabot alerts** و**Dependabot security updates**. بعدها تأتي التحديثات الأمنية فور نشر التنبيه الأمني، دون انتظار يوم الاثنين. وهي تذهب إلى الفرع الافتراضي للمستودع (Settings > General > Default branch)، ولا يغيّر ذلك الإعداد `target-branch`، فاجعله `main`. ومن الفرع الافتراضي أيضًا يقرأ Dependabot الملف <span dir="ltr">`.github/dependabot.yml`</span>. وتعرض صفحة Insights > Dependency graph > Dependabot كل تشغيل وأي خطأ في الملف.
 
 الروتين:
@@ -698,6 +700,8 @@ ops/report.sh --env prod --email you@example.com
 ```
 
 </div>
+
+اجعل النسخة الليلية واختبار الاستعادة الأسبوعي (القسم 8.5) ينتهيان قبل التقرير، ليفحص نسخة الليلة نفسها لا التي قبلها: على خادم بتوقيت UTC، <span dir="ltr">`15 0 * * *`</span> للنسخة و<span dir="ltr">`45 0 * * 0`</span> للاختبار (02:15 و02:45 بتوقيت القاهرة شتاءً، و03:15 و03:45 صيفًا، وكلاهما قبل 04:00).
 
 يقرأ سجل النسخ في <span dir="ltr">`/var/log/midad-backup.log`</span> (القسم 8.5؛ و<span dir="ltr">`--log`</span> لسجل آخر). ويحتاج التقرير صورة التطبيق من هذا الإصدار أو أحدث (<span dir="ltr">`dist/cli/ops-report.js`</span>)؛ وإن كان التطبيق متوقفًا يعمل في حاوية مؤقتة. لا يوجد أمر التقرير في ويندوز.
 

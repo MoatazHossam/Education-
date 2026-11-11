@@ -25,6 +25,14 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 
 ## 2. Deliverables
 
+### Lint tooling advisory and the backup schedule · COMPLETE (2026-11-11)
+- **minimatch (GHSA-g3hv-75wg-m249, moderate):** only the linter used the affected version (eslint and
+  typescript-eslint ask for minimatch 10; the fix is in 11). An `overrides` entry in `package.json` gives them
+  minimatch 11; `npm audit` now reports 0 vulnerabilities, and the production dependencies had none before.
+  Remove the entry once both ask for 11 (DEPLOYMENT_GUIDE §4, dependencies).
+- **Backup before the report:** the guide now schedules the nightly backup and the weekly test before the 04:00
+  report, so the report checks that night's backup (DEPLOYMENT_GUIDE §8.11).
+
 ### Remote control from Windows · COMPLETE (2026-11-11)
 - **What it is:** `ops/windows-remote`: double-click files on a Windows PC that run the server's operations over
   SSH (status, live monitor, back up now, test the newest backup, backups list, download the backups to the PC

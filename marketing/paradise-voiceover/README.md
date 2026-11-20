@@ -18,6 +18,7 @@ the `output/` folders back to the branch.
 | --- | --- |
 | `.` | The main 112-screen voiceover (114 sections) |
 | `addendum-3new/` | Three added scenes: 1 repeats section 045's text; 2 and 3 are new |
+| `addendum-28new/` | 28 more added scenes, all new |
 
 For a new batch of scenes, add a folder with its own `script.txt` (`python3 tts.py <folder>` locally).
 

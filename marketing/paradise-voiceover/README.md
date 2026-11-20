@@ -41,5 +41,5 @@ Settings (environment variables): `TTS_RATE` (default `-5%`; `+0%` is the voice'
 - `output/timings.csv`: start, end and length of each section inside the full file
 - `output/timings.srt`: the same timings as subtitles, for a video editor
 
-The spoken text runs about 15–17 minutes. The 40-minute video gets its length from the time on screen
-between sections.
+At the default rate the full voiceover runs 23 min 53 s (sections of 9–18 s each). The 40-minute video
+gets the rest of its length from the time on screen between sections.

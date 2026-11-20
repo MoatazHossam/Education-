@@ -1,0 +1,44 @@
+name: Voiceover (Egyptian female voice)
+
+# Reads marketing/paradise-voiceover/script.txt aloud with the free Microsoft ar-EG-SalmaNeural voice
+# (edge-tts, no key) and commits the MP3s to the same branch. Runs on push to this branch when the
+# script or the generator changes; the bot's own commit does not start it again (pushes made with
+# GITHUB_TOKEN never trigger workflows).
+
+on:
+  push:
+    branches: [claude/exciting-knuth-niuk0b]
+    paths:
+      - marketing/paradise-voiceover/script.txt
+      - marketing/paradise-voiceover/tts.py
+      - .github/workflows/voiceover-tts.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voiceover-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tts:
+    name: Synthesize the voiceover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install ffmpeg and edge-tts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install -q edge-tts==7.3.1
+      - name: Synthesize
+        run: /tmp/venv/bin/python marketing/paradise-voiceover/tts.py
+      - name: Commit the audio to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marketing/paradise-voiceover/output
+          git commit -m "Voiceover audio (ar-EG-SalmaNeural) for marketing/paradise-voiceover/script.txt"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

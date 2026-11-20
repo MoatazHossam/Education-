@@ -9,7 +9,9 @@ Reads `script.txt` (114 fully diacritized sections) aloud with the free Microsof
 | `tts.py` | The generator: one MP3 per section, then the full voiceover, timings and subtitles |
 | `voiceover_colab.ipynb` | The same generator with the script inside, for Google Colab (free, runs in the browser) |
 
-The audio is not in git: the generator writes it to `output/` (and `build/`, which is ignored).
+The generator writes the audio to `output/` (working files go to `build/`, which is ignored). On the
+`claude/exciting-knuth-niuk0b` branch, `.github/workflows/voiceover-tts.yml` runs it on GitHub Actions
+whenever `script.txt` or `tts.py` changes, and commits `output/` back to the branch.
 
 ## Easiest: Google Colab (nothing to install)
 

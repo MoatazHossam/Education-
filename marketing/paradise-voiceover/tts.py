@@ -1,13 +1,14 @@
 """Read script.txt aloud with a free Egyptian female neural voice and build the voiceover.
 
 Voice: Microsoft ar-EG-SalmaNeural through the edge-tts package (no key, no account).
-Output, in output/:
+Output, in output/ next to the script:
   voiceover-full.mp3   every section in order, with a pause between sections
-  segments.zip         one MP3 per section (000-intro.mp3 ... 113-closing.mp3), for syncing with each screen
+  segments.zip         one MP3 per section (00-intro.mp3, 001.mp3 ... 113-closing.mp3), for syncing with each screen
   timings.csv          start, end and length of each section inside voiceover-full.mp3
   timings.srt          the same timings as subtitles (the diacritized text of each section)
 
-Run:  pip install edge-tts  (and have ffmpeg on PATH), then  python3 tts.py
+Run:  pip install edge-tts  (and have ffmpeg on PATH), then  python3 tts.py [folder]
+The folder holds script.txt and receives output/; it defaults to this file's own folder.
 """
 
 import asyncio
@@ -22,10 +23,10 @@ from pathlib import Path
 
 import edge_tts
 
-HERE = Path(__file__).resolve().parent
-SCRIPT = HERE / "script.txt"
-OUT = HERE / "output"
-WORK = HERE / "build"
+BASE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent
+SCRIPT = BASE / "script.txt"
+OUT = BASE / "output"
+WORK = BASE / "build"
 
 VOICE = os.environ.get("TTS_VOICE", "ar-EG-SalmaNeural")
 RATE = os.environ.get("TTS_RATE", "-5%")  # a little slower than default, for narration over screens
@@ -34,7 +35,8 @@ GAP = 1.0  # seconds of silence between sections
 TAIL = 1.5  # seconds of silence after the last section
 SAMPLE_RATE = 24000  # the voice's native rate
 
-HEADER = re.compile(r"^(\d+)\.\s*\[(.+)\]\s*$")
+# "NNN. [title]", optionally followed by a note for the editor (not read aloud).
+HEADER = re.compile(r"^(\d+)\.\s*\[([^\]]+)\]")
 
 
 def parse(path):
@@ -62,10 +64,10 @@ def parse(path):
     return result
 
 
-def slug(sid, index, total):
-    if index == 0:
+def slug(sid, title):
+    if title == "المقدمة":
         return f"{sid}-intro"
-    if index == total - 1:
+    if title == "الخاتمة":
         return f"{sid}-closing"
     return sid
 
@@ -115,7 +117,9 @@ async def main():
     (WORK / "segments").mkdir(parents=True)
     OUT.mkdir(exist_ok=True)
 
-    names = [slug(sid, i, len(sections)) for i, (sid, _, _) in enumerate(sections)]
+    names = [slug(sid, title) for sid, title, _ in sections]
+    if len(set(names)) != len(names):
+        sys.exit("Two sections share a number")
     mp3s = [WORK / "segments" / f"{name}.mp3" for name in names]
     sem = asyncio.Semaphore(4)
     await asyncio.gather(*(synth_one(sem, text, mp3) for (_, _, text), mp3 in zip(sections, mp3s)))

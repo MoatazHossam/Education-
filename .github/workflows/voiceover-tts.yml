@@ -1,15 +1,15 @@
 name: Voiceover (Egyptian female voice)
 
-# Reads marketing/paradise-voiceover/script.txt aloud with the free Microsoft ar-EG-SalmaNeural voice
-# (edge-tts, no key) and commits the MP3s to the same branch. Runs on push to this branch when the
-# script or the generator changes; the bot's own commit does not start it again (pushes made with
-# GITHUB_TOKEN never trigger workflows).
+# Reads each marketing/paradise-voiceover/**/script.txt aloud with the free Microsoft ar-EG-SalmaNeural
+# voice (edge-tts, no key) and commits the MP3s to the same branch. A folder is synthesized when it has
+# no output yet, or when its script.txt was committed after its output; others are left as they are.
+# The bot's own commit does not start the workflow again (pushes made with GITHUB_TOKEN never do).
 
 on:
   push:
     branches: [claude/exciting-knuth-niuk0b]
     paths:
-      - marketing/paradise-voiceover/script.txt
+      - marketing/paradise-voiceover/**/script.txt
       - marketing/paradise-voiceover/tts.py
       - .github/workflows/voiceover-tts.yml
 
@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the commit dates of script.txt and output/ decide what to synthesize
       - name: Install ffmpeg and edge-tts
         run: |
           sudo apt-get update -qq
@@ -34,11 +36,24 @@ jobs:
           python3 -m venv /tmp/venv
           /tmp/venv/bin/pip install -q edge-tts==7.3.1
       - name: Synthesize
-        run: /tmp/venv/bin/python marketing/paradise-voiceover/tts.py
+        run: |
+          shopt -s nullglob
+          for script in marketing/paradise-voiceover/script.txt marketing/paradise-voiceover/*/script.txt; do
+            dir=$(dirname "$script")
+            script_at=$(git log -1 --format=%ct -- "$script")
+            output_at=$(git log -1 --format=%ct -- "$dir/output/voiceover-full.mp3")
+            if [ -n "$output_at" ] && [ "$output_at" -ge "$script_at" ]; then
+              echo "== $dir: output is up to date, skipped"
+              continue
+            fi
+            echo "== $dir"
+            /tmp/venv/bin/python marketing/paradise-voiceover/tts.py "$dir"
+          done
       - name: Commit the audio to this branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add marketing/paradise-voiceover/output
-          git commit -m "Voiceover audio (ar-EG-SalmaNeural) for marketing/paradise-voiceover/script.txt"
+          git add marketing/paradise-voiceover
+          if git diff --cached --quiet; then echo "nothing new to commit"; exit 0; fi
+          git commit -m "Voiceover audio (ar-EG-SalmaNeural): $(git diff --cached --name-only | grep -o '^marketing/paradise-voiceover/[^/]*' | sort -u | tr '\n' ' ')"
           git push origin "HEAD:${GITHUB_REF_NAME}"

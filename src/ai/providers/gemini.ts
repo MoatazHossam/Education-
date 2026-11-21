@@ -20,6 +20,11 @@ export class GeminiProvider implements AiProvider {
     this.deadlineMs = callDeadlineMs(config.timeoutMs, maxRetries, config.retryWaitMs);
     this.client = new GoogleGenAI({
       apiKey: config.apiKey,
+      // The API version this adapter was built and checked against (systemInstruction, responseJsonSchema,
+      // thinking token counts). SDK 3 defaults to v1 instead, and reads GOOGLE_GENAI_API_VERSION when nothing
+      // is set here; naming it keeps both from changing the requests. Move to v1 only after checking these
+      // fields there with a real key (npm run ai:check).
+      apiVersion: 'v1beta',
       // Per-attempt timeout; retries timeouts, 408, 429 and 5xx after a short backoff (not retry-after).
       httpOptions: { timeout: config.timeoutMs, retryOptions: { attempts: maxRetries + 1 }, ...(config.apiBase ? { baseUrl: config.apiBase } : {}) },
     });

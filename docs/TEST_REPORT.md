@@ -992,6 +992,22 @@ for `^10.2`. `overrides` in `package.json` gives those two minimatch 11.0.8.
 | `eslint .` before and after, as JSON | The same 333 files, 0 problems both times; a file with errors in `src/` still reports them, and a file in `dist/` is still ignored | Pass |
 | Whole suite | `npm run lint`, `npm run typecheck`; `npm test` 81 files, 593 tests | Pass |
 
+### Google's Gemini SDK 3.0.0 (2026-11-21)
+
+Dependabot's #94 (`@google/genai` 2.32.0 to 3.0.0) failed CI: 47 tests in 7 files, all through the Gemini
+adapter (`Gemini API 404` from the provider simulator, then `AI_FAILED` in the features). SDK 3 sends Gemini API
+requests to `v1` by default, where 2.x used `v1beta`; the simulator, like the adapter's checks, follows `v1beta`.
+
+| Check | Finding | Result |
+| --- | --- | --- |
+| The SDK's own code and README | The Gemini API's default version is now `v1`; `apiVersion` (or `GOOGLE_GENAI_API_VERSION` when the client sets none) chooses another; Node.js 22 is now required (the image and CI run 22) | — |
+| `npm run typecheck` on 3.0.0 before the fix | No errors: `GoogleGenAI`, `ApiError`, `FinishReason` and the reply fields the adapter reads are unchanged | Pass |
+| The fix: `apiVersion: 'v1beta'` in the adapter | The adapter's requests are the same as on 2.32.0 | Pass |
+| New contract test: `GOOGLE_GENAI_API_VERSION=v1` set, one request | Still sent to `/v1beta/models/gemini-2.5-pro:generateContent` | Pass |
+| `ai-providers-contract.test.ts` with the pin removed, then restored | 10 of 31 tests fail (the 9 Gemini adapter tests and the new one), then 31 pass | The tests catch it |
+| Whole suite | `npm run lint`, `npm run typecheck`, `npm run build`; `npm test` 81 files, 594 tests (PostgreSQL 16.15) | Pass |
+| Not run | E2E (CI runs it on the pull request); a real Gemini request (no key, B-10) | — |
+
 ## 5. Performance smoke — `scripts/perf-smoke.mjs`
 
 Compiled server (`node dist/server.js`), one process, local PostgreSQL, rate limiting disabled,

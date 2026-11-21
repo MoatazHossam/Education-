@@ -5,7 +5,7 @@ The application is functionally complete and tested locally, but several Definit
 conditions are unverified or blocked (real payment provider, production deployment, monitoring
 and alerts, legal/privacy review, catalogue data verification).
 
-Last updated: 2026-11-07. Branch: `claude/friendly-rubin-hmemjl`.
+Last updated: 2026-11-21. Branch: `claude/bold-bohr-c0kinr`.
 Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT VERIFIED.
 
 ## 1. Blockers and external dependencies
@@ -24,6 +24,18 @@ Status values: COMPLETE · PARTIALLY COMPLETE · NOT STARTED · BLOCKED · NOT V
 | B-10 | ~~No AI provider chosen~~ — **owner chose Google Gemini on 2026-10-28.** The provider-independent AI layer and four features for teachers (suggested test questions, homework suggestions, lesson plan and pacing plan drafts) are built (docs/AI_LAYER.md §6a). Still missing: the Gemini key and model on the server | Nothing has run against the real Gemini API; no school can use AI yet | Owner: `AI_PROVIDER=gemini`, `AI_API_KEY` (paid tier) and `AI_MODEL` as environment secrets (never in a chat), who pays, and the monthly allowance per school; then `npm run ai:check` |
 
 ## 2. Deliverables
+
+### Google's Gemini SDK 3.0.0 (Dependabot #94) · COMPLETE (2026-11-21)
+- **Found:** Dependabot's update of `@google/genai` from 2.32.0 to 3.0.0 failed CI (47 tests, all AI). SDK 3 sends
+  Gemini API requests to `v1` by default instead of `v1beta`, so the adapter's calls went to another address
+  (`Gemini API 404` from the provider simulator). Nothing else in the SDK changed for this adapter: it type-checks
+  unchanged, and SDK 3 requires Node.js 22, which the image and CI already run.
+- **Implemented:** the adapter names `v1beta`, the API its request fields (`systemInstruction`,
+  `responseJsonSchema`, thinking token counts) were built and checked against. Naming it also keeps the
+  `GOOGLE_GENAI_API_VERSION` variable, which SDK 3 reads when the client names no version, from changing the
+  requests. A contract test sets that variable to `v1` and checks the request still goes to `v1beta`.
+- **Still to check:** moving to `v1` once a real Gemini key is set (B-10): `npm run ai:check` against `v1`, then
+  drop the pin. Supersedes #94.
 
 ### Lint tooling advisory and the backup schedule · COMPLETE (2026-11-11)
 - **minimatch (GHSA-g3hv-75wg-m249, moderate):** only the linter used the affected version (eslint and

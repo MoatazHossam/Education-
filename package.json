@@ -46,7 +46,7 @@
     "@fastify/static": "^10.1.10",
     "@fontsource/ibm-plex-mono": "^5.2.6",
     "@fontsource/readex-pro": "^5.2.6",
-    "@google/genai": "3.0.0",
+    "@google/genai": "3.3.0",
     "@node-rs/argon2": "^2.0.2",
     "@simplewebauthn/server": "14.0.3",
     "fastify": "^5.12.8",

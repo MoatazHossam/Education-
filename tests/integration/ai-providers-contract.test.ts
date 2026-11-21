@@ -138,6 +138,23 @@ describe.each(['gemini', 'anthropic', 'openai'] as const)('%s adapter', (name) =
   });
 });
 
+describe('gemini: API version', () => {
+  // SDK 3 sends to v1 by default and reads GOOGLE_GENAI_API_VERSION when the client names no version;
+  // the adapter names v1beta, the API its requests were checked against.
+  it('sends to v1beta, also when GOOGLE_GENAI_API_VERSION names another version', async () => {
+    const before = process.env.GOOGLE_GENAI_API_VERSION;
+    process.env.GOOGLE_GENAI_API_VERSION = 'v1';
+    try {
+      sim.script('gemini', { kind: 'ok', text: '{"title":"Revision","items":["Plants"]}', inputTokens: 10, outputTokens: 5 });
+      await provider('gemini').generate(REQUEST);
+      expect(sim.requests.map((r) => r.path)).toEqual([`/v1beta/models/${MODELS.gemini}:generateContent`]);
+    } finally {
+      if (before === undefined) delete process.env.GOOGLE_GENAI_API_VERSION;
+      else process.env.GOOGLE_GENAI_API_VERSION = before;
+    }
+  });
+});
+
 describe('anthropic: server-side fallback', () => {
   it('opts into the default fallback on models whose classifiers can decline', async () => {
     await provider('anthropic', { model: 'claude-opus-5-5' }).generate(REQUEST);

@@ -135,34 +135,64 @@ def test_missing_or_stopped_docker_is_explained(folder, tmp_path):
 
 
 class _Ready(http.server.BaseHTTPRequestHandler):
+    """Answers like Mahdar's API."""
+
     def do_GET(self):
-        self.send_response(200 if self.path == "/readyz" else 404)
+        ok = self.path in ("/readyz", "/healthz")
+        self.send_response(200 if ok else 404)
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(b"{}")
+        self.wfile.write(b'{"ok": true, "service": "mahdar"}' if ok else b"{}")
 
     def log_message(self, *args):
         pass
 
 
-@needs_pwsh
-def test_start_sequence_with_a_fake_docker(folder, tmp_path):
-    bin_dir = tmp_path / "bin"
+class _Other(http.server.BaseHTTPRequestHandler):
+    """Another web app on the same port: 200 and a page for every path, /readyz included."""
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"<html><body>Another app</body></html>")
+
+    def log_message(self, *args):
+        pass
+
+
+def _serve(handler, port: int) -> http.server.HTTPServer:
+    server = http.server.HTTPServer(("127.0.0.1", port), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def _fake_docker(bin_dir: Path) -> None:
     bin_dir.mkdir()
     os.symlink(shutil.which("chmod"), bin_dir / "chmod")
-    log = tmp_path / "docker.log"
     (bin_dir / "docker").write_text(
         '#!/bin/sh\necho "$*" >> "$FAKE_DOCKER_LOG"\ncase "$*" in *org-count*) echo 1 ;; esac\nexit 0\n'
     )
     (bin_dir / "docker").chmod(0o755)
+
+
+def _set_port(folder: Path, port: int) -> None:
+    f = folder / ".env.docker"
+    f.write_text(re.sub(r"^MAHDAR_PORT=.*$", f"MAHDAR_PORT={port}", f.read_text(), flags=re.M))
+
+
+@needs_pwsh
+def test_start_sequence_with_a_fake_docker(folder, tmp_path):
+    bin_dir = tmp_path / "bin"
+    _fake_docker(bin_dir)
+    log = tmp_path / "docker.log"
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
-    server = http.server.HTTPServer(("127.0.0.1", port), _Ready)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    server = _serve(_Ready, port)
     try:
         assert _run(folder, "-SettingsOnly", "-SkipClaudeKey").returncode == 0
-        f = folder / ".env.docker"
-        f.write_text(re.sub(r"^MAHDAR_PORT=.*$", f"MAHDAR_PORT={port}", f.read_text(), flags=re.M))
+        _set_port(folder, port)
         r = _run(folder, "-SkipClaudeKey", "-NoBrowser", path=str(bin_dir), extra={"FAKE_DOCKER_LOG": str(log)})
     finally:
         server.shutdown()
@@ -175,3 +205,67 @@ def test_start_sequence_with_a_fake_docker(folder, tmp_path):
     assert not any("create-admin" in c for c in calls)  # an administrator exists already
     assert not any(c.startswith("volume") for c in calls)  # the secrets were not new
     assert "An administrator already exists" in r.stdout and f"http://localhost:{port}" in r.stdout
+
+
+def _two_free_ports() -> int:
+    """A port p such that p and p + 1 are both free on 127.0.0.1."""
+    for _ in range(50):
+        with socket.socket() as a:
+            a.bind(("127.0.0.1", 0))
+            p = a.getsockname()[1]
+            with socket.socket() as b:
+                try:
+                    b.bind(("127.0.0.1", p + 1))
+                except OSError:
+                    continue
+        return p
+    raise RuntimeError("no two consecutive free ports")
+
+
+@needs_pwsh
+def test_port_taken_by_another_app_moves_mahdar(folder, tmp_path):
+    # Observed on Windows: another app on 8080 answered, the browser opened it instead of Mahdar.
+    bin_dir = tmp_path / "bin"
+    _fake_docker(bin_dir)
+    p = _two_free_ports()
+    other = _serve(_Other, p)
+    mahdar = _serve(_Ready, p + 1)  # where Mahdar ends up
+    try:
+        assert _run(folder, "-SettingsOnly", "-SkipClaudeKey").returncode == 0
+        _set_port(folder, p)
+        r = _run(
+            folder, "-SkipClaudeKey", "-NoBrowser", path=str(bin_dir), extra={"FAKE_DOCKER_LOG": str(tmp_path / "log")}
+        )
+    finally:
+        other.shutdown()
+        mahdar.shutdown()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"Another program already uses port {p}" in r.stdout
+    env = _env(folder / ".env.docker")
+    assert env["MAHDAR_PORT"] == str(p + 1) and env["MAHDAR_PUBLIC_URL"] == f"http://localhost:{p + 1}"
+    assert f"http://localhost:{p + 1}" in r.stdout
+
+
+@needs_pwsh
+def test_another_app_answering_readyz_is_not_taken_for_mahdar(folder, tmp_path):
+    # The other app answers every path with 200 and Mahdar never starts: no port is free of it
+    # within the range, or (here) the script would wait for Mahdar on the next port. Either way it
+    # must not report success on the other app's answer.
+    bin_dir = tmp_path / "bin"
+    _fake_docker(bin_dir)
+    p = _two_free_ports()
+    other = _serve(_Other, p)
+    try:
+        assert _run(folder, "-SettingsOnly", "-SkipClaudeKey").returncode == 0
+        _set_port(folder, p)
+        f = folder / "start.ps1"
+        # Shorten the readiness wait for the test (72 tries of 5 s in the script).
+        f.write_text(
+            f.read_text().replace("$i -lt 72", "$i -lt 2").replace("Start-Sleep -Seconds 5", "Start-Sleep -Seconds 1")
+        )
+        r = _run(
+            folder, "-SkipClaudeKey", "-NoBrowser", path=str(bin_dir), extra={"FAKE_DOCKER_LOG": str(tmp_path / "log")}
+        )
+    finally:
+        other.shutdown()
+    assert r.returncode == 1 and "did not become ready" in r.stdout, r.stdout + r.stderr

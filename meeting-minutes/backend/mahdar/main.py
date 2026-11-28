@@ -104,9 +104,10 @@ def create_app() -> FastAPI:
     app.include_router(routes_meetings.router)
     app.include_router(routes_admin.router)
 
+    # "service" lets the start script tell Mahdar from another program on the same port.
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict:
-        return {"ok": True}
+        return {"ok": True, "service": "mahdar"}
 
     @app.get("/readyz", include_in_schema=False)
     def readyz() -> JSONResponse:
@@ -114,8 +115,8 @@ def create_app() -> FastAPI:
             with system_tx() as c:
                 c.execute(text("select 1 from schema_migrations limit 1"))
         except Exception:
-            return JSONResponse({"ok": False}, status_code=503)
-        return JSONResponse({"ok": True})
+            return JSONResponse({"ok": False, "service": "mahdar"}, status_code=503)
+        return JSONResponse({"ok": True, "service": "mahdar"})
 
     web = s.web_dir
     if web and (Path(web) / "index.html").exists():

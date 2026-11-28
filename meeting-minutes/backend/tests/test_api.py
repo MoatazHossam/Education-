@@ -341,7 +341,7 @@ def test_delete_removes_files_and_keeps_the_audit(app, orgs, tone):
 
 def test_health_and_openapi(app, database):
     c = TestClient(app)
-    assert c.get("/healthz").json() == {"ok": True}
+    assert c.get("/healthz").json() == {"ok": True, "service": "mahdar"}
     assert c.get("/readyz").status_code == 200
     paths = c.get("/openapi.json").json()["paths"]
     assert "/api/meetings/{meeting_id}/items/{item_id}/review" in paths

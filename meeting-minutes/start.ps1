@@ -169,6 +169,61 @@ function Initialize-Settings {
   Say 'Saved the Claude API key in .env.docker.'
 }
 
+# ------------------------------------------------------------------ port
+# True when Mahdar itself answers at this address ("service": "mahdar"); another program on the same
+# port may answer too, and must not be taken for Mahdar.
+function Test-Mahdar([string]$Url) {
+  try {
+    $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+    $c = $r.Content
+    if ($c -is [byte[]]) { $c = [Text.Encoding]::UTF8.GetString($c) }
+    return ([string]$c -match '"service"\s*:\s*"mahdar"')
+  } catch { return $false }
+}
+# What answers on a loopback address and port: 'free', 'mahdar', or 'other' (another program, which a
+# browser opening http://localhost:PORT may reach instead of Mahdar: localhost is IPv6 first).
+function Get-PortUse([string]$Address, [int]$Port) {
+  $ip = [Net.IPAddress]::Parse($Address)
+  $client = New-Object Net.Sockets.TcpClient($ip.AddressFamily)
+  try {
+    $task = $client.ConnectAsync($ip, $Port)
+    if (-not $task.Wait(1500) -or -not $client.Connected) { return 'free' }
+  } catch { return 'free' } finally { $client.Dispose() }
+  $hostPart = $Address
+  if ($Address.Contains(':')) { $hostPart = "[$Address]" }
+  if (Test-Mahdar "http://${hostPart}:$Port/healthz") { return 'mahdar' }
+  return 'other'
+}
+function Test-Bindable([int]$Port) { # Windows reserves some port ranges (Hyper-V); Docker cannot use them
+  $l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port)
+  try { $l.Start(); return $true } catch { return $false } finally { try { $l.Stop() } catch { } }
+}
+# A port only Mahdar (or nothing) answers on, on both 127.0.0.1 and ::1; saved in .env.docker if it changes.
+function Select-Port {
+  $port = 8080
+  $saved = Get-KV $EnvFile 'MAHDAR_PORT'
+  if ($saved -match '^\d+$') { $port = [int]$saved }
+  $start = $port
+  for ($n = 0; $n -le 50; $n++) {
+    $p = $start + $n
+    $v4 = Get-PortUse '127.0.0.1' $p
+    $v6 = Get-PortUse '::1' $p
+    $usable = ($v4 -ne 'other') -and ($v6 -ne 'other') -and ($v4 -eq 'mahdar' -or (Test-Bindable $p))
+    if (-not $usable) {
+      if ($n -eq 0) { Warn "Another program already uses port $p, so http://localhost:$p is not Mahdar. Looking for a free port." }
+      continue
+    }
+    if ($p -ne $port) {
+      Set-KV $EnvFile 'MAHDAR_PORT' "$p"
+      $url = Get-KV $EnvFile 'MAHDAR_PUBLIC_URL'
+      if (-not $url -or $url -match '^http://(localhost|127\.0\.0\.1)(:\d+)?/?$') { Set-KV $EnvFile 'MAHDAR_PUBLIC_URL' "http://localhost:$p" }
+      Say "Mahdar will use port $p (saved in .env.docker)."
+    }
+    return $p
+  }
+  Die "no free port between $start and $($start + 50). Set MAHDAR_PORT in .env.docker to a free port."
+}
+
 # ------------------------------------------------------------------ Docker
 function Start-Mahdar {
   Step 'Checking Docker Desktop'
@@ -187,16 +242,12 @@ function Start-Mahdar {
         'or, only to start over and DELETE all its meetings: docker compose --env-file .env.docker down -v')
     }
   }
+  $port = Select-Port
   Step 'Building and starting Mahdar (the first time takes 10 to 20 minutes)'
   DC @('up', '--build', '-d')
   Step 'Waiting until Mahdar is ready'
-  $port = Get-KV $EnvFile 'MAHDAR_PORT'
-  if (-not $port) { $port = '8080' }
   for ($i = 0; $i -lt 72; $i++) {
-    try {
-      $r = Invoke-WebRequest -Uri "http://127.0.0.1:$port/readyz" -UseBasicParsing -TimeoutSec 5
-      if ($r.StatusCode -eq 200) { return "http://localhost:$port" }
-    } catch { }
+    if (Test-Mahdar "http://127.0.0.1:$port/readyz") { return "http://localhost:$port" }
     Start-Sleep -Seconds 5
   }
   Die 'Mahdar did not become ready within 6 minutes. To see why: docker compose --env-file .env.docker logs api'

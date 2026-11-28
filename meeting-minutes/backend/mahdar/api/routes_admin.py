@@ -209,7 +209,7 @@ def users(p: Principal = Depends(require("admin"))) -> list[dict]:
 def create_user(body: NewUser, p: Principal = Depends(require("admin"))) -> dict:
     with system_tx() as c:
         if repo.find_user_by_email(c, body.email):
-            raise HTTPException(409, "البريد الإلكتروني مستخدم بالفعل")
+            raise HTTPException(409, "تعذر إنشاء مستخدم بهذا البريد الإلكتروني")
         uid = repo.create_user(c, p.org_id, body.email, body.name, hash_password(body.password), body.role)
     with org_tx(p.org_id) as c:
         repo.audit(
@@ -253,6 +253,11 @@ def update_user(user_id: str, body: UserPatch, p: Principal = Depends(require("a
                     "update users set password_hash = :h, failed_logins = 0, locked_until = null where id = :id and org_id = :o"
                 ),
                 {"h": hash_password(body.password), "id": user_id, "o": p.org_id},
+            )
+            # A reset ends every existing session (a stolen one included).
+            c.execute(
+                text("update sessions set revoked_at = now() where user_id = :id and revoked_at is null"),
+                {"id": user_id},
             )
     with org_tx(p.org_id) as c:
         repo.audit(

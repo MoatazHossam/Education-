@@ -19,6 +19,20 @@ from mahdar.storage import keyring
 ORG = "nullif(current_setting('mahdar.org_id', true), '')::uuid"
 
 
+def _u(value: Any) -> str:
+    return str(uuid.UUID(str(value)))  # one canonical form, whatever form the id arrived in
+
+
+def meeting_aad(org_id: Any, meeting_id: Any) -> str:
+    return f"meeting:{_u(org_id)}:{_u(meeting_id)}:meta"
+
+
+def artifact_aad(org_id: Any, meeting_id: Any, kind: str, version: int, artifact_id: Any) -> str:
+    """Binds an artifact's ciphertext to its organization, meeting, kind and version: copied to
+    another row, meeting or kind (by someone with write access to the database), it no longer opens."""
+    return f"artifact:{_u(org_id)}:{_u(meeting_id)}:{kind}:{version}:{_u(artifact_id)}"
+
+
 def _seal(obj: Any, aad: str) -> bytes:
     return keyring().seal(json.dumps(obj, ensure_ascii=False, default=str).encode(), aad)
 
@@ -161,7 +175,7 @@ MEETING_COLUMNS = (
 
 def _meeting(row: Any) -> dict:
     m = dict(row)
-    m["meta"] = _open(m.pop("meta_enc"), f"meeting:{m['id']}:meta") or {}
+    m["meta"] = _open(m.pop("meta_enc"), meeting_aad(m["org_id"], m["id"])) or {}
     return m
 
 
@@ -169,7 +183,7 @@ def create_meeting(conn: Connection, org_id: str, user_id: str | None, meta: dic
     mid = new_uuid()
     conn.execute(
         text("insert into meetings (id, org_id, created_by, meta_enc, classification) values (:id, :org, :u, :m, :c)"),
-        {"id": mid, "org": org_id, "u": user_id, "m": _seal(meta, f"meeting:{mid}:meta"), "c": classification},
+        {"id": mid, "org": org_id, "u": user_id, "m": _seal(meta, meeting_aad(org_id, mid)), "c": classification},
     )
     return mid
 
@@ -220,10 +234,29 @@ def update_meeting(conn: Connection, meeting_id: str, **fields: Any) -> None:
     )
 
 
+def meetings_for_retention(conn: Connection) -> list[dict]:
+    """Every meeting of the organization (no limit), oldest first: retention must reach them all."""
+    rows = conn.execute(
+        text(f"select id, created_at from meetings where org_id = {ORG} order by created_at")
+    ).mappings()
+    return [dict(r) for r in rows]
+
+
+def purge_audit_details(conn: Connection, meeting_id: str) -> int:
+    """Audit entries keep who did what and when; their before/after content goes with the content."""
+    res = conn.execute(
+        text(f"update audit_log set details_enc = null where meeting_id = :m and org_id = {ORG}"), {"m": meeting_id}
+    )
+    return res.rowcount or 0
+
+
 def update_meeting_meta(conn: Connection, meeting_id: str, meta: dict) -> None:
+    m = get_meeting(conn, meeting_id)
+    if m is None:
+        raise KeyError(meeting_id)
     conn.execute(
         text(f"update meetings set meta_enc = :m, updated_at = now() where id = :id and org_id = {ORG}"),
-        {"m": _seal(meta, f"meeting:{meeting_id}:meta"), "id": meeting_id},
+        {"m": _seal(meta, meeting_aad(m["org_id"], meeting_id)), "id": meeting_id},
     )
 
 
@@ -263,7 +296,7 @@ def save_artifact(
             "m": meeting_id,
             "k": kind,
             "v": version,
-            "c": keyring().seal(raw.encode(), f"artifact:{aid}"),
+            "c": keyring().seal(raw.encode(), artifact_aad(org_id, meeting_id, kind, int(version), aid)),
             "h": hashlib.sha256(raw.encode()).hexdigest(),
             "u": user_id,
             "a": agent,
@@ -277,7 +310,7 @@ def latest_artifact(conn: Connection, meeting_id: str, kind: str) -> tuple[int, 
     row = (
         conn.execute(
             text(
-                f"select id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null and org_id = {ORG} "
+                f"select id, org_id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null and org_id = {ORG} "
                 "order by version desc limit 1"
             ),
             {"m": meeting_id, "k": kind},
@@ -287,21 +320,23 @@ def latest_artifact(conn: Connection, meeting_id: str, kind: str) -> tuple[int, 
     )
     if not row:
         return None
-    return int(row["version"]), _open(row["content_enc"], f"artifact:{row['id']}")
+    return int(row["version"]), _open(
+        row["content_enc"], artifact_aad(row["org_id"], meeting_id, kind, int(row["version"]), row["id"])
+    )
 
 
 def artifact_version(conn: Connection, meeting_id: str, kind: str, version: int) -> Any:
     row = (
         conn.execute(
             text(
-                f"select id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null and org_id = {ORG}"
+                f"select id, org_id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null and org_id = {ORG}"
             ),
             {"m": meeting_id, "k": kind, "v": version},
         )
         .mappings()
         .first()
     )
-    return _open(row["content_enc"], f"artifact:{row['id']}") if row else None
+    return _open(row["content_enc"], artifact_aad(row["org_id"], meeting_id, kind, version, row["id"])) if row else None
 
 
 def list_artifact_versions(conn: Connection, meeting_id: str) -> list[dict]:

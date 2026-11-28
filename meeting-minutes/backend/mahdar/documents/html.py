@@ -17,14 +17,23 @@ BODY_STACK = "'Noto Naskh Arabic', 'Noto Sans', 'Amiri'"
 HEAD_STACK = "'Noto Kufi Arabic', 'Noto Sans', 'Noto Naskh Arabic'"
 
 
+def css_string(text: str) -> str:
+    """Text inside a CSS string: quotes, backslashes and line breaks escaped (HTML escaping is not
+    enough there)."""
+    return "".join(
+        c if c.isalnum() or c in " -_.،؛:()" or (ord(c) > 0x7F and c not in "\u2028\u2029") else f"\\{ord(c):x} "
+        for c in text
+    )
+
+
 def _css(header_left: str, header_right: str, footer_note: str) -> str:
     return f"""
 @page {{
   size: A4; margin: 24mm 20mm 22mm 20mm;
-  @top-right {{ content: "{escape(header_right)}"; font-family: {HEAD_STACK}; font-size: 8.5pt; color: #444; }}
-  @top-left {{ content: "{escape(header_left)}"; font-family: {HEAD_STACK}; font-size: 8.5pt; color: #8a1c1c; font-weight: 700; }}
+  @top-right {{ content: "{css_string(header_right)}"; font-family: {HEAD_STACK}; font-size: 8.5pt; color: #444; }}
+  @top-left {{ content: "{css_string(header_left)}"; font-family: {HEAD_STACK}; font-size: 8.5pt; color: #8a1c1c; font-weight: 700; }}
   @bottom-center {{ content: "صفحة " counter(page) " من " counter(pages); font-family: {BODY_STACK}; font-size: 8.5pt; color: #444; }}
-  @bottom-right {{ content: "{escape(footer_note)}"; font-family: {BODY_STACK}; font-size: 7.5pt; color: #666; }}
+  @bottom-right {{ content: "{css_string(footer_note)}"; font-family: {BODY_STACK}; font-size: 7.5pt; color: #666; }}
 }}
 html {{ direction: rtl; }}
 body {{ font-family: {BODY_STACK}, 'Amiri', 'Noto Sans', serif; font-size: 11pt; line-height: 1.75; color: #111; }}

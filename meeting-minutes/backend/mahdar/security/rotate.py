@@ -13,11 +13,16 @@ from sqlalchemy import text
 
 from mahdar import storage
 from mahdar.db.core import owner_engine
+from mahdar.db.repo import artifact_aad, meeting_aad
 from mahdar.security.crypto import MAGIC_FILE, key_id
 
 COLUMNS = [
-    ("meetings", "meta_enc", lambda r: f"meeting:{r['id']}:meta"),
-    ("artifacts", "content_enc", lambda r: f"artifact:{r['id']}"),
+    ("meetings", "meta_enc", lambda r: meeting_aad(r["org_id"], r["id"])),
+    (
+        "artifacts",
+        "content_enc",
+        lambda r: artifact_aad(r["org_id"], r["meeting_id"], r["kind"], int(r["version"]), r["id"]),
+    ),
     ("glossary_terms", "data_enc", lambda r: f"glossary:{r['id']}"),
     ("audit_log", "details_enc", lambda r: f"audit:{r['org_id']}"),
     ("blobs", "filename_enc", lambda r: f"blob:{r['id']}:filename"),
@@ -31,9 +36,7 @@ def rotate_all() -> dict:
     with owner_engine().begin() as c:
         for table, col, aad in COLUMNS:
             n = 0
-            rows = c.execute(
-                text(f"select id, org_id, {col} from {table} where {col} is not null and length({col}) > 0")
-            ).mappings()
+            rows = c.execute(text(f"select * from {table} where {col} is not null and length({col}) > 0")).mappings()
             for r in list(rows):
                 blob = bytes(r[col])
                 if not kr.needs_rotation(blob):

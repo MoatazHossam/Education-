@@ -117,8 +117,16 @@ def evaluate(
     }
 
 
-def minutes_status(quality: dict, current: str, human_reviewed: bool) -> str:
-    if current == "approved" and quality["open_critical"] == 0:
+def minutes_status(quality: dict, current: str, human_reviewed: bool, human_approved: bool = False) -> str:
+    """ "approved" only while an approver's approval is recorded, the review stands and every gate
+    passes; any change withdraws them (api.routes_meetings._withdraw)."""
+    if (
+        current == "approved"
+        and human_approved
+        and human_reviewed
+        and quality["open_critical"] == 0
+        and quality["all_passed"]
+    ):
         return "approved"
     if quality["open_critical"] > 0 or not quality["all_passed"]:
         return "draft_requires_review"

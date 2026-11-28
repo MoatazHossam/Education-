@@ -82,3 +82,21 @@ def test_markup_in_a_transcript_is_escaped():
     doc.sections[0].rows[0].cells["القيمة"] = "<script>alert(1)</script>"
     out = html.minutes_html(doc, org_name=None, logo_data_uri=None)
     assert "<script>" not in out and "&lt;script&gt;" in out
+
+
+def test_documents_fetch_nothing_but_data_urls():
+    from mahdar.documents.pdf import _data_only
+
+    with pytest.raises(ValueError):
+        _data_only("file:///etc/passwd")
+    with pytest.raises(ValueError):
+        _data_only("http://169.254.169.254/latest/meta-data")
+
+
+def test_indirect_audio_formats_are_refused(tmp_path):
+    from mahdar.pipeline import audio
+
+    playlist = tmp_path / "trick.mp3"
+    playlist.write_text("ffconcat version 1.0\nfile '/etc/hostname'\n")
+    with pytest.raises(audio.AudioError):
+        audio.validate(playlist, filename="trick.mp3", max_bytes=10_000_000, max_seconds=3600)

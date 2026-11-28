@@ -72,7 +72,18 @@ class ProbeResult:
 def probe(path: Path) -> ProbeResult:
     try:
         out = subprocess.run(
-            ["ffprobe", "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)],
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-protocol_whitelist",
+                "file",
+                "-print_format",
+                "json",
+                "-show_format",
+                "-show_streams",
+                str(path),
+            ],
             capture_output=True,
             check=True,
             timeout=120,
@@ -84,6 +95,13 @@ def probe(path: Path) -> ProbeResult:
     if not audio:
         raise AudioError("no_audio", "الملف لا يحتوي على مسار صوتي.")
     fmt = info.get("format", {})
+    names = set((fmt.get("format_name") or "").split(","))
+    allowed = {n for group in ALLOWED_CONTAINERS for n in group.split(",")}
+    if not names & allowed:
+        # Playlists and other indirect formats (hls, concat, ...) could make FFmpeg read other files.
+        raise AudioError(
+            "format", "صيغة الحاوية غير مدعومة؛ ارفع ملفاً صوتياً عادياً (MP3 أو WAV أو M4A أو OGG أو FLAC أو WEBM)."
+        )
     duration = float(fmt.get("duration") or audio[0].get("duration") or 0)
     if duration <= 0:
         raise AudioError("empty", "مدة التسجيل صفر أو غير معروفة.")
@@ -124,6 +142,8 @@ def normalize(src: Path, dst: Path) -> Path:
         [
             "ffmpeg",
             "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-v",
             "error",
             "-y",
@@ -147,7 +167,7 @@ def normalize(src: Path, dst: Path) -> Path:
 
 
 def load_samples(path: Path, start: float | None = None, end: float | None = None) -> np.ndarray:
-    cmd = ["ffmpeg", "-nostdin", "-v", "error"]
+    cmd = ["ffmpeg", "-nostdin", "-protocol_whitelist", "file,pipe", "-v", "error"]
     if start is not None:
         cmd += ["-ss", f"{start:.3f}"]
     if end is not None:
@@ -163,6 +183,8 @@ def _loudness(path: Path) -> float | None:
         [
             "ffmpeg",
             "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-hide_banner",
             "-i",
             str(path),
@@ -338,6 +360,8 @@ def extract_clip(path: Path, start: float, end: float, dst: Path) -> Path:
         [
             "ffmpeg",
             "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-v",
             "error",
             "-y",

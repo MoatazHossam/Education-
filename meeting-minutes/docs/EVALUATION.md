@@ -91,6 +91,30 @@ were then fixed (each fix has a test):
 | Compose passes unset settings as empty strings; the API refused them | Empty variables count as unset |
 | The worker kept Whisper (several GB) loaded after transcription; with a local LLM on the same machine the system ran out of memory | The model is released after transcription unless `MAHDAR_WHISPER_KEEP_LOADED=true` |
 
+### Independent security review
+
+A separate read-only review of the API, data access, privacy and encryption code found no
+cross-organization access path, and these defects, all fixed with tests:
+
+| Severity | Finding | Fix |
+| --- | --- | --- |
+| High | Approved minutes could be edited and re-issued as "approved" under the approver's name | Any change (transcript, speakers, items, issues, wording, meeting data, regeneration) withdraws review and approval, audited; "approved" requires the recorded approval, the review and every gate; approve recomputes the gates from current data |
+| Medium | "Reviewed" survived re-analysis and later changes; approve trusted cached columns | Same withdrawal; re-analysis clears review and approval |
+| Medium | Parallel wrong passwords each counted once (read-then-write) | Atomic increment |
+| Medium | Audio excerpts: no cleanup of the decrypted recording on failure; `inf`/`nan` bounds | try/finally cleanup; finite, ordered, in-range bounds |
+| Medium | Retention reached only the 500 newest meetings | Unlimited retention query |
+| Medium | An editor could lower a classification to unlock external processing; authorization read once per job | Lowering needs approver/admin; authorization re-read before every external call and every audio chunk |
+| Low–medium | Password reset kept existing sessions; deletion during a running job could orphan files | Sessions revoked; deletion refused while running; storage cleaned if the database insert fails |
+| Low | Audit details kept content after retention/deletion; a user's free-text reason in a plaintext column | Details purged with the content; reasons only in encrypted audit details |
+| Low | Container type not checked (playlists/concat could make FFmpeg read other files) | FFprobe container allow-list; FFmpeg/FFprobe read local files only (`-protocol_whitelist`) |
+| Low | Anonymous multipart bodies reached the disk; chunked uploads skipped the size check | Uploads need a session cookie, the CSRF header and a declared length before the body is read |
+| Low | Login and user-creation messages revealed which accounts exist; raw errors shown to users | Uniform messages; only the Arabic stage message is shown |
+| Hardening | Ciphertext bound only to row id; silent fallback to a previous key; PDF renderer could fetch URLs; CSS strings not escaped; API docs public in production; request id echoed unvalidated; upload in two transactions | AAD binds organization, meeting, kind and version; no current key means no keyring; WeasyPrint fetches `data:` only; CSS escaping; docs only with `MAHDAR_API_DOCS=true` in production; request id validated; upload in one transaction with file cleanup |
+
+Residual: audit details share one associated-data context per organization (a database writer
+could swap two audit rows' details); one data key covers all tenants; the same approver may both
+complete the review and approve (separation of duties is an organizational policy option to add).
+
 ## 4. Not measured here
 
 * **Claude** — the default reasoning and writing engine — was not called (no key). Run the CI

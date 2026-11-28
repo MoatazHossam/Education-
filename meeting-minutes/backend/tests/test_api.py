@@ -347,3 +347,109 @@ def test_health_and_openapi(app, database):
     assert "/api/meetings/{meeting_id}/items/{item_id}/review" in paths
     r = c.get("/healthz")
     assert "default-src 'self'" in r.headers["content-security-policy"]
+
+
+# --- Findings of the security review ---------------------------------------------------------------
+def _approve_directly(orgs, meeting):
+    """Puts the meeting in the approved state as an approver's approval would."""
+    from datetime import UTC, datetime
+
+    from mahdar.db import repo
+    from mahdar.db.core import org_tx
+
+    with org_tx(orgs["a"]) as c:
+        review = (repo.latest_artifact(c, meeting, "review") or (0, {}))[1]
+        repo.save_artifact(
+            c,
+            orgs["a"],
+            meeting,
+            "review",
+            {**review, "reviewed_by": "x", "reviewed_by_name": "م", "approved_by": "y", "approved_by_name": "معتمِد"},
+            agent="test",
+        )
+        repo.update_meeting(c, meeting, minutes_status="approved", approved_at=datetime.now(UTC))
+
+
+def test_any_change_withdraws_an_approval(app, orgs, meeting):
+    from mahdar.db import repo
+    from mahdar.db.core import org_tx
+
+    _approve_directly(orgs, meeting)
+    c = login(app, "editor-a@example.com")
+    r = c.post(
+        f"/api/meetings/{meeting}/minutes/edits",
+        json={"section": "decisions", "item_ids": ["I001"], "text": "نص آخر", "reason": "تعديل"},
+        headers=H,
+    )
+    assert r.status_code == 200
+    with org_tx(orgs["a"]) as conn:
+        m = repo.get_meeting(conn, meeting)
+        review = repo.latest_artifact(conn, meeting, "review")[1]
+    assert m["minutes_status"] == "draft_requires_review" and m["approved_by"] is None
+    assert "approved_by" not in review and "reviewed_by" not in review
+    actions = [e["action"] for e in c.get(f"/api/meetings/{meeting}/audit").json()]
+    assert "minutes.approval_withdrawn" in actions
+
+
+def test_completing_review_of_approved_minutes_is_refused(app, orgs, meeting):
+    _approve_directly(orgs, meeting)
+    c = login(app, "editor-a@example.com")
+    assert c.post(f"/api/meetings/{meeting}/review/complete", headers=H).status_code == 409
+
+
+def test_approve_recomputes_the_gates(app, orgs, meeting):
+    from mahdar.db import repo
+    from mahdar.db.core import org_tx
+
+    with org_tx(orgs["a"]) as conn:  # cached columns say "reviewed, no critical issue": they lie
+        review = (repo.latest_artifact(conn, meeting, "review") or (0, {}))[1]
+        clean = {k: v for k, v in review.items() if not k.startswith("approved_")}
+        repo.save_artifact(conn, orgs["a"], meeting, "review", {**clean, "items": {}, "reviewed_by": "x"}, agent="test")
+        repo.update_meeting(
+            conn, meeting, minutes_status="reviewed", critical_open=0, approved_by=None, approved_at=None
+        )
+    a = login(app, "approver-a@example.com")
+    r = a.post(f"/api/meetings/{meeting}/approve", headers=H)
+    assert r.status_code == 409  # the reclassified decision is an open critical issue
+
+
+def test_lowering_classification_needs_an_approver(app, orgs, meeting):
+    e = login(app, "editor-a@example.com")
+    assert e.patch(f"/api/meetings/{meeting}", json={"classification": "public"}, headers=H).status_code == 403
+    assert e.patch(f"/api/meetings/{meeting}", json={"classification": "secret"}, headers=H).status_code == 200
+    a = login(app, "approver-a@example.com")
+    assert a.patch(f"/api/meetings/{meeting}", json={"classification": "confidential"}, headers=H).status_code == 200
+
+
+def test_audio_excerpt_rejects_bad_bounds(app, meeting):
+    c = login(app, "viewer-a@example.com")
+    for q in ("start=inf&end=inf", "start=5&end=2", "start=nan&end=3", "start=0&end=700"):
+        assert c.get(f"/api/meetings/{meeting}/audio?{q}").status_code == 422, q
+
+
+def test_password_reset_ends_existing_sessions(app, orgs):
+    v = login(app, "viewer-a@example.com")
+    admin = login(app, "admin-a@example.com")
+    uid = next(u["id"] for u in admin.get("/api/users").json() if u["email"] == "viewer-a@example.com")
+    assert admin.patch(f"/api/users/{uid}", json={"password": PASSWORD}, headers=H).status_code == 200
+    assert v.get("/api/auth/me").status_code == 401
+
+
+def test_upload_without_a_session_is_refused_before_the_body(app, database, tone):
+    c = TestClient(app)
+    with open(tone, "rb") as f:
+        r = c.post("/api/meetings", data={"title": "x"}, files={"file": ("tone.wav", f, "audio/wav")}, headers=H)
+    assert r.status_code == 401
+
+
+def test_login_message_does_not_reveal_accounts(app, orgs):
+    c = TestClient(app)
+    unknown = c.post("/api/auth/login", json={"email": "nobody@example.com", "password": "x" * 12}).json()["detail"]
+    known = c.post("/api/auth/login", json={"email": "admin-a@example.com", "password": "x" * 12}).json()["detail"]
+    assert unknown == known
+    from sqlalchemy import text
+
+    from mahdar.db.core import system_tx
+
+    with system_tx() as conn:
+        conn.execute(text("update users set failed_logins = 0, locked_until = null"))

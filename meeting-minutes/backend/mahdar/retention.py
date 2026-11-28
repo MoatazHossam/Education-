@@ -43,7 +43,7 @@ def sweep() -> dict:
         with org_tx(org_id) as c:
             org = repo.get_org(c, org_id)
             policy = org["settings"].get("retention", {}) if org else {}
-            meetings = repo.list_meetings(c)
+            meetings = repo.meetings_for_retention(c)
         for m in meetings:
             created = m["created_at"]
             kinds = []
@@ -61,6 +61,7 @@ def sweep() -> dict:
                     n = repo.purge_artifacts(c, str(m["id"]), TRANSCRIPT_ARTIFACTS)
                     totals["artifacts"] += n
                     if n:
+                        repo.purge_audit_details(c, str(m["id"]))
                         repo.audit(
                             c,
                             org_id,
@@ -83,6 +84,7 @@ def delete_meeting(org_id: str, meeting_id: str, actor: str | None) -> None:
         with contextlib.suppress(FileNotFoundError):
             storage.delete(b["storage_key"])
     with org_tx(org_id) as c:
+        repo.purge_audit_details(c, meeting_id)
         repo.audit(
             c,
             org_id,

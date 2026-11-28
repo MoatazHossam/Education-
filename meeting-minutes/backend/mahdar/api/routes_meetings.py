@@ -60,7 +60,9 @@ def _summary(m: dict, job: dict | None = None) -> dict:
             "progress": job["progress"],
             "stages": job["stages"],
             "attempts": job["attempts"],
-            "error": (job["error"] or "")[:300] if job["status"] == "failed" else None,
+            "error": next((st.get("message_ar") for st in reversed(job["stages"] or []) if st.get("message_ar")), None)
+            if job["status"] == "failed"
+            else None,
         }
         if job
         else None,
@@ -130,37 +132,42 @@ def upload(
         }
         from mahdar.db.core import org_tx
 
-        with org_tx(p.org_id) as c:
-            mid = repo.create_meeting(
-                c, p.org_id, p.user_id, {k: v for k, v in meta.items() if v not in (None, "", [])}, classification
-            )
+        # The file first, then the meeting, its blob and its job in one transaction: a failure
+        # leaves neither an orphan meeting nor an orphan file.
         bid = storage.new_id()
         key, stored, sha = storage.put_file(p.org_id, bid, dst)
-        with org_tx(p.org_id) as c:
-            repo.add_blob(
-                c,
-                blob_id=bid,
-                org_id=p.org_id,
-                meeting_id=mid,
-                kind="audio_original",
-                storage_key=key,
-                size=stored,
-                sha256=sha,
-                content_type=file.content_type or "application/octet-stream",
-                filename=file.filename or dst.name,
-            )
-            queue.enqueue(c, p.org_id, mid, "process", max_attempts=s.job_max_attempts)
-            repo.audit(
-                c,
-                p.org_id,
-                "meeting.uploaded",
-                actor_user=p.user_id,
-                target_type="meeting",
-                target_id=mid,
-                meeting_id=mid,
-                details={"size": stored, "sha256": sha, "classification": classification},
-            )
-            m = repo.get_meeting(c, mid)
+        try:
+            with org_tx(p.org_id) as c:
+                mid = repo.create_meeting(
+                    c, p.org_id, p.user_id, {k: v for k, v in meta.items() if v not in (None, "", [])}, classification
+                )
+                repo.add_blob(
+                    c,
+                    blob_id=bid,
+                    org_id=p.org_id,
+                    meeting_id=mid,
+                    kind="audio_original",
+                    storage_key=key,
+                    size=stored,
+                    sha256=sha,
+                    content_type=file.content_type or "application/octet-stream",
+                    filename=file.filename or dst.name,
+                )
+                queue.enqueue(c, p.org_id, mid, "process", max_attempts=s.job_max_attempts)
+                repo.audit(
+                    c,
+                    p.org_id,
+                    "meeting.uploaded",
+                    actor_user=p.user_id,
+                    target_type="meeting",
+                    target_id=mid,
+                    meeting_id=mid,
+                    details={"size": stored, "sha256": sha, "classification": classification},
+                )
+                m = repo.get_meeting(c, mid)
+        except Exception:
+            storage.delete(key)
+            raise
         return _summary(m)
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -208,6 +215,15 @@ def update_meta(
     m = meeting_or_404(c, meeting_id)
     changes = body.model_dump(exclude_unset=True)
     before = {k: m["meta"].get(k) for k in changes if k != "classification"}
+    order = ["public", "internal", "confidential", "secret"]
+    if (
+        "classification" in changes
+        and order.index(changes["classification"]) < order.index(m["classification"])
+        and not p.at_least("approver")
+    ):
+        # Lowering the classification can open the way to external processing (privacy.authorize).
+        raise HTTPException(403, "خفض تصنيف الاجتماع يتطلب صلاحية الاعتماد أو الإدارة")
+    _withdraw(c, p, meeting_id, "meeting data changed")
     if "classification" in changes:
         before["classification"] = m["classification"]
         repo.update_meeting(c, meeting_id, classification=changes.pop("classification"))
@@ -232,8 +248,11 @@ def remove(meeting_id: str, p: Principal = Depends(require("editor"))) -> dict:
 
     with org_tx(p.org_id) as c:
         m = meeting_or_404(c, meeting_id)
-        if m["created_by"] and str(m["created_by"]) != p.user_id and not p.at_least("admin"):
+        if (not m["created_by"] or str(m["created_by"]) != p.user_id) and not p.at_least("admin"):
             raise HTTPException(403, "يحذف الاجتماع من رفعه أو مدير النظام")
+        job = queue.active_job(c, meeting_id)
+        if job and job["status"] == "running":
+            raise HTTPException(409, "المعالجة جارية؛ أعد المحاولة بعد انتهائها")
         queue.cancel_meeting_jobs(c, meeting_id)
     delete_meeting(p.org_id, meeting_id, p.user_id)
     return {"deleted": meeting_id}
@@ -246,18 +265,28 @@ def audio_excerpt(
     start: float = Query(0, ge=0),
     end: float = Query(..., gt=0),
     p: Principal = Depends(current_user),
-    c: Connection = Depends(org_conn),
 ) -> FileResponse:
-    if end - start > 600:
-        raise HTTPException(422, "المقطع المطلوب أطول من 10 دقائق")
-    meeting_or_404(c, meeting_id)
-    b = repo.latest_blob(c, meeting_id, "audio_normalized") or repo.latest_blob(c, meeting_id, "audio_original")
+    import math
+
+    if not (math.isfinite(start) and math.isfinite(end)) or end <= start or end - start > 600:
+        raise HTTPException(422, "حدود المقطع غير صالحة (أقصى طول 10 دقائق)")
+    from mahdar.db.core import org_tx
+
+    with org_tx(p.org_id) as c:  # a short transaction: not held while the file is sent
+        m = meeting_or_404(c, meeting_id)
+        b = repo.latest_blob(c, meeting_id, "audio_normalized") or repo.latest_blob(c, meeting_id, "audio_original")
     if not b:
         raise HTTPException(404, "لم يعد التسجيل محفوظاً (انتهت مدة الاحتفاظ أو حُذف)")
+    if m["duration_seconds"] and start > m["duration_seconds"]:
+        raise HTTPException(422, "بداية المقطع بعد نهاية التسجيل")
     tmpdir = Path(tempfile.mkdtemp(prefix="mahdar-clip-"))
-    src = storage.read_to_file(b["storage_key"], str(b["id"]), tmpdir / "src")
-    clip = audio.extract_clip(src, start, end, tmpdir / "clip.mp3")
-    src.unlink(missing_ok=True)
+    try:
+        src = storage.read_to_file(b["storage_key"], str(b["id"]), tmpdir / "src")
+        clip = audio.extract_clip(src, start, end, tmpdir / "clip.mp3")
+        src.unlink(missing_ok=True)
+    except Exception:
+        shutil.rmtree(tmpdir, ignore_errors=True)  # never leave a decrypted recording behind
+        raise
     return FileResponse(
         clip,
         media_type="audio/mpeg",
@@ -302,6 +331,7 @@ def edit_segment(
     c: Connection = Depends(org_conn),
 ) -> dict:
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "transcript segment corrected")
     _, tr = _transcript(c, meeting_id)
     seg = next((s for s in tr.segments if s.id == segment_id), None)
     if seg is None:
@@ -326,7 +356,7 @@ def edit_segment(
         "transcript",
         tr.model_dump(),
         user_id=p.user_id,
-        note=f"segment {segment_id}: {body.reason}",
+        note=f"segment {segment_id} corrected",
     )
     repo.audit(
         c,
@@ -361,6 +391,7 @@ def edit_speaker(
     c: Connection = Depends(org_conn),
 ) -> dict:
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "speaker changed")
     _, tr = _transcript(c, meeting_id)
     spk = next((s for s in tr.speakers if s.id == speaker_id), None)
     if spk is None:
@@ -397,6 +428,7 @@ def merge_speakers(
     meeting_id: str, body: MergeIn, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)
 ) -> dict:
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "speakers merged")
     _, tr = _transcript(c, meeting_id)
     ids = {s.id for s in tr.speakers}
     if body.source not in ids or body.target not in ids or body.source == body.target:
@@ -434,6 +466,34 @@ def merge_speakers(
 
 
 # --- items: analysis + verification + reviewers' decisions ----------------------------------------
+def _withdraw(c: Connection, p: Principal, meeting_id: str, reason: str) -> None:
+    """Any change to what the minutes rest on (transcript, speakers, items, issues, wording,
+    meeting data) withdraws a completed review and an approval: they applied to the earlier
+    content. Recorded in the audit trail."""
+    m = repo.get_meeting(c, meeting_id)
+    review = _review(c, meeting_id)
+    had = {k: review.get(k) for k in ("reviewed_by", "approved_by") if review.get(k)}
+    if not had and m["minutes_status"] not in ("reviewed", "approved"):
+        return
+    cleared = {k: v for k, v in review.items() if not k.startswith(("reviewed_", "approved_"))}
+    repo.save_artifact(
+        c, p.org_id, meeting_id, "review", cleared, user_id=p.user_id, note="review withdrawn after a change"
+    )
+    repo.update_meeting(c, meeting_id, minutes_status="draft_requires_review", approved_by=None, approved_at=None)
+    repo.audit(
+        c,
+        p.org_id,
+        "minutes.approval_withdrawn"
+        if m["minutes_status"] == "approved" or "approved_by" in had
+        else "minutes.review_withdrawn",
+        actor_user=p.user_id,
+        target_type="meeting",
+        target_id=meeting_id,
+        meeting_id=meeting_id,
+        details={"reason": reason, "previous_status": m["minutes_status"]},
+    )
+
+
 def _review(c: Connection, meeting_id: str) -> dict:
     r = repo.latest_artifact(c, meeting_id, "review")
     return r[1] if r else {"items": {}, "issues": {}, "block_overrides": []}
@@ -498,6 +558,7 @@ def review_item(
     c: Connection = Depends(org_conn),
 ) -> dict:
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "item reviewed")
     a = repo.latest_artifact(c, meeting_id, "analysis")
     if not a or item_id not in {i["id"] for i in a[1]["items"]}:
         raise HTTPException(404, "البند غير موجود")
@@ -551,6 +612,7 @@ def resolve_issue(
     meeting_id: str, body: IssueResolve, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)
 ) -> dict:
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "issue resolved")
     review = _review(c, meeting_id)
     issues = dict(review.get("issues", {}))
     if body.resolution == "reset":
@@ -609,6 +671,7 @@ def edit_minutes(
     """A reviewer's wording for the block built from these items in this section; it is kept across
     regenerations, and still checked (a fact not in the items is listed as an issue)."""
     meeting_or_404(c, meeting_id)
+    _withdraw(c, p, meeting_id, "minutes wording edited")
     review = _review(c, meeting_id)
     key = (body.section, tuple(sorted(body.item_ids)))
     overrides = [o for o in review.get("block_overrides", []) if (o["section"], tuple(sorted(o["item_ids"]))) != key]
@@ -645,6 +708,24 @@ def edit_minutes(
     return {"version": version}
 
 
+def _current_quality(c: Connection, meeting_id: str, review: dict) -> dict | None:
+    from mahdar.pipeline import quality
+
+    t, a, v = (repo.latest_artifact(c, meeting_id, k) for k in ("transcript", "analysis", "verification"))
+    if not (t and a and v):
+        return None
+    docs = repo.latest_artifact(c, meeting_id, "documents")
+    org = repo.get_org(c, str(repo.get_meeting(c, meeting_id)["org_id"]))
+    return quality.evaluate(
+        Transcript(**t[1]),
+        Analysis(**a[1]),
+        VerificationReport(**v[1]),
+        review,
+        org["settings"].get("quality_gates", {}),
+        docs[1]["checks"] if docs else None,
+    )
+
+
 class RegenerateIn(BaseModel):
     scope: Literal["regenerate", "reverify", "reanalyse"] = "regenerate"
 
@@ -673,18 +754,10 @@ def regenerate(
     m = meeting_or_404(c, meeting_id)
     if body.scope != "reanalyse" and not repo.latest_artifact(c, meeting_id, "analysis"):
         raise HTTPException(409, "لم يكتمل التحليل بعد")
-    if m["minutes_status"] == "approved":
-        repo.update_meeting(c, meeting_id, minutes_status="reviewed", approved_by=None, approved_at=None)
-        repo.audit(
-            c,
-            p.org_id,
-            "minutes.approval_withdrawn",
-            actor_user=p.user_id,
-            target_type="meeting",
-            target_id=meeting_id,
-            meeting_id=meeting_id,
-            details={"reason": "regenerated after approval"},
-        )
+    _ = m
+    if queue.active_job(c, meeting_id):
+        raise HTTPException(409, "توجد معالجة جارية لهذا الاجتماع")
+    _withdraw(c, p, meeting_id, f"minutes regenerated ({body.scope})")
     return _enqueue(c, p, meeting_id, body.scope)
 
 
@@ -701,7 +774,11 @@ def resume(meeting_id: str, p: Principal = Depends(require("editor")), c: Connec
 def complete_review(
     meeting_id: str, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)
 ) -> dict:
-    meeting_or_404(c, meeting_id)
+    m = meeting_or_404(c, meeting_id)
+    if m["minutes_status"] == "approved":
+        raise HTTPException(409, "المحضر معتمد بالفعل؛ أي تعديل يسحب الاعتماد أولاً")
+    if queue.active_job(c, meeting_id):
+        raise HTTPException(409, "توجد معالجة جارية لهذا الاجتماع")
     review = _review(c, meeting_id)
     review = {
         **review,
@@ -725,13 +802,17 @@ def complete_review(
 @router.post("/{meeting_id}/approve")
 def approve(meeting_id: str, p: Principal = Depends(require("approver")), c: Connection = Depends(org_conn)) -> dict:
     m = meeting_or_404(c, meeting_id)
-    if m["minutes_status"] != "reviewed":
+    if queue.active_job(c, meeting_id):
+        raise HTTPException(409, "توجد معالجة جارية لهذا الاجتماع")
+    review = _review(c, meeting_id)
+    if m["minutes_status"] != "reviewed" or not review.get("reviewed_by"):
         raise HTTPException(409, "لا يُعتمد المحضر إلا بعد اكتمال مراجعته وعدم وجود ملاحظات حرجة مفتوحة")
-    if m["critical_open"]:
-        raise HTTPException(409, "توجد ملاحظات حرجة لم تُحسم")
+    # The gates are recomputed from the current data, not read from cached columns.
+    q = _current_quality(c, meeting_id, review)
+    if q is None or q["open_critical"] or not q["all_passed"]:
+        raise HTTPException(409, "توجد ملاحظات حرجة لم تُحسم أو بوابة جودة غير مستوفاة")
     now = datetime.now(UTC)
     repo.update_meeting(c, meeting_id, minutes_status="approved", approved_by=p.user_id, approved_at=now)
-    review = _review(c, meeting_id)
     repo.save_artifact(
         c,
         p.org_id,
@@ -781,33 +862,34 @@ DOC_NAMES = {
 
 
 @router.get("/{meeting_id}/documents/{kind}")
-def download(
-    meeting_id: str, kind: str, p: Principal = Depends(current_user), c: Connection = Depends(org_conn)
-) -> StreamingResponse:
-    meeting_or_404(c, meeting_id)
-    docs = repo.latest_artifact(c, meeting_id, "documents")
-    if not docs or kind not in docs[1]["blobs"]:
-        raise HTTPException(404, "المستند غير متاح")
-    b = repo.get_blob(c, docs[1]["blobs"][kind])
-    if not b:
-        raise HTTPException(404, "لم يعد المستند محفوظاً (انتهت مدة الاحتفاظ)")
-    repo.audit(
-        c,
-        p.org_id,
-        "document.downloaded",
-        actor_user=p.user_id,
-        target_type="document",
-        target_id=kind,
-        meeting_id=meeting_id,
-    )
+def download(meeting_id: str, kind: str, p: Principal = Depends(current_user)) -> StreamingResponse:
     from urllib.parse import quote
 
+    from mahdar.db.core import org_tx
+
+    with org_tx(p.org_id) as c:  # closed before the file is streamed
+        meeting_or_404(c, meeting_id)
+        docs = repo.latest_artifact(c, meeting_id, "documents")
+        if not docs or kind not in docs[1]["blobs"]:
+            raise HTTPException(404, "المستند غير متاح")
+        b = repo.get_blob(c, docs[1]["blobs"][kind])
+        if not b:
+            raise HTTPException(404, "لم يعد المستند محفوظاً (انتهت مدة الاحتفاظ)")
+        repo.audit(
+            c,
+            p.org_id,
+            "document.downloaded",
+            actor_user=p.user_id,
+            target_type="document",
+            target_id=kind,
+            meeting_id=meeting_id,
+        )
     name = DOC_NAMES.get(kind, b["filename"])
     return StreamingResponse(
         storage.read_stream(b["storage_key"], str(b["id"])),
         media_type=b["content_type"],
         headers={
-            "Content-Disposition": f"attachment; filename=\"{b['filename']}\"; filename*=UTF-8''{quote(name)}",
+            "Content-Disposition": f"attachment; filename=\"{kind}{Path(b['filename'] or '').suffix}\"; filename*=UTF-8''{quote(name)}",
             "Cache-Control": "private, no-store",
         },
     )
@@ -815,14 +897,17 @@ def download(
 
 @router.get("/{meeting_id}/documents/{kind}/preview")
 def preview_page(
-    meeting_id: str, kind: str, page: int = Query(1, ge=1, le=200), c: Connection = Depends(org_conn)
+    meeting_id: str, kind: str, page: int = Query(1, ge=1, le=200), p: Principal = Depends(current_user)
 ) -> FileResponse:
     """A page of a PDF as an image, for checking the layout in the browser."""
-    meeting_or_404(c, meeting_id)
-    docs = repo.latest_artifact(c, meeting_id, "documents")
-    if not docs or kind not in docs[1]["blobs"] or not kind.endswith("_pdf"):
-        raise HTTPException(404, "المستند غير متاح")
-    b = repo.get_blob(c, docs[1]["blobs"][kind])
+    from mahdar.db.core import org_tx
+
+    with org_tx(p.org_id) as c:
+        meeting_or_404(c, meeting_id)
+        docs = repo.latest_artifact(c, meeting_id, "documents")
+        if not docs or kind not in docs[1]["blobs"] or not kind.endswith("_pdf"):
+            raise HTTPException(404, "المستند غير متاح")
+        b = repo.get_blob(c, docs[1]["blobs"][kind])
     if not b:
         raise HTTPException(404, "المستند غير متاح")
     import pypdfium2 as pdfium

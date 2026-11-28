@@ -104,7 +104,10 @@ class Settings(BaseSettings):
     def data_keys(self) -> list[bytes]:
         """The current data key first, then previous ones (for decryption only)."""
         keys: list[bytes] = []
-        raw = [self.data_key.get_secret_value() if self.data_key else ""]
+        if not (self.data_key and self.data_key.get_secret_value()):
+            # Never encrypt with a previous key: without a current key there is no keyring at all.
+            return keys
+        raw = [self.data_key.get_secret_value()]
         raw += [k.strip() for k in self.data_keys_previous.split(",") if k.strip()]
         for i, value in enumerate(raw):
             if not value:

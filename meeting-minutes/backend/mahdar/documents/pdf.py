@@ -23,12 +23,25 @@ from mahdar.pipeline import arabic
 EXPECTED_FONTS = ("NotoNaskhArabic", "NotoKufiArabic", "Amiri", "NotoSans")
 
 
+def _fetcher():
+    """The documents embed everything they need (the logo as a data: URL); nothing else is
+    fetched, so text from a recording or a setting can never make the worker read a local file or
+    call a server (WeasyPrint's own protocol allow-list)."""
+    from weasyprint.urls import URLFetcher
+
+    return URLFetcher(allowed_protocols={"data"}, allow_redirects=False, timeout=5)
+
+
+def _data_only(url: str):
+    return _fetcher().fetch(url)
+
+
 def render_pdf(html: str) -> bytes:
     from weasyprint import HTML
 
     logging.getLogger("weasyprint").setLevel(logging.ERROR)
     logging.getLogger("fontTools").setLevel(logging.ERROR)
-    return HTML(string=html).write_pdf()
+    return HTML(string=html, url_fetcher=_fetcher()).write_pdf()
 
 
 def pdf_fonts(data: bytes) -> list[dict]:

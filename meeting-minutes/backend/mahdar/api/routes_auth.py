@@ -36,15 +36,14 @@ def login(body: LoginIn, response: Response, request: Request) -> dict:
     if not user or not ok or locked or not user["active"]:
         # Recorded in its own committed transaction: the error below must not roll it back.
         if user and not locked:
-            fails = user["failed_logins"] + 1
+            # Atomic: parallel guesses each count (a read-then-write would let them overwrite each other).
             with system_tx() as c:
                 c.execute(
-                    text("update users set failed_logins = :f, locked_until = :l where id = :id"),
-                    {
-                        "f": fails,
-                        "l": now + timedelta(minutes=LOCK_MINUTES) if fails >= LOCK_AFTER else None,
-                        "id": user["id"],
-                    },
+                    text(
+                        "update users set failed_logins = failed_logins + 1, locked_until = case "
+                        "when failed_logins + 1 >= :n then now() + make_interval(mins => :m) else locked_until end where id = :id"
+                    ),
+                    {"n": LOCK_AFTER, "m": LOCK_MINUTES, "id": user["id"]},
                 )
         if user:
             with org_tx(str(user["org_id"])) as oc:
@@ -52,7 +51,7 @@ def login(body: LoginIn, response: Response, request: Request) -> dict:
                     oc, str(user["org_id"]), "auth.login_failed", actor_user=str(user["id"]), details={"locked": locked}
                 )
         raise HTTPException(
-            401, "الحساب مقفل مؤقتاً بسبب محاولات متكررة" if locked else "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+            401, "تعذر الدخول: البريد الإلكتروني أو كلمة المرور غير صحيحة، أو الحساب مقفل مؤقتاً بعد محاولات متكررة"
         )
     with system_tx() as c:
         c.execute(

@@ -172,19 +172,23 @@ class Run:
             key, size, sha = storage.put_file(self.org_id, bid, data)
         else:
             key, size, sha = storage.put_bytes(self.org_id, bid, data)
-        with self.tx() as c:
-            repo.add_blob(
-                c,
-                blob_id=bid,
-                org_id=self.org_id,
-                meeting_id=self.meeting_id,
-                kind=kind,
-                storage_key=key,
-                size=size,
-                sha256=sha,
-                content_type=content_type,
-                filename=filename,
-            )
+        try:
+            with self.tx() as c:
+                repo.add_blob(
+                    c,
+                    blob_id=bid,
+                    org_id=self.org_id,
+                    meeting_id=self.meeting_id,
+                    kind=kind,
+                    storage_key=key,
+                    size=size,
+                    sha256=sha,
+                    content_type=content_type,
+                    filename=filename,
+                )
+        except Exception:
+            storage.delete(key)  # e.g. the meeting was deleted meanwhile: no orphan file
+            raise
         return bid
 
     def llm_for(self, stage: str, meeting: dict, *, required: bool) -> LlmClient | None:
@@ -197,7 +201,9 @@ class Run:
             return None
         try:
             with self.tx() as c:
-                decision = privacy.authorize(c, self.org_id, meeting, provider, "transcript")
+                # The meeting is read again: its classification may have changed since the job started.
+                current = repo.get_meeting(c, self.meeting_id) or meeting
+                decision = privacy.authorize(c, self.org_id, current, provider, "transcript")
         except privacy.NotAuthorized as exc:
             if required:
                 raise AwaitingAuthorization(exc.reason_ar) from exc
@@ -291,6 +297,14 @@ class Run:
             key = str(chunk.index)
             if key in state["chunks"]:
                 continue
+            if decision.external:  # re-checked before every chunk sent out
+                with self.tx() as c:
+                    try:
+                        privacy.authorize(
+                            c, self.org_id, repo.get_meeting(c, self.meeting_id) or meeting, provider.name, "audio"
+                        )
+                    except privacy.NotAuthorized as exc:
+                        raise StageError("asr_not_authorized", exc.reason_ar, retryable=False) from exc
 
             def prog(x: float, i=chunk.index) -> None:
                 self.progress("transcribe", (i + x) / len(q.chunks))
@@ -419,18 +433,21 @@ class Run:
     def _reset_item_reviews(self) -> None:
         r = self.latest("review")
         if r and r[1].get("items"):
+            kept = {k: v for k, v in r[1].items() if not k.startswith(("reviewed_", "approved_"))}
             self.save(
                 "review",
-                {**r[1], "items": {}, "superseded_items": r[1]["items"]},
+                {**kept, "items": {}, "superseded_items": r[1]["items"]},
                 "system",
-                note="item reviews reset after re-analysis",
+                note="item and minutes reviews reset after re-analysis",
             )
 
     def render(self, meeting: dict, glossary: list[dict], org: dict, transcript: Transcript, an: Analysis) -> None:
         rep = VerificationReport(**self.latest("verification")[1])
         review = (self.latest("review") or (0, {}))[1]
         q0 = quality.evaluate(transcript, an, rep, review, org["settings"].get("quality_gates", {}))
-        status = quality.minutes_status(q0, meeting["minutes_status"], bool(review.get("reviewed_by")))
+        status = quality.minutes_status(
+            q0, meeting["minutes_status"], bool(review.get("reviewed_by")), bool(review.get("approved_by"))
+        )
         approval = None
         if status == "approved" and meeting.get("approved_at"):
             approval = {"name": review.get("approved_by_name", ""), "date": str(meeting["approved_at"])[:10]}
@@ -467,7 +484,9 @@ class Run:
             tmp=self.tmp,
         )
         q1 = quality.evaluate(transcript, an, rep, review, org["settings"].get("quality_gates", {}), checks)
-        status = quality.minutes_status(q1, meeting["minutes_status"], bool(review.get("reviewed_by")))
+        status = quality.minutes_status(
+            q1, meeting["minutes_status"], bool(review.get("reviewed_by")), bool(review.get("approved_by"))
+        )
         label = minutes_agent.STATUS_LABELS[status]
         if label != doc.status_label:
             # Rendering checks can change the status: the label and the info table follow it.
@@ -547,6 +566,7 @@ class Run:
                 minutes_status=status,
                 critical_open=q1["open_critical"],
                 error_code=None,
+                **({} if status == "approved" else {"approved_by": None, "approved_at": None}),
             )
             repo.audit(
                 c,

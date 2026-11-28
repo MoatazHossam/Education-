@@ -35,6 +35,8 @@ def _excerpt(audio_path: Path, start: float, end: float, fmt: str = "mp3") -> Pa
         [
             "ffmpeg",
             "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-v",
             "error",
             "-y",

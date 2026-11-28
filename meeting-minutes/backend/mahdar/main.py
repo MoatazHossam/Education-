@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -26,16 +28,29 @@ CSP = (
 )
 
 
+_REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+UPLOAD_PATHS = ("/api/meetings", "/api/org/logo")
+
+
 class SecurityHeaders(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         s = get_settings()
+        if request.method == "POST" and request.url.path in UPLOAD_PATHS:
+            # Before the body is read: uploads need a declared size, a session cookie and the
+            # CSRF header (the route checks the session itself; this keeps anonymous bodies off the disk).
+            if not request.headers.get("content-length"):
+                return JSONResponse({"detail": "يلزم تحديد حجم الملف المرفوع"}, status_code=411)
+            if "mahdar_session" not in request.cookies or request.headers.get("x-requested-with") != "mahdar":
+                return JSONResponse({"detail": "يلزم تسجيل الدخول"}, status_code=401)
         # Reject oversized uploads before reading them (the route enforces the exact limit too).
         length = request.headers.get("content-length")
         if length and length.isdigit() and int(length) > s.max_upload_mb * 1_000_000 + 1_000_000:
             return JSONResponse(
                 {"detail": f"حجم الطلب يتجاوز الحد المسموح ({s.max_upload_mb} ميجابايت)"}, status_code=413
             )
-        rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+        rid = request.headers.get("x-request-id") or ""
+        if not _REQUEST_ID.match(rid):
+            rid = uuid.uuid4().hex[:16]
         start = time.monotonic()
         response = await call_next(request)
         response.headers["X-Request-Id"] = rid
@@ -75,12 +90,14 @@ def create_app() -> FastAPI:
             )
     if problems:
         raise RuntimeError("refusing to start: " + "; ".join(problems))
+    # The API reference is public in development; in production only with MAHDAR_API_DOCS=true.
+    docs = s.env != "production" or os.environ.get("MAHDAR_API_DOCS", "").lower() == "true"
     app = FastAPI(
         title="Mahdar — Arabic meeting minutes API",
         version="0.1.0",
-        docs_url="/docs",
+        docs_url="/docs" if docs else None,
         redoc_url=None,
-        openapi_url="/openapi.json",
+        openapi_url="/openapi.json" if docs else None,
     )
     app.add_middleware(SecurityHeaders)
     app.include_router(routes_auth.router)

@@ -54,3 +54,36 @@ def test_truncated_or_swapped_file_is_detected():
         b"".join(kr.decrypt_stream(io.BytesIO(cut), "blob:1"))
     with pytest.raises(DecryptionError):
         b"".join(kr.decrypt_stream(io.BytesIO(raw), "blob:2"))
+
+
+def test_no_silent_fallback_to_a_previous_key():
+    import base64
+
+    from mahdar.config import Settings
+
+    old = base64.b64encode(os.urandom(32)).decode()
+    assert Settings(data_key="", data_keys_previous=old).data_keys() == []
+
+
+def test_artifact_ciphertext_is_bound_to_its_context():
+    from mahdar.db.repo import artifact_aad
+
+    a = artifact_aad(
+        "6f1c1d1e-0000-4000-8000-000000000001",
+        "6f1c1d1e-0000-4000-8000-000000000002",
+        "analysis",
+        1,
+        "6f1c1d1e-0000-4000-8000-000000000003",
+    )
+    b = artifact_aad(
+        "6F1C1D1E-0000-4000-8000-000000000001",
+        "6f1c1d1e-0000-4000-8000-000000000002",
+        "analysis",
+        1,
+        "6f1c1d1e-0000-4000-8000-000000000003",
+    )
+    assert a == b  # same ids in another letter case
+    kr = Keyring(keys())
+    blob = kr.seal(b"x", a)
+    with pytest.raises(DecryptionError):
+        kr.open(blob, a.replace("analysis", "transcript"))

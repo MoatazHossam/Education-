@@ -51,7 +51,7 @@ export default function Overview({ meeting, reload }: { meeting: MeetingDetail; 
             <div className="grid3">
               <div className="kpi"><span className="muted small">التقييم العام</span><b>{{ good: 'جيدة', fair: 'مقبولة', poor: 'ضعيفة' }[q.overall]}</b></div>
               <div className="kpi"><span className="muted small">نسبة الكلام</span><b>{Math.round(q.speech_ratio * 100)}٪</b></div>
-              <div className="kpi"><span className="muted small">الإشارة إلى الضوضاء</span><b>{q.estimated_snr_db != null ? `${q.estimated_snr_db} dB` : '—'}</b></div>
+              <div className="kpi"><span className="muted small">الإشارة إلى الضوضاء</span><b>{q.estimated_snr_db != null ? <span className="ltr">{q.estimated_snr_db} dB</span> : '—'}</b></div>
             </div>
             <p className="small muted">
               الصيغة: <span className="ltr">{q.original_format} / {q.original_codec ?? '?'}</span>، معدل العينات {q.original_sample_rate ?? '?'} هرتز،

@@ -45,6 +45,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar nav a { color: #d6e0ec; text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 6px; }
 .topbar nav a.active, .topbar nav a:hover { background: rgb(255 255 255 / 12%); color: #fff; }
 .topbar .who { margin-inline-start: auto; display: flex; align-items: center; gap: 0.8rem; color: #d6e0ec; font-size: 0.9rem; }
+.topbar .btn { color: var(--ink); }
 main { max-width: 1320px; margin: 0 auto; padding: 1.5rem; }
 
 /* Generic */

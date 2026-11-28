@@ -12,3 +12,5 @@ legacy
 tests
 *.log
 secrets
+# The meeting-minutes system has its own image (meeting-minutes/Dockerfile).
+meeting-minutes

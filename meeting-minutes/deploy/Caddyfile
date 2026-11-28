@@ -1,0 +1,24 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	# Recordings are uploaded through here: the API enforces MAHDAR_MAX_UPLOAD_MB itself; this is
+	# only an outer bound so a runaway client cannot stream without end.
+	request_body {
+		max_size 2GB
+	}
+	reverse_proxy api:8000 {
+		health_uri /readyz
+		health_interval 5s
+		health_timeout 3s
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	log {
+		output stdout
+		format json
+	}
+}

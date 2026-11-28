@@ -9,3 +9,15 @@
 # Word files are binary: never convert their line endings.
 *.docx binary
 VERSION export-subst
+
+# Test recordings, fonts, models and rendered documents (meeting-minutes/) are binary.
+*.wav binary
+*.mp3 binary
+*.m4a binary
+*.ogg binary
+*.flac binary
+*.webm binary
+*.pdf binary
+*.png binary
+*.ttf binary
+*.onnx binary

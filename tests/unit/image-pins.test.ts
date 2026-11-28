@@ -114,7 +114,29 @@ describe('dependency updates', () => {
   const covered = updates.map((u) => `${u['package-ecosystem']} ${u.directory}`).sort();
 
   it('Dependabot watches the packages, every pinned image and the CI actions', () => {
-    expect(covered).toEqual(['docker /', 'docker /ops', 'docker-compose /', 'github-actions /', 'npm /']);
+    expect(covered).toEqual([
+      'docker /',
+      // The meeting-minutes system (meeting-minutes/): its image, its stack, its interface and its Python backend.
+      'docker /meeting-minutes',
+      'docker /ops',
+      'docker-compose /',
+      'docker-compose /meeting-minutes',
+      'github-actions /',
+      'npm /',
+      'npm /meeting-minutes/frontend',
+      'pip /meeting-minutes/backend',
+    ]);
+  });
+
+  it('Dependabot proposes no new major version of the meeting-minutes system’s Node.js, Ubuntu or PostgreSQL', () => {
+    const ignored = (eco: string, dir: string) =>
+      updates.find((u) => u['package-ecosystem'] === eco && u.directory === dir)?.ignore?.map((i) => `${i['dependency-name']} ${i['update-types']?.join()}`);
+    expect(ignored('docker', '/meeting-minutes')).toEqual([
+      'node version-update:semver-major',
+      'ubuntu version-update:semver-major,version-update:semver-minor',
+    ]);
+    expect(ignored('npm', '/meeting-minutes/frontend')).toEqual(['@types/node version-update:semver-major']);
+    expect(ignored('docker-compose', '/meeting-minutes')).toEqual(['postgres version-update:semver-major']);
   });
 
   it('Dependabot opens its pull requests against main, whatever the default branch', () => {

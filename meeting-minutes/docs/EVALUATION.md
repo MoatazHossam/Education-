@@ -90,6 +90,13 @@ were then fixed (each fix has a test):
 | Number words with "ئ" ("أربعمائة"), duals ("مليونان"), ordinals and day words in dates ("الخامس عشر", "العشرين من ديسمبر") were not read; "أطلب من" was not an assignment | Lexicons normalised and extended; tests |
 | Compose passes unset settings as empty strings; the API refused them | Empty variables count as unset |
 | The worker kept Whisper (several GB) loaded after transcription; with a local LLM on the same machine the system ran out of memory | The model is released after transcription unless `MAHDAR_WHISPER_KEEP_LOADED=true` |
+| **Prompt examples were taken from the evaluation recordings** — "ممكن أنا أكلمهم" and "لحد ما نشوف" (s2), "بشرط الانتهاء من اختبار الأداء" (s1). This made s2's earlier "suggested action found" result worthless as evidence, and the 4B model copied the first phrase into **s1's** minutes as a suggested action | Replaced by neutral examples; a test fails if any prompt shares four consecutive words, or a quoted example of three words or more, with any recording's script. s1 and s2 re-measured (§2) |
+| JSON left by the model ("…)},{") at the end of four paragraphs of s1's minutes | Written blocks and language revisions containing markup are refused; the rule-written sentence is used |
+| A speaker label written in words ("أُطلب من المتحدث الثاني…") in s1's topics | One recogniser for every form of label (digits, Arabic-Indic digits, ordinal words), used by the writer guard, the language reviewer and the owner field |
+| Items the independent audit found unsupported (s1: 3, all fabricated) stayed in the minutes with a "requires verification" marker; contradicted items (s1: 1, s2: 2) were printed among the pending matters | Both kept out of the minutes until a person accepts them (still shown for review and in the evidence report); the evaluation now reports `unsupported_items_in_minutes` |
+| A one-word quote ("ما") supported an invented question | A statement sharing no content word with its evidence is critical. A looser threshold was rejected: faithful MSA paraphrases of Egyptian speech in s2 shared as little as 10 % of their words, the same as a fabricated item (17 %) |
+| A chair's deferral ("نؤجل…") recorded as a rejected decision | Reclassified as deferred; the auditor agreeing does not lower this check |
+| A self-assignment ("سأتولى…") recorded with the owner "المتحدث 2" failed the name check and moved a genuine task to the pending matters | A label given as an owner is kept as that speaker, whose name comes from the reviewer; `owner_identified` scores the right speaker separately from `owner_accuracy` (name) |
 
 ### Independent security review
 

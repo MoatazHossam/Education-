@@ -1,0 +1,56 @@
+{
+  "id": "s1_formal_decisions",
+  "title": "اجتماع لجنة تسيير مشروع البوابة الإلكترونية",
+  "description": "Formal MSA steering meeting, three speakers: two explicit decisions, two explicit assignments with deadlines (one relative), one proposal deferred, one condition stated before the decision.",
+  "variety": "MSA",
+  "voices": {"A": "v1", "B": "v3", "C": "v2"},
+  "speaker_names": {"A": "أحمد", "B": "سارة", "C": "خالد"},
+  "meeting": {"title": "اجتماع لجنة تسيير مشروع البوابة الإلكترونية", "date": "2026-12-01", "location": "قاعة الاجتماعات الرئيسية", "prepared_by": "أمانة اللجنة", "expected_speakers": 3},
+  "glossary": [
+    {"term": "أحمد", "category": "person", "note": "رئيس اللجنة"},
+    {"term": "سارة", "category": "person", "note": "مديرة المشروع"},
+    {"term": "خالد", "category": "person", "note": "المدير المالي"},
+    {"term": "البوابة الإلكترونية", "category": "project"}
+  ],
+  "turns": [
+    {"speaker": "A", "text": "السلام عليكم، نبدأ اجتماع لجنة تسيير مشروع البوابة الإلكترونية. الهدف من اجتماع اليوم مراجعة خطة الإطلاق واعتماد الميزانية النهائية للمرحلة الأولى."},
+    {"speaker": "B", "text": "شكراً أستاذ أحمد. أنهينا تطوير الوحدات الأساسية بنسبة خمسة وثمانين في المئة، وبقي اختبار الأداء وتدريب المستخدمين."},
+    {"speaker": "A", "text": "ما الموعد المقترح للإطلاق؟"},
+    {"speaker": "B", "text": "نقترح الإطلاق يوم الخامس عشر من يناير، بشرط الانتهاء من اختبار الأداء قبل نهاية ديسمبر."},
+    {"speaker": "C", "text": "بالنسبة للميزانية، التكلفة الإجمالية للمرحلة الأولى مليونان وأربعمئة ألف جنيه، وهي ضمن المخصص المعتمد."},
+    {"speaker": "A", "text": "هل هناك اعتراض على هذا الرقم؟"},
+    {"speaker": "C", "text": "لا اعتراض من الإدارة المالية."},
+    {"speaker": "A", "text": "إذن تقرر اعتماد ميزانية المرحلة الأولى بمبلغ مليونين وأربعمئة ألف جنيه. واتفقنا على أن يكون موعد الإطلاق الخامس عشر من يناير."},
+    {"speaker": "B", "text": "ممتاز. سأتولى إعداد خطة اختبار الأداء وتسليمها يوم الأحد القادم."},
+    {"speaker": "A", "text": "وأطلب من الأستاذ خالد إرسال تقرير التدفق النقدي الشهري إلى أعضاء اللجنة قبل العشرين من ديسمبر."},
+    {"speaker": "C", "text": "حاضر، سأرسله قبل العشرين من ديسمبر."},
+    {"speaker": "B", "text": "هناك أيضاً مقترح بإضافة خدمة الدفع الإلكتروني في المرحلة الأولى."},
+    {"speaker": "C", "text": "أرى أن ذلك سيرفع التكلفة، وأقترح تأجيل مناقشته إلى الاجتماع القادم."},
+    {"speaker": "A", "text": "نؤجل موضوع الدفع الإلكتروني إلى الاجتماع القادم. شكراً لكم جميعاً."}
+  ],
+  "expected": {
+    "decisions_approved": [
+      {"key": "D1", "keywords": ["ميزانيه"], "numbers": [2400000]},
+      {"key": "D2", "keywords": ["اطلاق"], "dates": [[15, 1]]}
+    ],
+    "actions_assigned": [
+      {"key": "A1", "keywords": ["اختبار الاداء"], "owner": "سارة", "due_relative": true},
+      {"key": "A2", "keywords": ["التدفق النقدي"], "owner": "خالد", "dates": [[20, 12]]}
+    ],
+    "actions_suggested": [],
+    "proposals": [
+      {"key": "P1", "keywords": ["الدفع الالكتروني"]}
+    ],
+    "deferred": [
+      {"key": "F1", "keywords": ["الدفع الالكتروني"]}
+    ],
+    "rejected": [],
+    "not_decisions": [
+      {"key": "N1", "keywords": ["الدفع الالكتروني"], "why": "deferred, never approved"}
+    ],
+    "qualifications": [
+      {"key": "Q1", "keywords": ["اختبار الاداء", "ديسمبر"], "why": "launch proposed on condition that performance testing ends before end of December"}
+    ],
+    "numbers": [85, 2400000]
+  }
+}

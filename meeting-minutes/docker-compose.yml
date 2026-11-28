@@ -1,0 +1,175 @@
+# Mahdar — Arabic meeting minutes. Local or single-host stack:
+#   cp .env.docker.example .env.docker      # set the three secrets (commands in the file)
+#   docker compose --env-file .env.docker up --build
+#   docker compose --env-file .env.docker exec api python3 -m mahdar.cli create-admin --org "..." --email you@example.com
+# Interface and API: http://localhost:8080 (API reference at /docs).
+# With TLS (encryption in transit, Let's Encrypt): set MAHDAR_DOMAIN and ACME_EMAIL, then add --profile tls.
+name: mahdar
+
+# Every container's log is capped (5 files of 10 MB), so logs cannot fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+# Compose stops before starting anything when one of these is missing.
+x-required:
+  - ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (openssl rand -hex 24)}
+  - ${MAHDAR_SECRET_KEY:?set MAHDAR_SECRET_KEY (openssl rand -base64 48)}
+  - ${MAHDAR_DATA_KEY:?set MAHDAR_DATA_KEY (openssl rand -base64 32)}
+  - ${MAHDAR_APP_DB_PASSWORD:?set MAHDAR_APP_DB_PASSWORD (openssl rand -hex 24)}
+
+x-env-base: &env-base
+  MAHDAR_ENV: ${MAHDAR_ENV:-development}
+  MAHDAR_LOG_LEVEL: ${MAHDAR_LOG_LEVEL:-info}
+  MAHDAR_API_DOCS: ${MAHDAR_API_DOCS:-}
+
+# migrate: the schema owner, which also creates/updates the runtime role mahdar_app.
+x-env-migrate: &env-migrate
+  <<: *env-base
+  MAHDAR_DATABASE_URL: ${MAHDAR_DATABASE_URL:-postgresql+psycopg://mahdar:${POSTGRES_PASSWORD}@postgres:5432/mahdar}
+  MAHDAR_APP_DB_PASSWORD: ${MAHDAR_APP_DB_PASSWORD}
+
+# api and worker: the runtime role (no superuser, no BYPASSRLS), so row-level security applies to
+# every query; they never receive the owner's password. Production refuses to start otherwise.
+x-env-runtime-db: &env-runtime-db
+  MAHDAR_DATABASE_URL: ${MAHDAR_APP_DATABASE_URL:-postgresql+psycopg://mahdar_app:${MAHDAR_APP_DB_PASSWORD}@postgres:5432/mahdar}
+  MAHDAR_APP_DATABASE_URL: ${MAHDAR_APP_DATABASE_URL:-postgresql+psycopg://mahdar_app:${MAHDAR_APP_DB_PASSWORD}@postgres:5432/mahdar}
+
+# The API and the worker. Each container gets only the settings it needs: the API holds the session
+# key and the storage key (it streams audio segments and documents to reviewers) but no AI provider
+# key; the worker holds the provider keys and the storage key, but not the session key.
+x-env-storage: &env-storage
+  MAHDAR_DATA_DIR: /data
+  # AES-256-GCM key for recordings, transcripts and documents at rest.
+  MAHDAR_DATA_KEY: ${MAHDAR_DATA_KEY}
+  MAHDAR_DATA_KEYS_PREVIOUS: ${MAHDAR_DATA_KEYS_PREVIOUS:-}
+  # "local" (the storage volume) or "s3" (any S3-compatible store; objects are encrypted before upload).
+  MAHDAR_STORAGE_BACKEND: ${MAHDAR_STORAGE_BACKEND:-local}
+  MAHDAR_S3_BUCKET: ${MAHDAR_S3_BUCKET:-}
+  MAHDAR_S3_ENDPOINT: ${MAHDAR_S3_ENDPOINT:-}
+  MAHDAR_S3_REGION: ${MAHDAR_S3_REGION:-}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: mahdar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mahdar
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mahdar -d mahdar"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published to the host by default; uncomment for local tooling.
+    # ports: ["127.0.0.1:5433:5432"]
+
+  # MAHDAR_IMAGE_TAG picks the image: "local" is the one built here.
+  migrate:
+    build: .
+    image: mahdar:${MAHDAR_IMAGE_TAG:-local}
+    command: ["python3", "-m", "mahdar.cli", "migrate"]
+    logging: *logging
+    environment: *env-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: "no"
+
+  api:
+    image: mahdar:${MAHDAR_IMAGE_TAG:-local}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      <<: [*env-base, *env-runtime-db, *env-storage]
+      MAHDAR_SECRET_KEY: ${MAHDAR_SECRET_KEY}
+      MAHDAR_PUBLIC_URL: ${MAHDAR_PUBLIC_URL:-http://localhost:8080}
+      MAHDAR_MAX_UPLOAD_MB: ${MAHDAR_MAX_UPLOAD_MB:-}
+      MAHDAR_MAX_DURATION_MINUTES: ${MAHDAR_MAX_DURATION_MINUTES:-}
+    volumes:
+      - storage:/data/storage
+    ports:
+      # Bound to this machine only; other machines reach it through the tls profile (Caddy).
+      - "${MAHDAR_BIND:-127.0.0.1}:${MAHDAR_PORT:-8080}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    image: mahdar:${MAHDAR_IMAGE_TAG:-local}
+    command: ["python3", "-m", "mahdar.worker"]
+    restart: unless-stopped
+    logging: *logging
+    # Transcription is CPU- and memory-heavy: one job at a time per worker by default.
+    environment:
+      <<: [*env-base, *env-runtime-db, *env-storage]
+      MAHDAR_WORKER_CONCURRENCY: ${MAHDAR_WORKER_CONCURRENCY:-1}
+      # Speech recognition: faster_whisper (local, nothing leaves the server), openai, deepgram, azure.
+      MAHDAR_ASR_PROVIDER: ${MAHDAR_ASR_PROVIDER:-faster_whisper}
+      MAHDAR_WHISPER_MODEL: ${MAHDAR_WHISPER_MODEL:-large-v3}
+      MAHDAR_WHISPER_DEVICE: ${MAHDAR_WHISPER_DEVICE:-cpu}
+      MAHDAR_WHISPER_COMPUTE_TYPE: ${MAHDAR_WHISPER_COMPUTE_TYPE:-int8}
+      # Speaker diarization: sherpa_onnx (local), pyannote (local, image built WITH_PYANNOTE=true),
+      # asr (the speech provider's own speaker labels) or none.
+      MAHDAR_DIARIZATION_PROVIDER: ${MAHDAR_DIARIZATION_PROVIDER:-sherpa_onnx}
+      # Reasoning and writing: anthropic (Claude), openai_compatible (a local server such as vLLM or
+      # Ollama, for deployments where nothing may leave the network) or none.
+      MAHDAR_LLM_PROVIDER: ${MAHDAR_LLM_PROVIDER:-anthropic}
+      MAHDAR_LLM_MODEL: ${MAHDAR_LLM_MODEL:-claude-opus-5-5}
+      MAHDAR_LLM_BASE_URL: ${MAHDAR_LLM_BASE_URL:-}
+      MAHDAR_LLM_API_KEY: ${MAHDAR_LLM_API_KEY:-}
+      # External providers this installation may send data to at all (comma-separated). Each
+      # organization must also allow them, per kind of data, in its privacy settings.
+      MAHDAR_ALLOWED_EXTERNAL_PROVIDERS: ${MAHDAR_ALLOWED_EXTERNAL_PROVIDERS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - storage:/data/storage
+      - models:/data/models
+    healthcheck:
+      # The worker has no HTTP server; healthy means a recent heartbeat in the database.
+      test: ["CMD", "python3", "-m", "mahdar.cli", "worker-health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # TLS in front of the API (docker compose --profile tls up): automatic certificates for MAHDAR_DOMAIN.
+  proxy:
+    profiles: ["tls"]
+    image: caddy:2.11-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      DOMAIN: ${MAHDAR_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  storage:
+  models:
+  caddy_data:

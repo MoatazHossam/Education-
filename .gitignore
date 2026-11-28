@@ -16,3 +16,16 @@ secrets/
 
 # Windows remote control: this PC's server settings (ops/windows-remote/midad-settings.example.bat)
 ops/windows-remote/midad-settings.bat
+
+# Meeting minutes (meeting-minutes/): Python tooling, speech models, local data and test output
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+meeting-minutes/.models/
+meeting-minutes/data/
+meeting-minutes/backend/test-output/
+meeting-minutes/.data-src/
+*.egg-info/

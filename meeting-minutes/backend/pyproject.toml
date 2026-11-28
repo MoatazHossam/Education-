@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mahdar"
+version = "0.1.0"
+description = "Evidence-grounded Arabic meeting minutes: transcription, diarization, analysis, verification and formal RTL documents."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+# Pinned: the image installs exactly these (Dockerfile); Dependabot proposes updates.
+dependencies = [
+  "fastapi==0.165.0",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.4",
+  "pydantic-settings==2.16.3",
+  "sqlalchemy==2.1.9",
+  "psycopg[binary]==3.3.9",
+  "python-multipart==0.0.34",
+  "httpx==0.29.0",
+  "anthropic==2.14.0",
+  "faster-whisper==1.2.1",
+  "sherpa-onnx==2.0.3",
+  "numpy==2.5.5",
+  "soundfile==0.14.0",
+  "python-docx==1.2.0",
+  "weasyprint==70.0",
+  "cryptography==50.0.2",
+  "argon2-cffi==25.1.0",
+  "pyjwt==2.15.1",
+  "rapidfuzz==3.14.6",
+  "pypdf==7.2.0",
+  "pypdfium2==5.15.2",
+  "boto3==1.44.13",
+]
+
+[project.optional-dependencies]
+# Diarization with pyannote's gated models (HF_TOKEN). Needs PyTorch, installed first from the
+# PyTorch CPU index (Dockerfile, WITH_PYANNOTE=true).
+pyannote = ["pyannote.audio==4.1.1"]
+dev = [
+  "ruff==0.17.6",
+  "pytest==9.2.0",
+  "pip-audit==2.10.1",
+]
+
+[project.scripts]
+mahdar = "mahdar.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mahdar*"]
+
+[tool.setuptools.package-data]
+mahdar = ["db/migrations/*.sql", "documents/templates/*", "pipeline/lexicons/*.json"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = [
+  "E501",   # line length is the formatter's job; long Arabic strings and prompts stay whole
+  "S603", "S607",  # subprocess with fixed argument lists (FFmpeg, fc-list), never a shell
+  "S101",   # assert in tests
+  "S311",   # random is not used for security
+  "RUF001", "RUF002", "RUF003",  # Arabic text contains characters that look like Latin ones
+  "B008",   # FastAPI's Depends() in defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B", "RUF012"]
+# SQL built with f-strings from module constants only (the organization filter, column lists,
+# whitelisted field and table names); every value is a bound parameter.
+"mahdar/db/repo.py" = ["S608"]
+"mahdar/security/rotate.py" = ["S608"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "models: needs the downloaded speech models (CI job: pipeline)",
+  "llm: needs a configured language model (ANTHROPIC_API_KEY or MAHDAR_LLM_BASE_URL)",
+]

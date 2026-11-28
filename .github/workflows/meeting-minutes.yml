@@ -1,0 +1,162 @@
+name: Meeting minutes (Mahdar)
+
+# The Arabic meeting-minutes system in meeting-minutes/ (its own backend, interface and image). It runs
+# only when that directory or this file changes; Midad's CI (ci.yml) is unchanged and does not look at it.
+
+on:
+  push:
+    branches: [main]
+    paths: ["meeting-minutes/**", ".github/workflows/meeting-minutes.yml"]
+  pull_request:
+    paths: ["meeting-minutes/**", ".github/workflows/meeting-minutes.yml"]
+  # The full pipeline on a real recording, with Claude when the ANTHROPIC_API_KEY secret is set.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Actions are pinned by commit SHA, with the release in a comment, as in ci.yml; Dependabot proposes
+# new releases. The PostgreSQL service is the test database only.
+
+concurrency:
+  group: mahdar-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: meeting-minutes
+
+jobs:
+  backend:
+    name: Backend (lint, unit and integration tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      MAHDAR_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: System packages (FFmpeg, Arabic fonts, Pango for the PDF)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-venv ffmpeg fontconfig fonts-noto-core fonts-hosny-amiri \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+      - name: Install the backend
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e "./backend[dev]"
+      - run: .venv/bin/ruff check backend
+      - run: .venv/bin/ruff format --check backend
+      - name: Tests (everything but the speech models)
+        run: .venv/bin/pytest backend/tests -m "not models" -q
+      - name: Dependency audit
+        run: .venv/bin/pip-audit --skip-editable --progress-spinner off
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mahdar-backend-output
+          path: meeting-minutes/backend/test-output
+          retention-days: 7
+
+  pipeline:
+    # The real speech models on the Arabic test recordings (evaluation/recordings): transcription with
+    # faster-whisper, diarization with sherpa-onnx, then the deterministic checks. The Claude stages run
+    # only when the repository has an ANTHROPIC_API_KEY secret (never for pull requests from forks or
+    # Dependabot, which get no secrets); the job says so in its log when they are skipped.
+    name: Pipeline on real recordings
+    runs-on: ubuntu-24.04
+    needs: backend
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      MAHDAR_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      # A smaller model than production's large-v3, so the job fits a CI runner; the evaluation report
+      # (docs/EVALUATION.md) gives the numbers for each model.
+      MAHDAR_WHISPER_MODEL: small
+      MAHDAR_MODELS_DIR: ${{ github.workspace }}/meeting-minutes/.models
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-venv ffmpeg fontconfig fonts-noto-core fonts-hosny-amiri \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+      - name: Install the backend
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e "./backend[dev]"
+      - name: Download the speech models
+        run: .venv/bin/python -m mahdar.cli models download --whisper "$MAHDAR_WHISPER_MODEL"
+      - name: Real recordings (speech models, verification, documents)
+        run: .venv/bin/pytest backend/tests -m models -q
+      - name: Evaluation report
+        if: always()
+        run: .venv/bin/python -m mahdar.cli evaluate --out backend/test-output/evaluation.json || true
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mahdar-pipeline-output
+          path: meeting-minutes/backend/test-output
+          retention-days: 14
+
+  frontend:
+    name: Interface (lint, typecheck, tests, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: meeting-minutes/frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: meeting-minutes/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Dependency audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    name: Container image
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build image
+        run: docker build -t mahdar:ci .
+      - name: Self-check (Arabic fonts, DOCX and PDF rendering, FFmpeg, interface)
+        # Renders a sample Arabic minutes document in the image and checks the fonts are embedded, the
+        # text is shaped and nothing is missing; fails if the image lost its fonts or Pango.
+        run: docker run --rm mahdar:ci python3 -m mahdar.cli selfcheck
+      - name: Configuration guard
+        # The image must refuse to start in production with missing or weak secrets.
+        run: |
+          set +e
+          out=$(docker run --rm -e MAHDAR_ENV=production -e MAHDAR_DATABASE_URL=postgresql+psycopg://x@localhost/x \
+            -e MAHDAR_SECRET_KEY=short -e MAHDAR_DATA_KEY= mahdar:ci python3 -m mahdar.cli check-config 2>&1)
+          code=$?
+          echo "$out"
+          test $code -ne 0 && echo "$out" | grep -q "MAHDAR_SECRET_KEY"

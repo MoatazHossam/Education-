@@ -1,0 +1,65 @@
+{
+  "id": "s3_technical_codeswitch",
+  "title": "ربط نظام ERP مع Dynamics 365",
+  "description": "Egyptian technical meeting with English terms pronounced the Egyptian way, a contradiction about the deadline, a tentative (not final) date, two assignments (one with a deadline, one without), a KPI target explicitly said not to be a decision, and a short overlapping interjection.",
+  "variety": "Egyptian + English terms",
+  "voices": {"A": "v1", "B": "v3", "C": "v2"},
+  "speaker_names": {"A": "عمر", "B": "ياسمين", "C": "طارق"},
+  "meeting": {"title": "ربط نظام ERP مع Dynamics 365", "date": "2026-12-07", "expected_speakers": 3},
+  "glossary": [
+    {"term": "ERP", "category": "acronym", "variants": ["إي آر بي", "اي ار بي", "الإي آر بي"]},
+    {"term": "API", "category": "acronym", "variants": ["إي بي آي", "اي بي اي", "الإيه بي آي"]},
+    {"term": "SAP", "category": "product", "variants": ["ساب"]},
+    {"term": "Dynamics 365", "category": "product", "variants": ["داينامكس", "دايناميكس"]},
+    {"term": "SLA", "category": "acronym", "variants": ["إس إل إيه", "اس ال اي"]},
+    {"term": "KPI", "category": "acronym", "variants": ["كي بي آي", "كي بي اي"]},
+    {"term": "integration", "category": "term", "variants": ["إنتجريشن", "انتجريشن"]},
+    {"term": "documentation", "category": "term", "variants": ["دوكيومنتيشن", "دوكيومينتيشن"]},
+    {"term": "production", "category": "term", "variants": ["برودكشن"]},
+    {"term": "deadline", "category": "term", "variants": ["ديدلاين"]},
+    {"term": "عمر", "category": "person"},
+    {"term": "ياسمين", "category": "person"},
+    {"term": "طارق", "category": "person"}
+  ],
+  "turns": [
+    {"speaker": "A", "text": "خلونا نبدأ. موضوعنا النهارده ربط الـ ERP بتاعنا مع Dynamics 365 عن طريق API.",
+     "tts_text": "خلونا نبدأ. موضوعنا النهارده ربط الإي آر بي بتاعنا مع داينامكس تلاتمية خمسة وستين عن طريق إي بي آي."},
+    {"speaker": "B", "text": "الـ API جاهز تقريباً، فاضل الـ integration مع موديول المخازن في SAP.",
+     "tts_text": "الإي بي آي جاهز تقريباً، فاضل الإنتجريشن مع موديول المخازن في ساب."},
+    {"speaker": "C", "text": "بس الـ SLA بتاع السيرفرات الحالي تسعة وتسعين ونص في المية، ومحتاجين نرفعه لتسعة وتسعين وتسعة من عشرة قبل ما نطلع production.",
+     "tts_text": "بس الإس إل إيه بتاع السيرفرات الحالي تسعة وتسعين ونص في المية، ومحتاجين نرفعه لتسعة وتسعين وتسعة من عشرة قبل ما نطلع برودكشن."},
+    {"speaker": "A", "text": "طيب الـ deadline إمتى؟", "tts_text": "طيب الديدلاين إمتى؟"},
+    {"speaker": "B", "text": "أنا قلت قبل كده آخر الشهر، بس الصراحة الأسبوع الجاي مستحيل."},
+    {"speaker": "C", "text": "أنا فاهم إن إحنا متفقين على الأسبوع الجاي."},
+    {"speaker": "B", "text": "لا لا.", "overlap": 0.6},
+    {"speaker": "A", "text": "لا، ما اتفقناش على تاريخ نهائي لسه. مبدئياً خلينا نقول آخر الشهر، ونأكد بعدين."},
+    {"speaker": "B", "text": "ماشي. أنا هجهز الـ documentation بتاعة الـ API وأبعتها لكم.",
+     "tts_text": "ماشي. أنا هجهز الدوكيومنتيشن بتاعة الإي بي آي وأبعتها لكم."},
+    {"speaker": "A", "text": "تمام يا ياسمين. وطارق، عليك تجهيز خطة رفع الـ SLA وتبعتها يوم الخميس.",
+     "tts_text": "تمام يا ياسمين. وطارق، عليك تجهيز خطة رفع الإس إل إيه وتبعتها يوم الخميس."},
+    {"speaker": "C", "text": "حاضر، يوم الخميس."},
+    {"speaker": "A", "text": "والـ KPI بتاع الـ response time لازم يبقى أقل من تلتمية millisecond. ده هدف مش قرار نهائي، هنراجعه مع الإدارة.",
+     "tts_text": "والكي بي آي بتاع الريسبونس تايم لازم يبقى أقل من تلتمية ميلي سكند. ده هدف مش قرار نهائي، هنراجعه مع الإدارة."}
+  ],
+  "expected": {
+    "decisions_approved": [],
+    "actions_assigned": [
+      {"key": "A1", "keywords": ["SLA"], "owner": "طارق", "due_relative": true},
+      {"key": "A2", "keywords": ["API"], "owner_speaker": "B"}
+    ],
+    "actions_suggested": [],
+    "tentative": [
+      {"key": "T1", "keywords": ["اخر الشهر"], "why": "date said to be provisional and to be confirmed"}
+    ],
+    "contradictions": [
+      {"key": "X1", "keywords": ["الاسبوع"], "why": "one speaker believed next week was agreed; the chair said no final date was agreed"}
+    ],
+    "proposals": [],
+    "rejected": [],
+    "not_decisions": [
+      {"key": "N1", "keywords": ["300"], "why": "KPI target explicitly not a final decision"},
+      {"key": "N2", "keywords": ["الاسبوع الجاي"], "why": "next week was never agreed"}
+    ],
+    "numbers": [99.5, 99.9, 300, 365]
+  }
+}

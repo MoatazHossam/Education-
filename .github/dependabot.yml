@@ -72,6 +72,63 @@ updates:
       - dependency-name: postgres
         update-types: [version-update:semver-major]
 
+  # The meeting-minutes system (meeting-minutes/): its Python backend, its interface, its image and its stack.
+  - package-ecosystem: pip
+    directory: /meeting-minutes/backend
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      mahdar-python-minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /meeting-minutes/frontend
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+    groups:
+      mahdar-npm-minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # meeting-minutes/Dockerfile: Node.js (interface build) and Ubuntu LTS (runtime). A new Ubuntu LTS
+  # changes the Python, FFmpeg and font packages, so it is upgraded by hand, not proposed here.
+  - package-ecosystem: docker
+    directory: /meeting-minutes
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+      - dependency-name: ubuntu
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  # meeting-minutes/docker-compose.yml.
+  - package-ecosystem: docker-compose
+    directory: /meeting-minutes
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+
   # The CI's actions, pinned by commit SHA (.github/workflows).
   - package-ecosystem: github-actions
     directory: /

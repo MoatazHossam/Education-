@@ -1,0 +1,104 @@
+{
+ "id": "s3_technical_codeswitch",
+ "source": "synthetic (Piper ar_JO-kareem, pitch-shifted voices)",
+ "scenario": "s3_technical_codeswitch.json",
+ "duration": 98.067,
+ "segments": [
+  {
+   "id": "R001",
+   "speaker": "A",
+   "start": 0.4,
+   "end": 12.103,
+   "text": "خلونا نبدأ. موضوعنا النهارده ربط الـ ERP بتاعنا مع Dynamics 365 عن طريق API.",
+   "overlap": false
+  },
+  {
+   "id": "R002",
+   "speaker": "B",
+   "start": 12.792,
+   "end": 20.436,
+   "text": "الـ API جاهز تقريباً، فاضل الـ integration مع موديول المخازن في SAP.",
+   "overlap": false
+  },
+  {
+   "id": "R003",
+   "speaker": "C",
+   "start": 21.06,
+   "end": 37.133,
+   "text": "بس الـ SLA بتاع السيرفرات الحالي تسعة وتسعين ونص في المية، ومحتاجين نرفعه لتسعة وتسعين وتسعة من عشرة قبل ما نطلع production.",
+   "overlap": false
+  },
+  {
+   "id": "R004",
+   "speaker": "A",
+   "start": 37.905,
+   "end": 39.751,
+   "text": "طيب الـ deadline إمتى؟",
+   "overlap": false
+  },
+  {
+   "id": "R005",
+   "speaker": "B",
+   "start": 40.346,
+   "end": 47.658,
+   "text": "أنا قلت قبل كده آخر الشهر، بس الصراحة الأسبوع الجاي مستحيل.",
+   "overlap": false
+  },
+  {
+   "id": "R006",
+   "speaker": "C",
+   "start": 48.061,
+   "end": 52.975,
+   "text": "أنا فاهم إن إحنا متفقين على الأسبوع الجاي.",
+   "overlap": false
+  },
+  {
+   "id": "R007",
+   "speaker": "B",
+   "start": 52.795,
+   "end": 53.43,
+   "text": "لا لا.",
+   "overlap": true
+  },
+  {
+   "id": "R008",
+   "speaker": "A",
+   "start": 54.094,
+   "end": 64.229,
+   "text": "لا، ما اتفقناش على تاريخ نهائي لسه. مبدئياً خلينا نقول آخر الشهر، ونأكد بعدين.",
+   "overlap": false
+  },
+  {
+   "id": "R009",
+   "speaker": "B",
+   "start": 64.613,
+   "end": 71.034,
+   "text": "ماشي. أنا هجهز الـ documentation بتاعة الـ API وأبعتها لكم.",
+   "overlap": false
+  },
+  {
+   "id": "R010",
+   "speaker": "A",
+   "start": 71.399,
+   "end": 80.71,
+   "text": "تمام يا ياسمين. وطارق، عليك تجهيز خطة رفع الـ SLA وتبعتها يوم الخميس.",
+   "overlap": false
+  },
+  {
+   "id": "R011",
+   "speaker": "C",
+   "start": 81.321,
+   "end": 83.253,
+   "text": "حاضر، يوم الخميس.",
+   "overlap": false
+  },
+  {
+   "id": "R012",
+   "speaker": "A",
+   "start": 83.884,
+   "end": 97.467,
+   "text": "والـ KPI بتاع الـ response time لازم يبقى أقل من تلتمية millisecond. ده هدف مش قرار نهائي، هنراجعه مع الإدارة.",
+   "overlap": false
+  }
+ ]
+}

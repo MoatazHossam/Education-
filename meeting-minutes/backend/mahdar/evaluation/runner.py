@@ -60,13 +60,28 @@ def evaluate_run(run: Path, reference: dict, scenario: dict | None) -> dict:
         }
         unsupported = sum(1 for i in items if i["status"] in ("unsupported", "contradicted"))
         if scenario:
-            scores = metrics.item_scores(scenario["expected"], items, segs, scenario.get("glossary", []))
+            mapping = (out["speakers"] or {}).get("mapping") or {}
+            names = {sid: scenario.get("speaker_names", {}).get(ref) for ref, sid in mapping.items()}
+            scores = metrics.item_scores(
+                scenario["expected"],
+                items,
+                segs,
+                scenario.get("glossary", []),
+                {k: v for k, v in names.items() if v},
+            )
             out["extraction"] = scores
             # Hallucination: items the transcript does not support, plus approved decisions with no
             # reference decision, over all items.
             out["hallucination_rate"] = round((unsupported + len(scores["invented_decisions"])) / max(1, len(items)), 4)
         out["evidence_coverage"] = verification["coverage"].get("evidence_coverage")
         out["unsupported_items_flagged"] = unsupported
+        if minutes:
+            # The safety figure: items the checks found unsupported or contradicted whose text still
+            # reached the minutes (none should, unless a person accepted them).
+            cited = {i for s in minutes["sections"] for x in [*s["blocks"], *s["rows"]] for i in x.get("item_ids", [])}
+            out["unsupported_items_in_minutes"] = sorted(
+                i["id"] for i in items if i["status"] in ("unsupported", "contradicted") and i["id"] in cited
+            )
     if minutes:
         texts = [b["text"] for s in minutes["sections"] for b in s["blocks"]] + [
             v

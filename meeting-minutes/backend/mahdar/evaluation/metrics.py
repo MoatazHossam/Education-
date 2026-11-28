@@ -120,8 +120,16 @@ CATEGORY_TYPES = {
 }
 
 
-def item_scores(expected: dict, items: list[dict], segments: dict[str, dict], glossary: list[dict]) -> dict:
-    """items: [{..., 'final_type'}]. Returns per-category precision/recall and the critical counts."""
+def item_scores(
+    expected: dict,
+    items: list[dict],
+    segments: dict[str, dict],
+    glossary: list[dict],
+    speaker_names: dict[str, str] | None = None,
+) -> dict:
+    """items: [{..., 'final_type'}]. Returns per-category precision/recall and the critical counts.
+    speaker_names maps detected speaker ids to the reference names (through the best speaker
+    mapping), to score owners identified as a speaker whose name a reviewer has not yet entered."""
     out: dict = {}
     for cat, types in CATEGORY_TYPES.items():
         exp = expected.get(cat)
@@ -148,7 +156,7 @@ def item_scores(expected: dict, items: list[dict], segments: dict[str, dict], gl
     ]
     out["invented_decisions"] = invented
     out["not_decision_violations"] = violations
-    owners = []
+    owners, by_speaker = [], []
     for e in expected.get("actions_assigned", []) + expected.get("actions_suggested", []):
         hit = next(
             (
@@ -159,10 +167,14 @@ def item_scores(expected: dict, items: list[dict], segments: dict[str, dict], gl
             None,
         )
         if hit and e.get("owner"):
-            owners.append(
-                arabic.normalize(e["owner"]) in arabic.normalize(hit.get("owner", {}).get("name_as_spoken") or "")
-            )
+            owner = hit.get("owner", {})
+            named = arabic.normalize(e["owner"]) in arabic.normalize(owner.get("name_as_spoken") or "")
+            owners.append(named)
+            spk = (speaker_names or {}).get(owner.get("speaker_id") or "")
+            by_speaker.append(named or (spk is not None and arabic.normalize(spk) == arabic.normalize(e["owner"])))
+    # By name as spoken; and the right person, by name or as the right (still unnamed) speaker.
     out["owner_accuracy"] = round(sum(owners) / len(owners), 4) if owners else None
+    out["owner_identified"] = round(sum(by_speaker) / len(by_speaker), 4) if by_speaker else None
     return out
 
 

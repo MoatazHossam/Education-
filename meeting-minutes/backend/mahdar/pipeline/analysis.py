@@ -168,18 +168,29 @@ def _merge_topics(topics: list[dict], items: list[dict]) -> list[dict]:
     return out
 
 
+_I = {arabic.normalize(w) for w in ("أنا", "انا", "أنا شخصياً", "أنا شخصيا", "شخصياً", "بنفسي")}
+_WE = {arabic.normalize(w) for w in ("نحن", "إحنا", "احنا", "الجميع", "كلنا")}
+
+
 def _owner(it: dict, speaker_ids: set[str]) -> Owner:
     """A speaker label written as the owner's name ("المتحدث 2") is a reference to that speaker, not a
-    name: it is kept as the speaker, and the name comes from the reviewer's confirmation."""
+    name: it is kept as the speaker, and the name comes from the reviewer's confirmation. So is "أنا"
+    (the speaker who said it); "إحنا" names no one."""
     name = (it.get("owner_name_as_spoken") or "").strip() or None
     sid = it.get("owner_speaker_id") if it.get("owner_speaker_id") in speaker_ids else None
+    status = it.get("owner_status", "unspecified")
+    said_by = [s for s in it.get("speaker_ids", []) if s in speaker_ids]
+    if name and arabic.normalize(name) in _I:
+        return Owner(name_as_spoken=None, speaker_id=sid or (said_by[0] if len(said_by) == 1 else None), status=status)
+    if name and arabic.normalize(name) in _WE:
+        return Owner(name_as_spoken=None, speaker_id=None, status="unspecified")
     if name:
         m = arabic.SPEAKER_LABEL.search(name)
         if m and not arabic.SPEAKER_LABEL.sub("", name).strip(" ،,.-"):
             label_sid = arabic.speaker_label_id(m)
             sid = sid or (label_sid if label_sid in speaker_ids else None)
             name = None
-    return Owner(name_as_spoken=name, speaker_id=sid, status=it.get("owner_status", "unspecified"))
+    return Owner(name_as_spoken=name, speaker_id=sid, status=status)
 
 
 def _to_items(raw: list[dict], speaker_ids: set[str]) -> list[Item]:

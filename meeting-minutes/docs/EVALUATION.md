@@ -18,7 +18,7 @@ quality.
 
 | Recording | Speech | WER | CER | Speaker attribution | Speakers found / expected |
 | --- | --- | --- | --- | --- | --- |
-| s1 formal decisions (MSA) | synthetic, 3 voices | 4.8 % | 3.0 % | 91.8 % | 3 / 3 |
+| s1 formal decisions (MSA) | synthetic, 3 voices | 4.8 % | 3.0 % | 91.9 % | 3 / 3 |
 | s1, noise + 8 kHz + 24 kbit/s | synthetic, degraded | 4.8 % | 3.0 % | 76.1 % | 3 / 3 |
 | s2 Egyptian, no decision | synthetic, 3 voices | 7.8 % | 1.5 % | 67.4 % | 3 / 3 |
 | s3 technical, code-switching | synthetic, 3 voices | **30.1 %** (readable copy 24.8 %) | 21.7 % | 93.5 % | 3 / 3 |
@@ -27,6 +27,10 @@ quality.
 
 Speed: large-v3 transcribed at roughly 1.4× the recording's duration on 4 CPU cores; diarization
 took 15–35 s per recording.
+With the local 4B model on the same 4 cores, a whole run of s1 (2.3 minutes of audio) took about
+50 minutes, almost all of it in the four model calls (analysis, audit, writing, language review,
+each 4–16 minutes at about 4 tokens/s). A GPU, a hosted model or Claude changes this by an order
+of magnitude; CPU-only local models suit overnight batches, not same-hour minutes.
 
 Reading the numbers:
 
@@ -50,30 +54,48 @@ Reading the numbers:
 
 ## 2. Meeting analysis and verification (local 4B model)
 
-### s2 — Egyptian discussion, proposals, a hedged volunteer, no decision
+Both recordings were processed again after the fixes in §3, from audio to documents, so these are
+the system's results as it now stands. The earlier s2 figures are void: its prompt contained s2's
+own sentences (§3).
 
-| Measure | Result |
-| --- | --- |
-| Approved decisions extracted (expected 0) | **0** — no invented decision, no "not a decision" violation |
-| Proposals (expected 2) | 2 / 2 |
-| Suggested action — the hedged "ممكن أنا أكلمهم" (expected as suggested, not assigned) | 1 / 1, typed `action_suggested` |
-| Deferral (expected 1) | found (plus two more deferral items) |
-| Concerns (training, Arabic support; expected 2) | 0 / 2 as concerns — the model typed them as discussion and question |
-| Items with a quote that matches the transcript | 10 / 10 (100 %) |
-| Verification statuses | 6 verified, 2 partially supported, **2 contradicted** |
-| Hallucination rate (unsupported or contradicted items + invented decisions, over items) | 0.20 — both items were caught and flagged, none reached the decisions or actions tables |
-| Minutes status | «مسودة تتطلب المراجعة» (4 possible omissions open) |
-| DOCX / PDF / evidence / transcript checks | all pass (after the fixes below) |
+| Measure | s1 formal meeting (MSA) | s2 Egyptian discussion |
+| --- | --- | --- |
+| Items extracted | 11 | 10 |
+| Items whose quotes match the transcript | 11 / 11 | 10 / 10 |
+| Verification statuses | 8 verified, 1 needs review, 1 unsupported, 1 contradicted | 5 verified, 4 partially supported, 1 contradicted |
+| **Invented approved decisions** | **0** | **0** (no decision was taken; none recorded) |
+| Approved decisions found | 1 / 2 — the budget (2,400,000) | — (expected none) |
+| Assigned tasks found | 2 / 2 (Sara's test plan, Khalid's cash-flow report with its date) | — (expected none) |
+| Owners | by name 1 / 2; right person 2 / 2 (Sara recorded as her speaker, named at review) | — |
+| Hedged volunteer ("ممكن أنا أكلمهم") as a suggested action, not a task | — | 1 / 1 |
+| Proposals | 1 / 1 | 1 / 2 ("نراجع التكلفة الأول" typed as discussion) |
+| Deferral | 1 / 1 | 1 / 1 |
+| Concerns | — | 0 / 2 (training and Arabic support typed as discussion and a question) |
+| Items found unsupported or contradicted | 2 (both wrong: see below) | 1 (wrong: "a rejected decision") |
+| **Of those, in the minutes** | **0** | **0** |
+| Numbers in the minutes never spoken | 0 | 0 |
+| Minutes status | «مسودة تتطلب المراجعة» | «مسودة تتطلب المراجعة» |
+| DOCX / PDF / evidence / transcript checks | all pass | all pass |
 
-The two contradicted items were a "contradiction" the model invented between a volunteer's
-timing and the deferral, and a deferral stated more strongly than the words; the independent audit
-(the same local model under the auditor prompt) and the rules both rejected them. The rules also
-flagged a number in an item that did not occur in its evidence. Three omissions reported by the
-audit and one by the rules (an uncited segment with approving words) were listed for the reviewer.
+What went wrong, and what caught it:
 
-### s1 — formal meeting with two decisions and two assignments
-
-See §5 (filled in when the run completes).
+* **s1's second decision was missed.** Whisper heard "الخامس عشر من يناير" as "…من ناير"; the
+  model read this as a change of date and reported a contradiction instead of the decision. The
+  rules (the date is not in the evidence) and the audit rejected the contradiction, so it was kept
+  out of the minutes — but the decision itself is absent until the reviewer adds it. The launch
+  appears, correctly, as the conditional proposal it was before the chair's "اتفقنا".
+* s1: an item restating Khalid's "حاضر" as a separate suggested action was found unsupported by
+  the audit and kept out (the task itself is in the table). Sara's task stays among the pending
+  matters marked "requires verification": the 4B auditor wrongly judged its deadline unsupported,
+  and the rule check reported the speaker attribution of that segment as uncertain.
+* s2: "لا يوجد قرار متخذ" typed as a *rejected decision* was contradicted by the audit and kept out.
+* Writing: no invented fact reached the documents, but the small model's wording is weak — a
+  statement left in dialect with a recognition error ("فكرة كويست…" in s2's topics), grammar
+  errors ("أُطلب", "تم نوقش"), a pronoun as the owner in s2's actions table ("أنا"; fixed after
+  this run, with a test), and one framing the item does not support ("أُبديت مخاوف من وجود
+  اعتراض…" for "no objection was raised", s1). These are wording, not facts, so the guards do
+  not catch them; they are why the minutes stay a draft until a person reviews them, and why the
+  engine for production is Claude, not a 4B model.
 
 ## 3. What the end-to-end runs found and changed
 
@@ -130,7 +152,3 @@ complete the review and approve (separation of duties is an organizational polic
 * Real recorded meetings (natural conversation, real overlap, real rooms): add them as described in
   `evaluation/README.md`; the synthetic set cannot stand in for them.
 * Cloud speech engines and pyannote (no keys or tokens).
-
-## 5. s1 extraction results
-
-Pending.

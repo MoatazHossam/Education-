@@ -332,3 +332,20 @@ def test_speaker_label_digits_are_not_numbers():
         item("I2", "proposal", "يرى المتحدث 1 أن 3 أنظمة قد توفر الوقت.", [("S0001", "النظام ده ممكن يوفر وقت")])
     )
     assert "numbers" in failed(res["I2"])  # a real number is still checked
+
+
+def test_pronoun_owner_is_the_speaker_or_no_one():
+    # Observed in s2: the actions table named the owner "أنا".
+    from mahdar.pipeline.analysis import _to_items
+
+    raw = {
+        "type": "action_suggested",
+        "statement": "ممكن أكلم الشركة.",
+        "speaker_ids": ["SPK_2"],
+        "owner_status": "explicit",
+        "evidence": [{"segment_id": "S0004", "quote": "ممكن أنا أكلمهم"}],
+    }
+    (it,) = _to_items([{**raw, "owner_name_as_spoken": "أنا"}], {"SPK_1", "SPK_2"})
+    assert it.owner.name_as_spoken is None and it.owner.speaker_id == "SPK_2"
+    (it,) = _to_items([{**raw, "owner_name_as_spoken": "إحنا"}], {"SPK_1", "SPK_2"})
+    assert it.owner.name_as_spoken is None and it.owner.speaker_id is None and it.owner.status == "unspecified"

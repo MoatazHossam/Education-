@@ -38,7 +38,7 @@ cd meeting-minutes
 cp .env.docker.example .env.docker
 ```
 
-Set `POSTGRES_PASSWORD`, `MAHDAR_SECRET_KEY` and `MAHDAR_DATA_KEY` in `.env.docker` (the commands are in
+Set `POSTGRES_PASSWORD`, `MAHDAR_APP_DB_PASSWORD`, `MAHDAR_SECRET_KEY` and `MAHDAR_DATA_KEY` in `.env.docker` (the commands are in
 the file). To let transcripts go to Claude, also set `ANTHROPIC_API_KEY` and
 `MAHDAR_ALLOWED_EXTERNAL_PROVIDERS=anthropic`, then allow it in the organization's privacy settings.
 

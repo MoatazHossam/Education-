@@ -183,6 +183,26 @@ def test_row_level_security_blocks_queries_without_the_right_organization(meetin
         assert c.execute(text("select count(*) from meetings")).scalar_one() >= 1
 
 
+def test_queries_filter_by_organization_even_when_rls_is_bypassed(meeting, orgs):
+    # The owner role bypasses RLS here (superuser in tests): the repository's own filters must hold.
+    from sqlalchemy import text
+
+    from mahdar.db import repo
+    from mahdar.db.core import owner_engine, runtime_role_bypasses_rls
+
+    assert not runtime_role_bypasses_rls()  # the API and worker role is subject to RLS
+    with owner_engine().begin() as c:
+        c.execute(text("select set_config('mahdar.org_id', :o, true)"), {"o": orgs["b"]})
+        assert repo.list_meetings(c) == []
+        assert repo.get_meeting(c, meeting) is None
+        assert repo.latest_artifact(c, meeting, "transcript") is None
+        assert repo.meeting_blobs(c, meeting) == []
+        assert repo.audit_entries(c, orgs["b"], meeting) == []
+    with owner_engine().begin() as c:
+        c.execute(text("select set_config('mahdar.org_id', :o, true)"), {"o": orgs["a"]})
+        assert repo.get_meeting(c, meeting) is not None
+
+
 def test_content_is_encrypted_at_rest(meeting, orgs):
     from sqlalchemy import text
 

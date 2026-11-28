@@ -55,6 +55,14 @@ def system_tx() -> Iterator[Connection]:
         yield conn
 
 
+def runtime_role_bypasses_rls() -> bool:
+    """True when the runtime connection's role is a superuser or has BYPASSRLS: row-level
+    security would not apply to it (production refuses to start)."""
+    with engine().connect() as conn:
+        row = conn.execute(text("select rolsuper or rolbypassrls from pg_roles where rolname = current_user")).first()
+    return bool(row and row[0])
+
+
 def _migrations() -> list[tuple[str, str]]:
     folder = resources.files("mahdar.db") / "migrations"
     files = sorted(p.name for p in folder.iterdir() if p.name.endswith(".sql"))

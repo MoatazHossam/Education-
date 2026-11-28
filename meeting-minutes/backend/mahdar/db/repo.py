@@ -13,6 +13,11 @@ from sqlalchemy import Connection, text
 
 from mahdar.storage import keyring
 
+# Every query on a content table names the organization of the transaction (org_tx) itself, in
+# addition to row-level security: isolation must not depend on the database role being configured
+# without BYPASSRLS.
+ORG = "nullif(current_setting('mahdar.org_id', true), '')::uuid"
+
 
 def _seal(obj: Any, aad: str) -> bytes:
     return keyring().seal(json.dumps(obj, ensure_ascii=False, default=str).encode(), aad)
@@ -171,7 +176,9 @@ def create_meeting(conn: Connection, org_id: str, user_id: str | None, meta: dic
 
 def get_meeting(conn: Connection, meeting_id: str) -> dict | None:
     row = (
-        conn.execute(text(f"select {MEETING_COLUMNS} from meetings where id = :id"), {"id": meeting_id})  # noqa: S608
+        conn.execute(
+            text(f"select {MEETING_COLUMNS} from meetings where id = :id and org_id = {ORG}"), {"id": meeting_id}
+        )
         .mappings()
         .first()
     )
@@ -179,7 +186,9 @@ def get_meeting(conn: Connection, meeting_id: str) -> dict | None:
 
 
 def list_meetings(conn: Connection) -> list[dict]:
-    rows = conn.execute(text(f"select {MEETING_COLUMNS} from meetings order by created_at desc limit 500")).mappings()  # noqa: S608
+    rows = conn.execute(
+        text(f"select {MEETING_COLUMNS} from meetings where org_id = {ORG} order by created_at desc limit 500")
+    ).mappings()
     return [_meeting(r) for r in rows]
 
 
@@ -205,18 +214,21 @@ def update_meeting(conn: Connection, meeting_id: str, **fields: Any) -> None:
     if not fields:
         return
     sets = ", ".join(f"{k} = :{k}" for k in fields)
-    conn.execute(text(f"update meetings set {sets}, updated_at = now() where id = :id"), {**fields, "id": meeting_id})  # noqa: S608
+    conn.execute(
+        text(f"update meetings set {sets}, updated_at = now() where id = :id and org_id = {ORG}"),
+        {**fields, "id": meeting_id},
+    )
 
 
 def update_meeting_meta(conn: Connection, meeting_id: str, meta: dict) -> None:
     conn.execute(
-        text("update meetings set meta_enc = :m, updated_at = now() where id = :id"),
+        text(f"update meetings set meta_enc = :m, updated_at = now() where id = :id and org_id = {ORG}"),
         {"m": _seal(meta, f"meeting:{meeting_id}:meta"), "id": meeting_id},
     )
 
 
 def delete_meeting(conn: Connection, meeting_id: str) -> None:
-    conn.execute(text("delete from meetings where id = :id"), {"id": meeting_id})
+    conn.execute(text(f"delete from meetings where id = :id and org_id = {ORG}"), {"id": meeting_id})
 
 
 # --- artifacts ----------------------------------------------------------------------------------
@@ -233,7 +245,9 @@ def save_artifact(
 ) -> int:
     conn.execute(text("select pg_advisory_xact_lock(hashtext(:k))"), {"k": f"{meeting_id}:{kind}"})
     version = conn.execute(
-        text("select coalesce(max(version), 0) + 1 from artifacts where meeting_id = :m and kind = :k"),
+        text(
+            f"select coalesce(max(version), 0) + 1 from artifacts where meeting_id = :m and kind = :k and org_id = {ORG}"
+        ),
         {"m": meeting_id, "k": kind},
     ).scalar_one()
     aid = new_uuid()
@@ -263,7 +277,7 @@ def latest_artifact(conn: Connection, meeting_id: str, kind: str) -> tuple[int, 
     row = (
         conn.execute(
             text(
-                "select id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null "
+                f"select id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null and org_id = {ORG} "
                 "order by version desc limit 1"
             ),
             {"m": meeting_id, "k": kind},
@@ -280,7 +294,7 @@ def artifact_version(conn: Connection, meeting_id: str, kind: str, version: int)
     row = (
         conn.execute(
             text(
-                "select id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null"
+                f"select id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null and org_id = {ORG}"
             ),
             {"m": meeting_id, "k": kind, "v": version},
         )
@@ -294,7 +308,7 @@ def list_artifact_versions(conn: Connection, meeting_id: str) -> list[dict]:
     rows = conn.execute(
         text(
             "select kind, version, created_at, created_by_user, created_by_agent, note, sha256, purged_at is not null as purged "
-            "from artifacts where meeting_id = :m order by kind, version"
+            f"from artifacts where meeting_id = :m and org_id = {ORG} order by kind, version"
         ),
         {"m": meeting_id},
     ).mappings()
@@ -306,7 +320,7 @@ def purge_artifacts(conn: Connection, meeting_id: str, kinds: list[str]) -> int:
     res = conn.execute(
         text(
             "update artifacts set content_enc = '\\x'::bytea, purged_at = now() "
-            "where meeting_id = :m and kind = any(:k) and purged_at is null"
+            f"where meeting_id = :m and kind = any(:k) and purged_at is null and org_id = {ORG}"
         ),
         {"m": meeting_id, "k": kinds},
     )
@@ -350,7 +364,7 @@ def latest_blob(conn: Connection, meeting_id: str, kind: str) -> dict | None:
     row = (
         conn.execute(
             text(
-                "select * from blobs where meeting_id = :m and kind = :k and purged_at is null order by created_at desc limit 1"
+                f"select * from blobs where meeting_id = :m and kind = :k and purged_at is null and org_id = {ORG} order by created_at desc limit 1"
             ),
             {"m": meeting_id, "k": kind},
         )
@@ -366,7 +380,9 @@ def latest_blob(conn: Connection, meeting_id: str, kind: str) -> dict | None:
 
 def get_blob(conn: Connection, blob_id: str) -> dict | None:
     row = (
-        conn.execute(text("select * from blobs where id = :id and purged_at is null"), {"id": blob_id})
+        conn.execute(
+            text(f"select * from blobs where id = :id and purged_at is null and org_id = {ORG}"), {"id": blob_id}
+        )
         .mappings()
         .first()
     )
@@ -378,12 +394,14 @@ def get_blob(conn: Connection, blob_id: str) -> dict | None:
 
 
 def meeting_blobs(conn: Connection, meeting_id: str) -> list[dict]:
-    rows = conn.execute(text("select * from blobs where meeting_id = :m"), {"m": meeting_id}).mappings()
+    rows = conn.execute(
+        text(f"select * from blobs where meeting_id = :m and org_id = {ORG}"), {"m": meeting_id}
+    ).mappings()
     return [dict(r) for r in rows]
 
 
 def mark_blob_purged(conn: Connection, blob_id: str) -> None:
-    conn.execute(text("update blobs set purged_at = now() where id = :id"), {"id": blob_id})
+    conn.execute(text(f"update blobs set purged_at = now() where id = :id and org_id = {ORG}"), {"id": blob_id})
 
 
 # --- audit and processing register ------------------------------------------------------------
@@ -421,10 +439,11 @@ def audit_entries(conn: Connection, org_id: str, meeting_id: str | None = None, 
     q = (
         "select a.id, a.at, a.actor_user, u.name as actor_name, a.actor_kind, a.action, a.target_type, a.target_id, "
         "a.meeting_id, a.details_enc from audit_log a left join users u on u.id = a.actor_user "
+        f"where a.org_id = {ORG} "
     )
     params: dict[str, Any] = {"lim": limit}
     if meeting_id:
-        q += "where a.meeting_id = :m "
+        q += "and a.meeting_id = :m "
         params["m"] = meeting_id
     q += "order by a.at desc, a.id desc limit :lim"
     out = []
@@ -468,7 +487,8 @@ def record_processing(
 def processing_records(conn: Connection, meeting_id: str) -> list[dict]:
     rows = conn.execute(
         text(
-            "select at, stage, provider, model, data_kind, external, detail from processing_records where meeting_id = :m order by at"
+            "select at, stage, provider, model, data_kind, external, detail from processing_records "
+            f"where meeting_id = :m and org_id = {ORG} order by at"
         ),
         {"m": meeting_id},
     ).mappings()
@@ -477,7 +497,9 @@ def processing_records(conn: Connection, meeting_id: str) -> list[dict]:
 
 # --- glossary -----------------------------------------------------------------------------------
 def list_glossary(conn: Connection) -> list[dict]:
-    rows = conn.execute(text("select id, data_enc, updated_at from glossary_terms order by created_at")).mappings()
+    rows = conn.execute(
+        text(f"select id, data_enc, updated_at from glossary_terms where org_id = {ORG} order by created_at")
+    ).mappings()
     out = []
     for r in rows:
         d = _open(r["data_enc"], f"glossary:{r['id']}") or {}
@@ -490,7 +512,8 @@ def upsert_glossary(conn: Connection, org_id: str, data: dict, term_id: str | No
     sealed = _seal(data, f"glossary:{tid}")
     if term_id:
         res = conn.execute(
-            text("update glossary_terms set data_enc = :d, updated_at = now() where id = :id"), {"d": sealed, "id": tid}
+            text(f"update glossary_terms set data_enc = :d, updated_at = now() where id = :id and org_id = {ORG}"),
+            {"d": sealed, "id": tid},
         )
         if not res.rowcount:
             raise KeyError(term_id)
@@ -503,4 +526,6 @@ def upsert_glossary(conn: Connection, org_id: str, data: dict, term_id: str | No
 
 
 def delete_glossary(conn: Connection, term_id: str) -> bool:
-    return bool(conn.execute(text("delete from glossary_terms where id = :id"), {"id": term_id}).rowcount)
+    return bool(
+        conn.execute(text(f"delete from glossary_terms where id = :id and org_id = {ORG}"), {"id": term_id}).rowcount
+    )

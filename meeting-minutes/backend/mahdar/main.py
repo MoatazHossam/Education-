@@ -66,6 +66,13 @@ def create_app() -> FastAPI:
     setup_logging()
     s = get_settings()
     problems = check_production(s)
+    if s.env == "production":
+        from mahdar.db.core import runtime_role_bypasses_rls
+
+        if runtime_role_bypasses_rls():
+            problems.append(
+                "the database role bypasses row-level security (superuser or BYPASSRLS): set MAHDAR_APP_DATABASE_URL to the mahdar_app role"
+            )
     if problems:
         raise RuntimeError("refusing to start: " + "; ".join(problems))
     app = FastAPI(

@@ -30,6 +30,13 @@ def _handle(signum, _frame) -> None:
 def main() -> None:
     setup_logging()
     s = get_settings()
+    if s.env == "production":
+        from mahdar.db.core import runtime_role_bypasses_rls
+
+        if runtime_role_bypasses_rls():
+            raise SystemExit(
+                "refusing to start: the database role bypasses row-level security (set MAHDAR_APP_DATABASE_URL)"
+            )
     signal.signal(signal.SIGTERM, _handle)
     signal.signal(signal.SIGINT, _handle)
     wid = queue.worker_id()

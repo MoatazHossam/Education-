@@ -18,11 +18,23 @@ x-required:
   - ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (openssl rand -hex 24)}
   - ${MAHDAR_SECRET_KEY:?set MAHDAR_SECRET_KEY (openssl rand -base64 48)}
   - ${MAHDAR_DATA_KEY:?set MAHDAR_DATA_KEY (openssl rand -base64 32)}
+  - ${MAHDAR_APP_DB_PASSWORD:?set MAHDAR_APP_DB_PASSWORD (openssl rand -hex 24)}
 
 x-env-base: &env-base
   MAHDAR_ENV: ${MAHDAR_ENV:-development}
   MAHDAR_LOG_LEVEL: ${MAHDAR_LOG_LEVEL:-info}
+
+# migrate: the schema owner, which also creates/updates the runtime role mahdar_app.
+x-env-migrate: &env-migrate
+  <<: *env-base
   MAHDAR_DATABASE_URL: ${MAHDAR_DATABASE_URL:-postgresql+psycopg://mahdar:${POSTGRES_PASSWORD}@postgres:5432/mahdar}
+  MAHDAR_APP_DB_PASSWORD: ${MAHDAR_APP_DB_PASSWORD}
+
+# api and worker: the runtime role (no superuser, no BYPASSRLS), so row-level security applies to
+# every query; they never receive the owner's password. Production refuses to start otherwise.
+x-env-runtime-db: &env-runtime-db
+  MAHDAR_DATABASE_URL: ${MAHDAR_APP_DATABASE_URL:-postgresql+psycopg://mahdar_app:${MAHDAR_APP_DB_PASSWORD}@postgres:5432/mahdar}
+  MAHDAR_APP_DATABASE_URL: ${MAHDAR_APP_DATABASE_URL:-postgresql+psycopg://mahdar_app:${MAHDAR_APP_DB_PASSWORD}@postgres:5432/mahdar}
 
 # The API and the worker. Each container gets only the settings it needs: the API holds the session
 # key and the storage key (it streams audio segments and documents to reviewers) but no AI provider
@@ -65,7 +77,7 @@ services:
     image: mahdar:${MAHDAR_IMAGE_TAG:-local}
     command: ["python3", "-m", "mahdar.cli", "migrate"]
     logging: *logging
-    environment: *env-base
+    environment: *env-migrate
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,7 +89,7 @@ services:
     restart: unless-stopped
     logging: *logging
     environment:
-      <<: [*env-base, *env-storage]
+      <<: [*env-base, *env-runtime-db, *env-storage]
       MAHDAR_SECRET_KEY: ${MAHDAR_SECRET_KEY}
       MAHDAR_PUBLIC_URL: ${MAHDAR_PUBLIC_URL:-http://localhost:8080}
       MAHDAR_MAX_UPLOAD_MB: ${MAHDAR_MAX_UPLOAD_MB:-}
@@ -98,7 +110,7 @@ services:
     logging: *logging
     # Transcription is CPU- and memory-heavy: one job at a time per worker by default.
     environment:
-      <<: [*env-base, *env-storage]
+      <<: [*env-base, *env-runtime-db, *env-storage]
       MAHDAR_WORKER_CONCURRENCY: ${MAHDAR_WORKER_CONCURRENCY:-1}
       # Speech recognition: faster_whisper (local, nothing leaves the server), openai, deepgram, azure.
       MAHDAR_ASR_PROVIDER: ${MAHDAR_ASR_PROVIDER:-faster_whisper}

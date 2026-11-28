@@ -31,11 +31,14 @@ the ceiling.
 
 ## 3. Database roles
 
-The Compose stack runs migrations as the database owner. For row-level security to protect every
-query, the API and the worker must connect as a role without `BYPASSRLS`: set
-`MAHDAR_APP_DB_PASSWORD` for the `migrate` service (it creates/updates the `mahdar_app` role) and
-`MAHDAR_APP_DATABASE_URL=postgresql+psycopg://mahdar_app:<password>@postgres:5432/mahdar` for `api`
-and `worker`. The tests run this way.
+Two roles. The schema owner (`POSTGRES_PASSWORD`) is used only by the `migrate` service, which
+also creates or updates `mahdar_app` with `MAHDAR_APP_DB_PASSWORD`. The API and the worker connect
+as `mahdar_app` — no superuser, no `BYPASSRLS` — so row-level security applies to every query, and
+they never receive the owner's password. Every repository query also filters by the transaction's
+organization itself, so isolation holds even if a role is misconfigured; in production the API and
+the worker refuse to start when their role could bypass row-level security. With a managed
+database, create the two roles and set `MAHDAR_DATABASE_URL` (owner, for `migrate`) and
+`MAHDAR_APP_DATABASE_URL` (runtime).
 
 ## 4. TLS
 

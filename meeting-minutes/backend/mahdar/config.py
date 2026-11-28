@@ -26,7 +26,8 @@ EXTERNAL_PROVIDERS = {"anthropic", "openai", "deepgram", "azure", "openai_compat
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="MAHDAR_", extra="ignore", case_sensitive=False)
+    # Empty variables count as unset: Compose passes "${VAR:-}" as "" for every optional setting.
+    model_config = SettingsConfigDict(env_prefix="MAHDAR_", extra="ignore", case_sensitive=False, env_ignore_empty=True)
 
     env: Literal["development", "production", "test"] = "development"
     log_level: str = "info"

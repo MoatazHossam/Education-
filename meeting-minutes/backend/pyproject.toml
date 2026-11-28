@@ -71,6 +71,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B", "RUF012"]
+# SQL built with f-strings from module constants only (the organization filter, column lists,
+# whitelisted field and table names); every value is a bound parameter.
+"mahdar/db/repo.py" = ["S608"]
+"mahdar/security/rotate.py" = ["S608"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

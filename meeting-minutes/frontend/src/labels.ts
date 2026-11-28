@@ -67,7 +67,7 @@ export const DOCUMENTS: [string, string][] = [
 ];
 
 export const ITEM_GROUPS: { key: string; title: string; types: string[] }[] = [
-  { key: 'decisions', title: 'القرارات', types: ['decision_approved', 'decision_rejected', 'agreement_tentative'] },
+  { key: 'decisions', title: 'القرارات والتوافقات المبدئية', types: ['decision_approved', 'decision_rejected', 'agreement_tentative'] },
   { key: 'actions', title: 'التكليفات والإجراءات', types: ['action_assigned', 'action_suggested'] },
   { key: 'proposals', title: 'المقترحات والتوصيات', types: ['proposal', 'recommendation'] },
   { key: 'risks', title: 'المخاطر والتحفظات', types: ['risk', 'blocker', 'dependency', 'concern', 'objection'] },

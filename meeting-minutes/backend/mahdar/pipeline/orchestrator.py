@@ -302,6 +302,10 @@ class Run:
             state["chunks"][key] = {"start": chunk.start, "end": chunk.end, "segments": [_raw_to_dict(s) for s in segs]}
             self.save("asr_chunks", state, "transcription", note=f"chunk {chunk.index + 1}/{len(q.chunks)}")
         self.record("transcribe", provider.name, provider.model, "audio", decision.external, {"chunks": len(q.chunks)})
+        if provider.name == "faster_whisper":
+            from mahdar.pipeline.asr.faster_whisper_provider import release
+
+            release()
         merged = merge_chunks(
             [
                 (v["start"], v["end"], [_raw_from_dict(s) for s in v["segments"]])

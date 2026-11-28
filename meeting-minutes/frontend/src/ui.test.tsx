@@ -60,6 +60,6 @@ describe('items review', () => {
     expect(screen.getByText('يتطلب المراجعة')).toBeTruthy();
     expect(screen.getByText(/لا يتضمن الدليل عبارة اعتماد/)).toBeTruthy();
     expect(screen.getByText(/اقتباس مطابق/)).toBeTruthy();
-    expect(screen.queryByText(/^القرارات \(/)).toBeNull();
+    expect(screen.queryByText(/^القرارات والتوافقات المبدئية \(/)).toBeNull();
   });
 });

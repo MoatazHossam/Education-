@@ -7,6 +7,8 @@
   (`MAHDAR_WHISPER_DEVICE=cuda`, `MAHDAR_WHISPER_COMPUTE_TYPE=float16`, image with CUDA 12/cuDNN 9) is
   much faster for regular use.
 * Disk: the models (~3.5 GB), recordings (~1 MB per minute of MP3; the normalised copy ~2 MB/min), documents.
+* Memory: the worker loads Whisper for the transcription stage and releases it afterwards; set
+  `MAHDAR_WHISPER_KEEP_LOADED=true` on a dedicated speech worker to keep it loaded between jobs.
 
 ## 2. Configuration
 

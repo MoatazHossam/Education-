@@ -31,6 +31,18 @@ def _model(name: str, device: str, compute_type: str):
     return WhisperModel(name, device=device, compute_type=compute_type, cpu_threads=threads)
 
 
+def release() -> None:
+    """Frees the loaded models (several GB for large-v3). Called after the transcription stage
+    unless MAHDAR_WHISPER_KEEP_LOADED=true: the later stages, possibly a local language model on
+    the same machine, then have that memory."""
+    import gc
+
+    if os.environ.get("MAHDAR_WHISPER_KEEP_LOADED", "").lower() in ("1", "true", "yes"):
+        return
+    _model.cache_clear()
+    gc.collect()
+
+
 class FasterWhisperProvider:
     name = "faster_whisper"
     diarizes = False

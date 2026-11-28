@@ -16,6 +16,8 @@ All settings are environment variables (`MAHDAR_*`), listed with comments in `.e
 and defined in `backend/mahdar/config.py`. In production (`MAHDAR_ENV=production`) the API, the
 worker and `mahdar.cli check-config` refuse to start with a missing or short `MAHDAR_SECRET_KEY`,
 a missing `MAHDAR_DATA_KEY`, a non-HTTPS `MAHDAR_PUBLIC_URL` or an unknown external provider.
+The interactive API reference (`/docs`) is disabled in production; set `MAHDAR_API_DOCS=true` to
+publish it.
 
 Choosing engines:
 
@@ -66,7 +68,8 @@ with the same key.
 Each organization sets how long recordings, transcripts and documents are kept (Settings). The
 worker applies it every `MAHDAR_RETENTION_SWEEP_HOURS` (6 by default) or on demand with
 `python -m mahdar.cli purge-expired`. Deleting a meeting removes its files and content; its audit
-entries remain.
+entries remain (who did what, and when), but their encrypted before/after details are removed with
+the content. A meeting cannot be deleted while it is being processed.
 
 ## 8. Monitoring
 

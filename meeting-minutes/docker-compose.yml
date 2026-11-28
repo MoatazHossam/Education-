@@ -23,6 +23,7 @@ x-required:
 x-env-base: &env-base
   MAHDAR_ENV: ${MAHDAR_ENV:-development}
   MAHDAR_LOG_LEVEL: ${MAHDAR_LOG_LEVEL:-info}
+  MAHDAR_API_DOCS: ${MAHDAR_API_DOCS:-}
 
 # migrate: the schema owner, which also creates/updates the runtime role mahdar_app.
 x-env-migrate: &env-migrate

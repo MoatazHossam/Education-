@@ -298,7 +298,10 @@ Defence in depth; each layer assumes the previous one can fail.
 6. **Minutes and export**: an on-screen preview; edit a paragraph's wording (kept across
    regenerations, still checked); regenerate, re-verify after transcript corrections, or
    re-analyse; complete the review; approve (approver role); download each output; preview PDF
-   pages as images.
+   pages as images. Any later change — to the transcript, speakers, items, issues, wording or
+   meeting data, or a regeneration — withdraws the review and the approval (audited), so an
+   approved document can never carry content its approver did not see; approval recomputes the
+   quality gates from the current data rather than trusting stored flags.
 7. **Audit log** per meeting; **settings**: glossary, privacy policy, retention, quality gates,
    document branding, users and roles.
 
@@ -390,14 +393,25 @@ recorded meetings, transcribed and annotated by people, before trusting the numb
 
 * Encryption in transit: HTTPS through Caddy (`--profile tls`), HSTS, Secure cookies; the API
   binds to localhost by default.
-* Encryption at rest: AES-256-GCM with key ids and associated data per row/blob; key rotation
-  (`rotate-data-key`). Database volume encryption is recommended in addition.
+* Encryption at rest: AES-256-GCM with key ids; the associated data binds each value to its
+  organization, meeting, kind and version, so a ciphertext copied to another row does not decrypt.
+  There is no silent fallback to a previous key. Key rotation (`rotate-data-key`). Database volume
+  encryption is recommended in addition.
 * Isolation: PostgreSQL row-level security (FORCE) on every content table; the API and worker
   connect as `mahdar_app` (no BYPASSRLS); tested.
-* Access: roles (viewer, editor, approver, admin); Argon2id passwords; lockout after 5 failures;
-  sessions revocable; CSRF header; strict CSP; no CORS.
-* Retention per organization and kind of data; deletion of a meeting removes its files and
-  content; the audit trail (without content) stays.
+* Access: roles (viewer, editor, approver, admin); Argon2id passwords; lockout after 5 failures
+  (counted atomically); a password reset revokes the user's sessions; uniform login errors; CSRF
+  header; strict CSP; no CORS; the API reference is off in production unless `MAHDAR_API_DOCS=true`.
+* Authorization of external processing is re-read from the database before every external call
+  and every audio chunk, so a withdrawn permission or a raised classification stops a running job;
+  lowering a classification requires an approver.
+* Untrusted input: uploads need a session, the CSRF header and a declared length before the body
+  is read; FFprobe must report an allowed container, and FFmpeg/FFprobe may read local files only
+  (`-protocol_whitelist`), so playlists or concat files cannot reach other files or the network;
+  the PDF renderer fetches `data:` URLs only.
+* Retention per organization and kind of data, over every meeting; deletion of a meeting removes
+  its files and content (refused while it is being processed); the audit trail stays, and its
+  encrypted before/after details are removed together with the content they quote.
 * Logs: JSON, identifiers and counts only; a redaction filter masks e-mail addresses, keys and
   Arabic text.
 * Audit trail of every human action with before/after values (encrypted), and of every agent run.
@@ -408,7 +422,7 @@ recorded meetings, transcribed and annotated by people, before trusting the numb
 
 Verified in this repository's environment (details in `docs/EVALUATION.md`):
 * faster-whisper large-v3 and small, sherpa-onnx diarization, the alignment and the whole pipeline
-  on the evaluation recordings; 72 backend tests (anti-fabrication rules, documents, API with
+  on the evaluation recordings; 84 backend tests (anti-fabrication rules, documents, API with
   row-level security on a real PostgreSQL, isolation with RLS bypassed) + 4 model tests on real
   recordings + 4 interface tests; ruff, ESLint, TypeScript, pip-audit and npm audit clean.
 * The OpenAI-compatible local path end to end with a small local model (Qwen3-4B on CPU).

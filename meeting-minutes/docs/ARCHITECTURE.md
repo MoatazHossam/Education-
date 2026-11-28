@@ -433,9 +433,10 @@ recorded meetings, transcribed and annotated by people, before trusting the numb
 
 Verified in this repository's environment (details in `docs/EVALUATION.md`):
 * faster-whisper large-v3 and small, sherpa-onnx diarization, the alignment and the whole pipeline
-  on the evaluation recordings; 84 backend tests (anti-fabrication rules, documents, API with
-  row-level security on a real PostgreSQL, isolation with RLS bypassed) + 4 model tests on real
-  recordings + 4 interface tests; ruff, ESLint, TypeScript, pip-audit and npm audit clean.
+  on the evaluation recordings; 97 backend tests (anti-fabrication rules, documents, API with
+  row-level security on a real PostgreSQL, isolation with RLS bypassed, no evaluation sentence in
+  any prompt) + 4 model tests on real recordings + 5 interface tests; ruff, ESLint, TypeScript,
+  pip-audit and npm audit clean.
 * The OpenAI-compatible local path end to end with a small local model (Qwen3-4B on CPU).
 * The Docker image (build, self-check of fonts and rendering, production configuration guard,
   unprivileged user) and the Compose stack: migrations create `mahdar_app`, the API and worker run

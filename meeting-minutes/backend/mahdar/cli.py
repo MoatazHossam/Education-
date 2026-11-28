@@ -2,6 +2,7 @@
 
 migrate            apply database migrations (and create/update the mahdar_app role if MAHDAR_APP_DB_PASSWORD is set)
 create-admin       create an organization and its first administrator
+org-count          print how many organizations exist (the Windows start script asks for the first administrator when 0)
 create-user        add a user to an organization
 check-config       refuse a production configuration with missing or weak secrets (exit 1)
 selfcheck          FFmpeg, Arabic fonts, DOCX and PDF rendering, interface files (exit 1 on a problem)
@@ -68,6 +69,16 @@ def _password(arg: str | None) -> str:
 def cmd_create_admin(a) -> int:
     org_id, uid = _create_org_and_admin(a.org, a.email, a.name or a.email.split("@")[0], _password(a.password))
     print(f"organization {org_id}, administrator {uid}")
+    return 0
+
+
+def cmd_org_count(_a) -> int:
+    from sqlalchemy import text
+
+    from mahdar.db.core import system_tx
+
+    with system_tx() as c:  # organizations has no row-level security: the runtime role may count them
+        print(c.execute(text("select count(*) from organizations")).scalar_one())
     return 0
 
 
@@ -431,6 +442,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--name")
     p.add_argument("--password", help="or MAHDAR_ADMIN_PASSWORD, or prompted")
     p.set_defaults(fn=cmd_create_admin)
+    sub.add_parser("org-count").set_defaults(fn=cmd_org_count)
     p = sub.add_parser("create-user")
     p.add_argument("--org-id", required=True)
     p.add_argument("--email", required=True)

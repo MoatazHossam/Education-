@@ -31,7 +31,25 @@ words and the second of the recording it comes from. Nothing is approved automat
 A review interface (Arabic, RTL) lets people listen to every piece of evidence, correct the transcript
 and speaker names, accept, correct or reject each item, edit the wording, regenerate, approve and export.
 
-## Quick start (Docker)
+## Quick start on Windows
+
+1. Install and open [Docker Desktop](https://www.docker.com/products/docker-desktop/), and wait until
+   it shows that the engine is running.
+2. Get the project onto the computer (clone it, or download it as a ZIP from GitHub and extract it).
+3. In the `meeting-minutes` folder, double-click **`start.bat`**. If Windows warns about a downloaded
+   file, choose *More info*, then *Run anyway*.
+4. Answer its questions: a Claude API key (optional; without one, recordings are transcribed and the
+   speakers separated, but no minutes are written), your organization's name, your e-mail and a
+   password of at least 12 characters.
+
+The first time, it creates `.env.docker` with new random secrets (on that computer only, readable by
+that user only; keep a private copy, since `MAHDAR_DATA_KEY` in it is needed to read saved meetings),
+builds and starts everything (10–20 minutes), creates the administrator and opens
+http://localhost:8080. Then, in Mahdar's settings, tick `anthropic` under the privacy section's
+transcripts so that Claude may write the minutes. `stop.bat` stops Mahdar; `start.bat` starts it
+again and keeps every setting.
+
+## Quick start (Docker, any system)
 
 ```bash
 cd meeting-minutes

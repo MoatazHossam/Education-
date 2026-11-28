@@ -58,6 +58,10 @@ function ItemCard({ meetingId, item, data, names, reload, goSegment }: {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const v = item.verification;
+  // An owner recorded only as a speaker (e.g. "I'll prepare it") is that speaker; the name comes from the Speakers tab.
+  const ownerText = item.review?.edits?.owner ?? item.owner.name_as_spoken
+    ?? (item.owner.speaker_id ? `${names[item.owner.speaker_id] ?? item.owner.speaker_id} (القائل نفسه)` : null);
+  const keptOut = (v?.status === 'unsupported' || v?.status === 'contradicted') && item.review?.decision !== 'accepted';
   const failed = v?.checks.filter((c) => !c.passed) ?? [];
   const worst = failed.some((c) => c.severity === 'critical') ? 'crit' : failed.some((c) => c.severity === 'major') ? 'major' : 'okk';
   const reclassified = v && v.final_type !== v.original_type;
@@ -98,9 +102,10 @@ function ItemCard({ meetingId, item, data, names, reload, goSegment }: {
       {!editing ? (
         <>
           <p className="statement">{item.review?.edits?.statement ?? item.statement}</p>
+          {keptOut && <div className="alert warn small">لا يُدرج هذا البند في المحضر لأن التحقق لم يجد ما يدعمه في التسجيل؛ يُدرج إن قبله مراجع بعد الاستماع إلى الدليل.</div>}
           <div className="row small muted">
             {item.speaker_ids.length > 0 && <span>القائل: {item.speaker_ids.map((s) => names[s] ?? s).join('، ')}</span>}
-            {(item.owner.name_as_spoken || item.review?.edits?.owner) && <span>المسؤول: {item.review?.edits?.owner ?? item.owner.name_as_spoken}</span>}
+            {ownerText && <span>المسؤول: {ownerText}</span>}
             {(item.due.text_as_spoken || item.review?.edits?.due) && <span>الموعد: {item.review?.edits?.due ?? item.due.text_as_spoken}{item.due.date_iso ? ` (${item.due.date_iso})` : ''}</span>}
           </div>
           {item.qualifications.length > 0 && <p className="small">الشروط والتحفظات: {item.qualifications.join('؛ ')}</p>}

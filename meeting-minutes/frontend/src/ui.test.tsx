@@ -63,3 +63,20 @@ describe('items review', () => {
     expect(screen.queryByText(/^القرارات والتوافقات المبدئية \(/)).toBeNull();
   });
 });
+
+describe('items kept out of the minutes', () => {
+  it('says an unsupported item is not in the minutes, and shows a speaker owner', () => {
+    const it0 = items.items[0]!;
+    const data: ItemsData = {
+      ...items,
+      items: [{
+        ...it0, id: 'I002', type: 'action_assigned', type_ar: 'تكليف', final_type_ar: null, statement: 'سأتولى إعداد الخطة.',
+        owner: { name_as_spoken: null, speaker_id: 'SPK_1', status: 'explicit' },
+        verification: { ...it0.verification!, item_id: 'I002', status: 'unsupported', original_type: 'action_assigned', final_type: 'action_assigned', checks: [] },
+      }],
+    };
+    render(<ItemsTab meetingId="m1" data={data} transcript={transcript} reload={() => {}} goSegment={() => {}} />);
+    expect(screen.getByText(/لا يُدرج هذا البند في المحضر/)).toBeTruthy();
+    expect(screen.getByText(/المسؤول: المتحدث 1 \(القائل نفسه\)/)).toBeTruthy();
+  });
+});

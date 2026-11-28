@@ -1,0 +1,43 @@
+{
+  "id": "s4_financial",
+  "title": "مراجعة ميزانية التسويق للربع الأول",
+  "description": "Financial discussion in Egyptian Arabic, two speakers: a counter-proposal becomes an approved decision with a specific amount and a review date; a 20% request and a TV-advertising proposal are not approved (one superseded, one explicitly rejected); one assignment with an explicit date. Delivered as M4A.",
+  "variety": "Egyptian",
+  "voices": {"A": "v3", "B": "v2"},
+  "speaker_names": {"A": "نادية", "B": "سامح"},
+  "meeting": {"title": "مراجعة ميزانية التسويق للربع الأول", "date": "2026-12-10", "expected_speakers": 2},
+  "glossary": [
+    {"term": "نادية", "category": "person", "note": "المديرة المالية"},
+    {"term": "سامح", "category": "person", "note": "مدير المبيعات"}
+  ],
+  "format": "m4a",
+  "turns": [
+    {"speaker": "A", "text": "عندنا النهارده مراجعة ميزانية التسويق للربع الأول."},
+    {"speaker": "B", "text": "أنا طالب زيادة الميزانية بنسبة عشرين في المية، يعني من خمسمية ألف لستمية ألف جنيه."},
+    {"speaker": "A", "text": "عشرين في المية كتير. أنا أقدر أوافق على عشرة في المية بس، يعني خمسمية وخمسين ألف."},
+    {"speaker": "B", "text": "طيب، عشرة في المية مقبولة مبدئياً، بس محتاجين نراجعها بعد نتايج الربع الأول."},
+    {"speaker": "A", "text": "تمام، يبقى اتفقنا: ميزانية التسويق للربع الأول خمسمية وخمسين ألف جنيه، ونراجعها في أبريل."},
+    {"speaker": "B", "text": "وبالنسبة لمقترح الإعلانات على التلفزيون؟"},
+    {"speaker": "A", "text": "لأ، ده مرفوض حالياً، التكلفة عالية جداً."},
+    {"speaker": "B", "text": "ماشي. أنا هبعت لحضرتك خطة التوزيع التفصيلية قبل يوم عشرة يناير."}
+  ],
+  "expected": {
+    "decisions_approved": [
+      {"key": "D1", "keywords": ["ميزانيه"], "numbers": [550000]}
+    ],
+    "decisions_rejected": [
+      {"key": "R1", "keywords": ["التلفزيون"]}
+    ],
+    "actions_assigned": [
+      {"key": "A1", "keywords": ["خطه التوزيع"], "owner": "سامح", "dates": [[10, 1]]}
+    ],
+    "actions_suggested": [],
+    "proposals": [
+      {"key": "P1", "keywords": ["20"], "why": "the 20% request was not approved"}
+    ],
+    "not_decisions": [
+      {"key": "N1", "keywords": ["600000"], "why": "600,000 was requested, not approved"}
+    ],
+    "numbers": [20, 500000, 600000, 10, 550000]
+  }
+}

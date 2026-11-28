@@ -1,0 +1,2 @@
+[console_scripts]
+mahdar = mahdar.cli:main

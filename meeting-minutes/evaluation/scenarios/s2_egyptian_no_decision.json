@@ -1,0 +1,45 @@
+{
+  "id": "s2_egyptian_no_decision",
+  "title": "مناقشة نظام إدارة الطلبات الجديد",
+  "description": "Egyptian Arabic discussion with proposals, concerns and a volunteered (not assigned) task; no decision is taken and nobody is named. The minutes must contain no approved decision.",
+  "variety": "Egyptian",
+  "voices": {"A": "v3", "B": "v1", "C": "v4"},
+  "speaker_names": {"A": null, "B": null, "C": null},
+  "meeting": {"title": "مناقشة نظام إدارة الطلبات الجديد", "date": "2026-12-03", "expected_speakers": 3},
+  "glossary": [],
+  "turns": [
+    {"speaker": "A", "text": "صباح الخير يا جماعة. النهارده عايزين نتكلم عن نظام إدارة الطلبات الجديد اللي عرضته علينا الشركة."},
+    {"speaker": "B", "text": "بصراحة إحنا شايفين إن النظام ده ممكن يوفر وقت، بس محتاجين نراجع التكلفة الأول."},
+    {"speaker": "C", "text": "أنا متفق إنه هيوفر وقت، بس عندي قلق من موضوع تدريب الموظفين، الناس متعودة على الطريقة القديمة."},
+    {"speaker": "A", "text": "طب إيه رأيكم نعمل تجربة على قسم واحد الأول؟"},
+    {"speaker": "B", "text": "فكرة كويسة، بس برضه لازم نعرف السعر الأول قبل ما نوافق على أي حاجة."},
+    {"speaker": "C", "text": "وكمان مش عارفين هل النظام بيدعم اللغة العربية بشكل كامل ولا لأ."},
+    {"speaker": "A", "text": "تمام، يعني لسه محتاجين معلومات أكتر. مين يقدر يكلم الشركة ويجيب عرض سعر؟"},
+    {"speaker": "B", "text": "ممكن أنا أكلمهم، بس مش هقدر قبل الأسبوع الجاي عشان عندي سفر."},
+    {"speaker": "A", "text": "ماشي، خلينا نرجع للموضوع ده في الاجتماع الجاي لما يكون عندنا عرض السعر."},
+    {"speaker": "C", "text": "تمام، ومحدش يقرر حاجة لحد ما نشوف الأرقام."}
+  ],
+  "expected": {
+    "decisions_approved": [],
+    "actions_assigned": [],
+    "actions_suggested": [
+      {"key": "S1", "keywords": ["عرض سعر"], "owner_speaker": "B", "due_relative": true}
+    ],
+    "proposals": [
+      {"key": "P1", "keywords": ["تجربه"]},
+      {"key": "P2", "keywords": ["التكلفه"]}
+    ],
+    "concerns": [
+      {"key": "C1", "keywords": ["تدريب"]},
+      {"key": "C2", "keywords": ["العربيه"]}
+    ],
+    "deferred": [
+      {"key": "F1", "keywords": ["الاجتماع"]}
+    ],
+    "rejected": [],
+    "not_decisions": [
+      {"key": "N1", "keywords": ["النظام"], "why": "the system is discussed, not approved"}
+    ],
+    "numbers": []
+  }
+}

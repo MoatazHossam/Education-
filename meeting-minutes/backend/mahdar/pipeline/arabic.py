@@ -78,14 +78,25 @@ _HUNDREDS = {
 }
 _SCALES = {
     "الف": 1_000, "الاف": 1_000, "ألف": 1_000, "الفين": 2_000, "الفان": 2_000, "مليون": 1_000_000, "ملايين": 1_000_000,
-    "مليونين": 2_000_000, "مليار": 1_000_000_000, "مليارات": 1_000_000_000, "مليارين": 2_000_000_000,
+    "مليونين": 2_000_000, "مليونان": 2_000_000, "مليار": 1_000_000_000, "مليارات": 1_000_000_000, "مليارين": 2_000_000_000,
 }
 _FRACTIONS = {"نص": 0.5, "نصف": 0.5, "ربع": 0.25, "تلت": 1 / 3, "ثلث": 1 / 3}
+# Ordinals, as in dates ("الخامس عشر من يناير"): "عشر" after them adds ten.
+_UNITS.update({"اول": 1, "حادي": 1, "ثاني": 2, "ثالث": 3, "رابع": 4, "خامس": 5, "سادس": 6, "سابع": 7, "ثامن": 8, "تاسع": 9, "عاشر": 10})
+# The keys are compared with normalised text ("ئ" becomes "ي", "ة" becomes "ه"...): normalise them too.
+_UNITS, _TENS, _HUNDREDS, _SCALES, _FRACTIONS = (
+    {normalize(k): v for k, v in d.items()} for d in (_UNITS, _TENS, _HUNDREDS, _SCALES, _FRACTIONS)
+)
 _NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
 
 
 def _word_value(tok: str) -> tuple[str, float] | None:
-    t = tok[1:] if tok.startswith("و") and len(tok) > 2 and tok[1:] in {**_UNITS, **_TENS, **_HUNDREDS, **_SCALES} else tok
+    known = {**_UNITS, **_TENS, **_HUNDREDS, **_SCALES}
+    t = tok
+    for prefix in ("وال", "ال", "و"):
+        if t not in known and t.startswith(prefix) and t[len(prefix):] in known:
+            t = t[len(prefix):]
+            break
     if t in _UNITS:
         return "unit", _UNITS[t]
     if t in _TENS:
@@ -161,7 +172,9 @@ MONTHS = {
     "january": 1, "february": 2, "march": 3, "april": 4, "june": 6, "july": 7, "august": 8,
     "september": 9, "october": 10, "november": 11, "december": 12,
 }
+MONTHS = {normalize(k): v for k, v in MONTHS.items()}
 DAYS = {"السبت", "الاحد", "الاتنين", "الاثنين", "التلات", "الثلاثاء", "التلاتاء", "الاربع", "الاربعاء", "الخميس", "الجمعه"}
+DAYS = {normalize(d) for d in DAYS}
 RELATIVE_DATE = [
     "بكره", "بكرا", "غدا", "بعد بكره", "بعد غد", "النهارده", "اليوم", "الاسبوع الجاي", "الاسبوع القادم",
     "الاسبوع المقبل", "الشهر الجاي", "الشهر القادم", "الشهر المقبل", "اخر الشهر", "نهايه الشهر", "اخر الاسبوع",
@@ -194,11 +207,11 @@ def extract_dates(text: str) -> list[DateMention]:
                 yv = (2000 + int(y) if y and len(y) == 2 else int(y)) if y else None
                 out.append(DateMention(m.group(0), d, mo, yv))
     for name, num in MONTHS.items():
-        for m in re.finditer(rf"(?:(\d{{1,2}})\s+)?(?:شهر\s+)?{re.escape(name)}(?:\s+(\d{{4}}))?", n):
+        for m in re.finditer(rf"(?:(\d{{1,2}})\s+)?(?:من\s+)?(?:شهر\s+)?{re.escape(name)}(?:\s+(\d{{4}}))?", n):
             day = int(m.group(1)) if m.group(1) else None
             if day is None:
                 # A day written in words before the month ("خمسة عشر ديسمبر").
-                before = n[: m.start()].split()[-3:]
+                before = [w for w in n[: m.start()].split()[-4:] if w != "من"]
                 nums = extract_numbers(" ".join(before))
                 day = int(max(nums)) if nums and max(nums) <= 31 else None
             out.append(DateMention(m.group(0), day, num, int(m.group(2)) if m.group(2) else None))
@@ -261,7 +274,7 @@ DEFERRAL = _norm_list([
 ])
 ASSIGNMENT = _norm_list([
     "يتولى", "هيتولى", "تتولى", "هتتولى", "مسؤول عن", "مسئول عن", "المسؤول", "مسؤوليه", "مسئوليه", "يكلف", "تكليف",
-    "كلفنا", "مكلف", "مطلوب من", "المطلوب", "عليك", "عليه", "عليكم", "عليها", "ابعت", "ابعتلي", "ابعتلنا", "جهز",
+    "كلفنا", "مكلف", "مطلوب من", "المطلوب", "اطلب من", "نطلب من", "يطلب من", "طلب من", "اكلف", "نكلف", "عليك", "عليه", "عليكم", "عليها", "ابعت", "ابعتلي", "ابعتلنا", "جهز",
     "تجهز", "يجهز", "هيجهز", "هتجهز", "هجهز", "هبعت", "هتبعت", "هيبعت", "سأقوم", "سارسل", "ساجهز", "سوف", "سيقوم",
     "ستقوم", "يقوم", "تقوم", "سيتولى", "ستتولى", "حاضر", "هعمل", "هخلص", "هتخلص", "هيخلص", "هراجع", "هتراجع",
     "هيراجع", "هتابع", "هيتابع", "هكلم", "هيكلم", "هتكلم", "action item", "owner", "assigned", "deadline", "ديدلاين",

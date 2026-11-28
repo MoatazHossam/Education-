@@ -73,7 +73,8 @@ def migrate(app_password: str | None = None) -> list[str]:
         for name, sql in _migrations():
             if name in done:
                 continue
-            conn.exec_driver_sql(sql)
+            # The raw driver cursor without parameters: migration SQL may contain "%" (format()).
+            conn.connection.cursor().execute(sql)
             conn.execute(text("insert into schema_migrations (name) values (:n)"), {"n": name})
             applied.append(name)
         if app_password:
@@ -96,3 +97,4 @@ def _ensure_app_role(conn: Connection, password: str) -> None:
     conn.exec_driver_sql(f"grant select, insert, update, delete on all tables in schema public to {APP_ROLE}")
     conn.exec_driver_sql(f"grant usage, select on all sequences in schema public to {APP_ROLE}")
     conn.exec_driver_sql(f"revoke all on schema_migrations from {APP_ROLE}")
+    conn.exec_driver_sql(f"grant select on schema_migrations to {APP_ROLE}")  # readiness check

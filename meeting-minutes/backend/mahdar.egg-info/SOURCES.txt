@@ -1,9 +1,0 @@
-README.md
-pyproject.toml
-mahdar/__init__.py
-mahdar.egg-info/PKG-INFO
-mahdar.egg-info/SOURCES.txt
-mahdar.egg-info/dependency_links.txt
-mahdar.egg-info/entry_points.txt
-mahdar.egg-info/requires.txt
-mahdar.egg-info/top_level.txt

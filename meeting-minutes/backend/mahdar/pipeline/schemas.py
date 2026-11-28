@@ -170,14 +170,23 @@ class Topic(Strict):
     segment_ids: list[str]
 
 
+class SpeakerNameHint(Strict):
+    speaker_id: str
+    name: str
+    evidence: list[Evidence]
+
+
 class Analysis(Strict):
     purpose: str | None
     purpose_evidence: list[Evidence] = Field(default_factory=list)
     topics: list[Topic]
     items: list[Item]
+    # Suggestions for a person to confirm (speaker editing); never applied automatically.
+    speaker_name_hints: list[SpeakerNameHint] = Field(default_factory=list)
     provider: str
     model: str
     windows: int = 1
+    usage: dict = Field(default_factory=dict)
 
 
 # --- Agent 5: verification ----------------------------------------------------------------------

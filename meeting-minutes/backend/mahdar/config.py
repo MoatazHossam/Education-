@@ -64,7 +64,10 @@ class Settings(BaseSettings):
     chunk_overlap_seconds: float = 2.0
 
     diarization_provider: DiarizationProvider = "sherpa_onnx"
-    diarization_threshold: float = 0.6
+    # Clustering threshold (sherpa-onnx): lower splits more. A wrong split is fixed by merging two
+    # speakers in the interface; a wrong merge silently gives one person's words to another, so the
+    # default leans towards splitting. Giving the number of speakers at upload is better still.
+    diarization_threshold: float = 0.4
 
     llm_provider: LlmProvider = "anthropic"
     llm_model: str = "claude-opus-5-5"

@@ -28,3 +28,4 @@ meeting-minutes/.models/
 meeting-minutes/data/
 meeting-minutes/backend/test-output/
 meeting-minutes/.data-src/
+*.egg-info/

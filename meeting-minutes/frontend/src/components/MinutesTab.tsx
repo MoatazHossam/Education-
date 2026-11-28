@@ -105,11 +105,11 @@ export default function MinutesTab({ meeting, reload }: { meeting: MeetingDetail
             </>
           )}
         </div>
-        {minutes && minutes.issues.length > 0 && (
+        {minutes && writingNotes(minutes).length > 0 && (
           <div className="card">
             <h2>ملاحظات الصياغة</h2>
             <ul className="checks">
-              {minutes.issues.filter((i) => i.code.startsWith('writer') || i.code.startsWith('human') || i.code === 'language_note').slice(0, 20).map((i, n) => (
+              {writingNotes(minutes).slice(0, 20).map((i, n) => (
                 <li key={n} className={i.severity}><SeverityBadge severity={i.severity} /> {i.message_ar}</li>
               ))}
             </ul>
@@ -125,6 +125,8 @@ export default function MinutesTab({ meeting, reload }: { meeting: MeetingDetail
     </div>
   );
 }
+
+const writingNotes = (m: Minutes) => m.issues.filter((i) => i.code.startsWith('writer') || i.code.startsWith('human') || i.code === 'language_note');
 
 function EditBlock({ meetingId, section, block, onClose, onSaved }: { meetingId: string; section: Section; block: Block; onClose: () => void; onSaved: () => void }) {
   const [text, setText] = useState(block.text);

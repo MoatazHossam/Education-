@@ -137,40 +137,62 @@ def _due(it: Item) -> str:
     return it.due.text_as_spoken or it.due.date_iso or NOT_SET
 
 
+# Rule-written text labels the item rather than conjugating a verb around a statement that may
+# already start with one ("نوقش يُعتقد…" reads badly); the label states the type unambiguously.
 _PREFIX = {
-    "discussion": "نوقش ",
-    "question": "طُرح تساؤل: ",
-    "answer": "أُوضح أن ",
-    "proposal": "اقتُرح ",
-    "recommendation": "أُوصي بـ",
-    "objection": "أُبدي اعتراض: ",
-    "concern": "أُبديت مخاوف: ",
-    "agreement_tentative": "جرى التوافق مبدئياً على ما يلي، على أن يُؤكَّد لاحقاً: ",
-    "decision_approved": "تقرر: ",
-    "decision_rejected": "لم يُوافق على: ",
+    "discussion": "",
+    "question": "سؤال: ",
+    "answer": "إجابة: ",
+    "proposal": "مقترح: ",
+    "recommendation": "توصية: ",
+    "objection": "اعتراض: ",
+    "concern": "تحفظ: ",
+    "agreement_tentative": "توافق مبدئي يتطلب التأكيد: ",
+    "decision_approved": "",
+    "decision_rejected": "مقترح لم يُوافق عليه: ",
     "action_assigned": "",
-    "action_suggested": "إجراء مقترح (يتطلب التأكيد): ",
+    "action_suggested": "إجراء مقترح يتطلب التأكيد: ",
     "risk": "خطر: ",
     "blocker": "عائق: ",
     "dependency": "اعتمادية: ",
     "open_question": "مسألة معلقة: ",
-    "deferred": "أُرجئ: ",
+    "deferred": "مؤجل: ",
     "contradiction": "تعارض يتطلب التوضيح: ",
 }
 
 
-def rule_text(e: EffectiveItem) -> str:
+ORDINALS = [
+    "أولاً",
+    "ثانياً",
+    "ثالثاً",
+    "رابعاً",
+    "خامساً",
+    "سادساً",
+    "سابعاً",
+    "ثامناً",
+    "تاسعاً",
+    "عاشراً",
+    "حادي عشر",
+    "ثاني عشر",
+]
+_LABEL = re.compile(r"\bSPK_(\d+)\b|المتحدث(?:ة)?\s*(?:رقم\s*)?(\d+)")
+
+
+def without_labels(text: str, names: dict[str, str]) -> str:
+    """Speaker labels never appear in minutes: a confirmed name replaces them, otherwise a neutral
+    phrase (a label is not a person's identity)."""
+    return _LABEL.sub(lambda m: names.get(f"SPK_{m.group(1) or m.group(2)}") or "أحد الحاضرين", text)
+
+
+def rule_text(e: EffectiveItem, names: dict[str, str] | None = None) -> str:
     """A faithful sentence from the verified statement alone (no model)."""
-    s = e.item.statement.strip().rstrip(".")
-    prefix = _PREFIX.get(e.type, "")
-    if prefix and arabic.normalize(s).startswith(arabic.normalize(prefix.split()[0])):
-        prefix = ""
-    text = prefix + s
+    s = without_labels(e.item.statement.strip().rstrip("."), names or {})
+    text = _PREFIX.get(e.type, "") + s
     if e.item.qualifications and not all(arabic.normalize(q) in arabic.normalize(s) for q in e.item.qualifications):
         text += "، مع مراعاة ما يلي: " + "؛ ".join(q.rstrip(".") for q in e.item.qualifications)
     if not e.ok:
-        text += " (يتطلب التحقق من التسجيل)"
-    return text + "."
+        text = text.rstrip("؟?!.") + " (يتطلب التحقق من التسجيل)"
+    return text if text.endswith(("؟", "?", "!", ".")) else text + "."
 
 
 def _allowed_facts(items: list[EffectiveItem], names: dict[str, str]) -> dict:
@@ -407,9 +429,9 @@ def build_minutes(
                 )
                 final = None
         if not final:
-            final = " ".join(rule_text(e) for e in its)
+            final = " ".join(rule_text(e, names) for e in its)
         if not all(e.ok for e in its) and "(يتطلب" not in final:
-            final = final.rstrip(".") + " (يتطلب التحقق من التسجيل)."
+            final = final.rstrip("؟?!.") + " (يتطلب التحقق من التسجيل)."
         seg_ids = sorted({x.segment_id for e in its for x in e.item.evidence})
         return Block(id=bid, kind=kind, text=final, item_ids=[e.item.id for e in its], segment_ids=seg_ids)  # type: ignore[arg-type]
 
@@ -506,10 +528,23 @@ def build_minutes(
                 if b:
                     topic_blocks.append(b)
         if not t_items:
-            counter[0] += 1
-            topic_blocks.append(
-                Block(id=f"B{counter[0]:03d}", kind="paragraph", text=t.summary.strip(), segment_ids=t.segment_ids[:6])
-            )
+            # The analysis's topic summary is used only if it passes the same check as a written
+            # block against all of the topic's items; otherwise the topic shows its items elsewhere.
+            all_items = [e for e in eff if e.item.topic_id == t.id]
+            summary_text = without_labels(t.summary.strip(), names)
+            if all_items and not check_block(summary_text, all_items, names, people):
+                counter[0] += 1
+                topic_blocks.append(
+                    Block(
+                        id=f"B{counter[0]:03d}",
+                        kind="paragraph",
+                        text=summary_text,
+                        item_ids=[e.item.id for e in all_items],
+                        segment_ids=t.segment_ids[:6],
+                    )
+                )
+            else:
+                topic_blocks.pop()  # the heading alone says nothing
     orphan = [
         e for e in plan["topics"] if not e.item.topic_id or e.item.topic_id not in {t.id for t in analysis.topics}
     ]
@@ -519,7 +554,30 @@ def build_minutes(
             topic_blocks.append(b)
     if topic_blocks:
         sections.append(Section(key="topics", title=SECTION_TITLES["topics"], blocks=topic_blocks))
-    # رابعاً: القرارات المعتمدة (table)
+    # رابعاً: القرارات المعتمدة (table). When there is none, the section says so: that is a fact
+    # management needs, not an empty template section.
+    if not plan["decisions"]:
+        pending_decisions = [e for e in plan["pending"] if e.type in ("decision_approved", "agreement_tentative")]
+        counter[0] += 1
+        sections.append(
+            Section(
+                key="decisions",
+                title=SECTION_TITLES["decisions"],
+                blocks=[
+                    Block(
+                        id=f"B{counter[0]:03d}",
+                        kind="paragraph",
+                        text="لم تُتخذ في هذا الاجتماع قرارات معتمدة بصورة صريحة."
+                        + (
+                            " ووردت بنود تتطلب التأكيد قبل اعتبارها قرارات، مدرجة في الموضوعات المعلقة."
+                            if pending_decisions
+                            else ""
+                        ),
+                        item_ids=[e.item.id for e in pending_decisions],
+                    )
+                ],
+            )
+        )
     if plan["decisions"]:
         texts = {i: wb.get("text") for wb in written.get("decision_texts") or [] for i in wb.get("item_ids", [])[:1]}
         rows = []
@@ -531,7 +589,7 @@ def build_minutes(
                     item_ids=[e.item.id],
                     cells={
                         "رقم": str(n),
-                        "القرار": b.text if b else rule_text(e),
+                        "القرار": b.text if b else rule_text(e, names),
                         "المسؤول": _owner(e.item, names),
                         "تاريخ التنفيذ": _due(e.item),
                         "المرجع": _ref(e.item, segs),
@@ -570,7 +628,7 @@ def build_minutes(
                     item_ids=[e.item.id],
                     cells={
                         "رقم": str(n),
-                        "الإجراء المطلوب": b.text if b else rule_text(e),
+                        "الإجراء المطلوب": b.text if b else rule_text(e, names),
                         "المسؤول": _owner(e.item, names),
                         "الموعد المحدد": _due(e.item),
                         "الحالة": state,
@@ -601,7 +659,11 @@ def build_minutes(
         if b:
             summary.append(b)
     if not summary:
-        for e in [*plan["decisions"], *[a for a in plan["actions"] if a.type == "action_assigned" and a.ok]][:5]:
+        key_items = [*plan["decisions"], *[a for a in plan["actions"] if a.type == "action_assigned" and a.ok]]
+        key_items += [r for r in plan["recommendations"] if r.ok and r.type in ("proposal", "recommendation")][
+            : max(0, 3 - len(key_items))
+        ]
+        for e in key_items[:5]:
             b = block(None, [e.item.id], "summary", "bullet")
             if b:
                 summary.append(b)
@@ -647,6 +709,10 @@ def build_minutes(
         )
     )
 
+    # Sections are numbered in order of appearance (no gaps when one is absent).
+    sections = [
+        s.model_copy(update={"title": f"{ORDINALS[n]}: {s.title.split(': ', 1)[-1]}"}) for n, s in enumerate(sections)
+    ]
     for e in eff:
         if not e.human_accepted:
             issues.extend(i for i in e.issues if i.severity in ("critical", "major"))

@@ -8,6 +8,7 @@ selfcheck          FFmpeg, Arabic fonts, DOCX and PDF rendering, interface files
 worker-health      exit 0 when a worker has beaten within two minutes (container health check)
 models download    download the speech models (faster-whisper, sherpa-onnx diarization)
 process-file       run the whole pipeline on a local recording, without the API (testing, evaluation)
+rerun              run regenerate / reverify / reanalyse for one meeting now
 export             write a processed meeting's documents to a folder
 evaluate           score processed evaluation recordings against their human-written references
 purge-expired      apply the retention policies now
@@ -335,6 +336,36 @@ def cmd_process_file(a) -> int:
     return 0 if m["status"] in ("review", "awaiting_authorization") else 1
 
 
+def cmd_rerun(a) -> int:
+    """Runs one job for an existing meeting now, in this process (regenerate, reverify, reanalyse)."""
+    from sqlalchemy import text
+
+    from mahdar.db.core import org_tx, system_tx
+    from mahdar.jobs import queue
+    from mahdar.pipeline.orchestrator import run_job
+
+    with org_tx(a.org_id) as c:
+        jid = queue.enqueue(c, a.org_id, a.meeting_id, a.kind)
+    with system_tx() as c:
+        job = (
+            c.execute(
+                text(
+                    "update jobs set status='running', attempts=1, locked_by='cli', heartbeat_at=now() where id = :id returning *"
+                ),
+                {"id": jid},
+            )
+            .mappings()
+            .first()
+        )
+    run_job(dict(job))
+    with org_tx(a.org_id) as c:
+        j = queue.latest_job(c, a.meeting_id)
+    _print({"status": j["status"], "error": j.get("error")})
+    if a.out:
+        return cmd_export(argparse.Namespace(org_id=a.org_id, meeting_id=a.meeting_id, out=a.out))
+    return 0 if j["status"] == "succeeded" else 1
+
+
 def cmd_export(a) -> int:
     from mahdar import storage
     from mahdar.db import repo
@@ -426,6 +457,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--allow-external", help="providers the organization allows for transcripts, e.g. anthropic")
     p.add_argument("--out", help="write the documents and artifacts here")
     p.set_defaults(fn=cmd_process_file)
+    p = sub.add_parser("rerun")
+    p.add_argument("--org-id", required=True)
+    p.add_argument("--meeting-id", required=True)
+    p.add_argument("--kind", choices=["regenerate", "reverify", "reanalyse"], default="regenerate")
+    p.add_argument("--out")
+    p.set_defaults(fn=cmd_rerun)
     p = sub.add_parser("export")
     p.add_argument("--org-id", required=True)
     p.add_argument("--meeting-id", required=True)

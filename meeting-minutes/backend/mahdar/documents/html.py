@@ -196,7 +196,7 @@ def evidence_html(
                 f"<p class='note'>المسؤول: {escape(it.owner.name_as_spoken or 'لم يُحدد')} — الموعد: {escape(it.due.text_as_spoken or 'لم يُحدد')}</p>"
             )
         for e in v.evidence if v else []:
-            mark = "✓" if e.quote_found else "✗"
+            mark = "[مطابق]" if e.quote_found else "[غير مطابق]"
             parts.append(
                 f"<p class='note'>{mark} {escape(e.segment_id)} | {escape(names.get(e.speaker_id or '', 'غير محدد'))} | "
                 f"{fmt_time(e.start)}–{fmt_time(e.end)}: «{escape(e.original_text)}»</p>"

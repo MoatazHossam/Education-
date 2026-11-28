@@ -89,7 +89,7 @@ def test_proposal_is_never_written_as_a_decision():
     reply = _reply(recommendations=[{"text": "تقرر اعتماد النظام الجديد وتنفيذه.", "item_ids": ["I001"]}])
     doc, _, _ = _build(reply)
     text = " ".join(b.text for b in section(doc, "recommendations").blocks)
-    assert "تقرر" not in text and "اقتُرح" in text
+    assert "تقرر" not in text and text.startswith("مقترح:")
     assert any(i.code == "writer_block_replaced" for i in doc.issues)
 
 
@@ -125,8 +125,33 @@ def test_unverified_decision_goes_to_pending_not_the_table():
         glossary=[],
         llm=None,
     )
-    assert section(doc, "decisions") is None
+    decisions = section(doc, "decisions")
+    assert decisions.rows == []  # nothing in the decisions table
+    assert "لم تُتخذ في هذا الاجتماع قرارات معتمدة" in decisions.blocks[0].text
     assert section(doc, "recommendations") is not None or section(doc, "pending") is not None
+
+
+def test_speaker_labels_never_reach_the_minutes_and_sections_are_numbered_in_order():
+    an = analysis(
+        item("I001", "proposal", "اقترح المتحدث 2 مراجعة التكلفة.", [("S0001", "محتاجين نراجع التكلفة الأول")])
+    )
+    rep, _ = verify(T, an, meta={}, glossary=[], llm=None)
+    doc, _ = build_minutes(
+        transcript=T,
+        analysis=an,
+        verification=rep,
+        review={},
+        meta={},
+        classification="internal",
+        minutes_status="draft_requires_review",
+        approval=None,
+        glossary=[],
+        llm=None,
+    )
+    text = " ".join(b.text for s in doc.sections for b in s.blocks)
+    assert "المتحدث 2" not in text and "أحد الحاضرين" in text
+    ordinals = [s.title.split(":")[0] for s in doc.sections]
+    assert ordinals[:3] == ["أولاً", "ثانياً", "ثالثاً"]
 
 
 def test_status_requires_review_until_people_resolve():

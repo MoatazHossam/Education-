@@ -34,8 +34,14 @@ def open_issues(issues: list[Issue], review: dict, analysis: Analysis | None = N
     return [i for i in issues if not (i.item_id and i.item_id in decided) and issue_key(i) not in resolved]
 
 
-def evaluate(transcript: Transcript, analysis: Analysis, verification: VerificationReport, review: dict, gates: dict,
-             document_checks: dict | None = None) -> dict:
+def evaluate(
+    transcript: Transcript,
+    analysis: Analysis,
+    verification: VerificationReport,
+    review: dict,
+    gates: dict,
+    document_checks: dict | None = None,
+) -> dict:
     g = {**DEFAULT_GATES, **(gates or {})}
     all_issues = [i for v in verification.items for i in v.issues] + list(verification.document_issues)
     still_open = open_issues(all_issues, review, analysis)
@@ -43,23 +49,53 @@ def evaluate(transcript: Transcript, analysis: Analysis, verification: Verificat
     omissions = [i for i in still_open if i.code in ("potential_omission", "auditor_omission")]
     cov = verification.coverage
     checks = [
-        {"gate": "low_confidence_words", "label_ar": "نسبة الكلمات منخفضة الثقة في التعرف على الكلام",
-         "value": cov.get("low_confidence_word_ratio", 0.0), "threshold": g["max_low_confidence_word_ratio"],
-         "passed": cov.get("low_confidence_word_ratio", 0.0) <= g["max_low_confidence_word_ratio"]},
-        {"gate": "evidence_coverage", "label_ar": "نسبة البنود المستندة إلى اقتباس مطابق من التسجيل",
-         "value": cov.get("evidence_coverage", 0.0), "threshold": g["min_evidence_coverage"],
-         "passed": cov.get("evidence_coverage", 0.0) >= g["min_evidence_coverage"] or not analysis.items},
-        {"gate": "open_critical", "label_ar": "الملاحظات الحرجة غير المحسومة", "value": len(crit),
-         "threshold": g["max_unverified_critical"], "passed": len(crit) <= g["max_unverified_critical"]},
-        {"gate": "potential_omissions", "label_ar": "مواضع محتملة لقرارات أو تكليفات لم تُستخرج", "value": len(omissions),
-         "threshold": g["max_potential_omissions"], "passed": len(omissions) <= g["max_potential_omissions"]},
-        {"gate": "independent_audit", "label_ar": "مراجعة مستقلة بنموذج لغوي", "value": "نعم" if verification.llm_used else "لا",
-         "threshold": "نعم", "passed": verification.llm_used},
+        {
+            "gate": "low_confidence_words",
+            "label_ar": "نسبة الكلمات منخفضة الثقة في التعرف على الكلام",
+            "value": cov.get("low_confidence_word_ratio", 0.0),
+            "threshold": g["max_low_confidence_word_ratio"],
+            "passed": cov.get("low_confidence_word_ratio", 0.0) <= g["max_low_confidence_word_ratio"],
+        },
+        {
+            "gate": "evidence_coverage",
+            "label_ar": "نسبة البنود المستندة إلى اقتباس مطابق من التسجيل",
+            "value": cov.get("evidence_coverage", 0.0),
+            "threshold": g["min_evidence_coverage"],
+            "passed": cov.get("evidence_coverage", 0.0) >= g["min_evidence_coverage"] or not analysis.items,
+        },
+        {
+            "gate": "open_critical",
+            "label_ar": "الملاحظات الحرجة غير المحسومة",
+            "value": len(crit),
+            "threshold": g["max_unverified_critical"],
+            "passed": len(crit) <= g["max_unverified_critical"],
+        },
+        {
+            "gate": "potential_omissions",
+            "label_ar": "مواضع محتملة لقرارات أو تكليفات لم تُستخرج",
+            "value": len(omissions),
+            "threshold": g["max_potential_omissions"],
+            "passed": len(omissions) <= g["max_potential_omissions"],
+        },
+        {
+            "gate": "independent_audit",
+            "label_ar": "مراجعة مستقلة بنموذج لغوي",
+            "value": "نعم" if verification.llm_used else "لا",
+            "threshold": "نعم",
+            "passed": verification.llm_used,
+        },
     ]
     if document_checks is not None:
         ok = all(c.get("ok") for c in document_checks.values())
-        checks.append({"gate": "document_rendering", "label_ar": "سلامة عرض المستندات (الخطوط، الاتجاه، النص)",
-                       "value": "سليم" if ok else "به مشكلات", "threshold": "سليم", "passed": ok})
+        checks.append(
+            {
+                "gate": "document_rendering",
+                "label_ar": "سلامة عرض المستندات (الخطوط، الاتجاه، النص)",
+                "value": "سليم" if ok else "به مشكلات",
+                "threshold": "سليم",
+                "passed": ok,
+            }
+        )
     excluded = sum(1 for s in transcript.segments if s.excluded)
     return {
         "gates": checks,
@@ -67,8 +103,17 @@ def evaluate(transcript: Transcript, analysis: Analysis, verification: Verificat
         "open_critical": len(crit),
         "open_major": sum(1 for i in still_open if i.severity == "major"),
         "excluded_segments": excluded,
-        "items_by_status": {s: sum(1 for v in verification.items if v.status == s) for s in
-                            ("verified", "verified_rules_only", "partially_supported", "needs_review", "unsupported", "contradicted")},
+        "items_by_status": {
+            s: sum(1 for v in verification.items if v.status == s)
+            for s in (
+                "verified",
+                "verified_rules_only",
+                "partially_supported",
+                "needs_review",
+                "unsupported",
+                "contradicted",
+            )
+        },
     }
 
 

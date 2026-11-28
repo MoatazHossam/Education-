@@ -55,21 +55,24 @@ def authorize(conn: Connection, org_id: str, meeting: dict, provider: str, data_
     settings = get_settings()
     if provider not in settings.allowed_external:
         raise NotAuthorized(
-            provider, data_kind,
+            provider,
+            data_kind,
             f"المزوّد الخارجي «{provider}» غير مسموح به في إعدادات التشغيل (MAHDAR_ALLOWED_EXTERNAL_PROVIDERS).",
         )
     org = repo.get_org(conn, org_id) or {"settings": {}}
     policy = org["settings"].get("privacy", {})
     if provider not in (policy.get(data_kind) or []):
         raise NotAuthorized(
-            provider, data_kind,
+            provider,
+            data_kind,
             f"لم تأذن سياسة الخصوصية في المؤسسة بإرسال {DATA_KIND_AR.get(data_kind, data_kind)} إلى «{provider}».",
         )
     limit = policy.get("max_classification_external", "internal")
     level = meeting.get("classification", "internal")
     if CLASSIFICATION_ORDER.index(level) > CLASSIFICATION_ORDER.index(limit):
         raise NotAuthorized(
-            provider, data_kind,
+            provider,
+            data_kind,
             f"تصنيف الاجتماع «{CLASSIFICATION_AR[level]}» أعلى من الحد المسموح بمعالجته خارجياً «{CLASSIFICATION_AR[limit]}».",
         )
     return Decision(provider, data_kind, external=True)

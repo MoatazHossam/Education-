@@ -13,8 +13,7 @@ from collections.abc import Callable
 from rapidfuzz import fuzz
 
 from mahdar.pipeline import arabic
-from mahdar.pipeline.llm import LlmClient, LlmRequest
-from mahdar.pipeline.llm import prompts
+from mahdar.pipeline.llm import LlmClient, LlmRequest, prompts
 from mahdar.pipeline.schemas import Analysis, Due, Evidence, Item, Owner, SpeakerNameHint, Topic, Transcript
 
 WINDOW_SEGMENTS = 220
@@ -26,8 +25,15 @@ def estimate_tokens(text: str) -> int:
     return int(len(text) / 2.2) + 1
 
 
-def analyse(transcript: Transcript, meta: dict, glossary: list[dict], llm: LlmClient, *, context_budget: int,
-            progress: Callable[[float], None] | None = None) -> tuple[Analysis, list[dict]]:
+def analyse(
+    transcript: Transcript,
+    meta: dict,
+    glossary: list[dict],
+    llm: LlmClient,
+    *,
+    context_budget: int,
+    progress: Callable[[float], None] | None = None,
+) -> tuple[Analysis, list[dict]]:
     """Returns the analysis and the usage of each model call (for the processing register)."""
     segs = [s for s in transcript.segments if not s.excluded]
     full_context = prompts.meeting_context(meta, glossary, segs, transcript.speakers)
@@ -54,13 +60,27 @@ def analyse(transcript: Transcript, meta: dict, glossary: list[dict], llm: LlmCl
             lo, hi = max(0, a - WINDOW_OVERLAP), min(len(segs), b + WINDOW_OVERLAP)
             context = prompts.meeting_context(meta, glossary, segs[lo:hi], transcript.speakers)
         scope = None if len(windows) == 1 else (segs[a].id, segs[b - 1].id)
-        res = llm.generate_json(LlmRequest(
-            stage="analysis", system=prompts.ANALYSIS_SYSTEM, user=prompts.analysis_user(scope),
-            schema=prompts.analysis_schema(), shared_context=context, max_tokens=48000,
-        ))
-        usage.append({"stage": "analysis", "window": n, "model": res.model, "input_tokens": res.input_tokens,
-                      "output_tokens": res.output_tokens, "cache_read_tokens": res.cache_read_tokens,
-                      "served_by_fallback": res.served_by_fallback})
+        res = llm.generate_json(
+            LlmRequest(
+                stage="analysis",
+                system=prompts.ANALYSIS_SYSTEM,
+                user=prompts.analysis_user(scope),
+                schema=prompts.analysis_schema(),
+                shared_context=context,
+                max_tokens=48000,
+            )
+        )
+        usage.append(
+            {
+                "stage": "analysis",
+                "window": n,
+                "model": res.model,
+                "input_tokens": res.input_tokens,
+                "output_tokens": res.output_tokens,
+                "cache_read_tokens": res.cache_read_tokens,
+                "served_by_fallback": res.served_by_fallback,
+            }
+        )
         data = res.data
         if purpose is None and data.get("purpose"):
             purpose, purpose_ev = data["purpose"], data.get("purpose_evidence") or []
@@ -80,11 +100,22 @@ def analyse(transcript: Transcript, meta: dict, glossary: list[dict], llm: LlmCl
     items = _to_items(_dedupe(raw_items), {s.id for s in transcript.speakers})
     model = usage[-1]["model"] if usage else getattr(llm, "model", "")
     analysis = Analysis(
-        purpose=purpose, purpose_evidence=[Evidence(**e) for e in purpose_ev], topics=[Topic(**t) for t in topics],
-        items=items, speaker_name_hints=[SpeakerNameHint(speaker_id=h["speaker_id"], name=h["name"],
-                                                         evidence=[Evidence(**e) for e in h["evidence"]]) for h in hints],
-        provider=llm.provider, model=model, windows=len(windows),
-        usage={"calls": usage, "input_tokens": sum(u["input_tokens"] for u in usage), "output_tokens": sum(u["output_tokens"] for u in usage)},
+        purpose=purpose,
+        purpose_evidence=[Evidence(**e) for e in purpose_ev],
+        topics=[Topic(**t) for t in topics],
+        items=items,
+        speaker_name_hints=[
+            SpeakerNameHint(speaker_id=h["speaker_id"], name=h["name"], evidence=[Evidence(**e) for e in h["evidence"]])
+            for h in hints
+        ],
+        provider=llm.provider,
+        model=model,
+        windows=len(windows),
+        usage={
+            "calls": usage,
+            "input_tokens": sum(u["input_tokens"] for u in usage),
+            "output_tokens": sum(u["output_tokens"] for u in usage),
+        },
     )
     return analysis, usage
 
@@ -97,8 +128,11 @@ def _dedupe(items: list[dict]) -> list[dict]:
         dup = None
         for k in kept:
             kev = {e["segment_id"] for e in k.get("evidence", [])}
-            if k["type"] == it["type"] and ev & kev and fuzz.token_set_ratio(
-                    arabic.normalize(k["statement"]), arabic.normalize(it["statement"])) >= 80:
+            if (
+                k["type"] == it["type"]
+                and ev & kev
+                and fuzz.token_set_ratio(arabic.normalize(k["statement"]), arabic.normalize(it["statement"])) >= 80
+            ):
                 dup = k
                 break
         if dup is None:
@@ -113,7 +147,10 @@ def _merge_topics(topics: list[dict], items: list[dict]) -> list[dict]:
     out: list[dict] = []
     alias: dict[str, str] = {}
     for t in topics:
-        same = next((o for o in out if fuzz.token_set_ratio(arabic.normalize(o["title"]), arabic.normalize(t["title"])) >= 90), None)
+        same = next(
+            (o for o in out if fuzz.token_set_ratio(arabic.normalize(o["title"]), arabic.normalize(t["title"])) >= 90),
+            None,
+        )
         if same:
             alias[t["id"]] = same["id"]
             same["segment_ids"] = sorted(set(same["segment_ids"]) | set(t["segment_ids"]))
@@ -127,24 +164,41 @@ def _merge_topics(topics: list[dict], items: list[dict]) -> list[dict]:
     for t in out:
         t["id"] = ren[t["id"]]
     for it in items:
-        it["topic_id"] = ren.get(it.get("topic_id") or "", None)
+        it["topic_id"] = ren.get(it.get("topic_id") or "")
     return out
 
 
 def _to_items(raw: list[dict], speaker_ids: set[str]) -> list[Item]:
     items = []
     for n, it in enumerate(raw, start=1):
-        requires = bool(it.get("requires_confirmation")) or it["type"] in ("agreement_tentative", "action_suggested", "contradiction")
-        items.append(Item(
-            id=f"I{n:03d}", type=it["type"], topic_id=it.get("topic_id"), statement=it["statement"].strip(),
-            speaker_ids=[s for s in it.get("speaker_ids", []) if s in speaker_ids],
-            owner=Owner(name_as_spoken=it.get("owner_name_as_spoken"),
-                        speaker_id=it.get("owner_speaker_id") if it.get("owner_speaker_id") in speaker_ids else None,
-                        status=it.get("owner_status", "unspecified")),
-            due=Due(text_as_spoken=it.get("due_text_as_spoken"), date_iso=it.get("due_date_iso"), status=it.get("due_status", "unspecified")),
-            qualifications=[q for q in it.get("qualifications", []) if q.strip()],
-            evidence=[Evidence(**e) for e in it.get("evidence", [])],
-            approval_evidence=[Evidence(**e) for e in it.get("approval_evidence", [])],
-            requires_confirmation=requires, confidence=it.get("confidence", "medium"), notes=it.get("notes"),
-        ))
+        requires = bool(it.get("requires_confirmation")) or it["type"] in (
+            "agreement_tentative",
+            "action_suggested",
+            "contradiction",
+        )
+        items.append(
+            Item(
+                id=f"I{n:03d}",
+                type=it["type"],
+                topic_id=it.get("topic_id"),
+                statement=it["statement"].strip(),
+                speaker_ids=[s for s in it.get("speaker_ids", []) if s in speaker_ids],
+                owner=Owner(
+                    name_as_spoken=it.get("owner_name_as_spoken"),
+                    speaker_id=it.get("owner_speaker_id") if it.get("owner_speaker_id") in speaker_ids else None,
+                    status=it.get("owner_status", "unspecified"),
+                ),
+                due=Due(
+                    text_as_spoken=it.get("due_text_as_spoken"),
+                    date_iso=it.get("due_date_iso"),
+                    status=it.get("due_status", "unspecified"),
+                ),
+                qualifications=[q for q in it.get("qualifications", []) if q.strip()],
+                evidence=[Evidence(**e) for e in it.get("evidence", [])],
+                approval_evidence=[Evidence(**e) for e in it.get("approval_evidence", [])],
+                requires_confirmation=requires,
+                confidence=it.get("confidence", "medium"),
+                notes=it.get("notes"),
+            )
+        )
     return items

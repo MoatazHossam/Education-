@@ -29,14 +29,22 @@ class RedactingFilter(logging.Filter):
         record.msg = redact(str(record.msg))
         if record.args:
             # Only strings are redacted: other arguments keep their type for %d / %f formats.
-            record.args = tuple(redact(a) if isinstance(a, str) else a for a in record.args) if isinstance(record.args, tuple) else record.args
+            record.args = (
+                tuple(redact(a) if isinstance(a, str) else a for a in record.args)
+                if isinstance(record.args, tuple)
+                else record.args
+            )
         return True
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        entry = {"time": datetime.fromtimestamp(record.created, UTC).isoformat(), "level": record.levelname.lower(),
-                 "logger": record.name, "message": record.getMessage()}
+        entry = {
+            "time": datetime.fromtimestamp(record.created, UTC).isoformat(),
+            "level": record.levelname.lower(),
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
         for k, v in vars(record).items():
             if k not in _STD and not k.startswith("_"):
                 entry[k] = redact(str(v)) if isinstance(v, str) else v

@@ -58,8 +58,10 @@ td.ref, td.small {{ font-size: 8.5pt; color: #333; }}
 
 
 def _doc(title: str, body: str, header_left: str, header_right: str, footer_note: str) -> str:
-    return (f'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>{escape(title)}</title>'
-            f"<style>{_css(header_left, header_right, footer_note)}</style></head><body>{body}</body></html>")
+    return (
+        f'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>{escape(title)}</title>'
+        f"<style>{_css(header_left, header_right, footer_note)}</style></head><body>{body}</body></html>"
+    )
 
 
 def _p(text: str) -> str:
@@ -74,19 +76,38 @@ def minutes_html(doc: MinutesDocument, *, org_name: str | None, logo_data_uri: s
         parts.append(f'<div class="org">{escape(org_name)}</div>')
     parts.append(f"<h1>{escape(doc.title)}</h1>")
     ok = doc.status_label in ("معتمد", "تمت مراجعته")
-    parts.append(f'<div class="status"><span class="{"ok" if ok else ""}">حالة المحضر: {escape(doc.status_label)}</span></div>')
+    parts.append(
+        f'<div class="status"><span class="{"ok" if ok else ""}">حالة المحضر: {escape(doc.status_label)}</span></div>'
+    )
     for s in doc.sections:
         parts.append(f"<h2>{escape(s.title)}</h2>")
         if s.key == "info":
-            parts.append('<table class="info">' + "".join(
-                f"<tr><td>{escape(r.cells['البيان'])}</td><td>{escape(r.cells['القيمة'])}</td></tr>" for r in s.rows) + "</table>")
+            parts.append(
+                '<table class="info">'
+                + "".join(
+                    f"<tr><td>{escape(r.cells['البيان'])}</td><td>{escape(r.cells['القيمة'])}</td></tr>" for r in s.rows
+                )
+                + "</table>"
+            )
             continue
         if s.rows:
-            parts.append("<table><thead><tr>" + "".join(f"<th>{escape(c)}</th>" for c in s.table_columns) + "</tr></thead><tbody>")
+            parts.append(
+                "<table><thead><tr>"
+                + "".join(f"<th>{escape(c)}</th>" for c in s.table_columns)
+                + "</tr></thead><tbody>"
+            )
             for r in s.rows:
                 cells = []
                 for c in s.table_columns:
-                    cls = "num" if c == "رقم" else "ref" if c in ("المرجع",) else "small" if c in ("الحالة", "التوقيع", "التاريخ") else ""
+                    cls = (
+                        "num"
+                        if c == "رقم"
+                        else "ref"
+                        if c in ("المرجع",)
+                        else "small"
+                        if c in ("الحالة", "التوقيع", "التاريخ")
+                        else ""
+                    )
                     cells.append(f'<td class="{cls}">{escape(r.cells.get(c, ""))}</td>')
                 parts.append("<tr>" + "".join(cells) + "</tr>")
             parts.append("</tbody></table>")
@@ -106,48 +127,86 @@ def minutes_html(doc: MinutesDocument, *, org_name: str | None, logo_data_uri: s
                 parts.append(_p(b.text))
         if bullets:
             parts.append("<ul>" + "".join(bullets) + "</ul>")
-    parts.append('<p class="note">أُعدَّت مسودة هذا المحضر آلياً من التسجيل الصوتي، وتخضع للمراجعة البشرية قبل اعتمادها. '
-                 "يُرفق تقرير الأدلة وعدم اليقين بشكل منفصل.</p>")
-    return _doc(doc.title, "".join(parts), doc.classification_label, org_name or "محضر اجتماع",
-                "مسودة تتطلب المراجعة" if not ok else doc.status_label)
+    parts.append(
+        '<p class="note">أُعدَّت مسودة هذا المحضر آلياً من التسجيل الصوتي، وتخضع للمراجعة البشرية قبل اعتمادها. '
+        "يُرفق تقرير الأدلة وعدم اليقين بشكل منفصل.</p>"
+    )
+    return _doc(
+        doc.title,
+        "".join(parts),
+        doc.classification_label,
+        org_name or "محضر اجتماع",
+        "مسودة تتطلب المراجعة" if not ok else doc.status_label,
+    )
 
 
 SEV_AR = {"critical": "حرج", "major": "مهم", "minor": "ثانوي", "info": "معلومة"}
-STATUS_AR = {"verified": "تم التحقق", "verified_rules_only": "تم التحقق آلياً بالقواعد فقط", "partially_supported": "مدعوم جزئياً",
-             "needs_review": "يتطلب المراجعة", "unsupported": "غير مدعوم", "contradicted": "متعارض مع التسجيل"}
+STATUS_AR = {
+    "verified": "تم التحقق",
+    "verified_rules_only": "تم التحقق آلياً بالقواعد فقط",
+    "partially_supported": "مدعوم جزئياً",
+    "needs_review": "يتطلب المراجعة",
+    "unsupported": "غير مدعوم",
+    "contradicted": "متعارض مع التسجيل",
+}
 
 
-def evidence_html(*, title: str, transcript: Transcript, analysis: Analysis, verification: VerificationReport, quality: dict,
-                  classification_label: str) -> str:
+def evidence_html(
+    *,
+    title: str,
+    transcript: Transcript,
+    analysis: Analysis,
+    verification: VerificationReport,
+    quality: dict,
+    classification_label: str,
+) -> str:
     segs = {s.id: s for s in transcript.segments}
     names = {s.id: s.display_name or s.label for s in transcript.speakers}
     parts = [f"<h1>تقرير الأدلة وعدم اليقين</h1><div class='org'>{escape(title)}</div>"]
     parts.append("<h2>ملخص جودة المعالجة</h2><table><tbody>")
     for g in quality.get("gates", []):
-        parts.append(f"<tr><td>{escape(g['label_ar'])}</td><td class='ltr'>{escape(str(g['value']))}</td>"
-                     f"<td>{'مستوفى' if g['passed'] else '<span class=crit>غير مستوفى</span>'}</td></tr>")
+        parts.append(
+            f"<tr><td>{escape(g['label_ar'])}</td><td class='ltr'>{escape(str(g['value']))}</td>"
+            f"<td>{'مستوفى' if g['passed'] else '<span class=crit>غير مستوفى</span>'}</td></tr>"
+        )
     parts.append("</tbody></table>")
-    parts.append(f"<p class='note'>المراجعة المستقلة بنموذج لغوي: {'نعم — ' + escape(verification.llm_model or '') if verification.llm_used else 'لا (فحوص القواعد فقط)'}.</p>")
+    parts.append(
+        f"<p class='note'>المراجعة المستقلة بنموذج لغوي: {'نعم — ' + escape(verification.llm_model or '') if verification.llm_used else 'لا (فحوص القواعد فقط)'}.</p>"
+    )
     by_id = {v.item_id: v for v in verification.items}
     parts.append("<h2>البنود المستخرجة والأدلة</h2>")
     for it in analysis.items:
         v = by_id.get(it.id)
         st = STATUS_AR.get(v.status, v.status) if v else "—"
-        cls = "crit" if v and v.status in ("unsupported", "contradicted", "needs_review") else "major" if v and v.status == "partially_supported" else ""
+        cls = (
+            "crit"
+            if v and v.status in ("unsupported", "contradicted", "needs_review")
+            else "major"
+            if v and v.status == "partially_supported"
+            else ""
+        )
         typ = ITEM_TYPE_AR.get(v.final_type if v else it.type, it.type)
         changed = f" (كان: {ITEM_TYPE_AR.get(it.type, it.type)})" if v and v.final_type != it.type else ""
-        parts.append(f"<div class='box'><h3>{escape(it.id)} — {escape(typ)}{escape(changed)} — <span class='{cls}'>{escape(st)}</span></h3>")
+        parts.append(
+            f"<div class='box'><h3>{escape(it.id)} — {escape(typ)}{escape(changed)} — <span class='{cls}'>{escape(st)}</span></h3>"
+        )
         parts.append(_p(it.statement))
         if it.owner.name_as_spoken or it.due.text_as_spoken:
-            parts.append(f"<p class='note'>المسؤول: {escape(it.owner.name_as_spoken or 'لم يُحدد')} — الموعد: {escape(it.due.text_as_spoken or 'لم يُحدد')}</p>")
-        for e in (v.evidence if v else []):
+            parts.append(
+                f"<p class='note'>المسؤول: {escape(it.owner.name_as_spoken or 'لم يُحدد')} — الموعد: {escape(it.due.text_as_spoken or 'لم يُحدد')}</p>"
+            )
+        for e in v.evidence if v else []:
             mark = "✓" if e.quote_found else "✗"
-            parts.append(f"<p class='note'>{mark} {escape(e.segment_id)} | {escape(names.get(e.speaker_id or '', 'غير محدد'))} | "
-                         f"{fmt_time(e.start)}–{fmt_time(e.end)}: «{escape(e.original_text)}»</p>")
-        for c in (v.checks if v else []):
+            parts.append(
+                f"<p class='note'>{mark} {escape(e.segment_id)} | {escape(names.get(e.speaker_id or '', 'غير محدد'))} | "
+                f"{fmt_time(e.start)}–{fmt_time(e.end)}: «{escape(e.original_text)}»</p>"
+            )
+        for c in v.checks if v else []:
             if not c.passed:
-                parts.append(f"<p class='note {('crit' if c.severity == 'critical' else 'major' if c.severity == 'major' else '')}'>"
-                             f"[{SEV_AR[c.severity]}] {escape(c.detail_ar)}</p>")
+                parts.append(
+                    f"<p class='note {('crit' if c.severity == 'critical' else 'major' if c.severity == 'major' else '')}'>"
+                    f"[{SEV_AR[c.severity]}] {escape(c.detail_ar)}</p>"
+                )
         if v and v.llm:
             parts.append(f"<p class='note'>المراجعة المستقلة: {escape(v.llm.rationale_ar)}</p>")
         parts.append("</div>")
@@ -155,40 +214,62 @@ def evidence_html(*, title: str, transcript: Transcript, analysis: Analysis, ver
         parts.append("<h2>ملاحظات على مستوى المحضر</h2><ul>")
         for i in verification.document_issues:
             where = f" ({fmt_time(i.start)})" if i.start is not None else ""
-            parts.append(f"<li><span class='{('crit' if i.severity == 'critical' else 'major' if i.severity == 'major' else '')}'>[{SEV_AR[i.severity]}]</span> "
-                         f"{escape(i.message_ar)}{escape(where)}</li>")
+            parts.append(
+                f"<li><span class='{('crit' if i.severity == 'critical' else 'major' if i.severity == 'major' else '')}'>[{SEV_AR[i.severity]}]</span> "
+                f"{escape(i.message_ar)}{escape(where)}</li>"
+            )
         parts.append("</ul>")
     flagged = [s for s in transcript.segments if s.flags]
     if flagged:
-        parts.append("<h2>مقاطع تتطلب الانتباه</h2><table><thead><tr><th>المقطع</th><th>الوقت</th><th>التنبيه</th><th>النص</th></tr></thead><tbody>")
+        parts.append(
+            "<h2>مقاطع تتطلب الانتباه</h2><table><thead><tr><th>المقطع</th><th>الوقت</th><th>التنبيه</th><th>النص</th></tr></thead><tbody>"
+        )
         for s in flagged:
-            parts.append(f"<tr><td class='small'>{s.id}</td><td class='small'>{fmt_time(s.start)}</td><td class='small'>{escape('، '.join(s.flags))}</td>"
-                         f"<td>{escape(s.text_verbatim)}</td></tr>")
+            parts.append(
+                f"<tr><td class='small'>{s.id}</td><td class='small'>{fmt_time(s.start)}</td><td class='small'>{escape('، '.join(s.flags))}</td>"
+                f"<td>{escape(s.text_verbatim)}</td></tr>"
+            )
         parts.append("</tbody></table>")
     _ = segs
-    return _doc("تقرير الأدلة", "".join(parts), classification_label, "تقرير الأدلة وعدم اليقين", "للاستخدام الداخلي في المراجعة")
+    return _doc(
+        "تقرير الأدلة",
+        "".join(parts),
+        classification_label,
+        "تقرير الأدلة وعدم اليقين",
+        "للاستخدام الداخلي في المراجعة",
+    )
 
 
 def transcript_html(*, title: str, transcript: Transcript, readable: bool, classification_label: str) -> str:
     names = {s.id: s.display_name or s.label for s in transcript.speakers}
-    parts = [f"<h1>النص الكامل للتسجيل</h1><div class='org'>{escape(title)}</div>",
-             f"<p class='note'>{'النسخة المقروءة (بدون تغيير المعنى)' if readable else 'النص الحرفي كما تعرّف عليه النظام'} — "
-             f"محرك التعرف: {escape(transcript.asr_provider)} / {escape(transcript.asr_model)}؛ تمييز المتحدثين: {escape(transcript.diarization_provider)}.</p>"]
+    parts = [
+        f"<h1>النص الكامل للتسجيل</h1><div class='org'>{escape(title)}</div>",
+        f"<p class='note'>{'النسخة المقروءة (بدون تغيير المعنى)' if readable else 'النص الحرفي كما تعرّف عليه النظام'} — "
+        f"محرك التعرف: {escape(transcript.asr_provider)} / {escape(transcript.asr_model)}؛ تمييز المتحدثين: {escape(transcript.diarization_provider)}.</p>",
+    ]
     for s in transcript.segments:
         who = names.get(s.speaker_id or "", "متحدث غير محدد")
         flags = f" — <span class='flag'>{escape('، '.join(s.flags))}</span>" if s.flags else ""
-        parts.append(f"<div class='seg'><div class='meta'>{s.id} | {escape(who)} | {fmt_time(s.start)}–{fmt_time(s.end)}{flags}</div>"
-                     f"<div>{escape(s.text_readable if readable else s.text_verbatim)}</div></div>")
+        parts.append(
+            f"<div class='seg'><div class='meta'>{s.id} | {escape(who)} | {fmt_time(s.start)}–{fmt_time(s.end)}{flags}</div>"
+            f"<div>{escape(s.text_readable if readable else s.text_verbatim)}</div></div>"
+        )
     return _doc("النص الكامل", "".join(parts), classification_label, "النص الكامل للتسجيل", "يُستخدم للمراجعة")
 
 
 def summary_html(*, doc: MinutesDocument, org_name: str | None) -> str:
     sec = next((s for s in doc.sections if s.key == "summary"), None)
     decisions = next((s for s in doc.sections if s.key == "decisions"), None)
-    parts = [f"<h1>ملخص تنفيذي</h1><div class='org'>{escape(doc.meeting_info.get('موضوع الاجتماع', ''))}</div>",
-             f'<div class="status"><span>{escape(doc.status_label)}</span></div>']
+    parts = [
+        f"<h1>ملخص تنفيذي</h1><div class='org'>{escape(doc.meeting_info.get('موضوع الاجتماع', ''))}</div>",
+        f'<div class="status"><span>{escape(doc.status_label)}</span></div>',
+    ]
     if sec:
         parts.append("<ul>" + "".join(f"<li>{escape(b.text)}</li>" for b in sec.blocks) + "</ul>")
     if decisions:
-        parts.append("<h2>القرارات المعتمدة</h2><ul>" + "".join(f"<li>{escape(r.cells['القرار'])}</li>" for r in decisions.rows) + "</ul>")
+        parts.append(
+            "<h2>القرارات المعتمدة</h2><ul>"
+            + "".join(f"<li>{escape(r.cells['القرار'])}</li>" for r in decisions.rows)
+            + "</ul>"
+        )
     return _doc("ملخص تنفيذي", "".join(parts), doc.classification_label, org_name or "ملخص تنفيذي", doc.status_label)

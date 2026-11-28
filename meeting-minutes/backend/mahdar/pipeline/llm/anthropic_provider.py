@@ -18,7 +18,13 @@ import anthropic
 from mahdar.config import get_settings
 from mahdar.pipeline.llm.base import LlmError, LlmRequest, LlmResult, parse_json, validate
 
-SERVER_FALLBACK_MODELS = {"claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"}
+SERVER_FALLBACK_MODELS = {
+    "claude-fable-5-2",
+    "claude-fable-5-1",
+    "claude-opus-5-5",
+    "claude-opus-5",
+    "claude-sonnet-5-5",
+}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
@@ -46,7 +52,10 @@ class AnthropicClient:
             "max_tokens": req.max_tokens,
             "system": system,
             "messages": [{"role": "user", "content": req.user}],
-            "output_config": {"effort": req.effort or self.effort, "format": {"type": "json_schema", "schema": req.schema}},
+            "output_config": {
+                "effort": req.effort or self.effort,
+                "format": {"type": "json_schema", "schema": req.schema},
+            },
         }
         try:
             if model in SERVER_FALLBACK_MODELS:
@@ -60,22 +69,31 @@ class AnthropicClient:
         except anthropic.PermissionDeniedError as exc:
             raise LlmError("Anthropic API denied the request (403)", retryable=False, kind="auth") from exc
         except anthropic.BadRequestError as exc:
-            raise LlmError(f"Anthropic API rejected the request (400): {exc.message[:300]}", retryable=False, kind="bad_request") from exc
+            raise LlmError(
+                f"Anthropic API rejected the request (400): {exc.message[:300]}", retryable=False, kind="bad_request"
+            ) from exc
         except anthropic.RateLimitError as exc:
             raise LlmError("Anthropic API rate limit (429)", retryable=True, kind="rate_limited") from exc
         except anthropic.InternalServerError as exc:
-            raise LlmError(f"Anthropic API unavailable ({exc.status_code})", retryable=True, kind="unavailable") from exc
+            raise LlmError(
+                f"Anthropic API unavailable ({exc.status_code})", retryable=True, kind="unavailable"
+            ) from exc
         except anthropic.APITimeoutError as exc:
             raise LlmError("Anthropic API timed out", retryable=True, kind="timeout") from exc
         except anthropic.APIConnectionError as exc:
             raise LlmError("Could not reach the Anthropic API", retryable=True, kind="unavailable") from exc
         except anthropic.APIStatusError as exc:
-            raise LlmError(f"Anthropic API error {exc.status_code}", retryable=exc.status_code >= 500, kind="error") from exc
+            raise LlmError(
+                f"Anthropic API error {exc.status_code}", retryable=exc.status_code >= 500, kind="error"
+            ) from exc
 
         usage = msg.usage
         iterations = getattr(usage, "iterations", None) or []
         result = LlmResult(
-            data=None, model=msg.model, input_tokens=usage.input_tokens or 0, output_tokens=usage.output_tokens or 0,
+            data=None,
+            model=msg.model,
+            input_tokens=usage.input_tokens or 0,
+            output_tokens=usage.output_tokens or 0,
             cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
             cache_write_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
             stop_reason=msg.stop_reason,

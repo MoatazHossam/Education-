@@ -5,6 +5,7 @@ stays. Deleting a meeting removes everything except its audit entries."""
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -17,7 +18,16 @@ from mahdar.db.core import org_tx, system_tx
 log = logging.getLogger("mahdar.retention")
 
 AUDIO_BLOBS = ["audio_original", "audio_normalized"]
-DOC_BLOBS = ["minutes_docx", "minutes_pdf", "evidence_pdf", "transcript_pdf", "summary_pdf", "actions_csv", "export_json", "transcript_txt"]
+DOC_BLOBS = [
+    "minutes_docx",
+    "minutes_pdf",
+    "evidence_pdf",
+    "transcript_pdf",
+    "summary_pdf",
+    "actions_csv",
+    "export_json",
+    "transcript_txt",
+]
 TRANSCRIPT_ARTIFACTS = ["asr_chunks", "diarization", "transcript", "analysis", "verification", "minutes", "review"]
 
 
@@ -51,8 +61,16 @@ def sweep() -> dict:
                     n = repo.purge_artifacts(c, str(m["id"]), TRANSCRIPT_ARTIFACTS)
                     totals["artifacts"] += n
                     if n:
-                        repo.audit(c, org_id, "retention.purged", actor_kind="system", target_type="meeting", target_id=str(m["id"]),
-                                   meeting_id=str(m["id"]), details={"artifacts": n})
+                        repo.audit(
+                            c,
+                            org_id,
+                            "retention.purged",
+                            actor_kind="system",
+                            target_type="meeting",
+                            target_id=str(m["id"]),
+                            meeting_id=str(m["id"]),
+                            details={"artifacts": n},
+                        )
     if totals["blobs"] or totals["artifacts"]:
         log.info("retention sweep", extra=totals)
     return totals
@@ -62,11 +80,17 @@ def delete_meeting(org_id: str, meeting_id: str, actor: str | None) -> None:
     with org_tx(org_id) as c:
         blobs = repo.meeting_blobs(c, meeting_id)
     for b in blobs:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             storage.delete(b["storage_key"])
-        except FileNotFoundError:
-            pass
     with org_tx(org_id) as c:
-        repo.audit(c, org_id, "meeting.deleted", actor_user=actor, target_type="meeting", target_id=meeting_id, meeting_id=meeting_id,
-                   details={"blobs_deleted": len(blobs)})
+        repo.audit(
+            c,
+            org_id,
+            "meeting.deleted",
+            actor_user=actor,
+            target_type="meeting",
+            target_id=meeting_id,
+            meeting_id=meeting_id,
+            details={"blobs_deleted": len(blobs)},
+        )
         repo.delete_meeting(c, meeting_id)

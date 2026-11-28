@@ -18,12 +18,30 @@ pytestmark = pytest.mark.skipif(not shutil.which("fc-list"), reason="fontconfig 
 
 
 def minutes_doc():
-    t = transcript(seg("S0001", "SPK_1", "إذن تقرر اعتماد ربط نظام ERP مع Dynamics 365 بميزانية مليونين وأربعمائة ألف جنيه.", 0, 8))
-    an = analysis(item("I001", "decision_approved", "تقرر اعتماد ربط نظام ERP مع Dynamics 365 بميزانية 2,400,000 جنيه.",
-                       [("S0001", "تقرر اعتماد ربط نظام ERP مع Dynamics 365")]))
+    t = transcript(
+        seg("S0001", "SPK_1", "إذن تقرر اعتماد ربط نظام ERP مع Dynamics 365 بميزانية مليونين وأربعمائة ألف جنيه.", 0, 8)
+    )
+    an = analysis(
+        item(
+            "I001",
+            "decision_approved",
+            "تقرر اعتماد ربط نظام ERP مع Dynamics 365 بميزانية 2,400,000 جنيه.",
+            [("S0001", "تقرر اعتماد ربط نظام ERP مع Dynamics 365")],
+        )
+    )
     rep, _ = verify(t, an, meta={}, glossary=[], llm=None)
-    doc, _ = build_minutes(transcript=t, analysis=an, verification=rep, review={}, meta={"title": "ربط الأنظمة"}, classification="confidential",
-                           minutes_status="draft_requires_review", approval=None, glossary=[], llm=None)
+    doc, _ = build_minutes(
+        transcript=t,
+        analysis=an,
+        verification=rep,
+        review={},
+        meta={"title": "ربط الأنظمة"},
+        classification="confidential",
+        minutes_status="draft_requires_review",
+        approval=None,
+        glossary=[],
+        llm=None,
+    )
     return doc
 
 
@@ -50,7 +68,9 @@ def test_docx_check_detects_missing_rtl():
 def test_pdf_embeds_arabic_fonts_and_keeps_the_words(tmp_path):
     doc = minutes_doc()
     pdf = render_pdf(html.minutes_html(doc, org_name="جهة اختبار", logo_data_uri=None))
-    texts = [b.text for s in doc.sections for b in s.blocks] + [v for s in doc.sections for r in s.rows for v in r.cells.values()]
+    texts = [b.text for s in doc.sections for b in s.blocks] + [
+        v for s in doc.sections for r in s.rows for v in r.cells.values()
+    ]
     result = check_pdf(pdf, texts, render_dir=tmp_path)
     assert result["ok"], result["problems"]
     assert all(f["embedded"] for f in result["fonts"])

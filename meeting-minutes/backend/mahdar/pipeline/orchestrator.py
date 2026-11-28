@@ -45,13 +45,43 @@ from mahdar.pipeline.schemas import Analysis, AudioQualityReport, MinutesDocumen
 
 log = logging.getLogger("mahdar.pipeline")
 
-STAGES = ["intake", "transcribe", "diarize", "align", "readable", "analyse", "verify", "write", "review_language", "render"]
-WEIGHTS = {"intake": 0.03, "transcribe": 0.45, "diarize": 0.12, "align": 0.02, "readable": 0.06, "analyse": 0.12,
-           "verify": 0.10, "write": 0.05, "review_language": 0.03, "render": 0.02}
+STAGES = [
+    "intake",
+    "transcribe",
+    "diarize",
+    "align",
+    "readable",
+    "analyse",
+    "verify",
+    "write",
+    "review_language",
+    "render",
+]
+WEIGHTS = {
+    "intake": 0.03,
+    "transcribe": 0.45,
+    "diarize": 0.12,
+    "align": 0.02,
+    "readable": 0.06,
+    "analyse": 0.12,
+    "verify": 0.10,
+    "write": 0.05,
+    "review_language": 0.03,
+    "render": 0.02,
+}
 START = {"process": "intake", "reanalyse": "analyse", "reverify": "verify", "regenerate": "write"}
-STAGE_AR = {"intake": "استلام التسجيل وفحص الجودة", "transcribe": "تفريغ الكلام", "diarize": "تمييز المتحدثين",
-            "align": "نسبة الكلام إلى المتحدثين", "readable": "إعداد النسخة المقروءة", "analyse": "التحليل الدلالي",
-            "verify": "التحقق من الأدلة", "write": "صياغة المحضر", "review_language": "المراجعة اللغوية", "render": "إنشاء المستندات"}
+STAGE_AR = {
+    "intake": "استلام التسجيل وفحص الجودة",
+    "transcribe": "تفريغ الكلام",
+    "diarize": "تمييز المتحدثين",
+    "align": "نسبة الكلام إلى المتحدثين",
+    "readable": "إعداد النسخة المقروءة",
+    "analyse": "التحليل الدلالي",
+    "verify": "التحقق من الأدلة",
+    "write": "صياغة المحضر",
+    "review_language": "المراجعة اللغوية",
+    "render": "إنشاء المستندات",
+}
 
 
 class StageError(Exception):
@@ -108,16 +138,29 @@ class Run:
             queue.heartbeat(c, str(self.job["id"]), stage=stage, progress=total)
             repo.update_meeting(c, self.meeting_id, stage=stage, progress=total)
 
-    def record(self, stage: str, provider: str, model: str | None, data_kind: str, external: bool, detail: dict | None = None) -> None:
+    def record(
+        self, stage: str, provider: str, model: str | None, data_kind: str, external: bool, detail: dict | None = None
+    ) -> None:
         with self.tx() as c:
-            repo.record_processing(c, self.org_id, self.meeting_id, stage=stage, provider=provider, model=model, data_kind=data_kind,
-                                   external=external, detail=detail)
+            repo.record_processing(
+                c,
+                self.org_id,
+                self.meeting_id,
+                stage=stage,
+                provider=provider,
+                model=model,
+                data_kind=data_kind,
+                external=external,
+                detail=detail,
+            )
 
     def blob_file(self, kind: str) -> Path:
         with self.tx() as c:
             b = repo.latest_blob(c, self.meeting_id, kind)
         if b is None:
-            raise StageError("audio_missing", "لا يوجد ملف صوتي محفوظ لهذا الاجتماع (ربما انتهت مدة الاحتفاظ به).", retryable=False)
+            raise StageError(
+                "audio_missing", "لا يوجد ملف صوتي محفوظ لهذا الاجتماع (ربما انتهت مدة الاحتفاظ به).", retryable=False
+            )
         dst = self.tmp / f"{kind}{Path(b['filename'] or '').suffix or '.bin'}"
         if not dst.exists():
             storage.read_to_file(b["storage_key"], str(b["id"]), dst)
@@ -130,15 +173,27 @@ class Run:
         else:
             key, size, sha = storage.put_bytes(self.org_id, bid, data)
         with self.tx() as c:
-            repo.add_blob(c, blob_id=bid, org_id=self.org_id, meeting_id=self.meeting_id, kind=kind, storage_key=key, size=size,
-                          sha256=sha, content_type=content_type, filename=filename)
+            repo.add_blob(
+                c,
+                blob_id=bid,
+                org_id=self.org_id,
+                meeting_id=self.meeting_id,
+                kind=kind,
+                storage_key=key,
+                size=size,
+                sha256=sha,
+                content_type=content_type,
+                filename=filename,
+            )
         return bid
 
     def llm_for(self, stage: str, meeting: dict, *, required: bool) -> LlmClient | None:
         provider = self.settings.llm_provider
         if provider == "none":
             if required:
-                raise AwaitingAuthorization("لم يُعدّ نموذج لغوي للتحليل (MAHDAR_LLM_PROVIDER=none). التفريغ جاهز للمراجعة.")
+                raise AwaitingAuthorization(
+                    "لم يُعدّ نموذج لغوي للتحليل (MAHDAR_LLM_PROVIDER=none). التفريغ جاهز للمراجعة."
+                )
             return None
         try:
             with self.tx() as c:
@@ -147,7 +202,9 @@ class Run:
             if required:
                 raise AwaitingAuthorization(exc.reason_ar) from exc
             return None
-        model = self.settings.llm_verification_model if stage == "verify" and self.settings.llm_verification_model else None
+        model = (
+            self.settings.llm_verification_model if stage == "verify" and self.settings.llm_verification_model else None
+        )
         client = get_client(provider, model)
         client._mahdar_external = decision.external  # type: ignore[attr-defined]
         return client
@@ -156,12 +213,20 @@ class Run:
         if client is None or not usage:
             return
         self.usage += usage
-        self.record(stage, client.provider, usage[-1].get("model"), "transcript", getattr(client, "_mahdar_external", True), {
-            "calls": len(usage), "input_tokens": sum(u.get("input_tokens", 0) for u in usage),
-            "output_tokens": sum(u.get("output_tokens", 0) for u in usage),
-            "cache_read_tokens": sum(u.get("cache_read_tokens", 0) for u in usage),
-            "served_by_fallback": any(u.get("served_by_fallback") for u in usage),
-        })
+        self.record(
+            stage,
+            client.provider,
+            usage[-1].get("model"),
+            "transcript",
+            getattr(client, "_mahdar_external", True),
+            {
+                "calls": len(usage),
+                "input_tokens": sum(u.get("input_tokens", 0) for u in usage),
+                "output_tokens": sum(u.get("output_tokens", 0) for u in usage),
+                "cache_read_tokens": sum(u.get("cache_read_tokens", 0) for u in usage),
+                "served_by_fallback": any(u.get("served_by_fallback") for u in usage),
+            },
+        )
 
     def context(self) -> tuple[dict, list[dict], dict]:
         with self.tx() as c:
@@ -182,8 +247,13 @@ class Run:
         try:
             p = audio.probe(original)
             norm_path = audio.normalize(original, self.tmp / "normalized.wav")
-            report = audio.analyse(original, norm_path, p, chunk_minutes=self.settings.chunk_minutes,
-                                   overlap_seconds=self.settings.chunk_overlap_seconds)
+            report = audio.analyse(
+                original,
+                norm_path,
+                p,
+                chunk_minutes=self.settings.chunk_minutes,
+                overlap_seconds=self.settings.chunk_overlap_seconds,
+            )
         except audio.AudioError as exc:
             raise StageError(exc.code, exc.message_ar, retryable=False) from exc
         self.store_blob("audio_normalized", norm_path, "audio/wav", "normalized.wav")
@@ -204,17 +274,27 @@ class Run:
                 raise StageError("asr_not_authorized", exc.reason_ar, retryable=False) from exc
         norm = self.blob_file("audio_normalized")
         terms = [g["term"] for g in glossary]
-        opts = AsrOptions(language="ar", locale=meeting["meta"].get("locale") or "ar-EG", prompt=build_prompt(terms), hotwords=terms,
-                          expected_speakers=meeting["meta"].get("expected_speakers"))
+        opts = AsrOptions(
+            language="ar",
+            locale=meeting["meta"].get("locale") or "ar-EG",
+            prompt=build_prompt(terms),
+            hotwords=terms,
+            expected_speakers=meeting["meta"].get("expected_speakers"),
+        )
         done = self.latest("asr_chunks")
-        state = done[1] if done and done[1].get("provider") == provider.name and done[1].get("model") == provider.model else {
-            "provider": provider.name, "model": provider.model, "chunks": {}}
+        state = (
+            done[1]
+            if done and done[1].get("provider") == provider.name and done[1].get("model") == provider.model
+            else {"provider": provider.name, "model": provider.model, "chunks": {}}
+        )
         for chunk in q.chunks:
             key = str(chunk.index)
             if key in state["chunks"]:
                 continue
+
             def prog(x: float, i=chunk.index) -> None:
                 self.progress("transcribe", (i + x) / len(q.chunks))
+
             try:
                 segs = provider.transcribe(norm, chunk.start, chunk.end, opts, prog)
             except AsrError as exc:
@@ -222,8 +302,12 @@ class Run:
             state["chunks"][key] = {"start": chunk.start, "end": chunk.end, "segments": [_raw_to_dict(s) for s in segs]}
             self.save("asr_chunks", state, "transcription", note=f"chunk {chunk.index + 1}/{len(q.chunks)}")
         self.record("transcribe", provider.name, provider.model, "audio", decision.external, {"chunks": len(q.chunks)})
-        merged = merge_chunks([(v["start"], v["end"], [_raw_from_dict(s) for s in v["segments"]])
-                               for _, v in sorted(state["chunks"].items(), key=lambda kv: int(kv[0]))])
+        merged = merge_chunks(
+            [
+                (v["start"], v["end"], [_raw_from_dict(s) for s in v["segments"]])
+                for _, v in sorted(state["chunks"].items(), key=lambda kv: int(kv[0]))
+            ]
+        )
         speech = audio.speech_regions(audio.load_samples(norm))
         return screen(merged, speech, opts.prompt)
 
@@ -264,21 +348,38 @@ class Run:
                 segs, speakers = align(raw, turns, diarized=diarized)
                 q = q.model_copy(update={"overlap_regions": overlap_regions(turns)})
                 self.save("audio_quality", q.model_dump(), "audio_intake", note="overlaps from diarization")
-                tr = Transcript(recording_sha256=q.recording_sha256, asr_provider=asr_prov.name, asr_model=asr_prov.model,
-                                diarization_provider=self.settings.diarization_provider if diarized else "none", segments=segs, speakers=speakers)
+                tr = Transcript(
+                    recording_sha256=q.recording_sha256,
+                    asr_provider=asr_prov.name,
+                    asr_model=asr_prov.model,
+                    diarization_provider=self.settings.diarization_provider if diarized else "none",
+                    segments=segs,
+                    speakers=speakers,
+                )
                 self._stage("readable")
                 llm = self.llm_for("readable", meeting, required=False)
                 tr, usage, stats = readable.build(tr, glossary, llm, lambda x: self.progress("readable", x))
                 self.note_usage("readable", llm, usage)
-                self.save("transcript", tr.model_dump(), "transcription", note=json.dumps({"readable": stats}, ensure_ascii=False))
+                self.save(
+                    "transcript",
+                    tr.model_dump(),
+                    "transcription",
+                    note=json.dumps({"readable": stats}, ensure_ascii=False),
+                )
                 self.progress("readable", 1.0)
             transcript = Transcript(**self.latest("transcript")[1])
             meeting, glossary, org = self.context()
             if STAGES.index(start) <= STAGES.index("analyse"):
                 self._stage("analyse")
                 llm = self.llm_for("analyse", meeting, required=True)
-                an, usage = analysis_agent.analyse(transcript, _llm_meta(meeting), glossary, llm, context_budget=self.settings.llm_context_tokens,
-                                                   progress=lambda x: self.progress("analyse", x))
+                an, usage = analysis_agent.analyse(
+                    transcript,
+                    _llm_meta(meeting),
+                    glossary,
+                    llm,
+                    context_budget=self.settings.llm_context_tokens,
+                    progress=lambda x: self.progress("analyse", x),
+                )
                 self.note_usage("analyse", llm, usage)
                 self.save("analysis", an.model_dump(), "analysis")
                 if kind == "reanalyse":
@@ -287,8 +388,14 @@ class Run:
             if STAGES.index(start) <= STAGES.index("verify"):
                 self._stage("verify")
                 llm = self.llm_for("verify", meeting, required=False)
-                rep, usage = verification.verify(transcript, an, meta=_llm_meta(meeting), glossary=glossary, llm=llm,
-                                                 progress=lambda x: self.progress("verify", x))
+                rep, usage = verification.verify(
+                    transcript,
+                    an,
+                    meta=_llm_meta(meeting),
+                    glossary=glossary,
+                    llm=llm,
+                    progress=lambda x: self.progress("verify", x),
+                )
                 self.note_usage("verify", llm, usage)
                 self.record("verify", "rules", None, "transcript", False, {"items": len(rep.items)})
                 self.save("verification", rep.model_dump(), "verification")
@@ -298,14 +405,22 @@ class Run:
 
     def _stage(self, stage: str) -> None:
         with self.tx() as c:
-            queue.record_stage(c, str(self.job["id"]), {"stage": stage, "label_ar": STAGE_AR[stage], "at": datetime.now(UTC).isoformat()})
+            queue.record_stage(
+                c,
+                str(self.job["id"]),
+                {"stage": stage, "label_ar": STAGE_AR[stage], "at": datetime.now(UTC).isoformat()},
+            )
         self.progress(stage, 0.0)
 
     def _reset_item_reviews(self) -> None:
         r = self.latest("review")
         if r and r[1].get("items"):
-            self.save("review", {**r[1], "items": {}, "superseded_items": r[1]["items"]}, "system",
-                      note="item reviews reset after re-analysis")
+            self.save(
+                "review",
+                {**r[1], "items": {}, "superseded_items": r[1]["items"]},
+                "system",
+                note="item reviews reset after re-analysis",
+            )
 
     def render(self, meeting: dict, glossary: list[dict], org: dict, transcript: Transcript, an: Analysis) -> None:
         rep = VerificationReport(**self.latest("verification")[1])
@@ -318,51 +433,141 @@ class Run:
         self._stage("write")
         llm = self.llm_for("write", meeting, required=False)
         people = [g["term"] for g in glossary if g.get("category") == "person"]
-        doc, usage = minutes_agent.build_minutes(transcript=transcript, analysis=an, verification=rep, review=review, meta=meeting["meta"],
-                                                 classification=meeting["classification"], minutes_status=status, approval=approval,
-                                                 glossary=glossary, llm=llm)
+        doc, usage = minutes_agent.build_minutes(
+            transcript=transcript,
+            analysis=an,
+            verification=rep,
+            review=review,
+            meta=meeting["meta"],
+            classification=meeting["classification"],
+            minutes_status=status,
+            approval=approval,
+            glossary=glossary,
+            llm=llm,
+        )
         self.note_usage("write", llm, usage)
         self._stage("review_language")
         llm = self.llm_for("review_language", meeting, required=False)
         doc, usage = minutes_agent.review_language(doc, llm, people)
         self.note_usage("review_language", llm, usage)
         self._stage("render")
-        files, checks = render_documents(doc, transcript=transcript, analysis=an, verification=rep, review=review, quality_=q0,
-                                         meeting=meeting, org=org, tmp=self.tmp)
+        files, checks = render_documents(
+            doc,
+            transcript=transcript,
+            analysis=an,
+            verification=rep,
+            review=review,
+            quality_=q0,
+            meeting=meeting,
+            org=org,
+            tmp=self.tmp,
+        )
         q1 = quality.evaluate(transcript, an, rep, review, org["settings"].get("quality_gates", {}), checks)
         status = quality.minutes_status(q1, meeting["minutes_status"], bool(review.get("reviewed_by")))
         label = minutes_agent.STATUS_LABELS[status]
         if label != doc.status_label:
             # Rendering checks can change the status: the label and the info table follow it.
-            sections = [sec.model_copy(update={"rows": [r.model_copy(update={"cells": {**r.cells, "القيمة": label}})
-                                                         if r.cells.get("البيان") == "حالة المحضر" else r for r in sec.rows]})
-                        if sec.key == "info" else sec for sec in doc.sections]
+            sections = [
+                sec.model_copy(
+                    update={
+                        "rows": [
+                            r.model_copy(update={"cells": {**r.cells, "القيمة": label}})
+                            if r.cells.get("البيان") == "حالة المحضر"
+                            else r
+                            for r in sec.rows
+                        ]
+                    }
+                )
+                if sec.key == "info"
+                else sec
+                for sec in doc.sections
+            ]
             doc = doc.model_copy(update={"status_label": label, "sections": sections})
-            files, checks = render_documents(doc, transcript=transcript, analysis=an, verification=rep, review=review, quality_=q1,
-                                             meeting=meeting, org=org, tmp=self.tmp)
+            files, checks = render_documents(
+                doc,
+                transcript=transcript,
+                analysis=an,
+                verification=rep,
+                review=review,
+                quality_=q1,
+                meeting=meeting,
+                org=org,
+                tmp=self.tmp,
+            )
         version = self.save("minutes", doc.model_dump(), "writer", note=f"status {status}")
         blob_ids = {}
         for kind, (data, ctype, name) in files.items():
             blob_ids[kind] = self.store_blob(kind, data, ctype, name)
         processing = []
         with self.tx() as c:
-            processing = [{k: (str(v) if isinstance(v, datetime) else v) for k, v in r.items()} for r in repo.processing_records(c, self.meeting_id)]
+            processing = [
+                {k: (str(v) if isinstance(v, datetime) else v) for k, v in r.items()}
+                for r in repo.processing_records(c, self.meeting_id)
+            ]
         eff = minutes_agent.effective_items(an, rep, review)
-        export = exports.export_json(meeting={**meeting, "minutes_status": status}, transcript=transcript, analysis=an, verification=rep,
-                                     minutes=doc, eff=eff, quality=q1, processing=processing)
-        blob_ids["export_json"] = self.store_blob("export_json", json.dumps(export, ensure_ascii=False, indent=1, default=str).encode(),
-                                                  "application/json", "meeting.json")
-        self.save("documents", {"minutes_version": version, "blobs": blob_ids, "checks": checks, "quality": q1,
-                                "generated_at": datetime.now(UTC).isoformat(), "usage": self.usage}, "documents")
+        export = exports.export_json(
+            meeting={**meeting, "minutes_status": status},
+            transcript=transcript,
+            analysis=an,
+            verification=rep,
+            minutes=doc,
+            eff=eff,
+            quality=q1,
+            processing=processing,
+        )
+        blob_ids["export_json"] = self.store_blob(
+            "export_json",
+            json.dumps(export, ensure_ascii=False, indent=1, default=str).encode(),
+            "application/json",
+            "meeting.json",
+        )
+        self.save(
+            "documents",
+            {
+                "minutes_version": version,
+                "blobs": blob_ids,
+                "checks": checks,
+                "quality": q1,
+                "generated_at": datetime.now(UTC).isoformat(),
+                "usage": self.usage,
+            },
+            "documents",
+        )
         with self.tx() as c:
-            repo.update_meeting(c, self.meeting_id, status="review", stage="done", progress=1.0, minutes_status=status,
-                                critical_open=q1["open_critical"], error_code=None)
-            repo.audit(c, self.org_id, "minutes.generated", actor_kind="agent", target_type="meeting", target_id=self.meeting_id,
-                       meeting_id=self.meeting_id, details={"status": status, "open_critical": q1["open_critical"], "minutes_version": version})
+            repo.update_meeting(
+                c,
+                self.meeting_id,
+                status="review",
+                stage="done",
+                progress=1.0,
+                minutes_status=status,
+                critical_open=q1["open_critical"],
+                error_code=None,
+            )
+            repo.audit(
+                c,
+                self.org_id,
+                "minutes.generated",
+                actor_kind="agent",
+                target_type="meeting",
+                target_id=self.meeting_id,
+                meeting_id=self.meeting_id,
+                details={"status": status, "open_critical": q1["open_critical"], "minutes_version": version},
+            )
 
 
-def render_documents(doc: MinutesDocument, *, transcript: Transcript, analysis: Analysis, verification: VerificationReport, review: dict,
-                     quality_: dict, meeting: dict, org: dict, tmp: Path) -> tuple[dict, dict]:
+def render_documents(
+    doc: MinutesDocument,
+    *,
+    transcript: Transcript,
+    analysis: Analysis,
+    verification: VerificationReport,
+    review: dict,
+    quality_: dict,
+    meeting: dict,
+    org: dict,
+    tmp: Path,
+) -> tuple[dict, dict]:
     branding = org["settings"].get("branding", {})
     org_name = branding.get("org_name_ar") or org.get("name")
     logo = None
@@ -378,41 +583,86 @@ def render_documents(doc: MinutesDocument, *, transcript: Transcript, analysis: 
     checks: dict[str, dict] = {}
     docx = build_docx(doc, org_name=org_name, logo=logo, footer_note=branding.get("footer_text"))
     checks["minutes_docx"] = check_docx(docx)
-    files["minutes_docx"] = (docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "minutes.docx")
-    texts = [b.text for s in doc.sections for b in s.blocks] + [v for s in doc.sections for r in s.rows for v in r.cells.values()]
+    files["minutes_docx"] = (
+        docx,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "minutes.docx",
+    )
+    texts = [b.text for s in doc.sections for b in s.blocks] + [
+        v for s in doc.sections for r in s.rows for v in r.cells.values()
+    ]
     pdf = render_pdf(html.minutes_html(doc, org_name=org_name, logo_data_uri=logo_uri))
     checks["minutes_pdf"] = check_pdf(pdf, texts)
     files["minutes_pdf"] = (pdf, "application/pdf", "minutes.pdf")
-    ev = render_pdf(html.evidence_html(title=title, transcript=transcript, analysis=analysis, verification=verification, quality=quality_,
-                                       classification_label=doc.classification_label))
+    ev = render_pdf(
+        html.evidence_html(
+            title=title,
+            transcript=transcript,
+            analysis=analysis,
+            verification=verification,
+            quality=quality_,
+            classification_label=doc.classification_label,
+        )
+    )
     checks["evidence_pdf"] = check_pdf(ev, [i.statement for i in analysis.items])
     files["evidence_pdf"] = (ev, "application/pdf", "evidence-report.pdf")
-    tp = render_pdf(html.transcript_html(title=title, transcript=transcript, readable=True, classification_label=doc.classification_label))
+    tp = render_pdf(
+        html.transcript_html(
+            title=title, transcript=transcript, readable=True, classification_label=doc.classification_label
+        )
+    )
     checks["transcript_pdf"] = check_pdf(tp, [s.text_readable for s in transcript.segments])
     files["transcript_pdf"] = (tp, "application/pdf", "transcript.pdf")
     sp = render_pdf(html.summary_html(doc=doc, org_name=org_name))
     files["summary_pdf"] = (sp, "application/pdf", "executive-summary.pdf")
     eff = minutes_agent.effective_items(analysis, verification, review)
     files["actions_csv"] = (exports.actions_csv(eff, transcript), "text/csv; charset=utf-8", "action-items.csv")
-    files["transcript_txt"] = (exports.transcript_text(transcript, readable=False), "text/plain; charset=utf-8", "transcript-verbatim.txt")
+    files["transcript_txt"] = (
+        exports.transcript_text(transcript, readable=False),
+        "text/plain; charset=utf-8",
+        "transcript-verbatim.txt",
+    )
     _ = tmp
     return files, checks
 
 
 def _llm_meta(meeting: dict) -> dict:
     m = meeting["meta"]
-    return {"العنوان": m.get("title"), "التاريخ": m.get("date"), "date": m.get("date"), "المكان": m.get("location"),
-            "عدد المتحدثين المتوقع": m.get("expected_speakers")}
+    return {
+        "العنوان": m.get("title"),
+        "التاريخ": m.get("date"),
+        "date": m.get("date"),
+        "المكان": m.get("location"),
+        "عدد المتحدثين المتوقع": m.get("expected_speakers"),
+    }
 
 
 def _raw_to_dict(s: RawSegment) -> dict:
-    return {"start": s.start, "end": s.end, "text": s.text, "words": [w.__dict__ for w in s.words], "avg_logprob": s.avg_logprob,
-            "no_speech_prob": s.no_speech_prob, "compression_ratio": s.compression_ratio, "speaker": s.speaker, "flags": sorted(s.flags)}
+    return {
+        "start": s.start,
+        "end": s.end,
+        "text": s.text,
+        "words": [w.__dict__ for w in s.words],
+        "avg_logprob": s.avg_logprob,
+        "no_speech_prob": s.no_speech_prob,
+        "compression_ratio": s.compression_ratio,
+        "speaker": s.speaker,
+        "flags": sorted(s.flags),
+    }
 
 
 def _raw_from_dict(d: dict) -> RawSegment:
-    return RawSegment(start=d["start"], end=d["end"], text=d["text"], words=[RawWord(**w) for w in d["words"]], avg_logprob=d["avg_logprob"],
-                      no_speech_prob=d["no_speech_prob"], compression_ratio=d["compression_ratio"], speaker=d["speaker"], flags=set(d["flags"]))
+    return RawSegment(
+        start=d["start"],
+        end=d["end"],
+        text=d["text"],
+        words=[RawWord(**w) for w in d["words"]],
+        avg_logprob=d["avg_logprob"],
+        no_speech_prob=d["no_speech_prob"],
+        compression_ratio=d["compression_ratio"],
+        speaker=d["speaker"],
+        flags=set(d["flags"]),
+    )
 
 
 def run_job(job: dict, on_retry: Callable[[], None] | None = None) -> None:
@@ -426,9 +676,19 @@ def run_job(job: dict, on_retry: Callable[[], None] | None = None) -> None:
     except AwaitingAuthorization as exc:
         with org_tx(org_id) as c:
             repo.update_meeting(c, meeting_id, status="awaiting_authorization", error_code="awaiting_authorization")
-            repo.audit(c, org_id, "pipeline.awaiting_authorization", actor_kind="system", target_type="meeting", target_id=meeting_id,
-                       meeting_id=meeting_id, details={"reason_ar": exc.message_ar})
-            queue.record_stage(c, job_id, {"stage": "analyse", "status": "awaiting_authorization", "message_ar": exc.message_ar})
+            repo.audit(
+                c,
+                org_id,
+                "pipeline.awaiting_authorization",
+                actor_kind="system",
+                target_type="meeting",
+                target_id=meeting_id,
+                meeting_id=meeting_id,
+                details={"reason_ar": exc.message_ar},
+            )
+            queue.record_stage(
+                c, job_id, {"stage": "analyse", "status": "awaiting_authorization", "message_ar": exc.message_ar}
+            )
             queue.succeed(c, job_id)
     except (StageError, LlmError) as exc:
         retryable = exc.retryable
@@ -436,12 +696,28 @@ def run_job(job: dict, on_retry: Callable[[], None] | None = None) -> None:
         message = exc.message_ar if isinstance(exc, StageError) else _llm_message(exc)
         with org_tx(org_id) as c:
             again = queue.fail(c, job, f"{code}: {exc}", retry=retryable)
-            queue.record_stage(c, job_id, {"stage": "error", "status": "retrying" if again else "failed", "message_ar": message,
-                                           "at": datetime.now(UTC).isoformat()})
+            queue.record_stage(
+                c,
+                job_id,
+                {
+                    "stage": "error",
+                    "status": "retrying" if again else "failed",
+                    "message_ar": message,
+                    "at": datetime.now(UTC).isoformat(),
+                },
+            )
             if not again:
                 repo.update_meeting(c, meeting_id, status="failed", error_code=code)
-                repo.audit(c, org_id, "pipeline.failed", actor_kind="system", target_type="meeting", target_id=meeting_id,
-                           meeting_id=meeting_id, details={"code": code, "message_ar": message})
+                repo.audit(
+                    c,
+                    org_id,
+                    "pipeline.failed",
+                    actor_kind="system",
+                    target_type="meeting",
+                    target_id=meeting_id,
+                    meeting_id=meeting_id,
+                    details={"code": code, "message_ar": message},
+                )
         log.warning("job failed", extra={"job": job_id, "code": code, "retry": retryable})
     except Exception as exc:  # unexpected: retried, then failed with a generic message
         log.exception("job crashed", extra={"job": job_id})
@@ -449,7 +725,11 @@ def run_job(job: dict, on_retry: Callable[[], None] | None = None) -> None:
             again = queue.fail(c, job, f"internal: {type(exc).__name__}: {exc}", retry=True)
             if not again:
                 repo.update_meeting(c, meeting_id, status="failed", error_code="internal")
-                queue.record_stage(c, job_id, {"stage": "error", "status": "failed", "message_ar": "حدث خطأ داخلي غير متوقع أثناء المعالجة."})
+                queue.record_stage(
+                    c,
+                    job_id,
+                    {"stage": "error", "status": "failed", "message_ar": "حدث خطأ داخلي غير متوقع أثناء المعالجة."},
+                )
 
 
 def _llm_message(exc: LlmError) -> str:

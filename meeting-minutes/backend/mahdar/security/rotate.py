@@ -31,12 +31,17 @@ def rotate_all() -> dict:
     with owner_engine().begin() as c:
         for table, col, aad in COLUMNS:
             n = 0
-            rows = c.execute(text(f"select id, org_id, {col} from {table} where {col} is not null and length({col}) > 0")).mappings()  # noqa: S608
+            rows = c.execute(
+                text(f"select id, org_id, {col} from {table} where {col} is not null and length({col}) > 0")  # noqa: S608
+            ).mappings()
             for r in list(rows):
                 blob = bytes(r[col])
                 if not kr.needs_rotation(blob):
                     continue
-                c.execute(text(f"update {table} set {col} = :v where id = :id"), {"v": kr.seal(kr.open(blob, aad(r)), aad(r)), "id": r["id"]})  # noqa: S608
+                c.execute(
+                    text(f"update {table} set {col} = :v where id = :id"),  # noqa: S608
+                    {"v": kr.seal(kr.open(blob, aad(r)), aad(r)), "id": r["id"]},
+                )
                 n += 1
             counts[table] = n
         files = 0

@@ -65,14 +65,26 @@ def speaker_accuracy(ref_segments: list[dict], hyp_segments: list[dict]) -> dict
         score = sum(co.get((r, h), 0.0) for r, h in zip(ref_spk, perm, strict=True) if h)
         if score > best:
             best, best_map = score, {r: h for r, h in zip(ref_spk, perm, strict=True) if h}
-    return {"applicable": True, "accuracy": round(best / max(total, 1e-9), 4), "reference_speakers": len(ref_spk),
-            "detected_speakers": len(hyp_spk), "mapping": best_map}
+    return {
+        "applicable": True,
+        "accuracy": round(best / max(total, 1e-9), 4),
+        "reference_speakers": len(ref_spk),
+        "detected_speakers": len(hyp_spk),
+        "mapping": best_map,
+    }
 
 
 def _item_text(item: dict, segments: dict[str, dict]) -> str:
     ev = " ".join(segments.get(e["segment_id"], {}).get("text_verbatim", "") for e in item.get("evidence", []))
-    return " ".join([item.get("statement", ""), item.get("owner", {}).get("name_as_spoken") or "", item.get("due", {}).get("text_as_spoken") or "",
-                     " ".join(item.get("qualifications", [])), ev])
+    return " ".join(
+        [
+            item.get("statement", ""),
+            item.get("owner", {}).get("name_as_spoken") or "",
+            item.get("due", {}).get("text_as_spoken") or "",
+            " ".join(item.get("qualifications", [])),
+            ev,
+        ]
+    )
 
 
 def matches(expected: dict, item: dict, segments: dict[str, dict], glossary: list[dict] | None = None) -> bool:
@@ -80,7 +92,12 @@ def matches(expected: dict, item: dict, segments: dict[str, dict], glossary: lis
     norm = arabic.normalize(text)
     for kw in expected.get("keywords", []):
         k = arabic.normalize(kw)
-        variants = [k] + [arabic.normalize(v) for g in (glossary or []) if arabic.normalize(g["term"]) == k for v in g.get("variants", [])]
+        variants = [k] + [
+            arabic.normalize(v)
+            for g in (glossary or [])
+            if arabic.normalize(g["term"]) == k
+            for v in g.get("variants", [])
+        ]
         if not any(v in norm or fuzz.partial_ratio(v, norm) >= 85 for v in variants if v):
             return False
     nums = arabic.extract_numbers(text)
@@ -115,7 +132,9 @@ def item_scores(expected: dict, items: list[dict], segments: dict[str, dict], gl
         strict = cat in ("decisions_approved", "actions_assigned", "decisions_rejected")
         extra = [i for i in got if not any(matches(e, i, segments, glossary) for e in exp)] if strict else []
         out[cat] = {
-            "expected": len(exp), "extracted": len(got), "matched": len(found),
+            "expected": len(exp),
+            "extracted": len(got),
+            "matched": len(found),
             "recall": round(len(found) / len(exp), 4) if exp else None,
             "precision": round((len(got) - len(extra)) / len(got), 4) if strict and got else None,
             "missing": [e["key"] for e in exp if e not in found],
@@ -124,14 +143,25 @@ def item_scores(expected: dict, items: list[dict], segments: dict[str, dict], gl
     approved = [i for i in items if i["final_type"] == "decision_approved"]
     exp_dec = expected.get("decisions_approved", [])
     invented = [i["id"] for i in approved if not any(matches(e, i, segments, glossary) for e in exp_dec)]
-    violations = [n["key"] for n in expected.get("not_decisions", []) if any(matches(n, i, segments, glossary) for i in approved)]
+    violations = [
+        n["key"] for n in expected.get("not_decisions", []) if any(matches(n, i, segments, glossary) for i in approved)
+    ]
     out["invented_decisions"] = invented
     out["not_decision_violations"] = violations
     owners = []
     for e in expected.get("actions_assigned", []) + expected.get("actions_suggested", []):
-        hit = next((i for i in items if i["final_type"] in ("action_assigned", "action_suggested") and matches(e, i, segments, glossary)), None)
+        hit = next(
+            (
+                i
+                for i in items
+                if i["final_type"] in ("action_assigned", "action_suggested") and matches(e, i, segments, glossary)
+            ),
+            None,
+        )
         if hit and e.get("owner"):
-            owners.append(arabic.normalize(e["owner"]) in arabic.normalize(hit.get("owner", {}).get("name_as_spoken") or ""))
+            owners.append(
+                arabic.normalize(e["owner"]) in arabic.normalize(hit.get("owner", {}).get("name_as_spoken") or "")
+            )
     out["owner_accuracy"] = round(sum(owners) / len(owners), 4) if owners else None
     return out
 

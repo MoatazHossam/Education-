@@ -65,7 +65,7 @@ class S3Backend:
 
     def open(self, key: str) -> BinaryIO:
         # Downloaded to a temporary file: decryption needs to seek.
-        tmp = tempfile.TemporaryFile()
+        tmp = tempfile.TemporaryFile()  # noqa: SIM115 (returned open; the caller closes it)
         self.client.download_fileobj(self.bucket, key, tmp)
         tmp.seek(0)
         return tmp  # type: ignore[return-value]

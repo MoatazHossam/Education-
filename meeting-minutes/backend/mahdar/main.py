@@ -20,8 +20,10 @@ from mahdar.logging_setup import setup_logging
 
 log = logging.getLogger("mahdar.api")
 
-CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; "
-       "font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'")
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; "
+    "font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+)
 
 
 class SecurityHeaders(BaseHTTPMiddleware):
@@ -30,7 +32,9 @@ class SecurityHeaders(BaseHTTPMiddleware):
         # Reject oversized uploads before reading them (the route enforces the exact limit too).
         length = request.headers.get("content-length")
         if length and length.isdigit() and int(length) > s.max_upload_mb * 1_000_000 + 1_000_000:
-            return JSONResponse({"detail": f"حجم الطلب يتجاوز الحد المسموح ({s.max_upload_mb} ميجابايت)"}, status_code=413)
+            return JSONResponse(
+                {"detail": f"حجم الطلب يتجاوز الحد المسموح ({s.max_upload_mb} ميجابايت)"}, status_code=413
+            )
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
         start = time.monotonic()
         response = await call_next(request)
@@ -45,8 +49,16 @@ class SecurityHeaders(BaseHTTPMiddleware):
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
             # Path and status only: ids in paths are opaque, query strings are not logged.
-            log.info("request", extra={"method": request.method, "path": request.url.path, "status": response.status_code,
-                                       "ms": round((time.monotonic() - start) * 1000), "request_id": rid})
+            log.info(
+                "request",
+                extra={
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "ms": round((time.monotonic() - start) * 1000),
+                    "request_id": rid,
+                },
+            )
         return response
 
 
@@ -56,8 +68,13 @@ def create_app() -> FastAPI:
     problems = check_production(s)
     if problems:
         raise RuntimeError("refusing to start: " + "; ".join(problems))
-    app = FastAPI(title="Mahdar — Arabic meeting minutes API", version="0.1.0", docs_url="/docs", redoc_url=None,
-                  openapi_url="/openapi.json")
+    app = FastAPI(
+        title="Mahdar — Arabic meeting minutes API",
+        version="0.1.0",
+        docs_url="/docs",
+        redoc_url=None,
+        openapi_url="/openapi.json",
+    )
     app.add_middleware(SecurityHeaders)
     app.include_router(routes_auth.router)
     app.include_router(routes_meetings.router)

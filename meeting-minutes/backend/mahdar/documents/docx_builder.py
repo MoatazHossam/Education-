@@ -46,7 +46,9 @@ def _set_bidi_paragraph(p) -> None:
         ppr.insert(0, _el("w:bidi"))
 
 
-def _style_run(run, *, rtl: bool, size: float, bold: bool = False, font: str = FONT, color: RGBColor | None = None) -> None:
+def _style_run(
+    run, *, rtl: bool, size: float, bold: bool = False, font: str = FONT, color: RGBColor | None = None
+) -> None:
     rpr = run._r.get_or_add_rPr()
     fonts = rpr.find(qn("w:rFonts"))
     if fonts is None:
@@ -67,20 +69,33 @@ def _style_run(run, *, rtl: bool, size: float, bold: bool = False, font: str = F
     rpr.append(_el("w:lang", **{"w:val": "en-US", "w:bidi": "ar-EG"}))
 
 
-def add_text(p, text: str, *, size: float = 11.5, bold: bool = False, font: str = FONT, color: RGBColor | None = None) -> None:
+def add_text(
+    p, text: str, *, size: float = 11.5, bold: bool = False, font: str = FONT, color: RGBColor | None = None
+) -> None:
     """Arabic in right-to-left runs, English terms in left-to-right runs."""
     pos = 0
     for m in LATIN.finditer(text):
         if m.start() > pos:
-            _style_run(p.add_run(text[pos:m.start()]), rtl=True, size=size, bold=bold, font=font, color=color)
+            _style_run(p.add_run(text[pos : m.start()]), rtl=True, size=size, bold=bold, font=font, color=color)
         _style_run(p.add_run(m.group(0)), rtl=False, size=size, bold=bold, font=font, color=color)
         pos = m.end()
     if pos < len(text):
         _style_run(p.add_run(text[pos:]), rtl=True, size=size, bold=bold, font=font, color=color)
 
 
-def para(container, text: str = "", *, size: float = 11.5, bold: bool = False, justify: bool = False, center: bool = False,
-         font: str = FONT, color: RGBColor | None = None, style: str | None = None, space_after: float = 4):
+def para(
+    container,
+    text: str = "",
+    *,
+    size: float = 11.5,
+    bold: bool = False,
+    justify: bool = False,
+    center: bool = False,
+    font: str = FONT,
+    color: RGBColor | None = None,
+    style: str | None = None,
+    space_after: float = 4,
+):
     p = container.add_paragraph(style=style) if style else container.add_paragraph()
     _set_bidi_paragraph(p)
     if center:
@@ -146,9 +161,16 @@ def _table(doc, columns: list[str], rows: list[list[str]], widths_cm: list[float
             if columns[i] == "رقم":
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             if not header and i == 0:
-                cell._tc.get_or_add_tcPr().append(_el("w:shd", **{"w:val": "clear", "w:color": "auto", "w:fill": "F4F6F9"}))
-            add_text(p, v, size=10 if columns[i] not in ("المرجع", "الحالة") else 8.5, bold=not header and i == 0,
-                     font=FONT_HEAD if not header and i == 0 else FONT)
+                cell._tc.get_or_add_tcPr().append(
+                    _el("w:shd", **{"w:val": "clear", "w:color": "auto", "w:fill": "F4F6F9"})
+                )
+            add_text(
+                p,
+                v,
+                size=10 if columns[i] not in ("المرجع", "الحالة") else 8.5,
+                bold=not header and i == 0,
+                font=FONT_HEAD if not header and i == 0 else FONT,
+            )
     # Fixed layout with explicit grid widths: Word and LibreOffice otherwise size columns by content.
     t.autofit = False
     tblpr.append(_el("w:tblLayout", **{"w:type": "fixed"}))
@@ -168,7 +190,9 @@ WIDTHS = {
 }
 
 
-def build_docx(doc: MinutesDocument, *, org_name: str | None = None, logo: bytes | None = None, footer_note: str | None = None) -> bytes:
+def build_docx(
+    doc: MinutesDocument, *, org_name: str | None = None, logo: bytes | None = None, footer_note: str | None = None
+) -> bytes:
     d = Document()
     sec = d.sections[0]
     sec.orientation = WD_ORIENT.PORTRAIT
@@ -210,8 +234,14 @@ def build_docx(doc: MinutesDocument, *, org_name: str | None = None, logo: bytes
     add_text(fp, " من ", size=8.5)
     _field(fp, "NUMPAGES", 8.5)
     if footer_note or doc.status_label != "معتمد":
-        para(sec.footer, footer_note or "مسودة أُعدَّت آلياً وتخضع للمراجعة البشرية", size=7.5, center=True,
-             color=RGBColor(0x66, 0x66, 0x66), space_after=0)
+        para(
+            sec.footer,
+            footer_note or "مسودة أُعدَّت آلياً وتخضع للمراجعة البشرية",
+            size=7.5,
+            center=True,
+            color=RGBColor(0x66, 0x66, 0x66),
+            space_after=0,
+        )
 
     if logo:
         lp = para(d, center=True)
@@ -220,8 +250,16 @@ def build_docx(doc: MinutesDocument, *, org_name: str | None = None, logo: bytes
         para(d, org_name, size=12, center=True, font=FONT_HEAD, space_after=2)
     para(d, doc.title, size=20, bold=True, center=True, font=FONT_HEAD, color=NAVY, space_after=2)
     ok = doc.status_label in ("معتمد", "تمت مراجعته")
-    para(d, f"حالة المحضر: {doc.status_label}", size=11, bold=True, center=True, font=FONT_HEAD,
-         color=RGBColor(0x1C, 0x5E, 0x2E) if ok else RED, space_after=10)
+    para(
+        d,
+        f"حالة المحضر: {doc.status_label}",
+        size=11,
+        bold=True,
+        center=True,
+        font=FONT_HEAD,
+        color=RGBColor(0x1C, 0x5E, 0x2E) if ok else RED,
+        space_after=10,
+    )
 
     for s in doc.sections:
         h = para(d, s.title, size=14, bold=True, font=FONT_HEAD, color=NAVY, space_after=4)
@@ -238,14 +276,21 @@ def build_docx(doc: MinutesDocument, *, org_name: str | None = None, logo: bytes
             para(d, "", space_after=2)
         for b in s.blocks:
             if b.text.startswith("## "):
-                sub = para(d, b.text[3:], size=12, bold=True, font=FONT_HEAD, color=RGBColor(0x1D, 0x3D, 0x63), space_after=2)
+                sub = para(
+                    d, b.text[3:], size=12, bold=True, font=FONT_HEAD, color=RGBColor(0x1D, 0x3D, 0x63), space_after=2
+                )
                 sub.paragraph_format.keep_with_next = True
             elif b.kind == "bullet":
                 para(d, b.text, justify=True, style="List Bullet")
             else:
                 para(d, b.text, justify=True)
-    para(d, "أُعدَّت مسودة هذا المحضر آلياً من التسجيل الصوتي، وتخضع للمراجعة البشرية قبل اعتمادها. "
-            "يُرفق تقرير الأدلة وعدم اليقين بشكل منفصل.", size=8.5, color=RGBColor(0x55, 0x55, 0x55))
+    para(
+        d,
+        "أُعدَّت مسودة هذا المحضر آلياً من التسجيل الصوتي، وتخضع للمراجعة البشرية قبل اعتمادها. "
+        "يُرفق تقرير الأدلة وعدم اليقين بشكل منفصل.",
+        size=8.5,
+        color=RGBColor(0x55, 0x55, 0x55),
+    )
     buf = io.BytesIO()
     d.save(buf)
     return buf.getvalue()
@@ -279,4 +324,9 @@ def check_docx(data: bytes) -> dict:
                 fonts = rpr.find(qn("w:rFonts")) if rpr is not None else None
                 if fonts is None or not fonts.get(qn("w:cs")):
                     problems.append(f"Arabic run without a complex-script font: {r.text[:30]}")
-    return {"ok": not problems, "problems": sorted(set(problems))[:20], "paragraphs": len(paras), "tables": len(d.tables)}
+    return {
+        "ok": not problems,
+        "problems": sorted(set(problems))[:20],
+        "paragraphs": len(paras),
+        "tables": len(d.tables),
+    }

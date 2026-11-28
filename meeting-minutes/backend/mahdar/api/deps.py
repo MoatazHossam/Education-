@@ -64,8 +64,14 @@ def current_user(request: Request) -> Principal:
         raise HTTPException(401, "انتهت الجلسة، يرجى تسجيل الدخول مجدداً")
     if request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get("x-requested-with") != "mahdar":
         raise HTTPException(403, "طلب غير مسموح")
-    return Principal(user_id=str(sess["user_id"]), org_id=str(sess["org_id"]), session_id=str(sess["id"]), role=sess["role"],
-                     name=sess["name"], email=sess["email"])
+    return Principal(
+        user_id=str(sess["user_id"]),
+        org_id=str(sess["org_id"]),
+        session_id=str(sess["id"]),
+        role=sess["role"],
+        name=sess["name"],
+        email=sess["email"],
+    )
 
 
 def require(role: str):
@@ -73,6 +79,7 @@ def require(role: str):
         if not p.at_least(role):
             raise HTTPException(403, "ليست لديك صلاحية لهذا الإجراء")
         return p
+
     return dep
 
 

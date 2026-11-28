@@ -70,8 +70,16 @@ class Word(Strict):
 
 
 SegmentFlag = Literal[
-    "low_confidence", "possible_hallucination", "repetition", "overlap", "uncertain_speaker",
-    "uncertain_term", "inaudible", "edited", "short_turn", "no_speech",
+    "low_confidence",
+    "possible_hallucination",
+    "repetition",
+    "overlap",
+    "uncertain_speaker",
+    "uncertain_term",
+    "inaudible",
+    "edited",
+    "short_turn",
+    "no_speech",
 ]
 
 
@@ -115,17 +123,44 @@ class Transcript(Strict):
 
 # --- Agent 4: semantic analysis --------------------------------------------------------------------
 ItemType = Literal[
-    "discussion", "question", "answer", "proposal", "recommendation", "objection", "concern",
-    "agreement_tentative", "decision_approved", "decision_rejected", "action_assigned", "action_suggested",
-    "risk", "blocker", "dependency", "open_question", "deferred", "contradiction",
+    "discussion",
+    "question",
+    "answer",
+    "proposal",
+    "recommendation",
+    "objection",
+    "concern",
+    "agreement_tentative",
+    "decision_approved",
+    "decision_rejected",
+    "action_assigned",
+    "action_suggested",
+    "risk",
+    "blocker",
+    "dependency",
+    "open_question",
+    "deferred",
+    "contradiction",
 ]
 
 ITEM_TYPE_AR: dict[str, str] = {
-    "discussion": "نقطة نقاش", "question": "سؤال", "answer": "إجابة", "proposal": "مقترح",
-    "recommendation": "توصية", "objection": "اعتراض", "concern": "تحفظ/مخاوف",
-    "agreement_tentative": "توافق مبدئي", "decision_approved": "قرار معتمد", "decision_rejected": "مقترح مرفوض",
-    "action_assigned": "تكليف", "action_suggested": "إجراء مقترح", "risk": "خطر", "blocker": "عائق",
-    "dependency": "اعتمادية", "open_question": "مسألة معلقة", "deferred": "مؤجل لاجتماع لاحق",
+    "discussion": "نقطة نقاش",
+    "question": "سؤال",
+    "answer": "إجابة",
+    "proposal": "مقترح",
+    "recommendation": "توصية",
+    "objection": "اعتراض",
+    "concern": "تحفظ/مخاوف",
+    "agreement_tentative": "توافق مبدئي",
+    "decision_approved": "قرار معتمد",
+    "decision_rejected": "مقترح مرفوض",
+    "action_assigned": "تكليف",
+    "action_suggested": "إجراء مقترح",
+    "risk": "خطر",
+    "blocker": "عائق",
+    "dependency": "اعتمادية",
+    "open_question": "مسألة معلقة",
+    "deferred": "مؤجل لاجتماع لاحق",
     "contradiction": "تعارض",
 }
 
@@ -190,7 +225,9 @@ class Analysis(Strict):
 
 
 # --- Agent 5: verification ----------------------------------------------------------------------
-VerificationStatus = Literal["verified", "verified_rules_only", "partially_supported", "needs_review", "unsupported", "contradicted"]
+VerificationStatus = Literal[
+    "verified", "verified_rules_only", "partially_supported", "needs_review", "unsupported", "contradicted"
+]
 
 
 class Check(Strict):

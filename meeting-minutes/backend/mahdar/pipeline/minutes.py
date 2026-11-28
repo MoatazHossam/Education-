@@ -24,8 +24,7 @@ from datetime import date
 from rapidfuzz import fuzz
 
 from mahdar.pipeline import arabic
-from mahdar.pipeline.llm import LlmClient, LlmRequest
-from mahdar.pipeline.llm import prompts
+from mahdar.pipeline.llm import LlmClient, LlmRequest, prompts
 from mahdar.pipeline.llm.prompts import fmt_time
 from mahdar.pipeline.schemas import (
     ITEM_TYPE_AR,
@@ -42,7 +41,9 @@ from mahdar.pipeline.schemas import (
 
 OK_STATUSES = {"verified", "verified_rules_only", "partially_supported"}
 NOT_SET = "لم يُحدد"
-DECISION_VERBS = arabic._norm_list(["تقرر", "قرر", "قررت", "اعتمد", "اعتمدت", "اعتماد", "وافق", "وافقت", "الموافقه", "اقر", "اقرت", "صادق"])
+DECISION_VERBS = arabic._norm_list(
+    ["تقرر", "قرر", "قررت", "اعتمد", "اعتمدت", "اعتماد", "وافق", "وافقت", "الموافقه", "اقر", "اقرت", "صادق"]
+)
 STATUS_LABELS = {
     "draft_requires_review": "مسودة تتطلب المراجعة",
     "draft": "مسودة",
@@ -91,14 +92,29 @@ def effective_items(analysis: Analysis, verification: VerificationReport, review
         item = it
         if d.get("edits"):
             e = d["edits"]
-            item = it.model_copy(update={
-                "statement": e.get("statement", it.statement),
-                "owner": it.owner.model_copy(update={"name_as_spoken": e["owner"], "status": "explicit"}) if "owner" in e else it.owner,
-                "due": it.due.model_copy(update={"text_as_spoken": e["due"], "status": "explicit" if e["due"] else "unspecified"}) if "due" in e else it.due,
-            })
+            item = it.model_copy(
+                update={
+                    "statement": e.get("statement", it.statement),
+                    "owner": it.owner.model_copy(update={"name_as_spoken": e["owner"], "status": "explicit"})
+                    if "owner" in e
+                    else it.owner,
+                    "due": it.due.model_copy(
+                        update={"text_as_spoken": e["due"], "status": "explicit" if e["due"] else "unspecified"}
+                    )
+                    if "due" in e
+                    else it.due,
+                }
+            )
         typ = d.get("type") or (v.final_type if v else it.type)
-        out.append(EffectiveItem(item=item, type=typ, status=v.status if v else "needs_review",
-                                 human_accepted=d.get("decision") == "accepted", issues=v.issues if v else []))
+        out.append(
+            EffectiveItem(
+                item=item,
+                type=typ,
+                status=v.status if v else "needs_review",
+                human_accepted=d.get("decision") == "accepted",
+                issues=v.issues if v else [],
+            )
+        )
     return out
 
 
@@ -122,10 +138,23 @@ def _due(it: Item) -> str:
 
 
 _PREFIX = {
-    "discussion": "نوقش ", "question": "طُرح تساؤل: ", "answer": "أُوضح أن ", "proposal": "اقتُرح ", "recommendation": "أُوصي بـ",
-    "objection": "أُبدي اعتراض: ", "concern": "أُبديت مخاوف: ", "agreement_tentative": "جرى التوافق مبدئياً على ما يلي، على أن يُؤكَّد لاحقاً: ",
-    "decision_approved": "تقرر: ", "decision_rejected": "لم يُوافق على: ", "action_assigned": "", "action_suggested": "إجراء مقترح (يتطلب التأكيد): ",
-    "risk": "خطر: ", "blocker": "عائق: ", "dependency": "اعتمادية: ", "open_question": "مسألة معلقة: ", "deferred": "أُرجئ: ",
+    "discussion": "نوقش ",
+    "question": "طُرح تساؤل: ",
+    "answer": "أُوضح أن ",
+    "proposal": "اقتُرح ",
+    "recommendation": "أُوصي بـ",
+    "objection": "أُبدي اعتراض: ",
+    "concern": "أُبديت مخاوف: ",
+    "agreement_tentative": "جرى التوافق مبدئياً على ما يلي، على أن يُؤكَّد لاحقاً: ",
+    "decision_approved": "تقرر: ",
+    "decision_rejected": "لم يُوافق على: ",
+    "action_assigned": "",
+    "action_suggested": "إجراء مقترح (يتطلب التأكيد): ",
+    "risk": "خطر: ",
+    "blocker": "عائق: ",
+    "dependency": "اعتمادية: ",
+    "open_question": "مسألة معلقة: ",
+    "deferred": "أُرجئ: ",
     "contradiction": "تعارض يتطلب التوضيح: ",
 }
 
@@ -145,10 +174,21 @@ def rule_text(e: EffectiveItem) -> str:
 
 
 def _allowed_facts(items: list[EffectiveItem], names: dict[str, str]) -> dict:
-    txt = " ".join(" ".join([e.item.statement, *e.item.qualifications, e.item.owner.name_as_spoken or "", e.item.due.text_as_spoken or "",
-                             e.item.due.date_iso or ""]) for e in items)
+    txt = " ".join(
+        " ".join(
+            [
+                e.item.statement,
+                *e.item.qualifications,
+                e.item.owner.name_as_spoken or "",
+                e.item.due.text_as_spoken or "",
+                e.item.due.date_iso or "",
+            ]
+        )
+        for e in items
+    )
     return {
-        "numbers": arabic.extract_numbers(txt) | {float(p) for e in items if e.item.due.date_iso for p in e.item.due.date_iso.split("-") if p.isdigit()},
+        "numbers": arabic.extract_numbers(txt)
+        | {float(p) for e in items if e.item.due.date_iso for p in e.item.due.date_iso.split("-") if p.isdigit()},
         "dates": {(d.day, d.month) for d in arabic.extract_dates(txt) if d.day and d.month},
         "latin": arabic.latin_terms(txt),
         "text": arabic.normalize(txt),
@@ -176,22 +216,46 @@ def check_block(text: str, items: list[EffectiveItem], names: dict[str, str], pe
     norm = arabic.normalize(text)
     for person in people:
         pn = arabic.normalize(person)
-        if pn and re.search(rf"(?:^|\s)(?:ل|و|ب)?{re.escape(pn)}(?:\s|$)", norm) and pn not in facts["text"] and person not in facts["names"]:
+        if (
+            pn
+            and re.search(rf"(?:^|\s)(?:ل|و|ب)?{re.escape(pn)}(?:\s|$)", norm)
+            and pn not in facts["text"]
+            and person not in facts["names"]
+        ):
             problems.append(f"name:{person}")
     is_decision = any(e.type in ("decision_approved", "decision_rejected") for e in items)
     if not is_decision and arabic.contains_phrase(norm, DECISION_VERBS):
         problems.append("decision_wording")
     if not any(e.type == "decision_approved" for e in items) and "تقرر" in text:
         problems.append("decision_wording")
-    if arabic.has_negation(text) and not any(arabic.has_negation(e.item.statement) for e in items) and not any(
-            e.type in ("decision_rejected", "open_question", "contradiction", "agreement_tentative", "deferred", "concern",
-                       "objection", "risk", "blocker", "action_suggested") for e in items):
+    if (
+        arabic.has_negation(text)
+        and not any(arabic.has_negation(e.item.statement) for e in items)
+        and not any(
+            e.type
+            in (
+                "decision_rejected",
+                "open_question",
+                "contradiction",
+                "agreement_tentative",
+                "deferred",
+                "concern",
+                "objection",
+                "risk",
+                "blocker",
+                "action_suggested",
+            )
+            for e in items
+        )
+    ):
         problems.append("negation")
     return sorted(set(problems))
 
 
 def _plan(items: list[EffectiveItem]) -> dict[str, list[EffectiveItem]]:
-    plan: dict[str, list[EffectiveItem]] = {k: [] for k in ["topics", "decisions", "recommendations", "actions", "risks", "pending"]}
+    plan: dict[str, list[EffectiveItem]] = {
+        k: [] for k in ["topics", "decisions", "recommendations", "actions", "risks", "pending"]
+    }
     for e in items:
         t = e.type
         if e.status == "unsupported" and not e.human_accepted:
@@ -215,9 +279,19 @@ def _plan(items: list[EffectiveItem]) -> dict[str, list[EffectiveItem]]:
     return plan
 
 
-def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: VerificationReport, review: dict, meta: dict,
-                  classification: str, minutes_status: str, approval: dict | None, glossary: list[dict],
-                  llm: LlmClient | None) -> tuple[MinutesDocument, list[dict]]:
+def build_minutes(
+    *,
+    transcript: Transcript,
+    analysis: Analysis,
+    verification: VerificationReport,
+    review: dict,
+    meta: dict,
+    classification: str,
+    minutes_status: str,
+    approval: dict | None,
+    glossary: list[dict],
+    llm: LlmClient | None,
+) -> tuple[MinutesDocument, list[dict]]:
     segs = {s.id: s for s in transcript.segments}
     names = {s.id: s.display_name for s in transcript.speakers if s.display_name and s.confirmed}
     people = [g["term"] for g in glossary if g.get("category") == "person"]
@@ -232,27 +306,67 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         payload = {
             "meeting": {k: v for k, v in meta.items() if k in ("title", "date", "location")},
             "purpose": analysis.purpose,
-            "topics": [{"topic_id": t.id, "title": t.title, "summary": t.summary,
-                        "items": [i.item.id for i in eff if i.item.topic_id == t.id and i in plan["topics"]]} for t in analysis.topics],
-            "items": [{"id": e.item.id, "type": e.type, "type_ar": ITEM_TYPE_AR.get(e.type), "statement": e.item.statement,
-                       "qualifications": e.item.qualifications, "owner": _owner(e.item, names) if e.type in ("action_assigned", "action_suggested", "decision_approved") else None,
-                       "due": e.item.due.text_as_spoken, "needs_confirmation": not e.ok,
-                       "section": next(k for k, v in plan.items() if e in v) if any(e in v for v in plan.values()) else None} for e in eff],
-            "sections": {"decision_texts": [e.item.id for e in plan["decisions"]], "action_texts": [e.item.id for e in plan["actions"]],
-                         "recommendations": [e.item.id for e in plan["recommendations"]], "risks": [e.item.id for e in plan["risks"]],
-                         "pending": [e.item.id for e in plan["pending"]]},
+            "topics": [
+                {
+                    "topic_id": t.id,
+                    "title": t.title,
+                    "summary": t.summary,
+                    "items": [i.item.id for i in eff if i.item.topic_id == t.id and i in plan["topics"]],
+                }
+                for t in analysis.topics
+            ],
+            "items": [
+                {
+                    "id": e.item.id,
+                    "type": e.type,
+                    "type_ar": ITEM_TYPE_AR.get(e.type),
+                    "statement": e.item.statement,
+                    "qualifications": e.item.qualifications,
+                    "owner": _owner(e.item, names)
+                    if e.type in ("action_assigned", "action_suggested", "decision_approved")
+                    else None,
+                    "due": e.item.due.text_as_spoken,
+                    "needs_confirmation": not e.ok,
+                    "section": next(k for k, v in plan.items() if e in v)
+                    if any(e in v for v in plan.values())
+                    else None,
+                }
+                for e in eff
+            ],
+            "sections": {
+                "decision_texts": [e.item.id for e in plan["decisions"]],
+                "action_texts": [e.item.id for e in plan["actions"]],
+                "recommendations": [e.item.id for e in plan["recommendations"]],
+                "risks": [e.item.id for e in plan["risks"]],
+                "pending": [e.item.id for e in plan["pending"]],
+            },
         }
         context = prompts.meeting_context(meta, glossary, [], transcript.speakers)
-        res = llm.generate_json(LlmRequest(
-            stage="writing", system=prompts.WRITER_SYSTEM, shared_context=context, schema=prompts.writer_schema(), max_tokens=32000,
-            user="Write the minutes from these verified items (JSON). Put each item id in the section listed under 'sections' "
-                 "(topics: the items listed under each topic). decision_texts and action_texts: one block per item, wording only "
-                 "the decision or the task (owners and dates go in separate table columns). executive_summary: two to five short "
-                 "blocks for senior leadership, citing the items they summarise.\n<items>\n"
-                 + json.dumps(payload, ensure_ascii=False, indent=1) + "\n</items>",
-        ))
-        usage.append({"stage": "writing", "model": res.model, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens,
-                      "cache_read_tokens": res.cache_read_tokens, "served_by_fallback": res.served_by_fallback})
+        res = llm.generate_json(
+            LlmRequest(
+                stage="writing",
+                system=prompts.WRITER_SYSTEM,
+                shared_context=context,
+                schema=prompts.writer_schema(),
+                max_tokens=32000,
+                user="Write the minutes from these verified items (JSON). Put each item id in the section listed under 'sections' "
+                "(topics: the items listed under each topic). decision_texts and action_texts: one block per item, wording only "
+                "the decision or the task (owners and dates go in separate table columns). executive_summary: two to five short "
+                "blocks for senior leadership, citing the items they summarise.\n<items>\n"
+                + json.dumps(payload, ensure_ascii=False, indent=1)
+                + "\n</items>",
+            )
+        )
+        usage.append(
+            {
+                "stage": "writing",
+                "model": res.model,
+                "input_tokens": res.input_tokens,
+                "output_tokens": res.output_tokens,
+                "cache_read_tokens": res.cache_read_tokens,
+                "served_by_fallback": res.served_by_fallback,
+            }
+        )
         written = res.data
 
     counter = [0]
@@ -269,16 +383,28 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         if human:
             problems = check_block(human["text"], its, names, people)
             if problems:
-                issues.append(Issue(code="human_edit_unverified", severity="minor", item_id=its[0].item.id,
-                                    message_ar=f"صياغة المراجِع {human.get('by_name', '')} تتضمن ما لا يرد في البنود ({'، '.join(problems)})؛ أُبقيت بقرار بشري."))
+                issues.append(
+                    Issue(
+                        code="human_edit_unverified",
+                        severity="minor",
+                        item_id=its[0].item.id,
+                        message_ar=f"صياغة المراجِع {human.get('by_name', '')} تتضمن ما لا يرد في البنود ({'، '.join(problems)})؛ أُبقيت بقرار بشري.",
+                    )
+                )
             seg_ids = sorted({x.segment_id for e in its for x in e.item.evidence})
             return Block(id=bid, kind=kind, text=human["text"], item_ids=[e.item.id for e in its], segment_ids=seg_ids)  # type: ignore[arg-type]
         if final:
             problems = check_block(final, its, names, people)
             if problems:
-                issues.append(Issue(code="writer_block_replaced", severity="minor", item_id=its[0].item.id,
-                                    message_ar=f"استُبدلت صياغة فقرة في «{SECTION_TITLES.get(section, section)}» بصياغة حرفية من البنود "
-                                               f"لأنها تضمنت ما لا يرد في البنود ({'، '.join(problems)})."))
+                issues.append(
+                    Issue(
+                        code="writer_block_replaced",
+                        severity="minor",
+                        item_id=its[0].item.id,
+                        message_ar=f"استُبدلت صياغة فقرة في «{SECTION_TITLES.get(section, section)}» بصياغة حرفية من البنود "
+                        f"لأنها تضمنت ما لا يرد في البنود ({'، '.join(problems)}).",
+                    )
+                )
                 final = None
         if not final:
             final = " ".join(rule_text(e) for e in its)
@@ -313,14 +439,24 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         "وقت البداية": meta.get("start_time") or "",
         "وقت النهاية": meta.get("end_time") or "",
         "المكان أو وسيلة الانعقاد": meta.get("location") or "",
-        "الحاضرون": "، ".join(attendees) if attendees else
-        f"لم تُحدَّد أسماء الحاضرين بعد (عدد المتحدثين المرصودين في التسجيل: {len(transcript.speakers)})",
+        "الحاضرون": "، ".join(attendees)
+        if attendees
+        else f"لم تُحدَّد أسماء الحاضرين بعد (عدد المتحدثين المرصودين في التسجيل: {len(transcript.speakers)})",
         "معد المحضر": meta.get("prepared_by") or "",
         "حالة المحضر": STATUS_LABELS[minutes_status],
     }
     info = {k: v for k, v in info.items() if v}
-    sections.append(Section(key="info", title=SECTION_TITLES["info"], table_columns=["البيان", "القيمة"],
-                            rows=[TableRow(id=f"M{i}", cells={"البيان": k, "القيمة": v}, item_ids=[]) for i, (k, v) in enumerate(info.items(), 1)]))
+    sections.append(
+        Section(
+            key="info",
+            title=SECTION_TITLES["info"],
+            table_columns=["البيان", "القيمة"],
+            rows=[
+                TableRow(id=f"M{i}", cells={"البيان": k, "القيمة": v}, item_ids=[])
+                for i, (k, v) in enumerate(info.items(), 1)
+            ],
+        )
+    )
     # ثانياً: هدف الاجتماع
     if analysis.purpose:
         pw = written.get("purpose") or {}
@@ -329,16 +465,34 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         if ptext and (arabic.extract_numbers(ptext) - arabic.extract_numbers(analysis.purpose)):
             ptext = None
         counter[0] += 1
-        sections.append(Section(key="purpose", title=SECTION_TITLES["purpose"], blocks=[Block(
-            id=f"B{counter[0]:03d}", kind="paragraph", text=(ptext or analysis.purpose).strip() + ("" if ev_ok else " (يتطلب التحقق)"),
-            segment_ids=[e.segment_id for e in analysis.purpose_evidence])]))
+        sections.append(
+            Section(
+                key="purpose",
+                title=SECTION_TITLES["purpose"],
+                blocks=[
+                    Block(
+                        id=f"B{counter[0]:03d}",
+                        kind="paragraph",
+                        text=(ptext or analysis.purpose).strip() + ("" if ev_ok else " (يتطلب التحقق)"),
+                        segment_ids=[e.segment_id for e in analysis.purpose_evidence],
+                    )
+                ],
+            )
+        )
     # ثالثاً: الموضوعات
     topic_blocks: list[Block] = []
     for t in analysis.topics:
         wt = next((w for w in written.get("topics") or [] if w.get("topic_id") == t.id), None)
         t_items = [e for e in plan["topics"] if e.item.topic_id == t.id]
         counter[0] += 1
-        topic_blocks.append(Block(id=f"B{counter[0]:03d}", kind="paragraph", text=f"## {(wt or {}).get('title') or t.title}", segment_ids=[]))
+        topic_blocks.append(
+            Block(
+                id=f"B{counter[0]:03d}",
+                kind="paragraph",
+                text=f"## {(wt or {}).get('title') or t.title}",
+                segment_ids=[],
+            )
+        )
         covered: set[str] = set()
         for wb in (wt or {}).get("blocks") or []:
             ids = [i for i in wb.get("item_ids", []) if i in {e.item.id for e in t_items} and i not in covered]
@@ -353,8 +507,12 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
                     topic_blocks.append(b)
         if not t_items:
             counter[0] += 1
-            topic_blocks.append(Block(id=f"B{counter[0]:03d}", kind="paragraph", text=t.summary.strip(), segment_ids=t.segment_ids[:6]))
-    orphan = [e for e in plan["topics"] if not e.item.topic_id or e.item.topic_id not in {t.id for t in analysis.topics}]
+            topic_blocks.append(
+                Block(id=f"B{counter[0]:03d}", kind="paragraph", text=t.summary.strip(), segment_ids=t.segment_ids[:6])
+            )
+    orphan = [
+        e for e in plan["topics"] if not e.item.topic_id or e.item.topic_id not in {t.id for t in analysis.topics}
+    ]
     for e in orphan:
         b = block(None, [e.item.id], "topics")
         if b:
@@ -367,11 +525,27 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         rows = []
         for n, e in enumerate(plan["decisions"], 1):
             b = block(texts.get(e.item.id), [e.item.id], "decisions")
-            rows.append(TableRow(id=f"D{n}", item_ids=[e.item.id], cells={
-                "رقم": str(n), "القرار": b.text if b else rule_text(e), "المسؤول": _owner(e.item, names),
-                "تاريخ التنفيذ": _due(e.item), "المرجع": _ref(e.item, segs)}))
-        sections.append(Section(key="decisions", title=SECTION_TITLES["decisions"],
-                                table_columns=["رقم", "القرار", "المسؤول", "تاريخ التنفيذ", "المرجع"], rows=rows))
+            rows.append(
+                TableRow(
+                    id=f"D{n}",
+                    item_ids=[e.item.id],
+                    cells={
+                        "رقم": str(n),
+                        "القرار": b.text if b else rule_text(e),
+                        "المسؤول": _owner(e.item, names),
+                        "تاريخ التنفيذ": _due(e.item),
+                        "المرجع": _ref(e.item, segs),
+                    },
+                )
+            )
+        sections.append(
+            Section(
+                key="decisions",
+                title=SECTION_TITLES["decisions"],
+                table_columns=["رقم", "القرار", "المسؤول", "تاريخ التنفيذ", "المرجع"],
+                rows=rows,
+            )
+        )
     # خامساً: التوصيات والمقترحات
     rec = blocks_for("recommendations", "recommendations", plan["recommendations"])
     if rec:
@@ -380,19 +554,37 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
     if plan["actions"]:
         texts = {i: wb.get("text") for wb in written.get("action_texts") or [] for i in wb.get("item_ids", [])[:1]}
         rows = []
-        ordered = [e for e in plan["actions"] if e.type == "action_assigned"] + [e for e in plan["actions"] if e.type != "action_assigned"]
+        ordered = [e for e in plan["actions"] if e.type == "action_assigned"] + [
+            e for e in plan["actions"] if e.type != "action_assigned"
+        ]
         for n, e in enumerate(ordered, 1):
             b = block(texts.get(e.item.id), [e.item.id], "actions")
-            state = ("مُكلَّف" if e.type == "action_assigned" else "مقترح — لم يُكلَّف به أحد رسمياً")
+            state = "مُكلَّف" if e.type == "action_assigned" else "مقترح — لم يُكلَّف به أحد رسمياً"
             if e.human_accepted:
                 state += " (تمت مراجعته)"
             elif not e.ok:
                 state += " (يتطلب التأكيد)"
-            rows.append(TableRow(id=f"A{n}", item_ids=[e.item.id], cells={
-                "رقم": str(n), "الإجراء المطلوب": b.text if b else rule_text(e), "المسؤول": _owner(e.item, names),
-                "الموعد المحدد": _due(e.item), "الحالة": state}))
-        sections.append(Section(key="actions", title=SECTION_TITLES["actions"],
-                                table_columns=["رقم", "الإجراء المطلوب", "المسؤول", "الموعد المحدد", "الحالة"], rows=rows))
+            rows.append(
+                TableRow(
+                    id=f"A{n}",
+                    item_ids=[e.item.id],
+                    cells={
+                        "رقم": str(n),
+                        "الإجراء المطلوب": b.text if b else rule_text(e),
+                        "المسؤول": _owner(e.item, names),
+                        "الموعد المحدد": _due(e.item),
+                        "الحالة": state,
+                    },
+                )
+            )
+        sections.append(
+            Section(
+                key="actions",
+                title=SECTION_TITLES["actions"],
+                table_columns=["رقم", "الإجراء المطلوب", "المسؤول", "الموعد المحدد", "الحالة"],
+                rows=rows,
+            )
+        )
     # سابعاً: التحديات والمخاطر
     risks = blocks_for("risks", "risks", plan["risks"])
     if risks:
@@ -416,34 +608,70 @@ def build_minutes(*, transcript: Transcript, analysis: Analysis, verification: V
         n_pending = len(plan["pending"])
         if n_pending:
             counter[0] += 1
-            summary.append(Block(id=f"B{counter[0]:03d}", kind="bullet", text=f"عدد الموضوعات المعلقة أو التي تتطلب التأكيد: {n_pending}."))
+            summary.append(
+                Block(
+                    id=f"B{counter[0]:03d}",
+                    kind="bullet",
+                    text=f"عدد الموضوعات المعلقة أو التي تتطلب التأكيد: {n_pending}.",
+                )
+            )
     if summary:
         sections.append(Section(key="summary", title=SECTION_TITLES["summary"], blocks=summary))
     # عاشراً: المراجعة والاعتماد — never filled in by the system except with a recorded approval.
-    rows = [TableRow(id="R1", cells={"الصفة": "أعدّه", "الاسم": meta.get("prepared_by") or "", "التوقيع": "", "التاريخ": ""}, item_ids=[]),
-            TableRow(id="R2", cells={"الصفة": "راجعه", "الاسم": "", "التوقيع": "", "التاريخ": ""}, item_ids=[]),
-            TableRow(id="R3", cells={"الصفة": "اعتمده", "الاسم": "", "التوقيع": "", "التاريخ": ""}, item_ids=[])]
+    rows = [
+        TableRow(
+            id="R1",
+            cells={"الصفة": "أعدّه", "الاسم": meta.get("prepared_by") or "", "التوقيع": "", "التاريخ": ""},
+            item_ids=[],
+        ),
+        TableRow(id="R2", cells={"الصفة": "راجعه", "الاسم": "", "التوقيع": "", "التاريخ": ""}, item_ids=[]),
+        TableRow(id="R3", cells={"الصفة": "اعتمده", "الاسم": "", "التوقيع": "", "التاريخ": ""}, item_ids=[]),
+    ]
     if approval:
-        rows[2] = TableRow(id="R3", item_ids=[], cells={"الصفة": "اعتمده", "الاسم": approval.get("name", ""),
-                                                        "التوقيع": "اعتماد إلكتروني مسجل في النظام", "التاريخ": approval.get("date", "")})
-    sections.append(Section(key="approval", title=SECTION_TITLES["approval"], table_columns=["الصفة", "الاسم", "التوقيع", "التاريخ"], rows=rows))
+        rows[2] = TableRow(
+            id="R3",
+            item_ids=[],
+            cells={
+                "الصفة": "اعتمده",
+                "الاسم": approval.get("name", ""),
+                "التوقيع": "اعتماد إلكتروني مسجل في النظام",
+                "التاريخ": approval.get("date", ""),
+            },
+        )
+    sections.append(
+        Section(
+            key="approval",
+            title=SECTION_TITLES["approval"],
+            table_columns=["الصفة", "الاسم", "التوقيع", "التاريخ"],
+            rows=rows,
+        )
+    )
 
     for e in eff:
         if not e.human_accepted:
             issues.extend(i for i in e.issues if i.severity in ("critical", "major"))
     issues.extend(verification.document_issues)
     doc = MinutesDocument(
-        title="محضر اجتماع", status_label=STATUS_LABELS[minutes_status], classification_label=CLASSIFICATION_LABELS.get(classification, ""),
-        meeting_info=info, sections=sections, issues=issues,
+        title="محضر اجتماع",
+        status_label=STATUS_LABELS[minutes_status],
+        classification_label=CLASSIFICATION_LABELS.get(classification, ""),
+        meeting_info=info,
+        sections=sections,
+        issues=issues,
         generated_by={"writer": f"{llm.provider}:{llm.model}" if llm else "rules", "date": date.today().isoformat()},
     )
     return doc, usage
 
 
 # --- Agent 7: language review ----------------------------------------------------------------------
-_FIXES = [(re.compile(r"(?<=[؀-ۿ])\s*,\s*"), "، "), (re.compile(r"(?<=[؀-ۿ])\s*;\s*"), "؛ "),
-          (re.compile(r"(?<=[؀-ۿ])\s*\?"), "؟"), (re.compile(r"\s+([،؛.؟:])"), r"\1"), (re.compile(r"[ \t]{2,}"), " "),
-          (re.compile(r"\.{2,}"), ".")]
+_FIXES = [
+    (re.compile(r"(?<=[؀-ۿ])\s*,\s*"), "، "),
+    (re.compile(r"(?<=[؀-ۿ])\s*;\s*"), "؛ "),
+    (re.compile(r"(?<=[؀-ۿ])\s*\?"), "؟"),
+    (re.compile(r"\s+([،؛.؟:])"), r"\1"),
+    (re.compile(r"[ \t]{2,}"), " "),
+    (re.compile(r"\.{2,}"), "."),
+]
 
 
 def lint(text: str) -> tuple[str, list[str]]:
@@ -461,13 +689,18 @@ def lint(text: str) -> tuple[str, list[str]]:
 def fact_signature(text: str) -> dict:
     n = arabic.normalize(text)
     return {
-        "numbers": sorted(arabic.extract_numbers(text)), "dates": sorted({(d.day, d.month) for d in arabic.extract_dates(text) if d.day and d.month}),
-        "latin": sorted(arabic.latin_terms(text)), "negation": arabic.has_negation(text),
-        "decision": bool(arabic.contains_phrase(n, DECISION_VERBS)), "tentative": bool(arabic.contains_phrase(n, ["مبدئيا", "مبدئي"])),
+        "numbers": sorted(arabic.extract_numbers(text)),
+        "dates": sorted({(d.day, d.month) for d in arabic.extract_dates(text) if d.day and d.month}),
+        "latin": sorted(arabic.latin_terms(text)),
+        "negation": arabic.has_negation(text),
+        "decision": bool(arabic.contains_phrase(n, DECISION_VERBS)),
+        "tentative": bool(arabic.contains_phrase(n, ["مبدئيا", "مبدئي"])),
     }
 
 
-def review_language(doc: MinutesDocument, llm: LlmClient | None, people: list[str]) -> tuple[MinutesDocument, list[dict]]:
+def review_language(
+    doc: MinutesDocument, llm: LlmClient | None, people: list[str]
+) -> tuple[MinutesDocument, list[dict]]:
     usage: list[dict] = []
     targets: list[tuple[str, str]] = []  # (id, text)
     for s in doc.sections:
@@ -481,12 +714,28 @@ def review_language(doc: MinutesDocument, llm: LlmClient | None, people: list[st
     revised: dict[str, str] = {}
     reasons: dict[str, str] = {}
     if llm is not None and targets:
-        res = llm.generate_json(LlmRequest(
-            stage="language_review", system=prompts.REVIEW_SYSTEM, schema=prompts.review_schema(), max_tokens=32000, effort="medium",
-            user="Blocks of the minutes (JSON):\n<blocks>\n" + json.dumps([{"id": i, "text": t} for i, t in targets], ensure_ascii=False, indent=1) + "\n</blocks>",
-        ))
-        usage.append({"stage": "language_review", "model": res.model, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens,
-                      "cache_read_tokens": res.cache_read_tokens, "served_by_fallback": res.served_by_fallback})
+        res = llm.generate_json(
+            LlmRequest(
+                stage="language_review",
+                system=prompts.REVIEW_SYSTEM,
+                schema=prompts.review_schema(),
+                max_tokens=32000,
+                effort="medium",
+                user="Blocks of the minutes (JSON):\n<blocks>\n"
+                + json.dumps([{"id": i, "text": t} for i, t in targets], ensure_ascii=False, indent=1)
+                + "\n</blocks>",
+            )
+        )
+        usage.append(
+            {
+                "stage": "language_review",
+                "model": res.model,
+                "input_tokens": res.input_tokens,
+                "output_tokens": res.output_tokens,
+                "cache_read_tokens": res.cache_read_tokens,
+                "served_by_fallback": res.served_by_fallback,
+            }
+        )
         revised = {b["id"]: b["text"] for b in res.data["blocks"]}
         reasons = {c["id"]: c["reason_ar"] for c in res.data["changes"]}
     accepted, refused, notes = [], [], []
@@ -495,11 +744,21 @@ def review_language(doc: MinutesDocument, llm: LlmClient | None, people: list[st
         new = revised.get(bid, text).strip() or text
         if new != text:
             same = fact_signature(new) == fact_signature(text)
-            names_ok = all((arabic.normalize(p) in arabic.normalize(new)) == (arabic.normalize(p) in arabic.normalize(text)) for p in people if p)
+            names_ok = all(
+                (arabic.normalize(p) in arabic.normalize(new)) == (arabic.normalize(p) in arabic.normalize(text))
+                for p in people
+                if p
+            )
             if same and names_ok and fuzz.ratio(arabic.normalize(new), arabic.normalize(text)) >= 55:
                 accepted.append({"id": bid, "before": text, "after": new, "reason_ar": reasons.get(bid, "")})
             else:
-                refused.append({"id": bid, "proposed": new, "reason_ar": "رُفض التعديل لأنه يغير رقماً أو تاريخاً أو اسماً أو مصطلحاً أو صيغة النفي أو قوة العبارة."})
+                refused.append(
+                    {
+                        "id": bid,
+                        "proposed": new,
+                        "reason_ar": "رُفض التعديل لأنه يغير رقماً أو تاريخاً أو اسماً أو مصطلحاً أو صيغة النفي أو قوة العبارة.",
+                    }
+                )
                 new = text
         fixed, lint_notes = lint(new)
         final[bid] = fixed
@@ -507,8 +766,22 @@ def review_language(doc: MinutesDocument, llm: LlmClient | None, people: list[st
     sections = []
     for s in doc.sections:
         blocks = [b.model_copy(update={"text": final.get(b.id, b.text)}) for b in s.blocks]
-        rows = [r.model_copy(update={"cells": {k: final.get(f"{r.id}:{k}", v) for k, v in r.cells.items()}}) for r in s.rows]
+        rows = [
+            r.model_copy(update={"cells": {k: final.get(f"{r.id}:{k}", v) for k, v in r.cells.items()}}) for r in s.rows
+        ]
         sections.append(s.model_copy(update={"blocks": blocks, "rows": rows}))
-    issues = list(doc.issues) + [Issue(code="language_note", severity="minor", message_ar=f"{n['note_ar']} ({n['id']})") for n in notes]
-    return doc.model_copy(update={"sections": sections, "issues": issues, "language_review": {
-        "reviewer": f"{llm.provider}:{llm.model}" if llm else "rules", "accepted": accepted, "refused": refused, "notes": notes}}), usage
+    issues = list(doc.issues) + [
+        Issue(code="language_note", severity="minor", message_ar=f"{n['note_ar']} ({n['id']})") for n in notes
+    ]
+    return doc.model_copy(
+        update={
+            "sections": sections,
+            "issues": issues,
+            "language_review": {
+                "reviewer": f"{llm.provider}:{llm.model}" if llm else "rules",
+                "accepted": accepted,
+                "refused": refused,
+                "notes": notes,
+            },
+        }
+    ), usage

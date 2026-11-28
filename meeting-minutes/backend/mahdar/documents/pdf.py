@@ -90,7 +90,9 @@ def check_pdf(data: bytes, source_texts: list[str], *, render_dir: Path | None =
     not_embedded = [f["name"] for f in fonts if not f["embedded"]]
     if not_embedded:
         problems.append("fonts not embedded: " + ", ".join(not_embedded))
-    unexpected = [f["name"] for f in fonts if not any(e in f["name"].replace(" ", "").replace("-", "") for e in EXPECTED_FONTS)]
+    unexpected = [
+        f["name"] for f in fonts if not any(e in f["name"].replace(" ", "").replace("-", "") for e in EXPECTED_FONTS)
+    ]
     if unexpected:
         problems.append("unexpected (fallback) fonts: " + ", ".join(unexpected))
     if not any("Arabic" in f["name"] or "Amiri" in f["name"] for f in fonts):
@@ -112,5 +114,11 @@ def check_pdf(data: bytes, source_texts: list[str], *, render_dir: Path | None =
         blank = [p.name for p in pages if _blank(p)]
         if blank:
             problems.append("blank pages: " + ", ".join(blank))
-    return {"ok": not problems, "problems": problems, "fonts": fonts, "word_coverage": round(coverage, 4),
-            "pages": len(PdfReader(io.BytesIO(data)).pages), "page_images": [str(p) for p in pages]}
+    return {
+        "ok": not problems,
+        "problems": problems,
+        "fonts": fonts,
+        "word_coverage": round(coverage, 4),
+        "pages": len(PdfReader(io.BytesIO(data)).pages),
+        "page_images": [str(p) for p in pages],
+    }

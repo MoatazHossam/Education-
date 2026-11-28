@@ -7,8 +7,8 @@ is resumable: each stage saves its artifact, so a retried job continues from the
 from __future__ import annotations
 
 import json
-import socket
 import os
+import socket
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,8 +23,9 @@ def worker_id() -> str:
     return f"{socket.gethostname()}:{os.getpid()}"
 
 
-def enqueue(conn: Connection, org_id: str, meeting_id: str | None, kind: str, payload: dict | None = None,
-            max_attempts: int = 3) -> str:
+def enqueue(
+    conn: Connection, org_id: str, meeting_id: str | None, kind: str, payload: dict | None = None, max_attempts: int = 3
+) -> str:
     jid = repo.new_uuid()
     conn.execute(
         text(
@@ -52,13 +53,17 @@ def claim(conn: Connection, wid: str) -> dict | None:
     ).first()
     if not row:
         return None
-    job = conn.execute(
-        text(
-            "update jobs set status = 'running', attempts = attempts + 1, locked_by = :w, locked_at = now(), "
-            "heartbeat_at = now() where id = :id returning *"
-        ),
-        {"w": wid, "id": row[0]},
-    ).mappings().first()
+    job = (
+        conn.execute(
+            text(
+                "update jobs set status = 'running', attempts = attempts + 1, locked_by = :w, locked_at = now(), "
+                "heartbeat_at = now() where id = :id returning *"
+            ),
+            {"w": wid, "id": row[0]},
+        )
+        .mappings()
+        .first()
+    )
     return dict(job) if job else None
 
 
@@ -81,7 +86,9 @@ def record_stage(conn: Connection, job_id: str, entry: dict[str, Any]) -> None:
 
 def succeed(conn: Connection, job_id: str) -> None:
     conn.execute(
-        text("update jobs set status = 'succeeded', progress = 1, finished_at = now(), locked_by = null where id = :id"),
+        text(
+            "update jobs set status = 'succeeded', progress = 1, finished_at = now(), locked_by = null where id = :id"
+        ),
         {"id": job_id},
     )
 
@@ -108,23 +115,35 @@ def fail(conn: Connection, job: dict, error: str, *, retry: bool) -> bool:
 
 def cancel_meeting_jobs(conn: Connection, meeting_id: str) -> None:
     conn.execute(
-        text("update jobs set status = 'cancelled', finished_at = now() where meeting_id = :m and status in ('queued')"),
+        text(
+            "update jobs set status = 'cancelled', finished_at = now() where meeting_id = :m and status in ('queued')"
+        ),
         {"m": meeting_id},
     )
 
 
 def latest_job(conn: Connection, meeting_id: str) -> dict | None:
-    row = conn.execute(
-        text("select * from jobs where meeting_id = :m order by created_at desc limit 1"), {"m": meeting_id}
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text("select * from jobs where meeting_id = :m order by created_at desc limit 1"), {"m": meeting_id}
+        )
+        .mappings()
+        .first()
+    )
     return dict(row) if row else None
 
 
 def active_job(conn: Connection, meeting_id: str) -> dict | None:
-    row = conn.execute(
-        text("select * from jobs where meeting_id = :m and status in ('queued', 'running') order by created_at desc limit 1"),
-        {"m": meeting_id},
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text(
+                "select * from jobs where meeting_id = :m and status in ('queued', 'running') order by created_at desc limit 1"
+            ),
+            {"m": meeting_id},
+        )
+        .mappings()
+        .first()
+    )
     return dict(row) if row else None
 
 

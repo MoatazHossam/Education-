@@ -109,8 +109,11 @@ def _check(v: Any, s: dict, path: str) -> None:
 
 def _is(v: Any, t: str) -> bool:
     return {
-        "object": isinstance(v, dict), "array": isinstance(v, list), "string": isinstance(v, str),
-        "boolean": isinstance(v, bool), "null": v is None,
+        "object": isinstance(v, dict),
+        "array": isinstance(v, list),
+        "string": isinstance(v, str),
+        "boolean": isinstance(v, bool),
+        "null": v is None,
         "integer": isinstance(v, int) and not isinstance(v, bool),
         "number": isinstance(v, int | float) and not isinstance(v, bool),
     }.get(t, True)

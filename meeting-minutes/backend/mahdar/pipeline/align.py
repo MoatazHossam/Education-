@@ -19,7 +19,7 @@ def overlap_regions(turns: list[Turn]) -> list[Interval]:
     out: list[Interval] = []
     ts = sorted(turns, key=lambda t: t.start)
     for i, a in enumerate(ts):
-        for b in ts[i + 1:]:
+        for b in ts[i + 1 :]:
             if b.start >= a.end:
                 break
             if b.speaker != a.speaker:
@@ -114,14 +114,25 @@ def align(raw: list[RawSegment], turns: list[Turn], *, diarized: bool) -> tuple[
             flags.add("uncertain_speaker")
         if spk_id:
             speaking[spk_id] += end - start
-        segments.append(Segment(
-            id=f"S{n:04d}", start=round(start, 3), end=round(end, 3), speaker_id=spk_id, speaker_confidence=conf,
-            text_verbatim=text.strip(), text_readable=text.strip(),
-            words=[Word(w=w.w, start=w.start, end=w.end, p=w.p, speaker_id=label_map.get(s) if s else None) for w, s, _, _ in run],
-            avg_logprob=seg.avg_logprob, no_speech_prob=seg.no_speech_prob,
-            flags=sorted(flags),  # type: ignore[arg-type]
-            excluded=bool(flags & {"possible_hallucination", "no_speech"}),
-        ))
+        segments.append(
+            Segment(
+                id=f"S{n:04d}",
+                start=round(start, 3),
+                end=round(end, 3),
+                speaker_id=spk_id,
+                speaker_confidence=conf,
+                text_verbatim=text.strip(),
+                text_readable=text.strip(),
+                words=[
+                    Word(w=w.w, start=w.start, end=w.end, p=w.p, speaker_id=label_map.get(s) if s else None)
+                    for w, s, _, _ in run
+                ],
+                avg_logprob=seg.avg_logprob,
+                no_speech_prob=seg.no_speech_prob,
+                flags=sorted(flags),  # type: ignore[arg-type]
+                excluded=bool(flags & {"possible_hallucination", "no_speech"}),
+            )
+        )
     speakers = [
         Speaker(id=sid, label=f"المتحدث {i}", speaking_seconds=round(speaking[sid], 1))
         for i, sid in enumerate(sorted(label_map.values(), key=lambda x: int(x.split("_")[1])), start=1)

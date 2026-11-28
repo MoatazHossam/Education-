@@ -52,7 +52,9 @@ def database(env):
     url = make_url(admin).set(database=name)
     app_password = secrets.token_urlsafe(16)
     os.environ["MAHDAR_DATABASE_URL"] = url.render_as_string(hide_password=False)
-    os.environ["MAHDAR_APP_DATABASE_URL"] = url.set(username="mahdar_app", password=app_password).render_as_string(hide_password=False)
+    os.environ["MAHDAR_APP_DATABASE_URL"] = url.set(username="mahdar_app", password=app_password).render_as_string(
+        hide_password=False
+    )
     os.environ.pop("MAHDAR_APP_DB_PASSWORD", None)
     _reset()
     from mahdar.db.core import migrate

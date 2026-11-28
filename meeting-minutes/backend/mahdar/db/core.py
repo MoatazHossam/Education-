@@ -67,7 +67,9 @@ def migrate(app_password: str | None = None) -> list[str]:
     with owner_engine().begin() as conn:
         conn.execute(text("select pg_advisory_xact_lock(:k)"), {"k": _ADVISORY_LOCK})
         conn.execute(
-            text("create table if not exists schema_migrations (name text primary key, applied_at timestamptz default now())")
+            text(
+                "create table if not exists schema_migrations (name text primary key, applied_at timestamptz default now())"
+            )
         )
         done = {r[0] for r in conn.execute(text("select name from schema_migrations"))}
         for name, sql in _migrations():
@@ -89,7 +91,9 @@ def _ensure_app_role(conn: Connection, password: str) -> None:
     # quoted by PostgreSQL's own quote_literal.
     quoted = conn.execute(text("select quote_literal(:p)"), {"p": password}).scalar_one()
     verb = "alter" if exists else "create"
-    conn.exec_driver_sql(f"{verb} role {APP_ROLE} login nosuperuser nobypassrls nocreatedb nocreaterole password {quoted}")
+    conn.exec_driver_sql(
+        f"{verb} role {APP_ROLE} login nosuperuser nobypassrls nocreatedb nocreaterole password {quoted}"
+    )
     db = make_url(get_settings().database_url).database
     if db and re.fullmatch(r"[A-Za-z0-9_]+", db):
         conn.exec_driver_sql(f"grant connect on database {db} to {APP_ROLE}")

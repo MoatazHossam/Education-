@@ -51,7 +51,9 @@ def _create_org_and_admin(org_name: str, email: str, name: str, password: str) -
         org_id = repo.create_org(c, org_name)
         uid = repo.create_user(c, org_id, email, name, hash_password(password), "admin")
     with org_tx(org_id) as c:
-        repo.audit(c, org_id, "org.created", actor_kind="system", target_type="user", target_id=uid, details={"role": "admin"})
+        repo.audit(
+            c, org_id, "org.created", actor_kind="system", target_type="user", target_id=uid, details={"role": "admin"}
+        )
     return org_id, uid
 
 
@@ -74,9 +76,19 @@ def cmd_create_user(a) -> int:
     from mahdar.security.passwords import hash_password
 
     with system_tx() as c:
-        uid = repo.create_user(c, a.org_id, a.email, a.name or a.email.split("@")[0], hash_password(_password(a.password)), a.role)
+        uid = repo.create_user(
+            c, a.org_id, a.email, a.name or a.email.split("@")[0], hash_password(_password(a.password)), a.role
+        )
     with org_tx(a.org_id) as c:
-        repo.audit(c, a.org_id, "user.created", actor_kind="system", target_type="user", target_id=uid, details={"role": a.role})
+        repo.audit(
+            c,
+            a.org_id,
+            "user.created",
+            actor_kind="system",
+            target_type="user",
+            target_id=uid,
+            details={"role": a.role},
+        )
     print(uid)
     return 0
 
@@ -107,24 +119,60 @@ def cmd_selfcheck(a) -> int:
         if fam not in fonts:
             problems.append(f"font missing: {fam}")
     doc = MinutesDocument(
-        title="محضر اجتماع", status_label="مسودة تتطلب المراجعة", classification_label="داخلي",
+        title="محضر اجتماع",
+        status_label="مسودة تتطلب المراجعة",
+        classification_label="داخلي",
         meeting_info={"موضوع الاجتماع": "فحص ذاتي"},
         sections=[
-            Section(key="info", title="أولاً: بيانات الاجتماع", table_columns=["البيان", "القيمة"],
-                    rows=[TableRow(id="M1", cells={"البيان": "موضوع الاجتماع", "القيمة": "فحص ذاتي لعرض المستندات"}, item_ids=[])]),
-            Section(key="topics", title="ثالثاً: الموضوعات التي تمت مناقشتها", blocks=[
-                Block(id="B1", kind="paragraph", text="نوقشت إمكانية ربط نظام ERP مع Dynamics 365 عن طريق API، مع التأكيد على ضرورة مراجعة التكلفة البالغة 2,400,000 جنيه قبل اتخاذ قرار."),
-                Block(id="B2", kind="bullet", text="رُفع مستوى الخدمة المستهدف (SLA) من 99.5٪ إلى 99.9٪.")]),
-            Section(key="decisions", title="رابعاً: القرارات المعتمدة", table_columns=["رقم", "القرار", "المسؤول", "تاريخ التنفيذ", "المرجع"],
-                    rows=[TableRow(id="D1", cells={"رقم": "1", "القرار": "اعتماد ميزانية المرحلة الأولى.", "المسؤول": "لم يُحدد",
-                                                   "تاريخ التنفيذ": "15 يناير", "المرجع": "S0007 (01:07.6)"}, item_ids=["I1"])]),
+            Section(
+                key="info",
+                title="أولاً: بيانات الاجتماع",
+                table_columns=["البيان", "القيمة"],
+                rows=[
+                    TableRow(
+                        id="M1", cells={"البيان": "موضوع الاجتماع", "القيمة": "فحص ذاتي لعرض المستندات"}, item_ids=[]
+                    )
+                ],
+            ),
+            Section(
+                key="topics",
+                title="ثالثاً: الموضوعات التي تمت مناقشتها",
+                blocks=[
+                    Block(
+                        id="B1",
+                        kind="paragraph",
+                        text="نوقشت إمكانية ربط نظام ERP مع Dynamics 365 عن طريق API، مع التأكيد على ضرورة مراجعة التكلفة البالغة 2,400,000 جنيه قبل اتخاذ قرار.",
+                    ),
+                    Block(id="B2", kind="bullet", text="رُفع مستوى الخدمة المستهدف (SLA) من 99.5٪ إلى 99.9٪."),
+                ],
+            ),
+            Section(
+                key="decisions",
+                title="رابعاً: القرارات المعتمدة",
+                table_columns=["رقم", "القرار", "المسؤول", "تاريخ التنفيذ", "المرجع"],
+                rows=[
+                    TableRow(
+                        id="D1",
+                        cells={
+                            "رقم": "1",
+                            "القرار": "اعتماد ميزانية المرحلة الأولى.",
+                            "المسؤول": "لم يُحدد",
+                            "تاريخ التنفيذ": "15 يناير",
+                            "المرجع": "S0007 (01:07.6)",
+                        },
+                        item_ids=["I1"],
+                    )
+                ],
+            ),
         ],
     )
     docx = build_docx(doc, org_name="فحص")
     dc = check_docx(docx)
     if not dc["ok"]:
         problems += [f"docx: {p}" for p in dc["problems"]]
-    texts = [b.text for s in doc.sections for b in s.blocks] + [v for s in doc.sections for r in s.rows for v in r.cells.values()]
+    texts = [b.text for s in doc.sections for b in s.blocks] + [
+        v for s in doc.sections for r in s.rows for v in r.cells.values()
+    ]
     out = Path(a.out) if a.out else None
     pdf = render_pdf(html.minutes_html(doc, org_name="فحص", logo_data_uri=None))
     pc = check_pdf(pdf, texts, render_dir=out / "pages" if out else None)
@@ -137,7 +185,14 @@ def cmd_selfcheck(a) -> int:
     web = os.environ.get("MAHDAR_WEB_DIR")
     if web and not (Path(web) / "index.html").exists():
         problems.append(f"interface not found in {web}")
-    _print({"ok": not problems, "problems": problems, "pdf_fonts": [f["name"] for f in pc["fonts"]], "pdf_word_coverage": pc["word_coverage"]})
+    _print(
+        {
+            "ok": not problems,
+            "problems": problems,
+            "pdf_fonts": [f["name"] for f in pc["fonts"]],
+            "pdf_word_coverage": pc["word_coverage"],
+        }
+    )
     return 1 if problems else 0
 
 
@@ -172,9 +227,8 @@ def cmd_models(a) -> int:
             print(f"present: {name}")
             continue
         print(f"downloading {name}")
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            with urllib.request.urlopen(url, timeout=300) as r:  # noqa: S310 (fixed https URLs)
-                shutil.copyfileobj(r, tmp)
+        with tempfile.NamedTemporaryFile(delete=False) as tmp, urllib.request.urlopen(url, timeout=300) as r:  # noqa: S310 (fixed https URLs)
+            shutil.copyfileobj(r, tmp)
         if url.endswith(".tar.bz2"):
             with tarfile.open(tmp.name, "r:bz2") as t:
                 t.extractall(sherpa, filter="data")
@@ -195,7 +249,9 @@ def _ensure_org(name: str) -> str:
     from mahdar.db.core import system_tx
 
     with system_tx() as c:
-        row = c.execute(text("select id from organizations where name = :n order by created_at limit 1"), {"n": name}).first()
+        row = c.execute(
+            text("select id from organizations where name = :n order by created_at limit 1"), {"n": name}
+        ).first()
         if row:
             return str(row[0])
         return repo.create_org(c, name)
@@ -211,7 +267,9 @@ def cmd_process_file(a) -> int:
 
     path = Path(a.path)
     s = __import__("mahdar.config", fromlist=["get_settings"]).get_settings()
-    audio.validate(path, filename=path.name, max_bytes=s.max_upload_mb * 1_000_000, max_seconds=s.max_duration_minutes * 60)
+    audio.validate(
+        path, filename=path.name, max_bytes=s.max_upload_mb * 1_000_000, max_seconds=s.max_duration_minutes * 60
+    )
     org_id = a.org_id or _ensure_org(a.org)
     meta = json.loads(Path(a.meta).read_text(encoding="utf-8")) if a.meta else {}
     meta.setdefault("title", path.stem)
@@ -222,23 +280,56 @@ def cmd_process_file(a) -> int:
             if g["term"] not in existing:
                 repo.upsert_glossary(c, org_id, g)
         if a.allow_external:
-            repo.update_org_settings(c, org_id, "privacy", {"transcript": a.allow_external.split(","), "max_classification_external": "confidential"})
+            repo.update_org_settings(
+                c,
+                org_id,
+                "privacy",
+                {"transcript": a.allow_external.split(","), "max_classification_external": "confidential"},
+            )
         mid = repo.create_meeting(c, org_id, None, meta, a.classification)
     bid = storage.new_id()
     key, size, sha = storage.put_file(org_id, bid, path)
     with org_tx(org_id) as c:
-        repo.add_blob(c, blob_id=bid, org_id=org_id, meeting_id=mid, kind="audio_original", storage_key=key, size=size, sha256=sha,
-                      content_type="audio/*", filename=path.name)
+        repo.add_blob(
+            c,
+            blob_id=bid,
+            org_id=org_id,
+            meeting_id=mid,
+            kind="audio_original",
+            storage_key=key,
+            size=size,
+            sha256=sha,
+            content_type="audio/*",
+            filename=path.name,
+        )
         jid = queue.enqueue(c, org_id, mid, "process")
     with system_tx() as c:
-        job = c.execute(__import__("sqlalchemy").text("update jobs set status='running', attempts=1, locked_by='cli', heartbeat_at=now() "
-                                                      "where id = :id returning *"), {"id": jid}).mappings().first()
+        job = (
+            c.execute(
+                __import__("sqlalchemy").text(
+                    "update jobs set status='running', attempts=1, locked_by='cli', heartbeat_at=now() "
+                    "where id = :id returning *"
+                ),
+                {"id": jid},
+            )
+            .mappings()
+            .first()
+        )
     run_job(dict(job))
     with org_tx(org_id) as c:
         m = repo.get_meeting(c, mid)
         j = queue.latest_job(c, mid)
-    _print({"org_id": org_id, "meeting_id": mid, "status": m["status"], "minutes_status": m["minutes_status"], "critical_open": m["critical_open"],
-            "error": j.get("error"), "stages": j.get("stages")})
+    _print(
+        {
+            "org_id": org_id,
+            "meeting_id": mid,
+            "status": m["status"],
+            "minutes_status": m["minutes_status"],
+            "critical_open": m["critical_open"],
+            "error": j.get("error"),
+            "stages": j.get("stages"),
+        }
+    )
     if a.out:
         return cmd_export(argparse.Namespace(org_id=org_id, meeting_id=mid, out=a.out))
     return 0 if m["status"] in ("review", "awaiting_authorization") else 1
@@ -253,16 +344,23 @@ def cmd_export(a) -> int:
     out.mkdir(parents=True, exist_ok=True)
     with org_tx(a.org_id) as c:
         docs = repo.latest_artifact(c, a.meeting_id, "documents")
-        arts = {k: repo.latest_artifact(c, a.meeting_id, k) for k in ("audio_quality", "transcript", "analysis", "verification", "minutes")}
+        arts = {
+            k: repo.latest_artifact(c, a.meeting_id, k)
+            for k in ("audio_quality", "transcript", "analysis", "verification", "minutes")
+        }
         blobs = {k: repo.get_blob(c, v) for k, v in (docs[1]["blobs"].items() if docs else [])}
-    for k, b in blobs.items():
+    for b in blobs.values():
         if b:
             (out / b["filename"]).write_bytes(storage.read_bytes(b["storage_key"], str(b["id"])))
     for k, v in arts.items():
         if v:
-            (out / f"{k}.json").write_text(json.dumps(v[1], ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+            (out / f"{k}.json").write_text(
+                json.dumps(v[1], ensure_ascii=False, indent=1, default=str), encoding="utf-8"
+            )
     if docs:
-        (out / "documents.json").write_text(json.dumps(docs[1], ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        (out / "documents.json").write_text(
+            json.dumps(docs[1], ensure_ascii=False, indent=1, default=str), encoding="utf-8"
+        )
     print(f"written to {out}")
     return 0
 

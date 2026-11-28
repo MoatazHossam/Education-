@@ -49,7 +49,7 @@ def test_truncated_or_swapped_file_is_detected():
     raw = enc.getvalue()
     # Drop the last chunk: the previous one was sealed as "more", so this is detected.
     first_len = int.from_bytes(raw[20:24], "big")
-    cut = raw[: 20 + 4 + first_len + 4 + int.from_bytes(raw[24 + first_len:28 + first_len], "big")]
+    cut = raw[: 20 + 4 + first_len + 4 + int.from_bytes(raw[24 + first_len : 28 + first_len], "big")]
     with pytest.raises(DecryptionError):
         b"".join(kr.decrypt_stream(io.BytesIO(cut), "blob:1"))
     with pytest.raises(DecryptionError):

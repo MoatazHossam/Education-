@@ -38,21 +38,49 @@ def login(body: LoginIn, response: Response, request: Request) -> dict:
         if user and not locked:
             fails = user["failed_logins"] + 1
             with system_tx() as c:
-                c.execute(text("update users set failed_logins = :f, locked_until = :l where id = :id"), {
-                    "f": fails, "l": now + timedelta(minutes=LOCK_MINUTES) if fails >= LOCK_AFTER else None, "id": user["id"]})
+                c.execute(
+                    text("update users set failed_logins = :f, locked_until = :l where id = :id"),
+                    {
+                        "f": fails,
+                        "l": now + timedelta(minutes=LOCK_MINUTES) if fails >= LOCK_AFTER else None,
+                        "id": user["id"],
+                    },
+                )
         if user:
             with org_tx(str(user["org_id"])) as oc:
-                repo.audit(oc, str(user["org_id"]), "auth.login_failed", actor_user=str(user["id"]), details={"locked": locked})
-        raise HTTPException(401, "الحساب مقفل مؤقتاً بسبب محاولات متكررة" if locked else "البريد الإلكتروني أو كلمة المرور غير صحيحة")
+                repo.audit(
+                    oc, str(user["org_id"]), "auth.login_failed", actor_user=str(user["id"]), details={"locked": locked}
+                )
+        raise HTTPException(
+            401, "الحساب مقفل مؤقتاً بسبب محاولات متكررة" if locked else "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+        )
     with system_tx() as c:
-        c.execute(text("update users set failed_logins = 0, locked_until = null, last_login_at = now() where id = :id"), {"id": user["id"]})
+        c.execute(
+            text("update users set failed_logins = 0, locked_until = null, last_login_at = now() where id = :id"),
+            {"id": user["id"]},
+        )
         sid = repo.create_session(c, str(user["id"]), str(user["org_id"]), now + timedelta(hours=s.session_hours))
-    token = issue_token(_secret(), session_id=sid, user_id=str(user["id"]), org_id=str(user["org_id"]), hours=s.session_hours)
-    response.set_cookie(COOKIE, token, httponly=True, samesite="strict", secure=s.public_url.startswith("https://"),
-                        max_age=s.session_hours * 3600, path="/")
+    token = issue_token(
+        _secret(), session_id=sid, user_id=str(user["id"]), org_id=str(user["org_id"]), hours=s.session_hours
+    )
+    response.set_cookie(
+        COOKIE,
+        token,
+        httponly=True,
+        samesite="strict",
+        secure=s.public_url.startswith("https://"),
+        max_age=s.session_hours * 3600,
+        path="/",
+    )
     with org_tx(str(user["org_id"])) as oc:
         repo.audit(oc, str(user["org_id"]), "auth.login", actor_user=str(user["id"]))
-    return {"id": str(user["id"]), "name": user["name"], "email": user["email"], "role": user["role"], "org_id": str(user["org_id"])}
+    return {
+        "id": str(user["id"]),
+        "name": user["name"],
+        "email": user["email"],
+        "role": user["role"],
+        "org_id": str(user["org_id"]),
+    }
 
 
 @router.post("/logout")
@@ -69,4 +97,11 @@ def logout(response: Response, p: Principal = Depends(current_user)) -> dict:
 def me(p: Principal = Depends(current_user)) -> dict:
     with org_tx(p.org_id) as c:
         org = repo.get_org(c, p.org_id)
-    return {"id": p.user_id, "name": p.name, "email": p.email, "role": p.role, "org_id": p.org_id, "org_name": org["name"] if org else ""}
+    return {
+        "id": p.user_id,
+        "name": p.name,
+        "email": p.email,
+        "role": p.role,
+        "org_id": p.org_id,
+        "org_name": org["name"] if org else "",
+    }

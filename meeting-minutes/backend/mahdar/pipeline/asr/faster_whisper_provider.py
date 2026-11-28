@@ -15,8 +15,8 @@ from functools import lru_cache
 from pathlib import Path
 
 from mahdar.config import get_settings
-from mahdar.pipeline.audio import SAMPLE_RATE, load_samples
 from mahdar.pipeline.asr.base import AsrError, AsrOptions, RawSegment, RawWord
+from mahdar.pipeline.audio import SAMPLE_RATE, load_samples
 
 _lock = threading.Lock()
 
@@ -42,8 +42,14 @@ class FasterWhisperProvider:
         self.compute_type = s.whisper_compute_type
         self.beam_size = s.whisper_beam_size
 
-    def transcribe(self, audio_path: Path, start: float, end: float, opts: AsrOptions,
-                   progress: Callable[[float], None] | None = None) -> list[RawSegment]:
+    def transcribe(
+        self,
+        audio_path: Path,
+        start: float,
+        end: float,
+        opts: AsrOptions,
+        progress: Callable[[float], None] | None = None,
+    ) -> list[RawSegment]:
         try:
             model = _model(self.model, self.device, self.compute_type)
         except Exception as exc:  # model missing or unloadable: not fixed by retrying
@@ -52,7 +58,7 @@ class FasterWhisperProvider:
         if samples.size < SAMPLE_RATE // 4:
             return []
         with _lock:  # one decoding at a time per process: the model uses every core
-            segments, info = model.transcribe(
+            segments, _info = model.transcribe(
                 samples,
                 language=opts.language,
                 beam_size=self.beam_size,
@@ -70,13 +76,26 @@ class FasterWhisperProvider:
             total = max(0.01, end - start)
             for seg in segments:
                 words = [
-                    RawWord(w=w.word.strip(), start=round(start + w.start, 3), end=round(start + w.end, 3), p=round(w.probability, 4))
-                    for w in (seg.words or []) if w.word.strip()
+                    RawWord(
+                        w=w.word.strip(),
+                        start=round(start + w.start, 3),
+                        end=round(start + w.end, 3),
+                        p=round(w.probability, 4),
+                    )
+                    for w in (seg.words or [])
+                    if w.word.strip()
                 ]
-                out.append(RawSegment(
-                    start=round(start + seg.start, 3), end=round(start + seg.end, 3), text=seg.text.strip(), words=words,
-                    avg_logprob=seg.avg_logprob, no_speech_prob=seg.no_speech_prob, compression_ratio=seg.compression_ratio,
-                ))
+                out.append(
+                    RawSegment(
+                        start=round(start + seg.start, 3),
+                        end=round(start + seg.end, 3),
+                        text=seg.text.strip(),
+                        words=words,
+                        avg_logprob=seg.avg_logprob,
+                        no_speech_prob=seg.no_speech_prob,
+                        compression_ratio=seg.compression_ratio,
+                    )
+                )
                 if progress:
                     progress(min(1.0, seg.end / total))
         return out

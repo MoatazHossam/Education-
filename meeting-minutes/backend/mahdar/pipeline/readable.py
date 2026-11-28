@@ -17,8 +17,7 @@ from collections.abc import Callable
 from rapidfuzz import fuzz
 
 from mahdar.pipeline import arabic
-from mahdar.pipeline.llm import LlmClient, LlmRequest
-from mahdar.pipeline.llm import prompts
+from mahdar.pipeline.llm import LlmClient, LlmRequest, prompts
 from mahdar.pipeline.schemas import Segment, Transcript
 
 BATCH = 40
@@ -39,16 +38,18 @@ def apply_glossary(text: str, glossary: list[dict]) -> tuple[str, list[str]]:
     out = text
     applied = []
     for variant, term in _variants(glossary):
-        pattern = r"(?:(?<=\s)|^)(?:الـ\s?|ال)?" + r"\s+".join(re.escape(p) for p in variant.split()) + r"(?=[\s،.؟!,]|$)"
+        pattern = (
+            r"(?:(?<=\s)|^)(?:الـ\s?|ال)?" + r"\s+".join(re.escape(p) for p in variant.split()) + r"(?=[\s،.؟!,]|$)"
+        )
         new, n = re.subn(pattern, term, out)
         if n == 0:
             # Same comparison as normalize(): try without diacritics/hamza differences.
             norm_v = arabic.normalize(variant)
             toks = out.split()
             for i in range(len(toks)):
-                window = " ".join(toks[i:i + len(norm_v.split())])
+                window = " ".join(toks[i : i + len(norm_v.split())])
                 if arabic.normalize(arabic.strip_clitics(window)) == norm_v or arabic.normalize(window) == norm_v:
-                    toks[i:i + len(norm_v.split())] = [term]
+                    toks[i : i + len(norm_v.split())] = [term]
                     new, n = " ".join(toks), 1
                     break
         if n:
@@ -116,8 +117,9 @@ def safe_edit(reference: str, edited: str) -> tuple[bool, str]:
     return True, ""
 
 
-def build(transcript: Transcript, glossary: list[dict], llm: LlmClient | None,
-          progress: Callable[[float], None] | None = None) -> tuple[Transcript, list[dict], dict]:
+def build(
+    transcript: Transcript, glossary: list[dict], llm: LlmClient | None, progress: Callable[[float], None] | None = None
+) -> tuple[Transcript, list[dict], dict]:
     segments = [s.model_copy(deep=True) for s in transcript.segments]
     for s in segments:
         text, uncertain = rules_readable(s, glossary)
@@ -132,16 +134,31 @@ def build(transcript: Transcript, glossary: list[dict], llm: LlmClient | None,
     if llm is not None and usable:
         context = prompts.meeting_context({}, glossary, [], transcript.speakers)
         for i in range(0, len(usable), BATCH):
-            batch = usable[i:i + BATCH]
+            batch = usable[i : i + BATCH]
             payload = [{"id": s.id, "text": s.text_readable} for s in batch]
-            res = llm.generate_json(LlmRequest(
-                stage="readable", system=prompts.READABLE_SYSTEM, shared_context=context, schema=prompts.readable_schema(),
-                user="Segments (JSON). The text already has the glossary spellings applied.\n<segments>\n"
-                     + json.dumps(payload, ensure_ascii=False, indent=1) + "\n</segments>",
-                max_tokens=24000, effort="medium",
-            ))
-            usage.append({"stage": "readable", "model": res.model, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens,
-                          "cache_read_tokens": res.cache_read_tokens, "served_by_fallback": res.served_by_fallback})
+            res = llm.generate_json(
+                LlmRequest(
+                    stage="readable",
+                    system=prompts.READABLE_SYSTEM,
+                    shared_context=context,
+                    schema=prompts.readable_schema(),
+                    user="Segments (JSON). The text already has the glossary spellings applied.\n<segments>\n"
+                    + json.dumps(payload, ensure_ascii=False, indent=1)
+                    + "\n</segments>",
+                    max_tokens=24000,
+                    effort="medium",
+                )
+            )
+            usage.append(
+                {
+                    "stage": "readable",
+                    "model": res.model,
+                    "input_tokens": res.input_tokens,
+                    "output_tokens": res.output_tokens,
+                    "cache_read_tokens": res.cache_read_tokens,
+                    "served_by_fallback": res.served_by_fallback,
+                }
+            )
             by_id = {s.id: s for s in batch}
             for r in res.data["segments"]:
                 seg = by_id.get(r["id"])
@@ -151,7 +168,9 @@ def build(transcript: Transcript, glossary: list[dict], llm: LlmClient | None,
                 if ok:
                     seg.text_readable = r["text"].strip()
                     seg.readable_source = "llm"
-                    seg.uncertain_terms = sorted(set(seg.uncertain_terms) | {t for t in r.get("uncertain_terms", []) if t.strip()})
+                    seg.uncertain_terms = sorted(
+                        set(seg.uncertain_terms) | {t for t in r.get("uncertain_terms", []) if t.strip()}
+                    )
                     stats["llm_accepted"] += 1
                 else:
                     stats["llm_rejected"] += 1

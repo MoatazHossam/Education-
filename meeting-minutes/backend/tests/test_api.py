@@ -29,7 +29,7 @@ def orgs(database):
     from mahdar.db.core import system_tx
     from mahdar.security.passwords import hash_password
 
-    a_org, a_admin = _create_org_and_admin("جهة أ", "admin-a@example.com", "مدير أ", PASSWORD)
+    a_org, _a_admin = _create_org_and_admin("جهة أ", "admin-a@example.com", "مدير أ", PASSWORD)
     b_org, _ = _create_org_and_admin("جهة ب", "admin-b@example.com", "مدير ب", PASSWORD)
     with system_tx() as c:
         repo.create_user(c, a_org, "viewer-a@example.com", "مطلع", hash_password(PASSWORD), "viewer")
@@ -47,7 +47,10 @@ def login(app, email: str) -> TestClient:
 @pytest.fixture(scope="module")
 def tone(tmp_path_factory):
     p = tmp_path_factory.mktemp("audio") / "tone.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-ar", "16000", str(p)], check=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-ar", "16000", str(p)],
+        check=True,
+    )
     return p
 
 
@@ -60,7 +63,12 @@ def test_login_and_me(app, orgs):
 def test_wrong_password_and_lockout(app, orgs):
     c = TestClient(app)
     for _ in range(5):
-        assert c.post("/api/auth/login", json={"email": "editor-a@example.com", "password": "wrong-password-123"}).status_code == 401
+        assert (
+            c.post(
+                "/api/auth/login", json={"email": "editor-a@example.com", "password": "wrong-password-123"}
+            ).status_code
+            == 401
+        )
     r = c.post("/api/auth/login", json={"email": "editor-a@example.com", "password": PASSWORD})
     assert r.status_code == 401 and "مقفل" in r.json()["detail"]
     from sqlalchemy import text
@@ -68,13 +76,20 @@ def test_wrong_password_and_lockout(app, orgs):
     from mahdar.db.core import system_tx
 
     with system_tx() as conn:
-        conn.execute(text("update users set failed_logins = 0, locked_until = null where email = 'editor-a@example.com'"))
+        conn.execute(
+            text("update users set failed_logins = 0, locked_until = null where email = 'editor-a@example.com'")
+        )
 
 
 def test_state_changes_need_the_csrf_header(app, orgs):
     c = login(app, "admin-a@example.com")
     assert c.post("/api/glossary", json={"term": "ERP"}).status_code == 403
-    assert c.post("/api/glossary", json={"term": "ERP", "variants": ["إي آر بي"], "category": "acronym"}, headers=H).status_code == 201
+    assert (
+        c.post(
+            "/api/glossary", json={"term": "ERP", "variants": ["إي آر بي"], "category": "acronym"}, headers=H
+        ).status_code
+        == 201
+    )
 
 
 def test_viewer_cannot_upload_or_edit(app, orgs, tone):
@@ -104,18 +119,31 @@ def meeting(app, orgs, tone):
     """An uploaded meeting with a transcript, an analysis and a verification already stored."""
     c = login(app, "editor-a@example.com")
     with open(tone, "rb") as f:
-        r = c.post("/api/meetings", data={"title": "اجتماع اختبار", "meeting_date": "2026-12-01", "classification": "confidential"},
-                   files={"file": ("tone.wav", f, "audio/wav")}, headers=H)
+        r = c.post(
+            "/api/meetings",
+            data={"title": "اجتماع اختبار", "meeting_date": "2026-12-01", "classification": "confidential"},
+            files={"file": ("tone.wav", f, "audio/wav")},
+            headers=H,
+        )
     assert r.status_code == 201, r.text
     mid = r.json()["id"]
     from mahdar.db import repo
     from mahdar.db.core import org_tx
     from mahdar.pipeline.verification import verify
 
-    t = transcript(seg("S0001", "SPK_1", "إذن تقرر اعتماد ميزانية المرحلة الأولى بمبلغ مليونين وأربعمائة ألف جنيه.", 0, 6),
-                   seg("S0002", "SPK_2", "إحنا شايفين إن النظام ده ممكن يوفر وقت، بس محتاجين نراجع التكلفة الأول.", 6, 12))
-    an = analysis(item("I001", "decision_approved", "تقرر اعتماد ميزانية المرحلة الأولى بمبلغ 2,400,000 جنيه.", [("S0001", "تقرر اعتماد ميزانية المرحلة الأولى")]),
-                  item("I002", "decision_approved", "تقرر اعتماد النظام.", [("S0002", "النظام ده ممكن يوفر وقت")]))
+    t = transcript(
+        seg("S0001", "SPK_1", "إذن تقرر اعتماد ميزانية المرحلة الأولى بمبلغ مليونين وأربعمائة ألف جنيه.", 0, 6),
+        seg("S0002", "SPK_2", "إحنا شايفين إن النظام ده ممكن يوفر وقت، بس محتاجين نراجع التكلفة الأول.", 6, 12),
+    )
+    an = analysis(
+        item(
+            "I001",
+            "decision_approved",
+            "تقرر اعتماد ميزانية المرحلة الأولى بمبلغ 2,400,000 جنيه.",
+            [("S0001", "تقرر اعتماد ميزانية المرحلة الأولى")],
+        ),
+        item("I002", "decision_approved", "تقرر اعتماد النظام.", [("S0002", "النظام ده ممكن يوفر وقت")]),
+    )
     rep, _ = verify(t, an, meta={}, glossary=[], llm=None)
     with org_tx(orgs["a"]) as conn:
         repo.save_artifact(conn, orgs["a"], mid, "transcript", t.model_dump(), agent="test")
@@ -172,7 +200,9 @@ def test_items_review_is_recorded_with_before_and_after(app, meeting):
     by_id = {i["id"]: i for i in data["items"]}
     assert by_id["I001"]["verification"]["status"] == "verified_rules_only"
     assert by_id["I002"]["verification"]["final_type"] in ("proposal", "agreement_tentative")
-    r = c.post(f"/api/meetings/{meeting}/items/I002/review", json={"decision": "rejected", "note": "رأي وليس قراراً"}, headers=H)
+    r = c.post(
+        f"/api/meetings/{meeting}/items/I002/review", json={"decision": "rejected", "note": "رأي وليس قراراً"}, headers=H
+    )
     assert r.status_code == 200
     entry = next(e for e in c.get(f"/api/meetings/{meeting}/audit").json() if e["action"] == "item.rejected")
     assert entry["details"]["after"]["decision"] == "rejected" and entry["actor_name"] == "محرر"
@@ -180,12 +210,17 @@ def test_items_review_is_recorded_with_before_and_after(app, meeting):
 
 def test_viewer_cannot_review(app, meeting):
     c = login(app, "viewer-a@example.com")
-    assert c.post(f"/api/meetings/{meeting}/items/I001/review", json={"decision": "accepted"}, headers=H).status_code == 403
+    assert (
+        c.post(f"/api/meetings/{meeting}/items/I001/review", json={"decision": "accepted"}, headers=H).status_code
+        == 403
+    )
 
 
 def test_speaker_naming_is_versioned(app, meeting):
     c = login(app, "editor-a@example.com")
-    r = c.patch(f"/api/meetings/{meeting}/speakers/SPK_1", json={"display_name": "أحمد علي", "title": "رئيس اللجنة"}, headers=H)
+    r = c.patch(
+        f"/api/meetings/{meeting}/speakers/SPK_1", json={"display_name": "أحمد علي", "title": "رئيس اللجنة"}, headers=H
+    )
     assert r.status_code == 200 and r.json()["speaker"]["confirmed"] is True
     t = c.get(f"/api/meetings/{meeting}/transcript").json()
     assert t["version"] >= 2 and t["speakers"][0]["display_name"] == "أحمد علي"
@@ -193,9 +228,17 @@ def test_speaker_naming_is_versioned(app, meeting):
 
 def test_segment_correction_requires_a_reason(app, meeting):
     c = login(app, "editor-a@example.com")
-    assert c.patch(f"/api/meetings/{meeting}/transcript/segments/S0002", json={"text_verbatim": "x"}, headers=H).status_code == 422
-    r = c.patch(f"/api/meetings/{meeting}/transcript/segments/S0002",
-                json={"text_verbatim": "إحنا شايفين إن النظام ده ممكن يوفر وقت.", "reason": "استماع"}, headers=H)
+    assert (
+        c.patch(
+            f"/api/meetings/{meeting}/transcript/segments/S0002", json={"text_verbatim": "x"}, headers=H
+        ).status_code
+        == 422
+    )
+    r = c.patch(
+        f"/api/meetings/{meeting}/transcript/segments/S0002",
+        json={"text_verbatim": "إحنا شايفين إن النظام ده ممكن يوفر وقت.", "reason": "استماع"},
+        headers=H,
+    )
     assert r.status_code == 200 and "edited" in r.json()["segment"]["flags"]
 
 
@@ -220,7 +263,11 @@ def test_cannot_approve_unreviewed_minutes(app, meeting):
 def test_privacy_settings_validate_providers(app, orgs):
     c = login(app, "admin-a@example.com")
     assert c.put("/api/org/privacy", json={"audio": ["nobody"], "transcript": []}, headers=H).status_code == 422
-    r = c.put("/api/org/privacy", json={"audio": [], "transcript": ["anthropic"], "max_classification_external": "internal"}, headers=H)
+    r = c.put(
+        "/api/org/privacy",
+        json={"audio": [], "transcript": ["anthropic"], "max_classification_external": "internal"},
+        headers=H,
+    )
     assert r.status_code == 200 and r.json()["privacy"]["transcript"] == ["anthropic"]
 
 
@@ -246,7 +293,9 @@ def test_external_provider_needs_both_switches(orgs, meeting):
             assert "تصنيف" in exc.value.reason_ar
             with pytest.raises(privacy.NotAuthorized):  # audio not allowed by the organization
                 privacy.authorize(c, orgs["a"], {**m, "classification": "internal"}, "anthropic", "audio")
-            assert privacy.authorize(c, orgs["a"], {**m, "classification": "internal"}, "anthropic", "transcript").external
+            assert privacy.authorize(
+                c, orgs["a"], {**m, "classification": "internal"}, "anthropic", "transcript"
+            ).external
             assert not privacy.authorize(c, orgs["a"], m, "faster_whisper", "audio").external
     finally:
         os.environ.pop("MAHDAR_ALLOWED_EXTERNAL_PROVIDERS")
@@ -256,14 +305,18 @@ def test_external_provider_needs_both_switches(orgs, meeting):
 def test_delete_removes_files_and_keeps_the_audit(app, orgs, tone):
     c = login(app, "editor-a@example.com")
     with open(tone, "rb") as f:
-        mid = c.post("/api/meetings", data={"title": "للحذف"}, files={"file": ("tone.wav", f, "audio/wav")}, headers=H).json()["id"]
+        mid = c.post(
+            "/api/meetings", data={"title": "للحذف"}, files={"file": ("tone.wav", f, "audio/wav")}, headers=H
+        ).json()["id"]
     assert c.delete(f"/api/meetings/{mid}", headers=H).status_code == 200
     assert c.get(f"/api/meetings/{mid}").status_code == 404
     from mahdar.db import repo
     from mahdar.db.core import org_tx
 
     with org_tx(orgs["a"]) as conn:
-        assert any(e["action"] == "meeting.deleted" and e["target_id"] == mid for e in repo.audit_entries(conn, orgs["a"]))
+        assert any(
+            e["action"] == "meeting.deleted" and e["target_id"] == mid for e in repo.audit_entries(conn, orgs["a"])
+        )
 
 
 def test_health_and_openapi(app, database):

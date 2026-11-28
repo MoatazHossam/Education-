@@ -50,7 +50,7 @@ COPY backend/pyproject.toml ./backend/pyproject.toml
 RUN --mount=type=secret,id=build_ca,required=false \
     if [ -s /run/secrets/build_ca ]; then export PIP_CERT=/run/secrets/build_ca; fi; \
     python3 -m venv /opt/venv \
-    && pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --upgrade pip "setuptools>=75" \
     && python3 -c "import tomllib; print('\n'.join(tomllib.load(open('backend/pyproject.toml','rb'))['project']['dependencies']))" > /tmp/requirements.txt \
     && pip install --no-cache-dir -r /tmp/requirements.txt \
     && if [ "$WITH_PYANNOTE" = "true" ]; then \
@@ -61,7 +61,8 @@ RUN --mount=type=secret,id=build_ca,required=false \
     && rm -f /tmp/requirements.txt /tmp/pyannote.txt
 
 COPY backend/ ./backend/
-RUN pip install --no-cache-dir --no-deps ./backend
+# No network at this step: dependencies and setuptools are already installed.
+RUN pip install --no-cache-dir --no-deps --no-build-isolation ./backend
 COPY --from=web /web/dist /app/web
 
 # An unprivileged user; /data holds the encrypted recordings and documents (storage) and the

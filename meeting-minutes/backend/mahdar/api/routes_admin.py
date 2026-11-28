@@ -22,10 +22,15 @@ router = APIRouter(prefix="/api", tags=["administration"])
 def system(p: Principal = Depends(current_user)) -> dict:
     s = get_settings()
     return {
-        "asr_provider": s.asr_provider, "whisper_model": s.whisper_model if s.asr_provider == "faster_whisper" else None,
-        "diarization_provider": s.diarization_provider, "llm_provider": s.llm_provider, "llm_model": s.llm_model,
-        "allowed_external_providers": sorted(s.allowed_external), "known_external_providers": sorted(EXTERNAL_PROVIDERS),
-        "max_upload_mb": s.max_upload_mb, "max_duration_minutes": s.max_duration_minutes,
+        "asr_provider": s.asr_provider,
+        "whisper_model": s.whisper_model if s.asr_provider == "faster_whisper" else None,
+        "diarization_provider": s.diarization_provider,
+        "llm_provider": s.llm_provider,
+        "llm_model": s.llm_model,
+        "allowed_external_providers": sorted(s.allowed_external),
+        "known_external_providers": sorted(EXTERNAL_PROVIDERS),
+        "max_upload_mb": s.max_upload_mb,
+        "max_duration_minutes": s.max_duration_minutes,
     }
 
 
@@ -62,8 +67,15 @@ class Branding(BaseModel):
 def _save(c: Connection, p: Principal, section: str, values: dict) -> dict:
     before = repo.get_org(c, p.org_id)["settings"].get(section)
     settings = repo.update_org_settings(c, p.org_id, section, values)
-    repo.audit(c, p.org_id, f"settings.{section}", actor_user=p.user_id, target_type="organization", target_id=p.org_id,
-               details={"before": before, "after": settings[section]})
+    repo.audit(
+        c,
+        p.org_id,
+        f"settings.{section}",
+        actor_user=p.user_id,
+        target_type="organization",
+        target_id=p.org_id,
+        details={"before": before, "after": settings[section]},
+    )
     return settings
 
 
@@ -101,8 +113,18 @@ def upload_logo(file: UploadFile = File(...), p: Principal = Depends(require("ad
     bid = storage.new_id()
     key, size, sha = storage.put_bytes(p.org_id, bid, data)
     with org_tx(p.org_id) as c:
-        repo.add_blob(c, blob_id=bid, org_id=p.org_id, meeting_id=None, kind="logo", storage_key=key, size=size, sha256=sha,
-                      content_type=kind, filename=file.filename or "logo")
+        repo.add_blob(
+            c,
+            blob_id=bid,
+            org_id=p.org_id,
+            meeting_id=None,
+            kind="logo",
+            storage_key=key,
+            size=size,
+            sha256=sha,
+            content_type=kind,
+            filename=file.filename or "logo",
+        )
         _save(c, p, "branding", {"logo_blob_id": bid})
     return {"logo_blob_id": bid}
 
@@ -123,17 +145,35 @@ def glossary(c: Connection = Depends(org_conn)) -> list[dict]:
 @router.post("/glossary", status_code=201)
 def add_term(body: Term, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)) -> dict:
     tid = repo.upsert_glossary(c, p.org_id, body.model_dump())
-    repo.audit(c, p.org_id, "glossary.added", actor_user=p.user_id, target_type="glossary", target_id=tid, details=body.model_dump())
+    repo.audit(
+        c,
+        p.org_id,
+        "glossary.added",
+        actor_user=p.user_id,
+        target_type="glossary",
+        target_id=tid,
+        details=body.model_dump(),
+    )
     return {"id": tid, **body.model_dump()}
 
 
 @router.put("/glossary/{term_id}")
-def update_term(term_id: str, body: Term, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)) -> dict:
+def update_term(
+    term_id: str, body: Term, p: Principal = Depends(require("editor")), c: Connection = Depends(org_conn)
+) -> dict:
     try:
         repo.upsert_glossary(c, p.org_id, body.model_dump(), term_id)
     except KeyError as exc:
         raise HTTPException(404, "المصطلح غير موجود") from exc
-    repo.audit(c, p.org_id, "glossary.updated", actor_user=p.user_id, target_type="glossary", target_id=term_id, details=body.model_dump())
+    repo.audit(
+        c,
+        p.org_id,
+        "glossary.updated",
+        actor_user=p.user_id,
+        target_type="glossary",
+        target_id=term_id,
+        details=body.model_dump(),
+    )
     return {"id": term_id, **body.model_dump()}
 
 
@@ -172,7 +212,15 @@ def create_user(body: NewUser, p: Principal = Depends(require("admin"))) -> dict
             raise HTTPException(409, "البريد الإلكتروني مستخدم بالفعل")
         uid = repo.create_user(c, p.org_id, body.email, body.name, hash_password(body.password), body.role)
     with org_tx(p.org_id) as c:
-        repo.audit(c, p.org_id, "user.created", actor_user=p.user_id, target_type="user", target_id=uid, details={"role": body.role})
+        repo.audit(
+            c,
+            p.org_id,
+            "user.created",
+            actor_user=p.user_id,
+            target_type="user",
+            target_id=uid,
+            details={"role": body.role},
+        )
     return {"id": uid, "email": body.email, "name": body.name, "role": body.role}
 
 
@@ -185,17 +233,37 @@ def update_user(user_id: str, body: UserPatch, p: Principal = Depends(require("a
         if user_id == p.user_id and (body.role not in (None, "admin") or body.active is False):
             raise HTTPException(409, "لا يمكنك سحب صلاحية المدير من حسابك أو تعطيله")
         if body.role:
-            c.execute(text("update users set role = :r where id = :id and org_id = :o"), {"r": body.role, "id": user_id, "o": p.org_id})
+            c.execute(
+                text("update users set role = :r where id = :id and org_id = :o"),
+                {"r": body.role, "id": user_id, "o": p.org_id},
+            )
         if body.active is not None:
-            c.execute(text("update users set active = :a where id = :id and org_id = :o"), {"a": body.active, "id": user_id, "o": p.org_id})
+            c.execute(
+                text("update users set active = :a where id = :id and org_id = :o"),
+                {"a": body.active, "id": user_id, "o": p.org_id},
+            )
             if not body.active:
-                c.execute(text("update sessions set revoked_at = now() where user_id = :id and revoked_at is null"), {"id": user_id})
+                c.execute(
+                    text("update sessions set revoked_at = now() where user_id = :id and revoked_at is null"),
+                    {"id": user_id},
+                )
         if body.password:
-            c.execute(text("update users set password_hash = :h, failed_logins = 0, locked_until = null where id = :id and org_id = :o"),
-                      {"h": hash_password(body.password), "id": user_id, "o": p.org_id})
+            c.execute(
+                text(
+                    "update users set password_hash = :h, failed_logins = 0, locked_until = null where id = :id and org_id = :o"
+                ),
+                {"h": hash_password(body.password), "id": user_id, "o": p.org_id},
+            )
     with org_tx(p.org_id) as c:
-        repo.audit(c, p.org_id, "user.updated", actor_user=p.user_id, target_type="user", target_id=user_id,
-                   details={"role": body.role, "active": body.active, "password_reset": bool(body.password)})
+        repo.audit(
+            c,
+            p.org_id,
+            "user.updated",
+            actor_user=p.user_id,
+            target_type="user",
+            target_id=user_id,
+            details={"role": body.role, "active": body.active, "password_reset": bool(body.password)},
+        )
     return {"id": user_id, "updated": True}
 
 

@@ -111,7 +111,9 @@ class Settings(BaseSettings):
             try:
                 key = base64.b64decode(value, validate=True)
             except (binascii.Error, ValueError) as exc:
-                raise ConfigError(f"{'MAHDAR_DATA_KEY' if i == 0 else 'MAHDAR_DATA_KEYS_PREVIOUS'} is not base64") from exc
+                raise ConfigError(
+                    f"{'MAHDAR_DATA_KEY' if i == 0 else 'MAHDAR_DATA_KEYS_PREVIOUS'} is not base64"
+                ) from exc
             if len(key) != 32:
                 raise ConfigError("MAHDAR_DATA_KEY must decode to 32 bytes (openssl rand -base64 32)")
             keys.append(key)

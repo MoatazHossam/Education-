@@ -5,7 +5,10 @@ from mahdar.pipeline.diarization import Turn
 
 
 def words(text: str, start: float, step: float = 0.5):
-    return [RawWord(w=w, start=start + i * step, end=start + i * step + step * 0.9, p=0.9) for i, w in enumerate(text.split())]
+    return [
+        RawWord(w=w, start=start + i * step, end=start + i * step + step * 0.9, p=0.9)
+        for i, w in enumerate(text.split())
+    ]
 
 
 def test_chunk_plan_cuts_at_silences_with_overlap():
@@ -19,7 +22,14 @@ def test_chunk_plan_cuts_at_silences_with_overlap():
 
 
 def test_merge_keeps_each_word_once_across_an_overlap():
-    a = [RawSegment(start=0, end=11, text="", words=words("واحد اتنين تلاتة اربعة خمسة ستة سبعة تمانية تسعة عشرة حداشر اتناشر", 5))]
+    a = [
+        RawSegment(
+            start=0,
+            end=11,
+            text="",
+            words=words("واحد اتنين تلاتة اربعة خمسة ستة سبعة تمانية تسعة عشرة حداشر اتناشر", 5),
+        )
+    ]
     # The same words, at the same times, recognised again at the start of the next chunk.
     b = [RawSegment(start=9, end=12, text="", words=words("تسعة عشرة حداشر اتناشر تلتاشر اربعتاشر", 9))]
     merged = merge_chunks([(0.0, 11.0, a), (9.0, 14.0, b)])
@@ -32,7 +42,9 @@ def test_screen_flags_stock_hallucinations_and_loops():
     segs = [
         RawSegment(start=0, end=3, text="اشتركوا في القناة", no_speech_prob=0.9),
         RawSegment(start=3, end=8, text="نعم نعم نعم نعم نعم نعم", compression_ratio=3.0),
-        RawSegment(start=8, end=12, text="نراجع الميزانية الأسبوع القادم", words=words("نراجع الميزانية الأسبوع القادم", 8)),
+        RawSegment(
+            start=8, end=12, text="نراجع الميزانية الأسبوع القادم", words=words("نراجع الميزانية الأسبوع القادم", 8)
+        ),
     ]
     out = screen(segs, speech=[(8, 12)], prompt=None)
     assert "possible_hallucination" in out[0].flags

@@ -84,16 +84,18 @@ def update_org_settings(conn: Connection, org_id: str, section: str, values: dic
 def create_user(conn: Connection, org_id: str, email: str, name: str, password_hash: str, role: str) -> str:
     uid = new_uuid()
     conn.execute(
-        text(
-            "insert into users (id, org_id, email, name, password_hash, role) values (:id, :org, :e, :n, :p, :r)"
-        ),
+        text("insert into users (id, org_id, email, name, password_hash, role) values (:id, :org, :e, :n, :p, :r)"),
         {"id": uid, "org": org_id, "e": email.strip().lower(), "n": name, "p": password_hash, "r": role},
     )
     return uid
 
 
 def find_user_by_email(conn: Connection, email: str) -> dict | None:
-    row = conn.execute(text("select * from users where lower(email) = lower(:e)"), {"e": email.strip()}).mappings().first()
+    row = (
+        conn.execute(text("select * from users where lower(email) = lower(:e)"), {"e": email.strip()})
+        .mappings()
+        .first()
+    )
     return dict(row) if row else None
 
 
@@ -108,7 +110,9 @@ def get_user(conn: Connection, org_id: str, user_id: str) -> dict | None:
 
 def list_users(conn: Connection, org_id: str) -> list[dict]:
     rows = conn.execute(
-        text("select id, email, name, role, active, last_login_at, created_at from users where org_id = :org order by created_at"),
+        text(
+            "select id, email, name, role, active, last_login_at, created_at from users where org_id = :org order by created_at"
+        ),
         {"org": org_id},
     ).mappings()
     return [dict(r) for r in rows]
@@ -125,13 +129,17 @@ def create_session(conn: Connection, user_id: str, org_id: str, expires_at: date
 
 
 def active_session(conn: Connection, sid: str) -> dict | None:
-    row = conn.execute(
-        text(
-            "select s.*, u.role, u.active, u.name, u.email from sessions s join users u on u.id = s.user_id "
-            "where s.id = :id and s.revoked_at is null and s.expires_at > now()"
-        ),
-        {"id": sid},
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text(
+                "select s.*, u.role, u.active, u.name, u.email from sessions s join users u on u.id = s.user_id "
+                "where s.id = :id and s.revoked_at is null and s.expires_at > now()"
+            ),
+            {"id": sid},
+        )
+        .mappings()
+        .first()
+    )
     return dict(row) if row else None
 
 
@@ -155,16 +163,18 @@ def _meeting(row: Any) -> dict:
 def create_meeting(conn: Connection, org_id: str, user_id: str | None, meta: dict, classification: str) -> str:
     mid = new_uuid()
     conn.execute(
-        text(
-            "insert into meetings (id, org_id, created_by, meta_enc, classification) values (:id, :org, :u, :m, :c)"
-        ),
+        text("insert into meetings (id, org_id, created_by, meta_enc, classification) values (:id, :org, :u, :m, :c)"),
         {"id": mid, "org": org_id, "u": user_id, "m": _seal(meta, f"meeting:{mid}:meta"), "c": classification},
     )
     return mid
 
 
 def get_meeting(conn: Connection, meeting_id: str) -> dict | None:
-    row = conn.execute(text(f"select {MEETING_COLUMNS} from meetings where id = :id"), {"id": meeting_id}).mappings().first()  # noqa: S608
+    row = (
+        conn.execute(text(f"select {MEETING_COLUMNS} from meetings where id = :id"), {"id": meeting_id})  # noqa: S608
+        .mappings()
+        .first()
+    )
     return _meeting(row) if row else None
 
 
@@ -174,8 +184,17 @@ def list_meetings(conn: Connection) -> list[dict]:
 
 
 _MEETING_FIELDS = {
-    "status", "stage", "progress", "minutes_status", "approved_by", "approved_at", "error_code",
-    "duration_seconds", "critical_open", "retention_until", "classification",
+    "status",
+    "stage",
+    "progress",
+    "minutes_status",
+    "approved_by",
+    "approved_at",
+    "error_code",
+    "duration_seconds",
+    "critical_open",
+    "retention_until",
+    "classification",
 }
 
 
@@ -225,32 +244,49 @@ def save_artifact(
             "created_by_agent, note) values (:id, :org, :m, :k, :v, :c, :h, :u, :a, :n)"
         ),
         {
-            "id": aid, "org": org_id, "m": meeting_id, "k": kind, "v": version,
-            "c": keyring().seal(raw.encode(), f"artifact:{aid}"), "h": hashlib.sha256(raw.encode()).hexdigest(),
-            "u": user_id, "a": agent, "n": note,
+            "id": aid,
+            "org": org_id,
+            "m": meeting_id,
+            "k": kind,
+            "v": version,
+            "c": keyring().seal(raw.encode(), f"artifact:{aid}"),
+            "h": hashlib.sha256(raw.encode()).hexdigest(),
+            "u": user_id,
+            "a": agent,
+            "n": note,
         },
     )
     return int(version)
 
 
 def latest_artifact(conn: Connection, meeting_id: str, kind: str) -> tuple[int, Any] | None:
-    row = conn.execute(
-        text(
-            "select id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null "
-            "order by version desc limit 1"
-        ),
-        {"m": meeting_id, "k": kind},
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text(
+                "select id, version, content_enc from artifacts where meeting_id = :m and kind = :k and purged_at is null "
+                "order by version desc limit 1"
+            ),
+            {"m": meeting_id, "k": kind},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         return None
     return int(row["version"]), _open(row["content_enc"], f"artifact:{row['id']}")
 
 
 def artifact_version(conn: Connection, meeting_id: str, kind: str, version: int) -> Any:
-    row = conn.execute(
-        text("select id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null"),
-        {"m": meeting_id, "k": kind, "v": version},
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text(
+                "select id, content_enc from artifacts where meeting_id = :m and kind = :k and version = :v and purged_at is null"
+            ),
+            {"m": meeting_id, "k": kind, "v": version},
+        )
+        .mappings()
+        .first()
+    )
     return _open(row["content_enc"], f"artifact:{row['id']}") if row else None
 
 
@@ -279,8 +315,17 @@ def purge_artifacts(conn: Connection, meeting_id: str, kinds: list[str]) -> int:
 
 # --- blobs --------------------------------------------------------------------------------------
 def add_blob(
-    conn: Connection, *, blob_id: str, org_id: str, meeting_id: str | None, kind: str, storage_key: str,
-    size: int, sha256: str, content_type: str, filename: str | None = None,
+    conn: Connection,
+    *,
+    blob_id: str,
+    org_id: str,
+    meeting_id: str | None,
+    kind: str,
+    storage_key: str,
+    size: int,
+    sha256: str,
+    content_type: str,
+    filename: str | None = None,
 ) -> None:
     conn.execute(
         text(
@@ -288,19 +333,30 @@ def add_blob(
             "values (:id, :org, :m, :k, :sk, :sz, :h, :ct, :fn)"
         ),
         {
-            "id": blob_id, "org": org_id, "m": meeting_id, "k": kind, "sk": storage_key, "sz": size, "h": sha256,
-            "ct": content_type, "fn": _seal(filename, f"blob:{blob_id}:filename") if filename else None,
+            "id": blob_id,
+            "org": org_id,
+            "m": meeting_id,
+            "k": kind,
+            "sk": storage_key,
+            "sz": size,
+            "h": sha256,
+            "ct": content_type,
+            "fn": _seal(filename, f"blob:{blob_id}:filename") if filename else None,
         },
     )
 
 
 def latest_blob(conn: Connection, meeting_id: str, kind: str) -> dict | None:
-    row = conn.execute(
-        text(
-            "select * from blobs where meeting_id = :m and kind = :k and purged_at is null order by created_at desc limit 1"
-        ),
-        {"m": meeting_id, "k": kind},
-    ).mappings().first()
+    row = (
+        conn.execute(
+            text(
+                "select * from blobs where meeting_id = :m and kind = :k and purged_at is null order by created_at desc limit 1"
+            ),
+            {"m": meeting_id, "k": kind},
+        )
+        .mappings()
+        .first()
+    )
     if not row:
         return None
     b = dict(row)
@@ -309,7 +365,11 @@ def latest_blob(conn: Connection, meeting_id: str, kind: str) -> dict | None:
 
 
 def get_blob(conn: Connection, blob_id: str) -> dict | None:
-    row = conn.execute(text("select * from blobs where id = :id and purged_at is null"), {"id": blob_id}).mappings().first()
+    row = (
+        conn.execute(text("select * from blobs where id = :id and purged_at is null"), {"id": blob_id})
+        .mappings()
+        .first()
+    )
     if not row:
         return None
     b = dict(row)
@@ -328,8 +388,15 @@ def mark_blob_purged(conn: Connection, blob_id: str) -> None:
 
 # --- audit and processing register ------------------------------------------------------------
 def audit(
-    conn: Connection, org_id: str, action: str, *, actor_user: str | None = None, actor_kind: str = "user",
-    target_type: str | None = None, target_id: str | None = None, meeting_id: str | None = None,
+    conn: Connection,
+    org_id: str,
+    action: str,
+    *,
+    actor_user: str | None = None,
+    actor_kind: str = "user",
+    target_type: str | None = None,
+    target_id: str | None = None,
+    meeting_id: str | None = None,
     details: dict | None = None,
 ) -> None:
     conn.execute(
@@ -338,8 +405,14 @@ def audit(
             "values (:org, :u, :k, :a, :tt, :ti, :m, :d)"
         ),
         {
-            "org": org_id, "u": actor_user, "k": actor_kind, "a": action, "tt": target_type, "ti": target_id,
-            "m": meeting_id, "d": _seal(details, f"audit:{org_id}") if details is not None else None,
+            "org": org_id,
+            "u": actor_user,
+            "k": actor_kind,
+            "a": action,
+            "tt": target_type,
+            "ti": target_id,
+            "m": meeting_id,
+            "d": _seal(details, f"audit:{org_id}") if details is not None else None,
         },
     )
 
@@ -363,8 +436,16 @@ def audit_entries(conn: Connection, org_id: str, meeting_id: str | None = None, 
 
 
 def record_processing(
-    conn: Connection, org_id: str, meeting_id: str | None, *, stage: str, provider: str, model: str | None,
-    data_kind: str, external: bool, detail: dict | None = None,
+    conn: Connection,
+    org_id: str,
+    meeting_id: str | None,
+    *,
+    stage: str,
+    provider: str,
+    model: str | None,
+    data_kind: str,
+    external: bool,
+    detail: dict | None = None,
 ) -> None:
     conn.execute(
         text(
@@ -372,7 +453,13 @@ def record_processing(
             "values (:org, :m, :s, :p, :mo, :dk, :e, cast(:d as jsonb))"
         ),
         {
-            "org": org_id, "m": meeting_id, "s": stage, "p": provider, "mo": model, "dk": data_kind, "e": external,
+            "org": org_id,
+            "m": meeting_id,
+            "s": stage,
+            "p": provider,
+            "mo": model,
+            "dk": data_kind,
+            "e": external,
             "d": json.dumps(detail or {}),
         },
     )
@@ -380,7 +467,9 @@ def record_processing(
 
 def processing_records(conn: Connection, meeting_id: str) -> list[dict]:
     rows = conn.execute(
-        text("select at, stage, provider, model, data_kind, external, detail from processing_records where meeting_id = :m order by at"),
+        text(
+            "select at, stage, provider, model, data_kind, external, detail from processing_records where meeting_id = :m order by at"
+        ),
         {"m": meeting_id},
     ).mappings()
     return [dict(r) for r in rows]
@@ -406,7 +495,10 @@ def upsert_glossary(conn: Connection, org_id: str, data: dict, term_id: str | No
         if not res.rowcount:
             raise KeyError(term_id)
     else:
-        conn.execute(text("insert into glossary_terms (id, org_id, data_enc) values (:id, :org, :d)"), {"id": tid, "org": org_id, "d": sealed})
+        conn.execute(
+            text("insert into glossary_terms (id, org_id, data_enc) values (:id, :org, :d)"),
+            {"id": tid, "org": org_id, "d": sealed},
+        )
     return tid
 
 

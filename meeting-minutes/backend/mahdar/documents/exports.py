@@ -16,15 +16,40 @@ def actions_csv(eff: list[EffectiveItem], transcript: Transcript) -> bytes:
     segs = {s.id: s for s in transcript.segments}
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["رقم البند", "النوع", "الإجراء", "المسؤول", "الموعد", "تاريخ الاستحقاق", "حالة التحقق", "مراجعة بشرية", "المرجع"])
+    w.writerow(
+        [
+            "رقم البند",
+            "النوع",
+            "الإجراء",
+            "المسؤول",
+            "الموعد",
+            "تاريخ الاستحقاق",
+            "حالة التحقق",
+            "مراجعة بشرية",
+            "المرجع",
+        ]
+    )
     for e in eff:
         if e.type not in ("action_assigned", "action_suggested"):
             continue
-        refs = "; ".join(f"{x.segment_id}@{fmt_time(segs[x.segment_id].start)}" for x in e.item.evidence if x.segment_id in segs)
-        w.writerow([e.item.id, ITEM_TYPE_AR[e.type], e.item.statement, _owner(e.item, names), _due(e.item), e.item.due.date_iso or "",
-                    e.status, "نعم" if e.human_accepted else "لا", refs])
+        refs = "; ".join(
+            f"{x.segment_id}@{fmt_time(segs[x.segment_id].start)}" for x in e.item.evidence if x.segment_id in segs
+        )
+        w.writerow(
+            [
+                e.item.id,
+                ITEM_TYPE_AR[e.type],
+                e.item.statement,
+                _owner(e.item, names),
+                _due(e.item),
+                e.item.due.date_iso or "",
+                e.status,
+                "نعم" if e.human_accepted else "لا",
+                refs,
+            ]
+        )
     # UTF-8 with BOM so Excel opens Arabic correctly.
-    return ("﻿" + buf.getvalue()).encode("utf-8")
+    return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
 def transcript_text(transcript: Transcript, readable: bool) -> bytes:
@@ -32,29 +57,51 @@ def transcript_text(transcript: Transcript, readable: bool) -> bytes:
     lines = []
     for s in transcript.segments:
         flags = f" [{', '.join(s.flags)}]" if s.flags else ""
-        lines.append(f"[{fmt_time(s.start)} - {fmt_time(s.end)}] {names.get(s.speaker_id or '', 'متحدث غير محدد')}{flags}: "
-                     f"{s.text_readable if readable else s.text_verbatim}")
+        lines.append(
+            f"[{fmt_time(s.start)} - {fmt_time(s.end)}] {names.get(s.speaker_id or '', 'متحدث غير محدد')}{flags}: "
+            f"{s.text_readable if readable else s.text_verbatim}"
+        )
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def export_json(*, meeting: dict, transcript: Transcript, analysis: Analysis, verification: VerificationReport, minutes: MinutesDocument,
-                eff: list[EffectiveItem], quality: dict, processing: list[dict]) -> dict:
+def export_json(
+    *,
+    meeting: dict,
+    transcript: Transcript,
+    analysis: Analysis,
+    verification: VerificationReport,
+    minutes: MinutesDocument,
+    eff: list[EffectiveItem],
+    quality: dict,
+    processing: list[dict],
+) -> dict:
     vby = {v.item_id: v for v in verification.items}
     return {
-        "schema": "mahdar.meeting.export", "version": 1,
+        "schema": "mahdar.meeting.export",
+        "version": 1,
         "meeting": {
-            "id": str(meeting["id"]), "title": meeting["meta"].get("title"), "date": meeting["meta"].get("date"),
-            "location": meeting["meta"].get("location"), "classification": meeting["classification"],
-            "minutes_status": meeting["minutes_status"], "duration_seconds": meeting.get("duration_seconds"),
+            "id": str(meeting["id"]),
+            "title": meeting["meta"].get("title"),
+            "date": meeting["meta"].get("date"),
+            "location": meeting["meta"].get("location"),
+            "classification": meeting["classification"],
+            "minutes_status": meeting["minutes_status"],
+            "duration_seconds": meeting.get("duration_seconds"),
             "recording_sha256": transcript.recording_sha256,
         },
         "speakers": [s.model_dump() for s in transcript.speakers],
         "purpose": analysis.purpose,
         "topics": [t.model_dump() for t in analysis.topics],
-        "items": [{
-            **e.item.model_dump(), "final_type": e.type, "verification_status": e.status, "human_accepted": e.human_accepted,
-            "evidence_resolved": [r.model_dump() for r in (vby[e.item.id].evidence if e.item.id in vby else [])],
-        } for e in eff],
+        "items": [
+            {
+                **e.item.model_dump(),
+                "final_type": e.type,
+                "verification_status": e.status,
+                "human_accepted": e.human_accepted,
+                "evidence_resolved": [r.model_dump() for r in (vby[e.item.id].evidence if e.item.id in vby else [])],
+            }
+            for e in eff
+        ],
         "decisions": [e.item.id for e in eff if e.type == "decision_approved" and e.ok],
         "action_items": [e.item.id for e in eff if e.type in ("action_assigned", "action_suggested")],
         "minutes": minutes.model_dump(),

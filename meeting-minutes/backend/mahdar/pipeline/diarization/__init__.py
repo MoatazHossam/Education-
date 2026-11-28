@@ -37,7 +37,9 @@ class DiarizationError(Exception):
 
 def _sherpa_paths() -> tuple[Path, Path]:
     base = get_settings().resolved_models_dir / "sherpa"
-    seg = Path(os.environ.get("MAHDAR_SEGMENTATION_MODEL", base / "sherpa-onnx-pyannote-segmentation-3-0" / "model.onnx"))
+    seg = Path(
+        os.environ.get("MAHDAR_SEGMENTATION_MODEL", base / "sherpa-onnx-pyannote-segmentation-3-0" / "model.onnx")
+    )
     emb = Path(os.environ.get("MAHDAR_EMBEDDING_MODEL", base / "wespeaker_en_voxceleb_resnet34_LM.onnx"))
     return seg, emb
 
@@ -49,15 +51,20 @@ def _sherpa(seg: str, emb: str, num_clusters: int, threshold: float):
     threads = os.cpu_count() or 2
     config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
         segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
-            pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(model=seg), num_threads=threads,
+            pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(model=seg),
+            num_threads=threads,
         ),
         embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=emb, num_threads=threads),
-        clustering=sherpa_onnx.FastClusteringConfig(num_clusters=num_clusters, threshold=threshold, compute_confidence=True),
+        clustering=sherpa_onnx.FastClusteringConfig(
+            num_clusters=num_clusters, threshold=threshold, compute_confidence=True
+        ),
         min_duration_on=0.3,
         min_duration_off=0.5,
     )
     if not config.validate():
-        raise DiarizationError("sherpa-onnx diarization models are missing or invalid (python -m mahdar.cli models download)")
+        raise DiarizationError(
+            "sherpa-onnx diarization models are missing or invalid (python -m mahdar.cli models download)"
+        )
     return sherpa_onnx.OfflineSpeakerDiarization(config)
 
 
@@ -66,15 +73,23 @@ def diarize_sherpa(audio_path: Path, expected_speakers: int | None) -> list[Turn
 
     seg, emb = _sherpa_paths()
     if not seg.exists() or not emb.exists():
-        raise DiarizationError("sherpa-onnx diarization models are not downloaded (python -m mahdar.cli models download)")
+        raise DiarizationError(
+            "sherpa-onnx diarization models are not downloaded (python -m mahdar.cli models download)"
+        )
     sd = _sherpa(str(seg), str(emb), expected_speakers or -1, get_settings().diarization_threshold)
     samples = load_samples(audio_path)
     result = sd.process(samples).sort_by_start_time()
     turns = []
     for r in result:
         conf = getattr(r, "confidence", None)
-        turns.append(Turn(start=round(r.start, 3), end=round(r.end, 3), speaker=f"s{r.speaker}",
-                          confidence=float(conf) if conf is not None and conf >= 0 else None))
+        turns.append(
+            Turn(
+                start=round(r.start, 3),
+                end=round(r.end, 3),
+                speaker=f"s{r.speaker}",
+                confidence=float(conf) if conf is not None and conf >= 0 else None,
+            )
+        )
     return turns
 
 
@@ -91,8 +106,10 @@ def diarize_pyannote(audio_path: Path, expected_speakers: int | None) -> list[Tu
     kwargs = {"num_speakers": expected_speakers} if expected_speakers else {}
     output = pipeline(str(audio_path), **kwargs)
     annotation = getattr(output, "speaker_diarization", output)
-    return [Turn(start=round(seg.start, 3), end=round(seg.end, 3), speaker=f"p{label}")
-            for seg, _, label in annotation.itertracks(yield_label=True)]
+    return [
+        Turn(start=round(seg.start, 3), end=round(seg.end, 3), speaker=f"p{label}")
+        for seg, _, label in annotation.itertracks(yield_label=True)
+    ]
 
 
 def diarize(provider: str, audio_path: Path, expected_speakers: int | None) -> list[Turn]:

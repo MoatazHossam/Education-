@@ -61,6 +61,8 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
 ignore = [
+  "E501",   # line length is the formatter's job; long Arabic strings and prompts stay whole
+  "S603", "S607",  # subprocess with fixed argument lists (FFmpeg, fc-list), never a shell
   "S101",   # assert in tests
   "S311",   # random is not used for security
   "RUF001", "RUF002", "RUF003",  # Arabic text contains characters that look like Latin ones

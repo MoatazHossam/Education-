@@ -55,8 +55,14 @@ class AsrProvider(Protocol):
     #: The provider labels speakers itself (Deepgram, Azure): diarization "asr" uses them.
     diarizes: bool
 
-    def transcribe(self, audio_path: Path, start: float, end: float, opts: AsrOptions,
-                   progress: Callable[[float], None] | None = None) -> list[RawSegment]: ...
+    def transcribe(
+        self,
+        audio_path: Path,
+        start: float,
+        end: float,
+        opts: AsrOptions,
+        progress: Callable[[float], None] | None = None,
+    ) -> list[RawSegment]: ...
 
 
 class AsrError(Exception):
@@ -87,9 +93,15 @@ def merge_chunks(chunks: list[tuple[float, float, list[RawSegment]]]) -> list[Ra
                     continue
                 if len(kept) != len(s.words):
                     s = RawSegment(
-                        start=kept[0].start, end=kept[-1].end, text=" ".join(w.w for w in kept), words=kept,
-                        avg_logprob=s.avg_logprob, no_speech_prob=s.no_speech_prob,
-                        compression_ratio=s.compression_ratio, speaker=s.speaker, flags=set(s.flags),
+                        start=kept[0].start,
+                        end=kept[-1].end,
+                        text=" ".join(w.w for w in kept),
+                        words=kept,
+                        avg_logprob=s.avg_logprob,
+                        no_speech_prob=s.no_speech_prob,
+                        compression_ratio=s.compression_ratio,
+                        speaker=s.speaker,
+                        flags=set(s.flags),
                     )
                 merged.append(s)
             elif lo <= (s.start + s.end) / 2 < hi:

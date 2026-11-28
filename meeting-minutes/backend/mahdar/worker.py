@@ -55,7 +55,10 @@ def main() -> None:
                     with system_tx() as c:
                         job = queue.claim(c, wid)
                     if job:
-                        log.info("job claimed", extra={"job": str(job["id"]), "kind": job["kind"], "attempt": job["attempts"]})
+                        log.info(
+                            "job claimed",
+                            extra={"job": str(job["id"]), "kind": job["kind"], "attempt": job["attempts"]},
+                        )
                         running.add(pool.submit(run_job, job))
                         continue
             except Exception:

@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import re
 from itertools import permutations
 
 from rapidfuzz import fuzz
@@ -178,8 +179,12 @@ def item_scores(
     return out
 
 
+_REFS = re.compile(r"\bS\d{3,5}\b|\b\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?")
+
+
 def invented_numbers(minutes_texts: list[str], reference_texts: list[str]) -> list[float]:
-    """Numbers in the minutes that were never spoken (ignoring item numbering 1..20)."""
+    """Numbers in the minutes that were never spoken (ignoring item numbering 1..20, and the
+    references the minutes add themselves: segment ids "S0045" and timestamps "00:46.6")."""
     ref = arabic.extract_numbers(" ".join(reference_texts))
-    nums = arabic.extract_numbers(" ".join(minutes_texts))
+    nums = arabic.extract_numbers(_REFS.sub(" ", " ".join(minutes_texts)))
     return sorted(n for n in nums if n > 20 and not any(abs(n - m) < 1e-6 for m in ref) and not (1900 < n < 2100))

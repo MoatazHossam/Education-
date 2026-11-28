@@ -277,14 +277,20 @@ def check_block(text: str, items: list[EffectiveItem], names: dict[str, str], pe
     return sorted(set(problems))
 
 
+def in_minutes(e: EffectiveItem) -> bool:
+    """Items the checks found unsupported or contradicted stay out of the minutes — every section,
+    and the writer's input — until a person accepts them; they are listed in the evidence report."""
+    return e.human_accepted or e.status not in ("unsupported", "contradicted")
+
+
 def _plan(items: list[EffectiveItem]) -> dict[str, list[EffectiveItem]]:
     plan: dict[str, list[EffectiveItem]] = {
         k: [] for k in ["topics", "decisions", "recommendations", "actions", "risks", "pending"]
     }
     for e in items:
         t = e.type
-        if e.status in ("unsupported", "contradicted") and not e.human_accepted:
-            continue  # not in the minutes until a person accepts it; listed in the evidence report
+        if not in_minutes(e):
+            continue
         if t in ("decision_approved", "action_assigned") and not e.ok:
             plan["pending"].append(e)
         elif t == "decision_approved":
@@ -357,6 +363,7 @@ def build_minutes(
                     else None,
                 }
                 for e in eff
+                if in_minutes(e)
             ],
             "sections": {
                 "decision_texts": [e.item.id for e in plan["decisions"]],
@@ -533,7 +540,7 @@ def build_minutes(
         if not t_items:
             # The analysis's topic summary is used only if it passes the same check as a written
             # block against all of the topic's items; otherwise the topic shows its items elsewhere.
-            all_items = [e for e in eff if e.item.topic_id == t.id]
+            all_items = [e for e in eff if e.item.topic_id == t.id and in_minutes(e)]
             summary_text = without_labels(t.summary.strip(), names)
             if all_items and not check_block(summary_text, all_items, names, people):
                 counter[0] += 1

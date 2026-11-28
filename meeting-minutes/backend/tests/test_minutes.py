@@ -278,3 +278,46 @@ def test_contradicted_item_stays_out_of_the_minutes():
         llm=None,
     )
     assert "يوفر الوقت" in " ".join(b.text for s in doc2.sections for b in s.blocks)
+    assert not any("I001" in x.item_ids for s in doc.sections for x in [*s.blocks, *s.rows])
+
+
+def test_kept_out_item_does_not_return_through_its_topic_summary():
+    # Observed in s1: a contradicted item came back as its topic's summary paragraph.
+    from mahdar.pipeline.schemas import Topic
+
+    it = item(
+        "I001", "contradiction", "ذُكر يوم الخامس عشر من يناير ثم غُيِّر.", [("S0001", "النظام ده ممكن يوفر وقت")]
+    ).model_copy(update={"topic_id": "T1"})
+    an = analysis(it).model_copy(
+        update={
+            "topics": [
+                Topic(id="T1", title="الموعد", summary="ذُكر يوم الخامس عشر من يناير ثم غُيِّر.", segment_ids=["S0001"])
+            ]
+        }
+    )
+    j = {**{k: None for k in ("suggested_type", "owner_supported", "due_supported")}}
+    judgment = {
+        "claim_id": "I001",
+        "verdict": "contradicted",
+        "classification_correct": True,
+        "speaker_correct": True,
+        "missing_qualifications": [],
+        "rationale_ar": "سبب",
+        **j,
+    }
+    rep, _ = verify(
+        T, an, meta={}, glossary=[], llm=FakeLlm({"verification": [{"judgments": [judgment], "omissions": []}]})
+    )
+    doc, _ = build_minutes(
+        transcript=T,
+        analysis=an,
+        verification=rep,
+        review={},
+        meta={},
+        classification="internal",
+        minutes_status="draft_requires_review",
+        approval=None,
+        glossary=[],
+        llm=None,
+    )
+    assert "غُيِّر" not in " ".join(b.text for s in doc.sections for b in s.blocks)

@@ -278,8 +278,12 @@ def rule_checks(
     ev_segs = [segs[r.segment_id] for r in resolved if r.segment_id in segs]
     ev_text = " ".join(_seg_text(s) for s in ev_segs)
     ev_norm = arabic.normalize(ev_text)
-    claim_text = " ".join(
-        [item.statement, *item.qualifications, item.due.text_as_spoken or "", item.owner.name_as_spoken or ""]
+    # Speaker labels ("المتحدث 2") are references, not facts: their digits are not numbers to check.
+    claim_text = arabic.SPEAKER_LABEL.sub(
+        " ",
+        " ".join(
+            [item.statement, *item.qualifications, item.due.text_as_spoken or "", item.owner.name_as_spoken or ""]
+        ),
     )
 
     # The statement must share at least one content word with what was said.

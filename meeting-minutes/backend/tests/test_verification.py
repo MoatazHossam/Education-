@@ -314,3 +314,21 @@ def test_speaker_label_given_as_owner_name_becomes_the_speaker():
         assert it.owner.name_as_spoken is None and it.owner.speaker_id == "SPK_2"
     (it,) = _to_items([{**raw, "owner_name_as_spoken": "خالد"}], {"SPK_1", "SPK_2"})
     assert it.owner.name_as_spoken == "خالد"
+
+
+def test_speaker_label_digits_are_not_numbers():
+    # Observed in s1: "تم تعيين المتحدث الثاني (المتحدث 2) …" failed the number check on "2".
+    res, _ = run(
+        item(
+            "I1",
+            "action_assigned",
+            "تم تعيين المتحدث 1 (SPK_1) لإعداد خطة اختبار الأداء وتسليمها يوم الأحد القادم.",
+            [("S0003", "سأتولى إعداد خطة اختبار الأداء وتسليمها يوم الأحد القادم")],
+            speakers=["SPK_1"],
+        )
+    )
+    assert "numbers" not in failed(res["I1"])
+    res, _ = run(
+        item("I2", "proposal", "يرى المتحدث 1 أن 3 أنظمة قد توفر الوقت.", [("S0001", "النظام ده ممكن يوفر وقت")])
+    )
+    assert "numbers" in failed(res["I2"])  # a real number is still checked

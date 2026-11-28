@@ -251,16 +251,23 @@ Defence in depth; each layer assumes the previous one can fail.
    (day + month) occurs; a calendar date is not made out of a relative expression ("الأسبوع
    الجاي" → 2026-12-07 is **critical**); the owner's name and any person's name occur in the
    evidence; English terms occur (or a glossary variant does); speakers match; negation agrees;
-   recognition and attribution confidence of the cited segments.
+   recognition and attribution confidence of the cited segments; the statement shares at least
+   one content word with the cited words (a correct paraphrase of colloquial speech may share
+   few, so only a statement sharing none fails — measured on the evaluation runs, where faithful
+   Egyptian paraphrases shared as little as 10 %).
 5. **Classification needs its words.** An approved decision needs approving words in its
    evidence ("تقرر", "اتفقنا", "نعتمد", "موافقين"…) with no negation or rejection; hedges
    ("مبدئياً", "بعد مراجعة", "لحد ما نشوف") make it a tentative agreement; no approving words make
    it a proposal. An assigned action needs assigning or committing words ("عليك", "أطلب من",
-   "سأتولى", Egyptian future "هبعت"); a hedge ("ممكن أنا…") makes it a suggested action.
+   "سأتولى", Egyptian future "هبعت"); a hedge ("ممكن أنا…") makes it a suggested action. A
+   rejection needs rejecting words; a "rejection" whose evidence defers ("نؤجل") becomes a
+   deferred item — this check is not lowered by the auditor agreeing.
 6. **An independent audit.** A second model call with a sceptical-auditor prompt that never sees
    the analysis prompt or reasoning, only the transcript and the claims, judges support,
    classification, speaker, owner, deadline, missing conditions, and lists omissions. It can only
-   weaken: a weaker suggested type is applied; a stronger one becomes an issue for a person.
+   weaken: a weaker suggested type is applied; a stronger one becomes an issue for a person; an
+   item it finds unsupported or contradicted is kept out of the minutes (still shown for review,
+   with the auditor's reason, and in the evidence report) until a person accepts it.
    (A second model pass alone is not treated as verification: the rule checks run regardless and
    both must pass for `verified`.)
 7. **Omissions.** Uncited segments containing approving, rejecting, assigning or committing
@@ -269,10 +276,14 @@ Defence in depth; each layer assumes the previous one can fail.
 8. **Contradictions.** Items typed `contradiction` and actions with the same owner or wording but
    different deadlines are listed for a person.
 9. **Writing cannot add facts.** Placement and tables are code; each written block is checked for
-   numbers, dates, terms, names, speaker labels, decision wording on non-decisions and new
-   negation, and replaced by a rule-written sentence if it fails. The language reviewer's
-   revisions are refused when the fact signature (numbers, dates, terms, negation, decision and
-   tentative wording, names) changes.
+   numbers, dates, terms, names, speaker labels (digits or ordinal words: "المتحدث الثاني"),
+   leftover JSON or markup, decision wording on non-decisions and new negation, and replaced by a
+   rule-written sentence if it fails. The language reviewer's revisions are refused when the fact
+   signature (numbers, dates, terms, negation, decision and tentative wording, names, labels,
+   markup) changes. A speaker label written as an owner's name is kept as that speaker, whose name
+   comes only from the reviewer's confirmation.
+   Prompts contain no sentence from the evaluation recordings (a test enforces it): a small model
+   was observed copying a prompt example into another meeting's minutes.
 10. **Status and gates.** Critical issues stay open until a person accepts, corrects or rejects
     the item; any open critical issue or failed gate labels the document **"مسودة تتطلب
     المراجعة"**. Nothing is ever marked approved automatically: "reviewed" needs a person to

@@ -207,3 +207,74 @@ def test_glossary_variants_and_readable_guard():
     assert safe_edit("التكلفة خمسة وعشرين ألف", "التكلفة خمسة وعشرين ألف.")[0]
     assert not safe_edit("التكلفة خمسة وعشرين ألف", "التكلفة ثلاثين ألف")[0]
     assert not safe_edit("مش هنعتمد النظام", "هنعتمد النظام")[0]
+
+
+def test_check_block_flags_ordinal_labels_and_markup():
+    _doc, rep, an = _build()
+    eff = effective_items(an, rep, {})
+    assert "speaker_label" in check_block("أُطلب من المتحدث الثاني مراجعة التكلفة.", [eff[0]], {}, [])
+    # Observed: JSON punctuation left by a small model at the end of a paragraph.
+    assert "markup" in check_block("يرى أحد الحاضرين أن النظام قد يوفر الوقت (يتطلب التحقق)},{", [eff[0]], {}, [])
+    from mahdar.pipeline.minutes import without_labels
+
+    assert without_labels("اقترحت المتحدثة الثالثة التأجيل", {"SPK_3": "سارة"}) == "اقترحت سارة التأجيل"
+
+
+def test_writer_markup_is_replaced_by_the_rule_text():
+    reply = _reply(recommendations=[{"item_ids": ["I001"], "text": 'يرى أحد الحاضرين أن النظام قد يوفر الوقت"},{"id'}])
+    doc, _, _ = _build(reply)
+    text = " ".join(b.text for s in doc.sections for b in s.blocks)
+    assert "},{" not in text and "{" not in text
+    assert any(i.code == "writer_block_replaced" for i in doc.issues)
+
+
+def test_contradicted_item_stays_out_of_the_minutes():
+    an = analysis(*ITEMS)
+    judgments = [
+        {
+            "claim_id": i.id,
+            "verdict": "contradicted" if i.id == "I001" else "supported",
+            "classification_correct": True,
+            "suggested_type": None,
+            "speaker_correct": True,
+            "owner_supported": None,
+            "due_supported": None,
+            "missing_qualifications": [],
+            "rationale_ar": "سبب",
+        }
+        for i in ITEMS
+    ]
+    rep, _ = verify(
+        T, an, meta={}, glossary=[], llm=FakeLlm({"verification": [{"judgments": judgments, "omissions": []}]})
+    )
+    doc, _ = build_minutes(
+        transcript=T,
+        analysis=an,
+        verification=rep,
+        review={},
+        meta={},
+        classification="internal",
+        minutes_status="draft_requires_review",
+        approval=None,
+        glossary=[],
+        llm=None,
+    )
+    text = " ".join(
+        [b.text for s in doc.sections for b in s.blocks]
+        + [c for s in doc.sections for r in s.rows for c in r.cells.values()]
+    )
+    assert "يوفر الوقت" not in text
+    # Accepted by a person, it comes back.
+    doc2, _ = build_minutes(
+        transcript=T,
+        analysis=an,
+        verification=rep,
+        review={"items": {"I001": {"decision": "accepted"}}},
+        meta={},
+        classification="internal",
+        minutes_status="draft_requires_review",
+        approval=None,
+        glossary=[],
+        llm=None,
+    )
+    assert "يوفر الوقت" in " ".join(b.text for s in doc2.sections for b in s.blocks)

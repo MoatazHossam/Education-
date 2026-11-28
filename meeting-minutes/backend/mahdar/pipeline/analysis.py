@@ -168,6 +168,20 @@ def _merge_topics(topics: list[dict], items: list[dict]) -> list[dict]:
     return out
 
 
+def _owner(it: dict, speaker_ids: set[str]) -> Owner:
+    """A speaker label written as the owner's name ("المتحدث 2") is a reference to that speaker, not a
+    name: it is kept as the speaker, and the name comes from the reviewer's confirmation."""
+    name = (it.get("owner_name_as_spoken") or "").strip() or None
+    sid = it.get("owner_speaker_id") if it.get("owner_speaker_id") in speaker_ids else None
+    if name:
+        m = arabic.SPEAKER_LABEL.search(name)
+        if m and not arabic.SPEAKER_LABEL.sub("", name).strip(" ،,.-"):
+            label_sid = arabic.speaker_label_id(m)
+            sid = sid or (label_sid if label_sid in speaker_ids else None)
+            name = None
+    return Owner(name_as_spoken=name, speaker_id=sid, status=it.get("owner_status", "unspecified"))
+
+
 def _to_items(raw: list[dict], speaker_ids: set[str]) -> list[Item]:
     items = []
     for n, it in enumerate(raw, start=1):
@@ -183,11 +197,7 @@ def _to_items(raw: list[dict], speaker_ids: set[str]) -> list[Item]:
                 topic_id=it.get("topic_id"),
                 statement=it["statement"].strip(),
                 speaker_ids=[s for s in it.get("speaker_ids", []) if s in speaker_ids],
-                owner=Owner(
-                    name_as_spoken=it.get("owner_name_as_spoken"),
-                    speaker_id=it.get("owner_speaker_id") if it.get("owner_speaker_id") in speaker_ids else None,
-                    status=it.get("owner_status", "unspecified"),
-                ),
+                owner=_owner(it, speaker_ids),
                 due=Due(
                     text_as_spoken=it.get("due_text_as_spoken"),
                     date_iso=it.get("due_date_iso"),

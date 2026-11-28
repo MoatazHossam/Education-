@@ -807,3 +807,40 @@ def latin_terms(text: str) -> set[str]:
 def colloquial_words(text: str) -> list[str]:
     toks = set(normalize(text).split())
     return [w for w in COLLOQUIAL if " " not in w and w in toks]
+
+
+# --- speaker labels and markup ------------------------------------------------------------------
+# Anonymous speaker labels in any form a model may write them: "SPK_2", "المتحدث 2", "المتحدث رقم ٢",
+# "المتحدثة الثانية". A label is not a person's identity and never belongs in minutes or an owner field.
+_ORDINAL_FORMS = {
+    1: ["الأول", "الاول", "الأولى", "الاولى"],
+    2: ["الثاني", "الثانية"],
+    3: ["الثالث", "الثالثة"],
+    4: ["الرابع", "الرابعة"],
+    5: ["الخامس", "الخامسة"],
+    6: ["السادس", "السادسة"],
+    7: ["السابع", "السابعة"],
+    8: ["الثامن", "الثامنة"],
+    9: ["التاسع", "التاسعة"],
+    10: ["العاشر", "العاشرة"],
+}
+_ORDINAL_NUM = {f: n for n, forms in _ORDINAL_FORMS.items() for f in forms}
+SPEAKER_LABEL = re.compile(
+    r"\bSPK_(\d+)\b|المتحدث(?:ة)?\s*(?:رقم\s*)?([0-9٠-٩]+)|المتحدث(?:ة)?\s+("
+    + "|".join(sorted(_ORDINAL_NUM, key=len, reverse=True))
+    + r")(?![ء-ي])"
+)
+
+
+def speaker_label_id(m: re.Match) -> str:
+    """The SPK_n id a SPEAKER_LABEL match refers to."""
+    if m.group(1):
+        return f"SPK_{int(m.group(1))}"
+    if m.group(2):
+        return f"SPK_{int(m.group(2).translate(_AR_DIGITS))}"
+    return f"SPK_{_ORDINAL_NUM[m.group(3)]}"
+
+
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+# Fragments of JSON or markup that a model sometimes leaves in a text field ("…)},{", "\"text\":").
+MARKUP = re.compile(r"[{}\[\]<>\\]|\"\s*[:,]\s*\"")

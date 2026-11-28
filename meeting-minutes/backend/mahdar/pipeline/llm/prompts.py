@@ -116,11 +116,11 @@ Item types — be strict, and when in doubt choose the weaker type and set requi
 - discussion: a subject was talked about; nothing was proposed or settled.
 - proposal: someone suggested doing something. recommendation: advice or a preferred course, not adopted.
 - objection / concern: disagreement or a worry raised.
-- agreement_tentative: participants agreed in principle but with a hedge or a condition ("مبدئياً", "على أن نؤكد", "لحد ما نشوف", "بعد مراجعة التكلفة", "ممكن"). Always requires_confirmation = true.
+- agreement_tentative: participants agreed in principle but with a hedge or a condition ("مبدئياً", "على أن نؤكد", "لحين ورود الرد", "ممكن"). Always requires_confirmation = true.
 - decision_approved: ONLY when the transcript contains an explicit decision or approval spoken by a participant ("تقرر", "قررنا", "اتفقنا على", "نعتمد", "تمت الموافقة", "موافقين", a chair's explicit confirmation), not withdrawn later. Put that approving utterance in approval_evidence. A proposal that nobody explicitly approved is NOT a decision, however reasonable or popular it sounds. A target, a preference or an opinion is not a decision, especially when a speaker says it is not final.
 - decision_rejected: a proposal explicitly rejected or explicitly not approved.
 - action_assigned: a specific person was explicitly given a task ("عليك…", "أطلب من فلان…", "يتولى فلان…") or explicitly committed to one ("سأتولى…", "أنا هبعت…") and the meeting accepted it.
-- action_suggested: a future action without an explicit, accepted owner, or a hedged volunteer ("ممكن أنا أكلمهم"). Always requires_confirmation = true.
+- action_suggested: a future action without an explicit, accepted owner, or a hedged volunteer (a "maybe I could …" offer). Always requires_confirmation = true.
 - deferred: explicitly postponed to a later meeting. open_question: unresolved, information missing, pending approval.
 - contradiction: two statements in the meeting conflict (dates, numbers, what was agreed). Cite both sides.
 
@@ -131,7 +131,7 @@ Fields:
 - speaker_ids: the speaker labels (SPK_n) who said or proposed it, as shown in the transcript. If a segment's speaker attribution confidence is low, still use its label but set confidence to "low".
 - owner_name_as_spoken: the owner's name exactly as spoken, or null. owner_speaker_id: a speaker label only when the transcript itself makes it certain (for example the speaker commits in the first person: "أنا هبعت"), else null. Never infer who someone is from how they sound; only from what is said.
 - due_text_as_spoken: the deadline exactly as spoken, or null. due_date_iso: only when the speaker gave an explicit calendar date (a day and a month), as YYYY-MM-DD, taking the year from the meeting date if the speaker did not say it. Relative expressions ("الأسبوع الجاي", "يوم الخميس", "آخر الشهر") keep due_status "relative" and due_date_iso null. due_status "unspecified" when no deadline was given.
-- qualifications: every condition, caveat or limit attached to the item ("بشرط الانتهاء من اختبار الأداء", "بعد مراجعة التكلفة").
+- qualifications: every condition, caveat or limit attached to the item ("بشرط توفر الاعتماد المالي", "ما لم تعترض الإدارة القانونية").
 - confidence: how clearly the transcript supports the item as you classified it.
 - notes: anything a reviewer must know (for example "the date was contradicted later"), in Arabic, or null.
 - speaker_name_hints: only when the transcript itself shows which label is which named person (a self-introduction, or someone addressed by name who answers). These are suggestions for a person to confirm; they are never applied automatically.

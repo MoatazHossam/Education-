@@ -6,13 +6,15 @@ Two independent passes over every item, then a combination that can only make an
    were not screened out; each quote really occurs in its segment; every number, explicit date,
    owner name, person name and English term in the claim occurs in the cited words; a decision
    cites approving words and no hedge or negation; an assignment cites assigning or committing
-   words; negation agrees; a calendar date is not made out of a relative expression.
+   words; a deferral is not recorded as a rejection; negation agrees; a calendar date is not made
+   out of a relative expression; the statement shares at least one content word with what was said.
 2. An independent model audit (when a model is configured and allowed): a sceptical auditor
    prompt that sees the transcript and the claims, never the analysis prompt or its reasoning,
    and judges support, classification, speaker, owner, date and missing conditions, and lists
    omissions.
 
-An item is "verified" only when both pass. The type is never upgraded automatically: a decision
+An item is "verified" only when both pass. An item the auditor finds unsupported, or that the
+recording contradicts, stays out of the minutes until a person accepts it. The type is never upgraded automatically: a decision
 without approving words becomes a tentative agreement or a proposal, an assignment without an
 accepted owner becomes a suggested action, and a person sees why.
 """
@@ -50,8 +52,102 @@ WEAKER = {
     "decision_approved": ["agreement_tentative", "proposal", "recommendation", "discussion"],
     "agreement_tentative": ["proposal", "recommendation", "discussion"],
     "action_assigned": ["action_suggested"],
-    "decision_rejected": ["proposal", "discussion"],
+    "decision_rejected": ["deferred", "proposal", "discussion"],
 }
+# Reporting words a minutes statement adds around what was said; they prove nothing about support.
+_GENERIC = {
+    arabic.normalize(w)
+    for w in [
+        "تم",
+        "تقرر",
+        "يقترح",
+        "مقترح",
+        "اقتراح",
+        "اقترح",
+        "يطلب",
+        "طلب",
+        "أكد",
+        "أشار",
+        "ذكر",
+        "أوضح",
+        "أفاد",
+        "أبدى",
+        "أعرب",
+        "رأى",
+        "يرى",
+        "الاجتماع",
+        "اللجنة",
+        "الموضوع",
+        "موضوع",
+        "ضرورة",
+        "إلى",
+        "على",
+        "في",
+        "من",
+        "عن",
+        "مع",
+        "أن",
+        "إن",
+        "هل",
+        "ما",
+        "هو",
+        "هي",
+        "هذا",
+        "هذه",
+        "ذلك",
+        "التي",
+        "الذي",
+        "قبل",
+        "بعد",
+        "خلال",
+        "حول",
+        "بشأن",
+        "عدم",
+        "وجود",
+        "كان",
+        "يكون",
+        "سيتم",
+        "يتم",
+        "لم",
+        "لا",
+        "قد",
+        "كما",
+        "أيضا",
+        "حتى",
+        "بين",
+        "أو",
+        "ثم",
+        "كل",
+        "بعض",
+        "المتحدث",
+        "الحاضرين",
+        "أحد",
+    ]
+}
+
+
+def _content_words(text: str) -> list[str]:
+    out = []
+    for t in arabic.normalize(text).split():
+        s = arabic.strip_clitics(t)
+        if len(s) >= 3 and t not in _GENERIC and s not in _GENERIC and not t.isdigit():
+            out.append(s)
+    return out
+
+
+def grounding(statement: str, evidence_text: str) -> tuple[int, int]:
+    """(content words of the statement, how many occur — loosely — in the evidence). Paraphrase from
+    colloquial speech legitimately shares few words, so only a statement sharing none is suspect."""
+    words = _content_words(statement)
+    ev = [arabic.strip_clitics(t) for t in arabic.normalize(evidence_text).split()]
+    hits = sum(
+        1
+        for w in words
+        if any(fuzz.ratio(w, x) >= 75 or (len(w) >= 4 and len(x) >= 3 and (w in x or x in w)) for x in ev)
+    )
+    return len(words), hits
+
+
 TITLES = {
     arabic.normalize(t)
     for t in [
@@ -185,6 +281,18 @@ def rule_checks(
     claim_text = " ".join(
         [item.statement, *item.qualifications, item.due.text_as_spoken or "", item.owner.name_as_spoken or ""]
     )
+
+    # The statement must share at least one content word with what was said.
+    if resolved and any(r.quote_found for r in resolved):
+        n_words, n_hits = grounding(item.statement, ev_text)
+        if n_words >= 3 and n_hits == 0:
+            _check(
+                checks,
+                "statement_grounding",
+                False,
+                "critical",
+                "لا ترد في المقاطع المستشهد بها أي كلمة من مضمون البند؛ الاقتباس لا يدعم ما نُسب إليه.",
+            )
 
     # Speakers.
     cited_speakers = {s.speaker_id for s in ev_segs if s.speaker_id}
@@ -341,7 +449,18 @@ def rule_checks(
             _check(checks, "approval_words", True, "info", f"عبارة الاعتماد: {'، '.join(appr[:3])}.")
     elif item.type == "decision_rejected":
         if not (arabic.contains_phrase(approval_text, arabic.REJECTION) or arabic.has_negation(approval_text)):
-            _check(checks, "rejection_words", False, "major", "لا يتضمن الدليل عبارة رفض صريحة.")
+            if arabic.contains_phrase(ev_norm, arabic.DEFERRAL):
+                # "نؤجل" is not "نرفض": recording a deferral as a rejection changes the decision.
+                allowed_type = "deferred"
+                _check(
+                    checks,
+                    "rejection_is_deferral",
+                    False,
+                    "major",
+                    "الدليل يتضمن تأجيلاً لا رفضاً؛ صُنِّف البند موضوعاً مؤجلاً.",
+                )
+            else:
+                _check(checks, "rejection_words", False, "major", "لا يتضمن الدليل عبارة رفض صريحة.")
     elif item.type == "action_assigned":
         if not (arabic.contains_phrase(ev_norm, arabic.ASSIGNMENT) or arabic.future_commitment(ev_text)):
             allowed_type = "action_suggested"
@@ -547,7 +666,8 @@ def verify(
         elif (judgment and judgment.verdict == "contradicted") or any(c.name == "approval_negated" for c in crit):
             status = "contradicted"
         elif judgment and judgment.verdict == "unsupported":
-            status = "unsupported" if crit else "needs_review"
+            # An independent reading found no support: kept out of the minutes until a person accepts it.
+            status = "unsupported"
         elif crit:
             status = "needs_review"
         elif major or (judgment and judgment.verdict == "partial") or final_type != it.type:

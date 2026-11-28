@@ -248,3 +248,69 @@ def test_audit_contradiction_and_verified():
     assert res["I1"].status == "verified"
     assert res["I2"].status == "contradicted"
     assert any(i.code == "auditor_omission" and i.severity == "critical" for i in rep.document_issues)
+
+
+def test_statement_sharing_no_word_with_its_evidence_fails():
+    # Observed with a small model: a prompt example copied as an item, citing an unrelated quote.
+    res, _ = run(
+        item("I1", "action_suggested", "ممكن أنا أكلمهم عن خدمة الدفع الإلكتروني.", [("S0006", "خلينا نقول آخر الشهر")])
+    )
+    assert "statement_grounding" in failed(res["I1"]) and res["I1"].status != "verified_rules_only"
+    # A faithful MSA paraphrase of colloquial speech shares few words, and still passes.
+    res, _ = run(
+        item(
+            "I2",
+            "action_suggested",
+            "ممكن أن يتولى أحد الحاضرين الاتصال بالشركة، لكن ليس قبل الأسبوع القادم.",
+            [("S0004", "ممكن أنا أكلمهم")],
+        )
+    )
+    assert "statement_grounding" not in failed(res["I2"])
+
+
+def test_deferral_recorded_as_rejection_becomes_deferred():
+    t = transcript(seg("S0001", "SPK_1", "نؤجل موضوع الدفع الإلكتروني إلى الاجتماع القادم.", 0, 5))
+    rep, _ = verify(
+        t,
+        analysis(
+            item(
+                "I1",
+                "decision_rejected",
+                "رُفض مقترح الدفع الإلكتروني.",
+                [("S0001", "نؤجل موضوع الدفع الإلكتروني")],
+                approval=[("S0001", "نؤجل موضوع الدفع الإلكتروني")],
+            )
+        ),
+        meta=META,
+        glossary=[],
+        llm=FakeLlm({"verification": [{"judgments": [_judgment("I1")], "omissions": []}]}),
+    )
+    v = rep.items[0]
+    # The auditor agreeing does not lower this one: a deferral is not a rejection.
+    assert v.final_type == "deferred" and "rejection_is_deferral" in failed(v)
+    assert v.status == "partially_supported"
+
+
+def test_audit_unsupported_keeps_the_item_out_even_when_rules_pass():
+    llm = FakeLlm({"verification": [{"judgments": [_judgment("I1", verdict="unsupported")], "omissions": []}]})
+    res, _ = run(
+        item("I1", "proposal", "يرى المتحدث أن النظام قد يوفر الوقت.", [("S0001", "النظام ده ممكن يوفر وقت")]),
+        llm=llm,
+    )
+    assert res["I1"].status == "unsupported"
+
+
+def test_speaker_label_given_as_owner_name_becomes_the_speaker():
+    from mahdar.pipeline.analysis import _to_items
+
+    raw = {
+        "type": "action_assigned",
+        "statement": "سأتولى إعداد الخطة.",
+        "owner_status": "explicit",
+        "evidence": [{"segment_id": "S0003", "quote": "سأتولى إعداد خطة"}],
+    }
+    for name in ("المتحدث 2", "المتحدث الثاني", "SPK_2"):
+        (it,) = _to_items([{**raw, "owner_name_as_spoken": name}], {"SPK_1", "SPK_2"})
+        assert it.owner.name_as_spoken is None and it.owner.speaker_id == "SPK_2"
+    (it,) = _to_items([{**raw, "owner_name_as_spoken": "خالد"}], {"SPK_1", "SPK_2"})
+    assert it.owner.name_as_spoken == "خالد"

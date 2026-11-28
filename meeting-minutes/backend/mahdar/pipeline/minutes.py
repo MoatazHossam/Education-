@@ -128,6 +128,8 @@ def _owner(it: Item, names: dict[str, str]) -> str:
         return it.owner.name_as_spoken
     if it.owner.speaker_id and names.get(it.owner.speaker_id):
         return names[it.owner.speaker_id]
+    if it.owner.speaker_id:
+        return "أحد الحاضرين (يُحدَّد اسمه عند المراجعة)"
     return NOT_SET
 
 
@@ -175,13 +177,12 @@ ORDINALS = [
     "حادي عشر",
     "ثاني عشر",
 ]
-_LABEL = re.compile(r"\bSPK_(\d+)\b|المتحدث(?:ة)?\s*(?:رقم\s*)?(\d+)")
 
 
 def without_labels(text: str, names: dict[str, str]) -> str:
-    """Speaker labels never appear in minutes: a confirmed name replaces them, otherwise a neutral
-    phrase (a label is not a person's identity)."""
-    return _LABEL.sub(lambda m: names.get(f"SPK_{m.group(1) or m.group(2)}") or "أحد الحاضرين", text)
+    """Speaker labels never appear in minutes, in any form ("SPK_2", "المتحدث 2", "المتحدث الثاني"):
+    a confirmed name replaces them, otherwise a neutral phrase (a label is not a person's identity)."""
+    return arabic.SPEAKER_LABEL.sub(lambda m: names.get(arabic.speaker_label_id(m)) or "أحد الحاضرين", text)
 
 
 def rule_text(e: EffectiveItem, names: dict[str, str] | None = None) -> str:
@@ -233,8 +234,10 @@ def check_block(text: str, items: list[EffectiveItem], names: dict[str, str], pe
         problems.append("dates")
     if not arabic.latin_terms(text) <= facts["latin"]:
         problems.append("terms:" + ",".join(sorted(arabic.latin_terms(text) - facts["latin"])))
-    if re.search(r"SPK_\d+|المتحدث \d+", text):
+    if arabic.SPEAKER_LABEL.search(text):
         problems.append("speaker_label")
+    if arabic.MARKUP.search(text):
+        problems.append("markup")
     norm = arabic.normalize(text)
     for person in people:
         pn = arabic.normalize(person)
@@ -280,8 +283,8 @@ def _plan(items: list[EffectiveItem]) -> dict[str, list[EffectiveItem]]:
     }
     for e in items:
         t = e.type
-        if e.status == "unsupported" and not e.human_accepted:
-            continue  # not in the minutes; listed in the evidence report
+        if e.status in ("unsupported", "contradicted") and not e.human_accepted:
+            continue  # not in the minutes until a person accepts it; listed in the evidence report
         if t in ("decision_approved", "action_assigned") and not e.ok:
             plan["pending"].append(e)
         elif t == "decision_approved":
@@ -761,6 +764,8 @@ def fact_signature(text: str) -> dict:
         "negation": arabic.has_negation(text),
         "decision": bool(arabic.contains_phrase(n, DECISION_VERBS)),
         "tentative": bool(arabic.contains_phrase(n, ["مبدئيا", "مبدئي"])),
+        "markup": bool(arabic.MARKUP.search(text)),
+        "labels": bool(arabic.SPEAKER_LABEL.search(text)),
     }
 
 
